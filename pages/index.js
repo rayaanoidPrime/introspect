@@ -7,10 +7,10 @@ const QueryDatabase = () => {
     <>
       <Meta />
       <Scaffolding id={"select-model"}>
-        <h1>Select Model</h1>
+        <h1 style={{paddingBottom: "1em"}}>Select Model</h1>
         <Row type="flex">
           <Col md={{span: 8}} xs={{span: 24}} style={{display: "flex"}}>
-            <Card title="Locally Hosted (Community)" bordered={true}>
+            <Card title="Locally Hosted (Community)" bordered={true} style={{width: "100%", marginRight: 10}}>
               🦾 Model Type: <code>SQLCoder-7b-4_k.GGUF</code> <Tooltip title="Our fastest model with 78% accuracy on `sql-eval`. Works great on Apple Silicon.">ℹ</Tooltip> <br/>
               🆓 Free forever! <Tooltip title="The model is free forever.">ℹ</Tooltip> <br/>
               🤷🏽‍♂️ Not great at following-instructions <Tooltip title="The model can follow basic instructions, but is not great at following specialized ones">ℹ</Tooltip> <br/>
@@ -28,7 +28,7 @@ const QueryDatabase = () => {
             
           </Col>
           <Col md={{span: 8}} xs={{span: 24}} style={{display: "flex"}}>
-            <Card title="API Based" bordered={true}>
+            <Card title="API Based" bordered={true} style={{width: "100%", marginRight: 10}}>
               🦾 Model Type: <code>SQLCoder-34b-instruct</code> <Tooltip title="Our most capable closed-source model with 91% accuracy on `sql-eval`">ℹ</Tooltip> <br/>
               🚀 Usage-based pricing using API credits <Tooltip title="The model is hosted on our servers and can be accessed via API, using a credit based system">ℹ</Tooltip> <br/>
               ✅ Follows-instructions <Tooltip title="The model is great at following specialized instructions">ℹ</Tooltip> <br/>
@@ -41,14 +41,14 @@ const QueryDatabase = () => {
                 <h3>Pricing</h3>
                 🆓 1000 free API credits per month <br/>
                 💰 $0.03 per API credit <br/>
-                - Every 500 tokens of a SQL generated = 1 API credit <br/>
+                - Every 500 tokens of generated SQL = 1 API credit <br/>
                 - Every action taken by an agent = 1 API credit <br/>
               </div>
               <Button type="primary" style={{position: "absolute", width: "85%", bottom: 10, maxWidth: 400}}>Get Started</Button>
             </Card>
           </Col>
           <Col md={{span: 8}} xs={{span: 24}} style={{display: "flex"}}>
-            <Card title="Locally hosted (Enterprise)" bordered={true}>
+            <Card title="Locally hosted (Enterprise)" bordered={true} style={{width: "100%", marginRight: 10}}>
               🦾 Model Type: <code>SQLCoder-34b-instruct</code> <Tooltip title="Our most capable closed-source model with 91% accuracy on `sql-eval`">ℹ</Tooltip> <br/>
               🤝 Annual contracts for on-prem deployment <Tooltip title="The model is hosted on your servers, along with a Docker image for data access, visualization, and other tools">ℹ</Tooltip> <br/>
               ✅ Follows-instructions <Tooltip title="The model is great at following specialized instructions">ℹ</Tooltip> <br/>
