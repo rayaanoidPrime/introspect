@@ -1,5 +1,5 @@
-import Meta from '@/components/common/Meta'
-import Scaffolding from '@/components/common/Scaffolding'
+import Meta from '../components/common/Meta'
+import Scaffolding from '../components/common/Scaffolding'
 
 const InstructModel = () => {
   return (

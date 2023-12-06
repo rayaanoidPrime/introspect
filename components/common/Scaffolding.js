@@ -7,7 +7,7 @@ const Scaffolding = ({ id, children }) => {
     {
       key: 'select-model',
       title: 'Select Model',
-      icon: <a href="/select-model">1. Select Model</a>,
+      icon: <a href="/">1. Select Model</a>,
     },
     {
       key: 'extract-metadata',
