@@ -9,6 +9,7 @@ const ExtractMetadata = () => {
   const [tables, setTables] = useState([]);
   const [loading, setLoading]  = useState(false);
   const [metadata, setMetadata] = useState([]);
+  const [allowedJoins, setAllowedJoins] = useState("");
 
   return (
     <>
@@ -43,7 +44,7 @@ const ExtractMetadata = () => {
                 }}
               >
                 <Form.Item name="db_type" label={<div>Database Type <Tooltip title="only postgres is supported on the community model">ℹ</Tooltip></div>}>
-                  <Select style={{ width: "100%"}} defaultValue={"postgres"}>
+                  <Select style={{ width: "100%"}} initialValue={"postgres"}>
                     <Option value="postgres">PostgreSQL</Option>
                     <Option value="mysql" disabled>MySQL</Option>
                     <Option value="snowflake" disabled>Snowflake</Option>
@@ -123,11 +124,20 @@ const ExtractMetadata = () => {
                   const res = await fetch("http://localhost:8000/update_metadata", {
                     method: "POST",
                     body: JSON.stringify({
-                      metadata: metadata
+                      metadata: metadata,
+                      allowed_joins: allowedJoins
                     })
                   });
                   const data = await res.json();
+                  console.log(data);
                   setLoading(false);
+                  if (data['suggested_joins'] !== undefined && data['suggested_joins'] !== null && data['suggested_joins'] !== "") {
+                    console.log("Here!")
+                    setAllowedJoins(data['suggested_joins']);
+                    // also update the value of the text area
+                    document.getElementById("allowed-joins").value = data['suggested_joins'];
+                  }
+
                   message.success("Metadata updated successfully!");
                 }}
               >
@@ -172,7 +182,7 @@ const ExtractMetadata = () => {
                   <Input.TextArea
                     key={index}
                     placeholder="Description of what this column does"
-                    defaultValue={item.column_description}
+                    initialValue={item.column_description}
                     autoSize={{minRows: 2}}
                     onKeyDown={async (e) => {
                       // special behavior for cmd+enter
@@ -199,6 +209,23 @@ const ExtractMetadata = () => {
               </Row>
               })
             }
+
+            {metadata.length > 0 ? 
+            <Row>
+              <Col span={24}>
+                <h2 style={{paddingTop: "1em"}}>Allowed Joins</h2>
+                <Input.TextArea
+                  id={"allowed-joins"}
+                  placeholder="Allowed Joins"
+                  initialValue={allowedJoins}
+                  autoSize={{minRows: 2}}
+                  value={allowedJoins}
+                  onChange={(e) => {
+                    setAllowedJoins(e.target.value);
+                  }}
+                />
+              </Col>
+            </Row>: null}
           </Col>
         </Row>
       </Scaffolding>
