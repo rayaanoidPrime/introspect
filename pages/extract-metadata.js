@@ -1,4 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useContext, useEffect } from 'react'
+import { useRouter } from 'next/router'
+import { Context } from '../components/common/Context';
 import Meta from '../components/common/Meta'
 import Scaffolding from '../components/common/Scaffolding'
 import { Input, Select, Form, Tooltip, Button, Row, Col, message } from 'antd/lib'
@@ -10,11 +12,31 @@ const ExtractMetadata = () => {
   const [loading, setLoading]  = useState(false);
   const [metadata, setMetadata] = useState([]);
   const [allowedJoins, setAllowedJoins] = useState("");
+  const [context, setContext] = useContext(Context);
+  const router = useRouter();
+  const [userType, setUserType] = useState("admin");
+
+  useEffect(() => {
+    const userType = context.userType;
+    if (userType === undefined) {
+      router.push("/login");
+    } else if (userType !== "admin") {
+      router.push("/");
+    }
+  }, [context]);
+
+  const db_cred_types = {
+    "postgres": ["host", "port", "username", "password", "database"],
+    "mysql": ["host", "port", "username", "password", "database"],
+    "redshift": ["host", "port", "username", "password", "database"],
+    "snowflake": ["account", "warehouse", "username", "password"],
+    "databricks": ["host", "port", "username", "password", "database"]
+  }
 
   return (
     <>
       <Meta />
-      <Scaffolding id={"extract-metadata"}>
+      <Scaffolding id={"manage-database"} userType={"admin"}>
         <h1 style={{paddingBottom: "1em"}}>Extract Metadata</h1>
         {/* select database type */}
         
@@ -35,7 +57,7 @@ const ExtractMetadata = () => {
                 disabled={loading}
                 onFinish={async (values) => {
                   setDbCreds(values);
-                  const res = await fetch("http://localhost:8000/get_tables", {
+                  const res = await fetch(`${process.env.API_ENDPOINT}/integration/get_tables`, {
                     method: "POST",
                     body: JSON.stringify(values)
                   });
@@ -45,11 +67,11 @@ const ExtractMetadata = () => {
               >
                 <Form.Item name="db_type" label={<div>Database Type <Tooltip title="only postgres is supported on the community model">ℹ</Tooltip></div>}>
                   <Select style={{ width: "100%"}} initialValue={"postgres"}>
+                    <Option value="databricks">DataBricks</Option>
+                    <Option value="mysql">MySQL</Option>
                     <Option value="postgres">PostgreSQL</Option>
-                    <Option value="mysql" disabled>MySQL</Option>
-                    <Option value="snowflake" disabled>Snowflake</Option>
-                    <Option value="redshift" disabled>Redshift</Option>
-                    <Option value="bigquery" disabled>BigQuery</Option>
+                    <Option value="redshift">Redshift</Option>
+                    <Option value="snowflake">Snowflake</Option>
                   </Select>
                 </Form.Item>
                 <Form.Item label="Database Host" name="host" initialValue={"localhost"}>

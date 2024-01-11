@@ -1,30 +1,56 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Layout, Menu } from "antd/lib";
 
-const Scaffolding = ({ id, children }) => {
+const Scaffolding = ({ id, userType, children }) => {
   const { Content, Sider } = Layout;
-  const items = [
-    {
-      key: 'select-model',
-      title: 'Select Model',
-      icon: <a href="/">1. Select Model</a>,
-    },
-    {
-      key: 'extract-metadata',
-      title: 'Extract Metadata',
-      icon: <a href="/extract-metadata">2. Extract Metadata</a>,
-    },
-    {
-      key: 'instruct-model',
-      title: 'Instruct Model',
-      icon: <a href="/instruct-model">3. Instruct Model</a>,
-    },
-    {
-      key: 'query-database',
-      title: 'Query your database',
-      icon: <a href="/query-database">4. Query Database</a>,
-    },
-  ];
+  const [items, setItems] = useState([]);
+  useEffect(() => {
+    let items = [];
+    if (userType == "admin") {
+      items = [
+        {
+          key: 'manage-database',
+          title: 'Manage Database',
+          icon: <a href="/extract-metadata">💾 Manage DB</a>,
+        },
+        {
+          key: 'manage-users',
+          title: 'Manage Users',
+          icon: <a href="/manage-users">🔐 Manage Users</a>,
+        },
+        {
+          key: 'manage-model',
+          title: 'Instruct Model',
+          icon: <a href="/instruct-model">👨‍🏫 Instruct Model</a>,
+        },
+        {
+          key: 'view-notebook',
+          title: 'View your notebook',
+          icon: <a href="/view-notebooks">📒 Your Notebooks</a>,
+        },
+        {
+          key: 'account',
+          title: 'Update Account',
+          icon: <a href="/account">🧾 Update Account</a>,
+        },
+      ];
+    } else {
+      items = [
+        {
+          key: 'view-notebook',
+          title: 'View your notebook',
+          icon: <a href="/view-notebooks">Your Notebooks</a>,
+        },
+        {
+          key: 'account',
+          title: 'Update Account',
+          icon: <a href="/account">Update Account</a>,
+        },
+      ]
+    }
+    setItems(items);
+  }, [userType]);
+
   return (
     <Layout style={{height: "100vh"}}>
       <Content
