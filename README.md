@@ -28,15 +28,15 @@ This contains the self-hosted agents front-end that we will create for our enter
 
 To build the docker containers, make sure you have docker running on your system.
 
-You will need to create:
+You will need to have:
 
 1. `.env.yaml` inside `agents-backend/agents`.
-2. `cloud-storage-creds.json` (Google credentials) in root.
+2. You will also need to pass in GOOGLE_APPLICATION_CREDENTIALS_PATH as a build arg to docker compose for the agents-backend service. Like so: ` GOOGLE_APPLICATION_CREDENTIALS_PATH="path/to/google/creds.json" docker compose up -d`
 3. The db will be populated with empty meta tables for now.
 4. For the actual table (genmab_sample) where the data is stored, you will need to get the sql script and run it on the docker container. This will eventually be automated/inbuilt into the process.
 
 Then run:
-`docker-compose up`
+`GOOGLE_APPLICATION_CREDENTIALS_PATH="path/to/google/creds.json" docker compose up -d`
 
 To build the images and start the containers.
 
