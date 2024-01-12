@@ -328,12 +328,24 @@ export const AnalysisAgent = ({
     }
     setupSocket();
 
+    function closeAnalysisOnClickOutside(e) {
+      // only close if this wasn't the analysis title or the recipe itself
+      if (
+        !e.target.closest(".analysis-title") &&
+        !e.target.closest(".analysis-recipe")
+      )
+        recipeShowing && setRecipeShowing(false);
+    }
+
+    document.addEventListener("click", closeAnalysisOnClickOutside);
+
     return () => {
       if (socketManager && socketManager.close) {
         socketManager.close();
         // also stop the interval
         clearInterval(socketManager.interval);
       }
+      document.removeEventListener("click", closeAnalysisOnClickOutside);
     };
   }, []);
 
