@@ -11,6 +11,12 @@ import traceback
 import os
 
 
+with open(".env.yaml", "r") as f:
+    env = yaml.safe_load(f)
+
+report_assets_dir = env["report_assets_dir"]
+
+
 # rerun_step_and_dependents function runs the step, the step's parents if needed AND all descendants that depend on this step recursively
 # if descendants of children depend on the children, it will keep going down the graph and re running
 # we will first re run the step with the given tool_run_id. re running all parents in the process

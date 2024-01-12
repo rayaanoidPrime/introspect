@@ -1,9 +1,14 @@
 from defog import Defog
 import pandas as pd
 from typing import Tuple
-from agents.planner_executor.tool_helpers.core_functions import (
-    report_assets_dir,
-)
+
+import yaml
+
+with open(".env.yaml", "r") as f:
+    env = yaml.safe_load(f)
+
+report_assets_dir = env["report_assets_dir"]
+
 import traceback
 from uuid import uuid4
 import numpy as np

@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from connection_manager import ConnectionManager
 from report_data_manager import ReportDataManager
 import doc_endpoints
+import yaml
 
 from db_utils import (
     get_all_reports,
@@ -38,7 +39,12 @@ test_resp = {"test": "test"}
 
 request_types = ["clarify", "understand", "gen_approaches", "gen_steps", "gen_report"]
 
-report_assets_dir = "/agents-backend/report-assets"
+
+with open(".env.yaml", "r") as f:
+    env = yaml.safe_load(f)
+
+report_assets_dir = env["report_assets_dir"]
+
 
 app.include_router(doc_endpoints.router)
 

@@ -1,8 +1,14 @@
 import seaborn as sns
 from uuid import uuid4
-from agents.planner_executor.tool_helpers.core_functions import report_assets_dir
 import matplotlib.pyplot as plt
 import pandas as pd
+
+import yaml
+
+with open(".env.yaml", "r") as f:
+    env = yaml.safe_load(f)
+
+report_assets_dir = env["report_assets_dir"]
 
 
 def validate_column(df, col_name):

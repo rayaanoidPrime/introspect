@@ -12,32 +12,64 @@ services:
     networks:
       - agents-network
 
-  agents-backend:
+  agents-python-server:
     build:
       context: .
-      dockerfile: dockerfile.agents-backend
+      dockerfile: dockerfile.agents-python-server
       args:
         GOOGLE_APPLICATION_CREDENTIALS_PATH: "${GOOGLE_APPLICATION_CREDENTIALS_PATH:?Please set the GOOGLE_APPLICATION_CREDENTIALS_PATH variable to the path of your service account credentials file.}"
-        GOOGLE_APPLICATION_CREDENTIALS_CONTAINER_PATH: "/cloud-storage-creds.json"
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /cloud-storage-creds.json
     volumes:
-      - agents-backend:/agents-backend/
+      - agents-python-server:/agents-python-server/
     ports:
       # we have to expose these ports to allow the browser to acces them
       # python server
       - "1235:1235"
-      # partykit. probably don't need this one.
-      - "1999:1999"
-      # partykit also for nginx redirect
-      - "2000:2000"
-    environment:
-      GOOGLE_APPLICATION_CREDENTIALS: /cloud-storage-creds.json
+
     networks:
       - agents-network
 
-  postgres:
+  agents-partykit:
     build:
       context: .
-      dockerfile: dockerfile.postgres
+      dockerfile: dockerfile.agents-partykit
+    volumes:
+      - agents-partykit:/agents-partykit/
+    ports:
+      # partykit
+      - "1999:1999"
+      # partykit also for nginx redirect
+      - "2000:2000"
+    expose:
+      - "1999"
+      - "2000"
+    networks:
+      - agents-network
+
+  agents-rabbitmq:
+    build:
+      context: .
+      dockerfile: dockerfile.agents-rabbitmq
+      args:
+        GOOGLE_APPLICATION_CREDENTIALS_PATH: "${GOOGLE_APPLICATION_CREDENTIALS_PATH:?Please set the GOOGLE_APPLICATION_CREDENTIALS_PATH variable to the path of your service account credentials file.}"
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /cloud-storage-creds.json
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - agents-rabbitmq:/var/lib/rabbitmq
+    expose:
+      - "5672"
+      - "15672"
+    networks:
+      - agents-network
+
+  agents-postgres:
+    build:
+      context: .
+      dockerfile: dockerfile.agents-postgres
     networks:
       - agents-network
     environment:
@@ -50,8 +82,10 @@ services:
 
 volumes:
   agents-app:
-  agents-backend:
+  agents-python-server:
+  agents-partykit:
   agents-postgres:
+  agents-rabbitmq:
 
 networks:
   agents-network:

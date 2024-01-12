@@ -4,8 +4,25 @@ import json
 import logging
 from google.cloud.storage import Client, transfer_manager
 import traceback
-from utils import log_str, success_str, error_str
+from colorama import Fore, Style
 import pika
+
+
+def success_str(msg=""):
+    return f"{Fore.GREEN}{Style.BRIGHT}{msg}{Style.RESET_ALL}"
+
+
+def error_str(msg=""):
+    return f"{Fore.RED}{Style.BRIGHT}{msg}{Style.RESET_ALL}"
+
+
+def log_str(msg=""):
+    return f"{Fore.BLUE}{Style.BRIGHT}{msg}{Style.RESET_ALL}"
+
+
+def warn_str(msg=""):
+    return f"{Fore.YELLOW}{Style.BRIGHT}{msg}{Style.RESET_ALL}"
+
 
 # set to info and redirect logs to stdout
 logging.basicConfig(

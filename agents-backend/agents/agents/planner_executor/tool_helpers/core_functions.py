@@ -1,7 +1,6 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List
 import tiktoken
 from datetime import date
-import yaml
 import traceback
 import pandas as pd
 from sqlalchemy import create_engine
@@ -21,9 +20,6 @@ import numpy as np
 import pandas as pd
 
 encoding = tiktoken.encoding_for_model("gpt-4-0613")
-import os
-
-report_assets_dir = "/agents-backend/report-assets"
 
 
 # make sure the query does not contain any malicious commands like drop, delete, etc.

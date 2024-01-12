@@ -2,8 +2,8 @@ import { onConnect } from "y-partykit";
 import { setupWebsocketManager } from "./websocket-manager";
 import * as Y from "yjs";
 
-const docsEndpoint = "ws://localhost:1235/docs";
-const getDocsEndpoint = "http://localhost:1235/get_doc";
+const docsEndpoint = "ws://agents-python-server:1235/docs";
+const getDocsEndpoint = "http://agents-python-server:1235/get_doc";
 
 export default {
   async onConnect(ws, room, context) {

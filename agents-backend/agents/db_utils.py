@@ -8,16 +8,19 @@ from sqlalchemy.ext.automap import automap_base
 from agents.planner_executor.tool_helpers.toolbox_manager import all_toolboxes
 from agents.planner_executor.tool_helpers.core_functions import (
     execute_code,
-    report_assets_dir,
 )
 
+
 import yaml
+
 from gcs_utils import store_files_to_gcs
 
 from utils import add_files_to_rabbitmq_queue, error_str, log_str, warn_str
 
 with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
+
+report_assets_dir = env["report_assets_dir"]
 
 db_creds = {
     "user": env["user"],

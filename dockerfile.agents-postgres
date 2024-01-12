@@ -6,6 +6,4 @@ EXPOSE 5432
 COPY ./agents-backend/docker-setup-files/schema.sql /docker-entrypoint-initdb.d/
 
 # if this exists for you, uncomment
-# COPY ./genmab_sample.sql /genmab_sample.sql
-
-# CMD ["psql", "-U", "postgres", "-f", "./schema.sql"]
+COPY ./genmab_sample.sql /docker-entrypoint-initdb.d/

@@ -12,6 +12,7 @@ import pika
 with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
 
+
 def replace_whitespace(s):
     pattern = re.compile(r'",\s*"')
     return re.sub(pattern, '", "', s)
@@ -220,10 +221,7 @@ async def add_files_to_rabbitmq_queue(files):
     print("Files for rabbit mq:", files)
     err = None
     try:
-        # Establish
-        # there's a rabbitmq running both on the staging and main agents vms.
-        # because they don't share an hdd.
-        parameters = pika.ConnectionParameters(host="localhost")
+        parameters = pika.URLParameters("amqp://admin:admin@agents-rabbitmq/")
 
         connection = pika.BlockingConnection(parameters)
         channel = connection.channel()
