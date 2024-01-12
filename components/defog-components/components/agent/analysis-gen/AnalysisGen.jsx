@@ -1,0 +1,192 @@
+import React, {
+  useContext,
+  useEffect,
+  Fragment,
+  useMemo,
+  useState,
+} from "react";
+import Clarify from "./Clarify";
+import Approaches from "./Approaches";
+import { ThemeContext } from "../../../context/ThemeContext";
+import styled from "styled-components";
+import Search from "antd/lib/input/Search";
+import { Select, Tabs } from "antd";
+import { DocContext } from "../../../../docs/DocContext";
+
+const generationStages = ["clarify"];
+
+const agentRequestNames = {
+  clarify: "Refine",
+  // gen_approaches: "Steps",
+  // gen_steps: "Steps",
+};
+
+const components = {
+  clarify: Clarify,
+  // gen_approaches: Approaches,
+  // gen_steps: Steps,
+};
+
+export default function AnalysisGen({
+  analysisData,
+  user_question = null,
+  // if the "current stage" is done or not
+  stageDone = true,
+  // if any stage is currently loading, disable submits on all stages
+  currentStage = null,
+  handleSubmit = () => {},
+  globalLoading,
+  searchRef = null,
+  handleEdit = () => {},
+}) {
+  const { theme } = useContext(ThemeContext);
+  const docContext = useContext(DocContext);
+  const [toolboxSelection, setToolboxSelection] = useState(null);
+  // const tabsRef = useRef(null);
+
+  const [activeTab, setActiveTab] = useState(
+    currentStage === "clarify" ? "1" : "2"
+  );
+
+  useEffect(() => {
+    setActiveTab(currentStage === "clarify" ? "1" : "2");
+  }, [currentStage]);
+
+  // tabs array for antd tabs
+  const tabs = useMemo(
+    () =>
+      Object.keys(analysisData)
+        .filter((d) => generationStages.indexOf(d) > -1 && analysisData[d])
+        .map((stage, i) => {
+          return {
+            label: agentRequestNames[stage],
+            key: String(i + 1),
+            forceRender: true,
+            children: (
+              <div
+                key={stage}
+                className={
+                  Object.keys(analysisData).indexOf(stage) > -1
+                    ? "ready"
+                    : "not-ready"
+                }
+              >
+                {components[stage]
+                  ? React.createElement(components[stage], {
+                      data: analysisData[stage],
+                      handleSubmit: (
+                        ev,
+                        stageInput = {},
+                        submitSourceStage = null
+                      ) => {
+                        setActiveTab(String(i + 2 > 2 ? 2 : i + 2));
+
+                        stageInput.toolboxes = toolboxSelection
+                          ? [toolboxSelection]
+                          : [];
+
+                        return handleSubmit(ev, stageInput, submitSourceStage);
+                      },
+                      theme: theme,
+                      allowDisable: false,
+                      globalLoading: globalLoading,
+                      stageDone: stage === currentStage ? stageDone : true,
+                      isCurrentStage: stage === currentStage,
+                      handleEdit,
+                    })
+                  : null}
+              </div>
+            ),
+          };
+        }),
+    [
+      currentStage,
+      globalLoading,
+      handleEdit,
+      handleSubmit,
+      analysisData,
+      stageDone,
+      theme,
+    ]
+  );
+  const toolboxes = docContext.val.userItems.toolboxes || [];
+
+  const toolboxDropdown = useMemo(() => {
+    const options = toolboxes.map((tb) => ({
+      label: tb,
+      value: tb,
+    }));
+
+    if (!toolboxSelection && toolboxes.length) {
+      setToolboxSelection(toolboxes[0]);
+    } else if (!toolboxes.length) {
+      setToolboxSelection(null);
+    }
+
+    return toolboxes.length ? (
+      <Select
+        options={options}
+        size="small"
+        defaultValue={toolboxes[0]}
+        onChange={(val) => setToolboxSelection(val)}
+        popupClassName="analysis-toolbox-dropdown"
+      ></Select>
+    ) : (
+      <></>
+    );
+  }, [toolboxes.join(",")]);
+
+  return (
+    <AnalysisGenWrap theme={theme}>
+      <div className="analysis-gen-ctr">
+        <div className="analysis-toolbox-selection-ctr">
+          <div className="analysis-toolbox-selection-header">PROJECT</div>
+          {toolboxDropdown}
+        </div>
+        <div key={"user_question"} className="user-question-search-ctr">
+          <Search
+            onPressEnter={(ev) => handleSubmit(ev)}
+            onSearch={(ev) => {
+              handleSubmit(ev, {
+                toolboxes: toolboxSelection ? [toolboxSelection] : [],
+              });
+            }}
+            ref={searchRef}
+            disabled={globalLoading}
+            placeholder="Ask a question"
+            enterButton={currentStage === null ? "Start" : "Restart"}
+            defaultValue={user_question}
+          ></Search>
+        </div>
+        {currentStage !== null ? (
+          <Tabs
+            items={tabs}
+            tabPosition="top"
+            // activeKey={activeTab}
+            // onTabClick={(key) => setActiveTab(key)}
+          ></Tabs>
+        ) : (
+          <></>
+        )}
+      </div>
+    </AnalysisGenWrap>
+  );
+}
+
+const AnalysisGenWrap = styled.div`
+  .stage-heading {
+    text-align: center;
+    color: gray;
+    font-weight: normal;
+    font-size: 0.8em;
+    margin-bottom: 3em;
+    pointer-events: none;
+  }
+  .ant-input-search .ant-input {
+    background-color: white;
+    color: #3a3a3a;
+    * {
+      color: #3a3a3a;
+    }
+  }
+`;

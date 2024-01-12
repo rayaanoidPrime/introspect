@@ -1,0 +1,5 @@
+{
+  "name": "defog-agent-partykit",
+  "main": "server.js",
+  "port": 1999
+}

@@ -1,0 +1,17 @@
+{
+  "name": "partykit-server",
+  "version": "1.0.0",
+  "description": "Hosts the code for the partykit server that allows for collaboration in documents.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "partykit": "^0.0.32",
+    "y-partykit": "^0.0.10",
+    "yjs": "^13.6.8"
+  }
+}

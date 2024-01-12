@@ -1,0 +1,237 @@
+import seaborn as sns
+from uuid import uuid4
+from agents.planner_executor.tool_helpers.core_functions import report_assets_dir
+import matplotlib.pyplot as plt
+import pandas as pd
+
+
+def validate_column(df, col_name):
+    """
+    Checks if a column exists in a dataframe.
+    """
+    if col_name not in df.columns:
+        return False
+    return True
+
+
+async def boxplot(
+    full_data: pd.DataFrame,
+    boxplot_cols: list,
+    facet: bool = False,
+    facet_col: str = "",
+    global_dict: dict = {},
+):
+    """
+    Generates a boxplot using python's seaborn library. Also accepts faceting columns.
+    """
+    outputs = []
+    boxplot_path = f"boxplots/boxplot-{uuid4()}.png"
+    fig, ax = plt.subplots()
+    plt.xticks(rotation=45)
+    if facet:
+        full_data = full_data.dropna(subset=boxplot_cols + [facet_col], how="any")
+        # use catplot from seaborn
+        g = sns.catplot(
+            x=boxplot_cols[0],
+            y=boxplot_cols[1],
+            data=full_data,
+            col=facet_col,
+            kind="box",
+            col_wrap=4,
+        )
+        # boxplot with white boxes
+        g.map(
+            sns.boxplot,
+            boxplot_cols[0],
+            boxplot_cols[1],
+            color="white",
+        )
+        # add points to the boxplot using stripplot
+        # color them black with opacity
+        # small size dots
+        g.map(
+            sns.stripplot, boxplot_cols[0], boxplot_cols[1], color="k", alpha=0.1, s=2
+        )
+        # save highres with high dpi
+        g.figure.savefig(
+            f"{report_assets_dir}/{boxplot_path}", dpi=300, bbox_inches="tight"
+        )
+
+    else:
+        # drop rows with missing values
+        full_data = full_data.dropna(subset=boxplot_cols, how="any")
+        sns.boxplot(
+            x=boxplot_cols[0], y=boxplot_cols[1], data=full_data, ax=ax, color="white"
+        )
+        sns.stripplot(
+            x=boxplot_cols[0],
+            y=boxplot_cols[1],
+            data=full_data,
+            color="k",
+            alpha=0.1,
+            s=2,
+        )
+        plt.xticks(rotation=45)
+        plt.savefig(f"{report_assets_dir}/{boxplot_path}", dpi=300, bbox_inches="tight")
+
+    return {
+        "outputs": [
+            {
+                "data": full_data,
+                "chart_images": [
+                    {
+                        "type": "boxplot",
+                        "path": boxplot_path,
+                    }
+                ],
+            }
+        ],
+    }
+
+
+async def heatmap(
+    full_data: pd.DataFrame,
+    x_position_column: str,
+    y_position_column: str,
+    color_column: str,
+    # can be mean, median, max, min, or sum
+    aggregation_type: str = "mean",
+    color_scale: str = "YlGnBu",
+    global_dict: dict = {},
+):
+    """
+    Generates a heatmap using python's seaborn library.
+    """
+    outputs = []
+    heatmap_path = f"heatmaps/heatmap-{uuid4()}.png"
+    fig, ax = plt.subplots()
+    plt.xticks(rotation=45)
+    if aggregation_type == "mean":
+        sns.heatmap(
+            full_data.pivot_table(
+                index=y_position_column,
+                columns=x_position_column,
+                values=color_column,
+                aggfunc="mean",
+            ),
+            annot=True,
+            fmt=".1f",
+            cmap=color_scale,
+            ax=ax,
+        )
+    elif aggregation_type == "median":
+        sns.heatmap(
+            full_data.pivot_table(
+                index=y_position_column,
+                columns=x_position_column,
+                values=color_column,
+                aggfunc="median",
+            ),
+            annot=True,
+            fmt=".1f",
+            cmap=color_scale,
+            ax=ax,
+        )
+    elif aggregation_type == "max":
+        sns.heatmap(
+            full_data.pivot_table(
+                index=y_position_column,
+                columns=x_position_column,
+                values=color_column,
+                aggfunc="max",
+            ),
+            annot=True,
+            fmt=".1f",
+            cmap=color_scale,
+            ax=ax,
+        )
+    elif aggregation_type == "min":
+        sns.heatmap(
+            full_data.pivot_table(
+                index=y_position_column,
+                columns=x_position_column,
+                values=color_column,
+                aggfunc="min",
+            ),
+            annot=True,
+            fmt=".1f",
+            cmap=color_scale,
+            ax=ax,
+        )
+    elif aggregation_type == "sum":
+        sns.heatmap(
+            full_data.pivot_table(
+                index=y_position_column,
+                columns=x_position_column,
+                values=color_column,
+                aggfunc="sum",
+            ),
+            annot=True,
+            fmt=".1f",
+            cmap=color_scale,
+            ax=ax,
+        )
+    else:
+        raise ValueError("Invalid aggregation_type")
+
+    plt.savefig(f"{report_assets_dir}/{heatmap_path}", dpi=300, bbox_inches="tight")
+
+    return {
+        "outputs": [
+            {
+                "data": full_data,
+                "chart_images": [
+                    {
+                        "type": "heatmap",
+                        "path": heatmap_path,
+                    }
+                ],
+            }
+        ],
+    }
+
+
+async def line_plot(
+    full_data: pd.DataFrame,
+    x_column: str,
+    y_column: str,
+    hue_column: str = None,
+    global_dict: dict = {},
+    **kwargs,
+):
+    """
+    Creates a line plot of the data, using seaborn
+    """
+    if hue_column:
+        relevant_columns = [x_column, y_column, hue_column]
+    else:
+        relevant_columns = [x_column, y_column]
+    df = full_data.dropna(subset=relevant_columns)
+    chart_path = f"linecharts/linechart-{uuid4()}.png"
+    fig, ax = plt.subplots()
+    plt.xticks(rotation=45)
+    # create the plot
+    plot = sns.lineplot(
+        data=df[relevant_columns],
+        x=x_column,
+        y=y_column,
+        hue=hue_column,
+    )
+    # save the plot
+    plot.figure.savefig(
+        f"{report_assets_dir}/{chart_path}", dpi=300, bbox_inches="tight"
+    )
+
+    return {
+        "outputs": [
+            {
+                "data": df,
+                "chart_images": [
+                    {
+                        "type": "lineplot",
+                        "path": chart_path,
+                    }
+                ],
+            }
+        ],
+    }

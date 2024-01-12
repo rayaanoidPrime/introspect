@@ -1,0 +1,1 @@
+Hosts the code for the partykit server that allows for collaboration in documents.

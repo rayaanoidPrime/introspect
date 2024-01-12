@@ -1,0 +1,56 @@
+version: "3"
+services:
+  agents-app:
+    build:
+      context: .
+      dockerfile: dockerfile.agents-app
+    ports:
+      # use a weird port to avoid conflicts with the user's local stuff
+      - "1234:1234"
+    volumes:
+      - agents-app:/agents-app/
+    networks:
+      - agents-network
+
+  agents-backend:
+    build:
+      context: .
+      dockerfile: dockerfile.agents-backend
+    volumes:
+      - agents-backend:/agents-backend/
+    ports:
+      # we have to expose these ports to allow the browser to acces them
+      # python server
+      - "1235:1235"
+      # partykit
+      - "1999:1999"
+      # partykit also for nginx redirect
+      - "2000:2000"
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /cloud-storage-creds.json
+    networks:
+      - agents-network
+    stdin_open: true # docker run -i
+    tty: true # docker run -t
+
+  postgres:
+    build:
+      context: .
+      dockerfile: dockerfile.postgres
+    networks:
+      - agents-network
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_NAME: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - agents-postgres:/var/lib/postgresql/data
+
+volumes:
+  agents-app:
+  agents-backend:
+  agents-postgres:
+
+networks:
+  agents-network:

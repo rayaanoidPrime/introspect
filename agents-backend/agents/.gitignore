@@ -1,0 +1,14 @@
+.vscode
+__pycache__
+*.ipynb_checkpoints
+
+.env
+.env.yaml
+env
+.venv
+.DS_Store
+old-files
+logs
+report-assets
+node_modules
+.partykit
