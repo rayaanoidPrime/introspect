@@ -3,8 +3,10 @@ FROM python:3.10
 
 WORKDIR agents-backend
 
+ARG GOOGLE_APPLICATION_CREDENTIALS_PATH
+
 # copy google creds
-COPY ./cloud-storage-creds.json /cloud-storage-creds.json
+COPY $GOOGLE_APPLICATION_CREDENTIALS_PATH /cloud-storage-creds.json
 
 # copy supervisord config
 COPY ./agents-backend/docker-setup-files/supervisord.conf /etc/supervisor/conf.d/supervisord.conf

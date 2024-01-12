@@ -16,13 +16,16 @@ services:
     build:
       context: .
       dockerfile: dockerfile.agents-backend
+      args:
+        GOOGLE_APPLICATION_CREDENTIALS_PATH: "${GOOGLE_APPLICATION_CREDENTIALS_PATH:?Please set the GOOGLE_APPLICATION_CREDENTIALS_PATH variable to the path of your service account credentials file.}"
+        GOOGLE_APPLICATION_CREDENTIALS_CONTAINER_PATH: "/cloud-storage-creds.json"
     volumes:
       - agents-backend:/agents-backend/
     ports:
       # we have to expose these ports to allow the browser to acces them
       # python server
       - "1235:1235"
-      # partykit
+      # partykit. probably don't need this one.
       - "1999:1999"
       # partykit also for nginx redirect
       - "2000:2000"
@@ -30,8 +33,6 @@ services:
       GOOGLE_APPLICATION_CREDENTIALS: /cloud-storage-creds.json
     networks:
       - agents-network
-    stdin_open: true # docker run -i
-    tty: true # docker run -t
 
   postgres:
     build:
