@@ -330,7 +330,7 @@ const ExtractMetadata = () => {
                   />
                 </Col>
               </Row>
-              })
+              ) : null
             }
 
             {metadata.length > 0 ? 
@@ -351,9 +351,11 @@ const ExtractMetadata = () => {
             </Row>
             : null
             }
+          </Col>
+        </Row>
       </Scaffolding>
     </>
-  );
-};
-
-export default ExtractMetadata;
+  )
+}
+  
+export default ExtractMetadata
