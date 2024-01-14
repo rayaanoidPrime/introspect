@@ -16,6 +16,7 @@ import {
 
 const ExtractMetadata = () => {
   const { Option } = Select;
+  const [dbType, setDbType] = useState("databricks");
   const [dbCreds, setDbCreds] = useState({});
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -34,13 +35,14 @@ const ExtractMetadata = () => {
     }
   }, [context]);
 
-  const db_cred_types = {
-    postgres: ["host", "port", "username", "password", "database"],
-    mysql: ["host", "port", "username", "password", "database"],
-    redshift: ["host", "port", "username", "password", "database"],
-    snowflake: ["account", "warehouse", "username", "password"],
-    databricks: ["host", "port", "username", "password", "database"],
-  };
+
+  const dbCredOptions = {
+    "postgres": ["host", "port", "username", "password", "database"],
+    "mysql": ["host", "port", "username", "password", "database"],
+    "redshift": ["host", "port", "username", "password", "database"],
+    "snowflake": ["account", "warehouse", "username", "password"],
+    "databricks": ["server_hostname", "access_token", "http_path", "schema"]
+  }
 
   return (
     <>
@@ -59,30 +61,30 @@ const ExtractMetadata = () => {
                 style={{ maxWidth: 400 }}
                 disabled={loading}
                 onFinish={async (values) => {
-                  setDbCreds(values);
-                  const res = await fetch(
-                    `${process.env.NEXT_PUBLIC_API_ENDPOINT}/integration/get_tables`,
-                    {
-                      method: "POST",
-                      body: JSON.stringify(values),
-                    }
-                  );
+                  values = {
+                    ...values,
+                    db_type: values['db_type'] || dbType
+                  }
+                  const res = await fetch(`http://localhost:8000/integration/get_tables`, {
+                    method: "POST",
+                    body: JSON.stringify(values)
+                  });
                   const data = await res.json();
                   setTables(data["tables"]);
                 }}
               >
-                <Form.Item
-                  name="db_type"
-                  label={
-                    <div>
-                      Database Type{" "}
-                      <Tooltip title="only postgres is supported on the community model">
-                        ℹ
-                      </Tooltip>
-                    </div>
-                  }
-                >
-                  <Select style={{ width: "100%" }} initialValue={"postgres"}>
+
+                <Form.Item name="db_type" label="Database Type">
+                  <Select
+                    style={{ width: "100%"}}
+                    defaultValue={{
+                      value: dbType,
+                      label: dbType.toLocaleUpperCase()
+                    }}
+                    onChange={(e) => {
+                      setDbType(e);
+                    }}
+                  >
                     <Option value="databricks">DataBricks</Option>
                     <Option value="mysql">MySQL</Option>
                     <Option value="postgres">PostgreSQL</Option>
@@ -90,41 +92,12 @@ const ExtractMetadata = () => {
                     <Option value="snowflake">Snowflake</Option>
                   </Select>
                 </Form.Item>
-                <Form.Item
-                  label="Database Host"
-                  name="host"
-                  initialValue={"localhost"}
-                >
-                  <Input style={{ width: "100%" }} />
-                </Form.Item>
-                <Form.Item
-                  name="port"
-                  label="Database Port"
-                  initialValue={"5432"}
-                >
-                  <Input style={{ width: "100%" }} />
-                </Form.Item>
-                <Form.Item
-                  name="username"
-                  label="DB Username"
-                  initialValue={"postgres"}
-                >
-                  <Input style={{ width: "100%" }} />
-                </Form.Item>
-                <Form.Item
-                  name="password"
-                  label="DB Password"
-                  initialValue={"postgres"}
-                >
-                  <Input style={{ width: "100%" }} />
-                </Form.Item>
-                <Form.Item
-                  name="database"
-                  label="DB Name"
-                  initialValue={"postgres"}
-                >
-                  <Input style={{ width: "100%" }} />
-                </Form.Item>
+                {/* create form inputs based on the value selected above */}
+                {dbCredOptions[dbType] !== undefined && dbCredOptions[dbType].map((item) => {
+                  return <Form.Item label={item} name={item}>
+                    <Input style={{width: "100%"}} />
+                  </Form.Item>
+                })}
                 <Form.Item wrapperCol={{ span: 24 }}>
                   <Button
                     type={"primary"}
@@ -332,20 +305,52 @@ const ExtractMetadata = () => {
                 <Col span={24}>
                   <h2 style={{ paddingTop: "1em" }}>Allowed Joins</h2>
                   <Input.TextArea
-                    id={"allowed-joins"}
-                    placeholder="Allowed Joins"
-                    initialValue={allowedJoins}
-                    autoSize={{ minRows: 2 }}
-                    value={allowedJoins}
+                    key={index}
+                    placeholder="Description of what this column does"
+                    initialvalue={item.column_description}
+                    autoSize={{minRows: 2}}
+                    onKeyDown={async (e) => {
+                      // special behavior for cmd+enter
+                      if (e.key === 'Enter' && e.metaKey) {
+                        const resp = await fetch("http://localhost:8000/make_gguf_request", {
+                          method: "POST",
+                          body: JSON.stringify({
+                            prompt: `# Task\nAdd a column description for the following column inside a SQL table. Only return the column description and nothing else.\n\n# Schema\nTable Name: ${item.table_name}\nColumn Name: ${item.column_name}\nData Type: ${item.data_type}\nColumn Description:`,
+                          })
+                          })
+                        const data = await resp.json();
+                        const description = data['completion']
+                        // also update the value of the text area
+                        e.target.value = description;
+                      }
+                    }}
                     onChange={(e) => {
                       setAllowedJoins(e.target.value);
                     }}
                   />
                 </Col>
               </Row>
-            ) : null}
-          </Col>
-        </Row>
+              })
+            }
+
+            {metadata.length > 0 ? 
+            <Row>
+              <Col span={24}>
+                <h2 style={{paddingTop: "1em"}}>Allowed Joins</h2>
+                <Input.TextArea
+                  id={"allowed-joins"}
+                  placeholder="Allowed Joins"
+                  initialvalue={allowedJoins}
+                  autoSize={{minRows: 2}}
+                  value={allowedJoins}
+                  onChange={(e) => {
+                    setAllowedJoins(e.target.value);
+                  }}
+                />
+              </Col>
+            </Row>
+            : null
+            }
       </Scaffolding>
     </>
   );

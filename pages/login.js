@@ -5,27 +5,19 @@ import { useRouter } from 'next/router'
 import Meta from '../components/common/Meta'
 import Scaffolding from '../components/common/Scaffolding'
 import { Context } from '../components/common/Context';
+import { Input, Select, Form, Button, } from 'antd';
 
 const LogIn = () => {
-  const [userType, setUserType] = useState("");
   const [context, setContext] = useContext(Context);
   const router = useRouter();
 
-  useEffect(() => {
-    // if userType is in context, redirect to home page
-    const userType = context.userType;
-    if (userType) {
-      router.push("/");
-      return;
-    }
-  }, []);
-
-  const handleLogin = (e) => {
-    e.preventDefault();
-    const userType = e.target.value;
-    setUserType(userType);
-    setContext({ userType });
-    router.push("/");
+  const handleLogin = async (values) => {
+    // TODO: handle login
+    console.log(values);
+    const response = await fetch("http://localhost:8000/login", {
+      method: "POST",
+      body: JSON.stringify(values),
+    });
   }
 
   return (
@@ -33,9 +25,24 @@ const LogIn = () => {
       <Meta />
       <Scaffolding>
         <h1 style={{paddingBottom: "1em"}}>Welcome to Defog!</h1>
-        <h3>Please select your user type:</h3>
-        <button value="admin" onClick={handleLogin}>Admin</button>
-        <button value="general" onClick={handleLogin}>General</button>
+        {/* Login with antd components */}
+        <Form
+          labelCol={{ span: 4 }}
+          wrapperCol={{ span: 20 }}
+          style={{ maxWidth: 800 }}
+          onFinish={handleLogin}
+        >
+          <Form.Item label="Username" name="username">
+            <Input />
+          </Form.Item>
+          <Form.Item label="Password" name="password">
+            <Input.Password />
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit">Log In</Button>
+          </Form.Item>
+        </Form>
+
       </Scaffolding>
     </>
   )
