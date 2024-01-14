@@ -7,6 +7,7 @@ import { Input, Select, Form, Tooltip, Button, Row, Col, message } from 'antd/li
 
 const ExtractMetadata = () => {
   const { Option } = Select;
+  const [dbType, setDbType] = useState("databricks");
   const [dbCreds, setDbCreds] = useState({});
   const [tables, setTables] = useState([]);
   const [loading, setLoading]  = useState(false);
@@ -25,12 +26,12 @@ const ExtractMetadata = () => {
     }
   }, [context]);
 
-  const db_cred_types = {
+  const dbCredOptions = {
     "postgres": ["host", "port", "username", "password", "database"],
     "mysql": ["host", "port", "username", "password", "database"],
     "redshift": ["host", "port", "username", "password", "database"],
     "snowflake": ["account", "warehouse", "username", "password"],
-    "databricks": ["host", "port", "username", "password", "database"]
+    "databricks": ["server_hostname", "access_token", "http_path", "schema"]
   }
 
   return (
@@ -56,8 +57,11 @@ const ExtractMetadata = () => {
                 style={{maxWidth: 400}}
                 disabled={loading}
                 onFinish={async (values) => {
-                  setDbCreds(values);
-                  const res = await fetch(`${process.env.API_ENDPOINT}/integration/get_tables`, {
+                  values = {
+                    ...values,
+                    db_type: values['db_type'] || dbType
+                  }
+                  const res = await fetch(`http://localhost:8000/integration/get_tables`, {
                     method: "POST",
                     body: JSON.stringify(values)
                   });
@@ -65,8 +69,17 @@ const ExtractMetadata = () => {
                   setTables(data['tables']);
                 }}
               >
-                <Form.Item name="db_type" label={<div>Database Type <Tooltip title="only postgres is supported on the community model">ℹ</Tooltip></div>}>
-                  <Select style={{ width: "100%"}} initialValue={"postgres"}>
+                <Form.Item name="db_type" label="Database Type">
+                  <Select
+                    style={{ width: "100%"}}
+                    defaultValue={{
+                      value: dbType,
+                      label: dbType.toLocaleUpperCase()
+                    }}
+                    onChange={(e) => {
+                      setDbType(e);
+                    }}
+                  >
                     <Option value="databricks">DataBricks</Option>
                     <Option value="mysql">MySQL</Option>
                     <Option value="postgres">PostgreSQL</Option>
@@ -74,21 +87,12 @@ const ExtractMetadata = () => {
                     <Option value="snowflake">Snowflake</Option>
                   </Select>
                 </Form.Item>
-                <Form.Item label="Database Host" name="host" initialValue={"localhost"}>
-                  <Input style={{width: "100%"}} />
-                </Form.Item>
-                <Form.Item name="port" label="Database Port" initialValue={"5432"}>
-                  <Input style={{width: "100%"}} />
-                </Form.Item>
-                <Form.Item name="username" label="DB Username" initialValue={"postgres"}>
-                  <Input style={{width: "100%"}} />
-                </Form.Item>
-                <Form.Item name="password" label="DB Password" initialValue={"postgres"}>
-                  <Input style={{width: "100%"}} />
-                </Form.Item>
-                <Form.Item name="database" label="DB Name" initialValue={"postgres"}>
-                  <Input style={{width: "100%"}} />
-                </Form.Item>
+                {/* create form inputs based on the value selected above */}
+                {dbCredOptions[dbType] !== undefined && dbCredOptions[dbType].map((item) => {
+                  return <Form.Item label={item} name={item}>
+                    <Input style={{width: "100%"}} />
+                  </Form.Item>
+                })}
                 <Form.Item wrapperCol={{ span: 24 }}>
                   <Button type={"primary"} style={{width: "100%"}} htmlType='submit'>Get Tables</Button>
                 </Form.Item>
@@ -204,7 +208,7 @@ const ExtractMetadata = () => {
                   <Input.TextArea
                     key={index}
                     placeholder="Description of what this column does"
-                    initialValue={item.column_description}
+                    initialvalue={item.column_description}
                     autoSize={{minRows: 2}}
                     onKeyDown={async (e) => {
                       // special behavior for cmd+enter
@@ -239,7 +243,7 @@ const ExtractMetadata = () => {
                 <Input.TextArea
                   id={"allowed-joins"}
                   placeholder="Allowed Joins"
-                  initialValue={allowedJoins}
+                  initialvalue={allowedJoins}
                   autoSize={{minRows: 2}}
                   value={allowedJoins}
                   onChange={(e) => {
