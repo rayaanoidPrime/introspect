@@ -1,0 +1,207 @@
+import { contrast, random } from "chroma-js";
+import setupBaseUrl from "../utils/setupBaseUrl";
+
+export const getApiToken = async (
+  username,
+  hashed_pw,
+  router,
+  errorRoute = "/login"
+) => {
+  const url = "https://api.defog.ai/get_token";
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-hashed-password": hashed_pw,
+      },
+      body: JSON.stringify({
+        username: username,
+      }),
+    });
+  } catch (e) {
+    router.push(errorRoute);
+    return;
+  }
+  const json = await response.json();
+  return json;
+};
+
+export const getAnalysis = async (reportId) => {
+  const urlToConnect = setupBaseUrl("http", "get_report");
+  let response;
+  try {
+    response = await fetch(urlToConnect, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        report_id: reportId,
+      }),
+    });
+  } catch (e) {
+    return;
+  }
+  const json = await response.json();
+  return json;
+};
+
+export const getReport = getAnalysis;
+
+export const createAnalysis = async (
+  apiToken,
+  customId = null,
+  bodyData = {}
+) => {
+  const urlToConnect = setupBaseUrl("http", "create_analysis");
+  let response;
+  try {
+    response = await fetch(urlToConnect, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        api_key: apiToken,
+        custom_id: customId,
+        ...bodyData,
+      }),
+    });
+  } catch (e) {
+    return;
+  }
+  const json = await response.json();
+  return json;
+};
+
+export const createReport = createAnalysis;
+
+export const getAllDocs = async (apiToken) => {
+  const urlToConnect = setupBaseUrl("http", "get_docs");
+  let response;
+  try {
+    response = await fetch(urlToConnect, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        api_key: apiToken,
+      }),
+    });
+    return response.json();
+  } catch (e) {
+    return;
+  }
+};
+
+export const getTableData = async (tableId) => {
+  const urlToConnect = setupBaseUrl("http", "get_table_chart");
+  let response;
+  try {
+    response = await fetch(urlToConnect, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        table_id: tableId,
+      }),
+    });
+    return response.json();
+  } catch (e) {
+    return;
+  }
+};
+
+export const getAllAnalyses = async (apiToken) => {
+  const urlToConnect = setupBaseUrl("http", "get_analyses");
+  let response;
+  try {
+    response = await fetch(urlToConnect, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        api_key: apiToken,
+      }),
+    });
+    return response.json();
+  } catch (e) {
+    return;
+  }
+};
+
+export const getToolboxes = async (username) => {
+  const urlToConnect = setupBaseUrl("http", "get_toolboxes");
+  let response;
+  try {
+    response = await fetch(urlToConnect, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        username: username,
+      }),
+    });
+    return response.json();
+  } catch (e) {
+    return;
+  }
+};
+
+// something that looks good against black text
+export const getCursorColor = function () {
+  // start with a random color
+  const black = "#000";
+  let color = random().hex();
+  let cont = contrast(color, black);
+  while (cont < 9) {
+    // keep regenerating until we get a good contrast
+    color = random().hex();
+    cont = contrast(color, black);
+  }
+
+  return color;
+};
+
+export const aiBlocks = ["analysis", "table-chart"];
+
+export const roundNumber = function (number) {
+  if (number === null || number === undefined) {
+    return null;
+  }
+  if (number < 1 && number > -1) {
+    // exponential
+    return number.toExponential(2);
+  }
+  if (number > 100000 || number < -100000) {
+    // exponential
+    return number.toExponential(2);
+  }
+  // rounded to 2 decimals
+  return Math.round(number * 100) / 100;
+};
+
+export const getToolRunData = async (toolRunId) => {
+  const url = setupBaseUrl("http", "get_tool_run");
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        tool_run_id: toolRunId,
+      }),
+    });
+    return response.json();
+  } catch (e) {
+    return;
+  }
+};
