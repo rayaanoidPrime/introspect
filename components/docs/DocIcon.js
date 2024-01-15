@@ -1,13 +1,32 @@
 import React from "react";
 import styled from "styled-components";
 
+import { TbArchive, TbArchiveOff } from "react-icons/tb";
+
 export default function DocIcon({
   doc,
   addDocIcon = false,
   recentlyViewed = false,
+  onClick = null,
 }) {
   return (
-    <DocIconWrap>
+    <DocIconWrap
+      onClick={(e) => {
+        if (
+          !onClick ||
+          // not a function
+          typeof onClick !== "function" ||
+          // add doc icon
+          addDocIcon ||
+          // recently viewed
+          recentlyViewed
+        )
+          return;
+
+        e.preventDefault();
+        onClick(doc);
+      }}
+    >
       <div className={"doc-icon " + (addDocIcon ? "add-doc" : "")}>
         {addDocIcon ? (
           // a full width plus sign so it aligns center vertically
@@ -34,6 +53,13 @@ export default function DocIcon({
       </p>
       {recentlyViewed ? (
         <p className="doc-date">Created by: {doc?.created_by}</p>
+      ) : (
+        <></>
+      )}
+      {!addDocIcon ? (
+        <div className="doc-archive-icon">
+          {doc.archived ? <TbArchiveOff /> : <TbArchive />}
+        </div>
       ) : (
         <></>
       )}
