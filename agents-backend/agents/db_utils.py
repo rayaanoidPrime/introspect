@@ -630,6 +630,7 @@ async def get_all_docs(api_key):
                     Docs.__table__.columns["doc_id"],
                     Docs.__table__.columns["doc_title"],
                     Docs.__table__.columns["timestamp"],
+                    Docs.__table__.columns["archived"],
                 ).where(Docs.api_key == api_key)
             )
             if rows.rowcount != 0:

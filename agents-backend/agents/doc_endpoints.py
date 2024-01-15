@@ -93,13 +93,28 @@ async def doc_websocket_endpoint(websocket: WebSocket):
         await websocket.close()
 
 
+@router.post("/toggle_archive_status")
+async def toggle_archive_status(request: Request):
+    """
+    Toggle the archive status of a document.
+    """
+    data = await request.json()
+    doc_id = data.get("doc_id")
+    archive_status = data.get("archive_status")
+
+    err = await update_doc_data(doc_id, ["archived"], {"archived": archive_status})
+
+    if err:
+        return {"success": False, "error_message": err}
+
+    return {"success": True}
+
+
 @router.post("/get_doc")
 async def get_document(request: Request):
     """
     Get the document using the id passed.
     If it doesn't exist, create one and return empty data.
-    This should be safe because we're validating the api key on the front end.
-    But validate it here again jic.
     """
     data = await request.json()
     api_key = data.get("api_key")

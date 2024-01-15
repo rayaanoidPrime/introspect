@@ -36,7 +36,8 @@ CREATE TABLE public.defog_docs (
     "timestamp" text,
     doc_xml text,
     doc_uint8 jsonb,
-    doc_title text
+    doc_title text,
+    archived boolean,
 );
 
 

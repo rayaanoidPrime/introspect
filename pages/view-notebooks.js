@@ -3,7 +3,7 @@ import DocIcon from "../components/docs/DocIcon";
 import styled from "styled-components";
 import { Context } from "../components/common/Context";
 import Meta from "../components/common/Meta";
-import { message } from "antd";
+import { Collapse, message } from "antd";
 import Link from "next/link";
 import Scaffolding from "../components/common/Scaffolding";
 
@@ -12,6 +12,68 @@ const ViewNotebooks = () => {
   const [context, setContext] = useContext(Context);
   const [ownDocs, setOwnDocs] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
+  const [archivedDocs, setArchivedDocs] = useState([]);
+
+  async function archiveToggle(doc) {
+    const docId = doc.doc_id;
+    const isArchived = doc.archived;
+    // toggle archived status of doc
+    let newArchivedDocs = archivedDocs;
+    let newOwnDocs = ownDocs;
+
+    if (isArchived) {
+      // if doc is archived, remove from archived docs
+      newArchivedDocs = archivedDocs.filter((doc) => doc.doc_id !== docId);
+      // add to own docs
+      newOwnDocs = [
+        ...ownDocs,
+        ...archivedDocs
+          .filter((doc) => doc.doc_id === docId)
+          .map((doc) => {
+            doc.archived = false;
+            return doc;
+          }),
+      ];
+    } else {
+      // if doc is not archived, add to archived docs
+      newArchivedDocs = [
+        ...archivedDocs,
+        ...ownDocs
+          .filter((doc) => doc.doc_id === docId)
+          .map((doc) => {
+            doc.archived = true;
+            return doc;
+          }),
+      ];
+      // remove from own docs
+      newOwnDocs = ownDocs.filter((doc) => doc.doc_id !== docId);
+    }
+
+    setArchivedDocs(newArchivedDocs);
+    setOwnDocs(newOwnDocs);
+
+    // send to backend to the toggle_archive_status/ endpoint with the archive_status key
+    let res = await fetch(
+      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/toggle_archive_status`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          doc_id: docId,
+          archive_status: !isArchived,
+        }),
+      }
+    );
+    res = await res.json();
+    if (res.success) {
+      message.success(`Successfully ${isArchived ? "un" : ""}archived doc`);
+    }
+    if (!res.success) {
+      message.error(`Error ${isArchived ? "un" : ""}archiving doc`);
+    }
+  }
 
   const getNotebooks = async () => {
     if (!context.token) {
@@ -33,11 +95,11 @@ const ViewNotebooks = () => {
     res = await res.json();
     if (res.success) {
       // res.docs is user's own documents
-      const filteredDocs = res.docs;
+      let ownDocs = res.docs;
       // res.recently_viewed_docs is user's recently viewed documents
       let recentlyViewed = res.recently_viewed_docs || [];
 
-      filteredDocs.forEach((r) => {
+      ownDocs.forEach((r) => {
         r.timestamp = new Date(r.timestamp);
       });
 
@@ -49,7 +111,7 @@ const ViewNotebooks = () => {
         };
       });
 
-      filteredDocs.sort((a, b) => {
+      ownDocs.sort((a, b) => {
         return b.timestamp - a.timestamp;
       });
 
@@ -59,7 +121,13 @@ const ViewNotebooks = () => {
         return b.timestamp - a.timestamp;
       });
 
-      setOwnDocs(filteredDocs);
+      // res.archived_docs is user's archived documents
+      const archivedDocs = ownDocs.filter((doc) => doc.archived);
+      // remove archived docs from ownDocs
+      ownDocs = ownDocs.filter((doc) => !doc.archived);
+      setArchivedDocs(archivedDocs);
+
+      setOwnDocs(ownDocs);
     }
     if (!res.success) {
       throw new Error(res.error_message);
@@ -99,7 +167,7 @@ const ViewNotebooks = () => {
     <Wrap>
       <Meta />
       <Scaffolding id={"view-notebooks"} userType={context.userType}>
-        <h1>View Notebooks</h1>
+        <h1>Notebooks</h1>
         {recentlyViewed.length ? (
           <h2 className="header">Recently viewed</h2>
         ) : null}
@@ -115,7 +183,11 @@ const ViewNotebooks = () => {
                   }}
                   key={doc.doc_id}
                 >
-                  <DocIcon doc={doc} recentlyViewed={true} />
+                  <DocIcon
+                    doc={doc}
+                    onClick={archiveToggle}
+                    recentlyViewed={true}
+                  />
                 </Link>
               ))}
             </>
@@ -124,7 +196,7 @@ const ViewNotebooks = () => {
           )}
         </div>
 
-        <h2 className="header">Your documents</h2>
+        <h2 className="header">Your notebooks</h2>
         <div className="doc-icons-container">
           {ownDocs && !loading ? (
             <>
@@ -146,7 +218,7 @@ const ViewNotebooks = () => {
                   }}
                   key={doc.doc_id}
                 >
-                  <DocIcon doc={doc} />
+                  <DocIcon doc={doc} onClick={archiveToggle} />
                 </Link>
               ))}
             </>
@@ -154,18 +226,88 @@ const ViewNotebooks = () => {
             <div>Loading docs...</div>
           )}
         </div>
+
+        {archivedDocs.length === 0 ? (
+          <></>
+        ) : (
+          <>
+            <Collapse
+              bordered={false}
+              size="small"
+              rootClassName="archived-collapse"
+              items={[
+                {
+                  label: "Archived notebooks",
+                  key: "archived-docs",
+                  children: (
+                    <div className="doc-icons-container">
+                      {archivedDocs.map((doc) => (
+                        <Link
+                          target="_blank"
+                          href={{
+                            pathname: "/doc",
+                            query: { docId: doc.doc_id },
+                          }}
+                          key={doc.doc_id}
+                        >
+                          <DocIcon doc={doc} onClick={archiveToggle} />
+                        </Link>
+                      ))}
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          </>
+        )}
       </Scaffolding>
     </Wrap>
   );
 };
 
 const Wrap = styled.div`
+  .archived-collapse {
+    background-color: transparent;
+    .ant-collapse-content {
+      .ant-collapse-content-box {
+        padding: 0;
+      }
+    }
+  }
   .doc-icons-container {
     display: flex;
     flex-wrap: wrap;
     justify-content: left;
     margin: 0 auto;
     padding: 20px;
+    a {
+      position: relative;
+      .doc-archive-icon {
+        position: absolute;
+        top: 0px;
+        right: 0px;
+        opacity: 0;
+        font-size: 15px;
+        padding: 5px;
+        background-color: white;
+        border: 1px solid #949494;
+        border-radius: 50%;
+        height: 30px;
+        width: 30px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 4;
+        svg path:not(:first-child) {
+          stroke: #949494;
+        }
+      }
+      &:hover {
+        .doc-archive-icon {
+          opacity: 1;
+        }
+      }
+    }
   }
   .header {
     margin: 20px;

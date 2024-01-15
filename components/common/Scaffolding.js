@@ -6,7 +6,7 @@ const Scaffolding = ({ id, userType, children }) => {
   const { Content, Sider } = Layout;
   const [items, setItems] = useState([]);
   const [context, setContext] = useContext(Context);
-  
+
   const logout = () => {
     localStorage.removeItem("defogUser");
     localStorage.removeItem("defogToken");
@@ -18,20 +18,20 @@ const Scaffolding = ({ id, userType, children }) => {
     });
 
     window.location.href = "/login";
-  }
-  
+  };
+
   useEffect(() => {
     let items = [];
     if (userType == "admin") {
       items = [
         {
-          key: 'manage-database',
-          title: 'Manage Database',
+          key: "manage-database",
+          title: "Manage Database",
           icon: <a href="/extract-metadata">💾 Manage DB</a>,
         },
         {
-          key: 'manage-users',
-          title: 'Manage Users',
+          key: "manage-users",
+          title: "Manage Users",
           icon: <a href="/manage-users">🔐 Manage Users</a>,
         },
         // {
@@ -40,40 +40,44 @@ const Scaffolding = ({ id, userType, children }) => {
         //   icon: <a href="/instruct-model">👨‍🏫 Instruct Model</a>,
         // },
         {
-          key: 'view-notebook',
-          title: 'View your notebook',
+          key: "view-notebook",
+          title: "View your notebook",
           icon: <a href="/view-notebooks">📒 Your Notebooks</a>,
         },
         {
-          key: 'logout',
-          title: 'Logout',
-          icon: <a href="#" onClick={logout}>↪ Logout</a>,
+          key: "logout",
+          title: "Logout",
+          icon: (
+            <a href="#" onClick={logout}>
+              ↪ Logout
+            </a>
+          ),
         },
       ];
     } else {
       items = [
         {
-          key: 'view-notebook',
-          title: 'View your notebook',
+          key: "view-notebook",
+          title: "View your notebook",
           icon: <a href="/view-notebooks">Your Notebooks</a>,
         },
         {
-          key: 'logout',
-          title: 'Logout',
-          icon: <a href="#" onClick={logout}>Logout</a>,
+          key: "logout",
+          title: "Logout",
+          icon: (
+            <a href="#" onClick={logout}>
+              Logout
+            </a>
+          ),
         },
-      ]
+      ];
     }
     setItems(items);
   }, [userType]);
 
   return (
-    <Layout style={{height: "100vh"}}>
-      <Content
-        style={{
-          padding: '50 50',
-        }}
-      >
+    <Layout style={{ height: "100vh" }}>
+      <Content>
         <Sider
           style={{
             height: "100vh",
@@ -87,12 +91,18 @@ const Scaffolding = ({ id, userType, children }) => {
             items={items}
           />
         </Sider>
-        <div style={{paddingLeft: 240, paddingTop: 30}}>
+        <div
+          style={{
+            paddingLeft: 240,
+            paddingTop: 30,
+            backgroundColor: "#f5f5f5",
+          }}
+        >
           {children}
         </div>
       </Content>
     </Layout>
   );
-}
+};
 
 export default Scaffolding;
