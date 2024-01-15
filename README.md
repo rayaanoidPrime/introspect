@@ -17,7 +17,6 @@ Before building, you will need to:
 1. Create a file `.env.yaml` inside `agents-backend/agents`, using `.env.yaml.template` as an example. This file will contain all of the environment variables that the backend needs.
 2. You will also need to set GOOGLE_APPLICATION_CREDENTIALS_PATH, which will be used as a build arg to docker compose for the agents-backend service. You may do so by exporting the variable, or passing it directly to the docker compose command. The reason why we set this differently from the other env vars in agents-backend is because it needs to be accessible to multiple docker containers.
 3. The db will be populated with empty meta tables for now.
-4. For the actual table (genmab_sample) where the data is stored, you will need to get the sql script and run it on the docker container. This will eventually be automated/inbuilt into the process.
 
 Altogether, the steps are:
 ```bash
