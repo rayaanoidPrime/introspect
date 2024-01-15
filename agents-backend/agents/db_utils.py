@@ -60,59 +60,52 @@ def initialise_report(user_question, api_key, custom_id=None, other_data={}):
 
         # if api_key == "" or api_key is None or not api_key or err_validate is not None:
         #     err = err_validate or "Your API Key is invalid."
+        with engine.begin() as conn:
+            if not custom_id or custom_id == "":
+                report_id = str(uuid.uuid4())
+            else:
+                report_id = custom_id
+            print("Creating new report with uuid: ", report_id)
+            new_report_data = {
+                "user_question": user_question,
+                "timestamp": timestamp,
+                "report_id": report_id,
+                "api_key": api_key,
+            }
+            if other_data is not None and type(other_data) is dict:
+                new_report_data.update(other_data)
 
-        if None:
-            pass
-
-        else:
-            with engine.begin() as conn:
-                if not custom_id or custom_id == "":
-                    report_id = str(uuid.uuid4())
-                else:
-                    report_id = custom_id
-                print("Creating new report with uuid: ", report_id)
-                new_report_data = {
-                    "user_question": user_question,
-                    "timestamp": timestamp,
-                    "report_id": report_id,
-                    "api_key": api_key,
-                }
-                if other_data is not None and type(other_data) is dict:
-                    new_report_data.update(other_data)
-
-                conn.execute(insert(Reports).values(new_report_data))
-                # if other data has parent_analyses, insert report_id into the follow_up_analyses column, which is an array, of all the parent analyses
-                if (
-                    other_data is not None
-                    and type(other_data) is dict
-                    and other_data.get("parent_analyses") is not None
-                ):
-                    for parent_analysis_id in other_data.get("parent_analyses"):
-                        # get the parent analysis
-                        parent_analysis = conn.execute(
-                            select(Reports).where(
-                                Reports.report_id == parent_analysis_id
-                            )
-                        ).fetchone()
-                        if parent_analysis is not None:
-                            parent_analysis = parent_analysis._mapping
-                            # get the follow_up_analyses array
-                            follow_up_analyses = (
-                                parent_analysis.get("follow_up_analyses") or []
-                            )
-                            # add the report_id to the array
-                            follow_up_analyses.append(report_id)
-                            # update the row
-                            conn.execute(
-                                update(Reports)
-                                .where(Reports.report_id == parent_analysis_id)
-                                .values(follow_up_analyses=follow_up_analyses)
-                            )
-                        else:
-                            print(
-                                "Could not find parent analysis with id: ",
-                                parent_analysis_id,
-                            )
+            conn.execute(insert(Reports).values(new_report_data))
+            # if other data has parent_analyses, insert report_id into the follow_up_analyses column, which is an array, of all the parent analyses
+            if (
+                other_data is not None
+                and type(other_data) is dict
+                and other_data.get("parent_analyses") is not None
+            ):
+                for parent_analysis_id in other_data.get("parent_analyses"):
+                    # get the parent analysis
+                    parent_analysis = conn.execute(
+                        select(Reports).where(Reports.report_id == parent_analysis_id)
+                    ).fetchone()
+                    if parent_analysis is not None:
+                        parent_analysis = parent_analysis._mapping
+                        # get the follow_up_analyses array
+                        follow_up_analyses = (
+                            parent_analysis.get("follow_up_analyses") or []
+                        )
+                        # add the report_id to the array
+                        follow_up_analyses.append(report_id)
+                        # update the row
+                        conn.execute(
+                            update(Reports)
+                            .where(Reports.report_id == parent_analysis_id)
+                            .values(follow_up_analyses=follow_up_analyses)
+                        )
+                    else:
+                        print(
+                            "Could not find parent analysis with id: ",
+                            parent_analysis_id,
+                        )
 
     except Exception as e:
         traceback.print_exc()
@@ -419,49 +412,44 @@ async def get_doc_data(doc_id, api_key, username, col_name="doc_blocks"):
 
         # if api_key == "" or api_key is None or not api_key or err_validate is not None:
         #     err = err_validate or "Your API Key is invalid."
+        with engine.begin() as conn:
+            # check if document exists
+            rows = conn.execute(select(Docs).where(Docs.doc_id == doc_id))
 
-        if None:
-            pass
+            if rows.rowcount != 0:
+                # document exists
+                print("Found document with id: ", doc_id)
+                row = rows.fetchone()
+                doc_data = {
+                    "doc_id": row.doc_id,
+                    col_name: getattr(row, col_name),
+                }
 
-        else:
-            with engine.begin() as conn:
-                # check if document exists
-                rows = conn.execute(select(Docs).where(Docs.doc_id == doc_id))
+            else:
+                # create a new document
+                print("Creating new document with id: ", doc_id)
+                doc_data = {
+                    "doc_id": doc_id,
+                    "doc_blocks": None,
+                    "doc_xml": None,
+                    "doc_uint8": None,
+                }
 
-                if rows.rowcount != 0:
-                    # document exists
-                    print("Found document with id: ", doc_id)
-                    row = rows.fetchone()
-                    doc_data = {
-                        "doc_id": row.doc_id,
-                        col_name: getattr(row, col_name),
-                    }
-
-                else:
-                    # create a new document
-                    print("Creating new document with id: ", doc_id)
-                    doc_data = {
-                        "doc_id": doc_id,
-                        "doc_blocks": None,
-                        "doc_xml": None,
-                        "doc_uint8": None,
-                    }
-
-                    conn.execute(
-                        insert(Docs).values(
-                            {
-                                "doc_id": doc_id,
-                                "api_key": api_key,
-                                "doc_blocks": None,
-                                "doc_xml": None,
-                                "doc_uint8": None,
-                                "timestamp": timestamp,
-                            }
-                        )
+                conn.execute(
+                    insert(Docs).values(
+                        {
+                            "doc_id": doc_id,
+                            "api_key": api_key,
+                            "doc_blocks": None,
+                            "doc_xml": None,
+                            "doc_uint8": None,
+                            "timestamp": timestamp,
+                        }
                     )
+                )
 
-                # add to recently viewed docs
-                await add_to_recently_viewed_docs(username, api_key, doc_id, timestamp)
+            # add to recently viewed docs
+            await add_to_recently_viewed_docs(username, api_key, doc_id, timestamp)
 
     except Exception as e:
         traceback.print_exc()
@@ -635,66 +623,62 @@ async def get_all_docs(api_key):
         # if api_key == "" or api_key is None or not api_key or err_validate is not None:
         #     err = err_validate or "Your API Key is invalid."
 
-        if None:
-            pass
+        with engine.begin() as conn:
+            # first get the data
+            rows = conn.execute(
+                select(
+                    Docs.__table__.columns["doc_id"],
+                    Docs.__table__.columns["doc_title"],
+                    Docs.__table__.columns["timestamp"],
+                ).where(Docs.api_key == api_key)
+            )
+            if rows.rowcount != 0:
+                rows = rows.fetchall()
 
-        else:
-            with engine.begin() as conn:
-                # first get the data
-                rows = conn.execute(
-                    select(
-                        Docs.__table__.columns["doc_id"],
-                        Docs.__table__.columns["doc_title"],
-                        Docs.__table__.columns["timestamp"],
-                    ).where(Docs.api_key == api_key)
-                )
-                if rows.rowcount != 0:
-                    rows = rows.fetchall()
+                for row in rows:
+                    doc = row._mapping
+                    own_docs.append(doc)
 
-                    for row in rows:
-                        doc = row._mapping
-                        own_docs.append(doc)
+        # get recently viewed docs
+        with engine.begin() as conn:
+            # first get the data
+            # merge recentlyvieweddocs with docs to get the user_question too
+            # create an array of objects with doc_id, doc_title, timestamp, user_question
+            rows = conn.execute(
+                select(
+                    RecentlyViewedDocs.__table__.columns["recent_docs"],
+                ).where(RecentlyViewedDocs.api_key == api_key)
+            )
 
-            # get recently viewed docs
-            with engine.begin() as conn:
-                # first get the data
-                # merge recentlyvieweddocs with docs to get the user_question too
-                # create an array of objects with doc_id, doc_title, timestamp, user_question
-                rows = conn.execute(
-                    select(
-                        RecentlyViewedDocs.__table__.columns["recent_docs"],
-                    ).where(RecentlyViewedDocs.api_key == api_key)
-                )
+            if rows.rowcount != 0:
+                rows = rows.fetchall()
 
-                if rows.rowcount != 0:
-                    rows = rows.fetchall()
+                for row in rows:
+                    doc = row._mapping
+                    for recent_doc in doc["recent_docs"]:
+                        # get the doc data from the docs table
+                        # also join with the users table to get the username
+                        match = conn.execute(
+                            select(
+                                Docs.__table__.columns["doc_id"],
+                                Docs.__table__.columns["doc_title"],
+                                Docs.__table__.columns["timestamp"],
+                                Users.__table__.columns["username"],
+                            )
+                            .where(Docs.doc_id == recent_doc[0])
+                            .join(Users, Users.token == Docs.api_key)
+                        ).fetchone()
 
-                    for row in rows:
-                        doc = row._mapping
-                        for recent_doc in doc["recent_docs"]:
-                            # get the doc data from the docs table
-                            # also join with the users table to get the username
-                            match = conn.execute(
-                                select(
-                                    Docs.__table__.columns["doc_id"],
-                                    Docs.__table__.columns["doc_title"],
-                                    Docs.__table__.columns["timestamp"],
-                                    Users.__table__.columns["username"],
-                                )
-                                .where(Docs.doc_id == recent_doc[0])
-                                .join(Users, Users.token == Docs.api_key)
-                            ).fetchone()
-
-                            if match:
-                                recently_viewed_docs.append(
-                                    {
-                                        "doc_id": match.doc_id,
-                                        "doc_title": match.doc_title,
-                                        # also return user who created this document
-                                        "username": match.username,
-                                        "timestamp": recent_doc[1],
-                                    }
-                                )
+                        if match:
+                            recently_viewed_docs.append(
+                                {
+                                    "doc_id": match.doc_id,
+                                    "doc_title": match.doc_title,
+                                    # also return user who created this document
+                                    "username": match.username,
+                                    "timestamp": recent_doc[1],
+                                }
+                            )
 
     except Exception as e:
         print(e)
@@ -717,28 +701,24 @@ async def get_all_analyses(api_key):
         # if api_key == "" or api_key is None or not api_key or err_validate is not None:
         #     err = err_validate or "Your API Key is invalid."
 
-        if None:
-            pass
-
-        else:
-            with engine.begin() as conn:
-                # first get the data
-                rows = conn.execute(
-                    select(
-                        *[
-                            Reports.__table__.columns["report_id"],
-                            Reports.__table__.columns["user_question"],
-                        ]
-                    )
-                    .where(Reports.api_key == api_key)
-                    .where(Reports.report_id.contains("analysis"))
+        with engine.begin() as conn:
+            # first get the data
+            rows = conn.execute(
+                select(
+                    *[
+                        Reports.__table__.columns["report_id"],
+                        Reports.__table__.columns["user_question"],
+                    ]
                 )
+                .where(Reports.api_key == api_key)
+                .where(Reports.report_id.contains("analysis"))
+            )
 
-                if rows.rowcount != 0:
-                    rows = rows.fetchall()
+            if rows.rowcount != 0:
+                rows = rows.fetchall()
 
-                    for row in rows:
-                        analyses.append(row._mapping)
+                for row in rows:
+                    analyses.append(row._mapping)
     except Exception as e:
         traceback.print_exc()
         print(e)

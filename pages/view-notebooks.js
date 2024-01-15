@@ -18,15 +18,18 @@ const ViewNotebooks = () => {
       return;
     }
 
-    let res = await fetch(`http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/get_docs`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        api_key: context.token,
-      }),
-    });
+    let res = await fetch(
+      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/get_docs`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          api_key: context.token,
+        }),
+      }
+    );
     res = await res.json();
     if (res.success) {
       // res.docs is user's own documents
@@ -93,11 +96,13 @@ const ViewNotebooks = () => {
   }, [context, context.token]);
 
   return (
-    <>
-      <Meta/>
+    <Wrap>
+      <Meta />
       <Scaffolding id={"view-notebooks"} userType={context.userType}>
         <h1>View Notebooks</h1>
-        {recentlyViewed.length ? <h2 className="header">Recently viewed</h2> : null}
+        {recentlyViewed.length ? (
+          <h2 className="header">Recently viewed</h2>
+        ) : null}
         <div className="doc-icons-container">
           {recentlyViewed && !loading ? (
             <>
@@ -150,8 +155,21 @@ const ViewNotebooks = () => {
           )}
         </div>
       </Scaffolding>
-    </>
-  )
-}
+    </Wrap>
+  );
+};
+
+const Wrap = styled.div`
+  .doc-icons-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: left;
+    margin: 0 auto;
+    padding: 20px;
+  }
+  .header {
+    margin: 20px;
+  }
+`;
 
 export default ViewNotebooks;
