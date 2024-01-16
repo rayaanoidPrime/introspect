@@ -35,7 +35,7 @@ export function AnalysisList() {
     <div id="analysis-list-sidebar" ref={analysesRef} className="sidebar">
       <div className="sidebar-content">
         {(docContext?.val?.userItems?.analyses || [])
-          .filter((d) => d.user_question !== "")
+          .filter((d) => d && d.user_question !== "")
           .map((analysis, i) => (
             <div
               draggable="true"
