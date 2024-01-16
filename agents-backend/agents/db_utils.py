@@ -858,7 +858,8 @@ async def store_tool_run(analysis_id, step, run_result):
                     try:
                         # i fear some error here someday
                         files_to_store_in_gcs += [
-                            "report-assets/" + img["path"] for img in chart_images
+                            report_assets_dir + "/" + img["path"]
+                            for img in chart_images
                         ]
                     except Exception as e:
                         print(e)
