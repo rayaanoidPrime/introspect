@@ -83,13 +83,18 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
 
   editor.onEditorContentChange(() => {
     try {
-      // only if a change
-      if (document.title === editor?.topLevelBlocks[0]?.content[0]?.text)
-        return;
+      // get first text block
+      const textBlocks = editor.topLevelBlocks.filter((d) =>
+        d?.content?.length ? d?.content[0]?.text : false
+      );
+
+      let pageTitle;
+      if (!textBlocks?.length || textBlocks[0].content[0].text === "")
+        pageTitle = "Untitled document";
+      else pageTitle = textBlocks[0].content[0].text;
 
       // set page title using the first editor block
-      document.title =
-        editor?.topLevelBlocks[0]?.content[0]?.text || "Untitled document";
+      document.title = pageTitle;
       yjsDoc.getMap("document-title").set("title", document.title);
     } catch (err) {
       console.log(err);
