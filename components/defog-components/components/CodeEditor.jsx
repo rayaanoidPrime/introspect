@@ -1,13 +1,20 @@
-import Editor from "react-simple-code-editor";
-import { highlight, languages } from "prismjs/components/prism-core";
+// import { highlight, languages } from "prismjs/components/prism-core";
 
-import "prismjs/components/prism-clike";
-import "prismjs/components/prism-sql";
-import "prismjs/components/prism-python";
+// import "prismjs/components/prism-clike";
+// import "prismjs/components/prism-sql";
+// import "prismjs/components/prism-python";
 
-import "prismjs/themes/prism.css";
+// import "prismjs/themes/prism.css";
 import React, { useMemo, useState } from "react";
 import ErrorBoundary from "./common/ErrorBoundary";
+
+import dynamic from "next/dynamic";
+import "@uiw/react-textarea-code-editor/dist.css";
+
+const Editor = dynamic(
+  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
+  { ssr: false }
+);
 
 export function CodeEditor({
   analysisId = null,
@@ -40,13 +47,12 @@ export function CodeEditor({
     <ErrorBoundary>
       <>
         <Editor
+          language={language}
           className={`language-${language} ` + className}
+          padding={15}
           value={toolCode}
-          highlight={(code) => {
-            return highlight(code, languages[language], language);
-          }}
-          onValueChange={(newVal) => {
-            updateCodeAndSql(newVal);
+          onChange={(evn) => {
+            updateCodeAndSql(evn.target.value);
           }}
         />
       </>
