@@ -73,13 +73,6 @@ export default function DocIcon({
       ) : (
         <></>
       )}
-      {!addDocIcon ? (
-        <div className="doc-archive-icon">
-          {doc.archived ? <TbArchiveOff /> : <TbArchive />}
-        </div>
-      ) : (
-        <></>
-      )}
     </DocIconWrap>
   );
 }

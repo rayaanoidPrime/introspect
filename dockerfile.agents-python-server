@@ -5,11 +5,19 @@ WORKDIR agents-python-server
 
 ARG GOOGLE_APPLICATION_CREDENTIALS_PATH
 
+
+# copy supervisor conf
+COPY ./agents-backend/docker-setup-files/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
 # copy google creds
 COPY $GOOGLE_APPLICATION_CREDENTIALS_PATH /cloud-storage-creds.json
 
+# copy startup script
+COPY ./agents-backend/docker-setup-files/startup.sh /startup.sh
+
 # need cmake for scikit
-RUN apt-get update && apt-get install -y python3-pip cmake
+RUN apt-get update && apt-get install -y python3-pip cmake supervisor
+
 
 COPY ./agents-backend/agents/requirements.txt ./requirements.txt
 # install requirements
@@ -31,4 +39,9 @@ RUN mkdir -p /agents-assets/report-assets/kaplan-meier-plots
 RUN mkdir -p /agents-assets/report-assets/linechart 
 RUN mkdir -p /agents-assets/report-assets/linecharts
 
-CMD python3 create_admin_user.py && python3 -m hypercorn main:app -b 0.0.0.0:1235
+# copy supervisor startup conf
+COPY ./agents-backend/docker-setup-files/start.conf /etc/supervisor/conf.d/start.conf
+
+
+# start startup script
+CMD ["/bin/bash", "/startup.sh"]

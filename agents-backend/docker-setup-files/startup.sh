@@ -1,10 +1,8 @@
-service rabbitmq-server start
-
-rabbitmq-plugins enable rabbitmq_management
-
-service nginx start
+python3 create_admin_user.py
 
 service supervisor stop
 service supervisor start
 
 supervisorctl start all
+
+supervisor tail -f /agent-logs
