@@ -1003,12 +1003,14 @@ $grid: repeating-linear-gradient(
                 background: $very-light-gray !important;
                 margin-bottom: 1em;
                 display: block;
+                pre {
+                  background: $very-light-gray !important;
+                }
                 pre,
-                textarea {
-                  padding: 2em !important;
-                  padding-left: 15px !important;
+                textarea,
+                span {
                   font-family: $code !important;
-                  font-size: 0.8em !important;
+                  font-size: 13px !important;
                 }
               }
             }

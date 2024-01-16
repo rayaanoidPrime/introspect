@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {
+
+const removeImports = require("next-remove-imports")();
+
+const nextConfig = removeImports({
   reactStrictMode: false,
   assetPrefix: "./",
   // need this for docker build
@@ -8,6 +11,7 @@ const nextConfig = {
     config.resolve.fallback = { fs: false };
     return config;
   },
-};
+  experimental: { esmExternals: true },
+});
 
 module.exports = nextConfig;
