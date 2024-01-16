@@ -6,8 +6,7 @@ WORKDIR agents-python-server
 ARG GOOGLE_APPLICATION_CREDENTIALS_PATH
 
 
-# copy supervisor conf
-COPY ./agents-backend/docker-setup-files/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
 
 # copy google creds
 COPY $GOOGLE_APPLICATION_CREDENTIALS_PATH /cloud-storage-creds.json
@@ -39,8 +38,11 @@ RUN mkdir -p /agents-assets/report-assets/kaplan-meier-plots
 RUN mkdir -p /agents-assets/report-assets/linechart 
 RUN mkdir -p /agents-assets/report-assets/linecharts
 
+# copy main supervisor conf
+COPY ./agents-backend/docker-setup-files/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
 # copy supervisor startup conf
-COPY ./agents-backend/docker-setup-files/start.conf /etc/supervisor/conf.d/start.conf
+COPY ./agents-backend/docker-setup-files/start-python-server.conf /etc/supervisor/conf.d/start-python-server.conf
 
 
 # start startup script

@@ -5,4 +5,4 @@ service supervisor start
 
 supervisorctl start all
 
-supervisor tail -f /agent-logs
+tail -f /agent-logs
