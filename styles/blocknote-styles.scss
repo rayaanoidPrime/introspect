@@ -1007,8 +1007,12 @@ $grid: repeating-linear-gradient(
                 background: $very-light-gray !important;
                 margin-bottom: 1em;
                 display: block;
+                .w-tc-editor-preview {
+                  user-select: none;
+                }
                 pre {
                   background: $very-light-gray !important;
+                  user-select: none;
                 }
                 pre,
                 textarea,
