@@ -2,6 +2,7 @@ import React from "react";
 import styled from "styled-components";
 
 import { TbArchive, TbArchiveOff } from "react-icons/tb";
+import Link from "next/link";
 
 export default function DocIcon({
   doc,
@@ -10,54 +11,63 @@ export default function DocIcon({
   onClick = null,
 }) {
   return (
-    <DocIconWrap
-      onClick={(e) => {
-        if (
-          !onClick ||
-          // not a function
-          typeof onClick !== "function" ||
-          // add doc icon
-          addDocIcon ||
-          // recently viewed
-          recentlyViewed
-        )
-          return;
+    <DocIconWrap>
+      <Link
+        target="_blank"
+        href={{
+          pathname: "/doc",
+          query: { docId: addDocIcon ? "new" : doc && doc.doc_id },
+        }}
+      >
+        <div className={"doc-icon " + (addDocIcon ? "add-doc" : "")}>
+          {addDocIcon ? (
+            // a full width plus sign so it aligns center vertically
+            // https://stackoverflow.com/questions/49491565/uibutton-label-text-vertical-alignment-for-plus-and-minus
+            <p className="add-doc-plus">＋</p>
+          ) : (
+            <></>
+          )}
+        </div>
 
-        e.preventDefault();
-        onClick(doc);
-      }}
-    >
-      <div className={"doc-icon " + (addDocIcon ? "add-doc" : "")}>
-        {addDocIcon ? (
-          // a full width plus sign so it aligns center vertically
-          // https://stackoverflow.com/questions/49491565/uibutton-label-text-vertical-alignment-for-plus-and-minus
-          <p className="add-doc-plus">＋</p>
+        <p className="doc-title">
+          {addDocIcon ? "New doc" : doc.doc_title ? doc.doc_title : "Untitled"}
+        </p>
+        <p className="doc-date">
+          {recentlyViewed ? "Last accessed: " : ""}
+          {addDocIcon
+            ? ""
+            : // short string like 28 Aug, 2023
+              doc?.timestamp?.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })}
+        </p>
+        {recentlyViewed ? (
+          <p className="doc-date">Created by: {doc?.created_by}</p>
         ) : (
           <></>
         )}
-      </div>
+      </Link>
+      {!addDocIcon && !recentlyViewed ? (
+        <div
+          className="doc-archive-icon"
+          onClick={(e) => {
+            if (
+              !onClick ||
+              // not a function
+              typeof onClick !== "function" ||
+              // add doc icon
+              addDocIcon ||
+              // recently viewed
+              recentlyViewed
+            )
+              return;
 
-      <p className="doc-title">
-        {addDocIcon ? "New doc" : doc.doc_title ? doc.doc_title : "Untitled"}
-      </p>
-      <p className="doc-date">
-        {recentlyViewed ? "Last accessed: " : ""}
-        {addDocIcon
-          ? ""
-          : // short string like 28 Aug, 2023
-            doc?.timestamp?.toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })}
-      </p>
-      {recentlyViewed ? (
-        <p className="doc-date">Created by: {doc?.created_by}</p>
-      ) : (
-        <></>
-      )}
-      {!addDocIcon ? (
-        <div className="doc-archive-icon">
+            e.preventDefault();
+            onClick(doc);
+          }}
+        >
           {doc.archived ? <TbArchiveOff /> : <TbArchive />}
         </div>
       ) : (
@@ -71,6 +81,36 @@ const DocIconWrap = styled.div`
   width: 200px;
   margin: 10px;
   margin-bottom: 2em;
+  position: relative;
+
+  &:hover {
+    .doc-archive-icon {
+      opacity: 1;
+    }
+  }
+
+  .doc-archive-icon {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    opacity: 0;
+    cursor: pointer;
+    font-size: 15px;
+    padding: 5px;
+    background-color: white;
+    border: 1px solid #949494;
+    border-radius: 50%;
+    height: 30px;
+    width: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 4;
+    svg path:not(:first-child) {
+      stroke: #949494;
+    }
+  }
+
   .doc-icon {
     border-radius: 8px;
     width: 100%;

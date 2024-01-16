@@ -88,26 +88,6 @@ async def edit_report(request: Request):
         return {"success": False, "error_message": "An error occurred"}
 
 
-@app.post("/get_report_asset")
-async def get_report_asset(request: Request):
-    try:
-        params = await request.json()
-        if not params or not params.get("path"):
-            return {"success": False, "error_message": "No asset path provided."}
-
-        asset_path = f"{report_assets_dir}/{params['path']}"
-        print("get_report_asset", params)
-        # check if this exists
-        if not os.path.exists(asset_path):
-            return {"success": False, "error_message": "File not found"}
-
-        return FileResponse(asset_path)
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        return {"success": False, "error_message": "Invalid request"}
-
-
 @app.post("/get_reports")
 async def all_reports(request: Request):
     try:

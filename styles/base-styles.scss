@@ -32,9 +32,9 @@ $sans-serif:
   "Fira Sans",
   "Droid Sans",
   "Helvetica Neue",
-  sans-serif;
+  sans-serif !important;
 
-$code: "Fira Code", monospace;
+$code: "Fira Code", monospace !important;
 
 @mixin drag-before($left: -7px) {
   &::before {
@@ -52,7 +52,7 @@ $code: "Fira Code", monospace;
 }
 
 @mixin code {
-  font-family: "Fira Code", monospace;
+  font-family: "Fira Code", monospace !important;
 }
 
 .text-red {

@@ -4,7 +4,6 @@ import styled from "styled-components";
 import { Context } from "../components/common/Context";
 import Meta from "../components/common/Meta";
 import { Collapse, message } from "antd";
-import Link from "next/link";
 import Scaffolding from "../components/common/Scaffolding";
 
 const ViewNotebooks = () => {
@@ -175,20 +174,12 @@ const ViewNotebooks = () => {
           {recentlyViewed && !loading ? (
             <>
               {recentlyViewed.map((doc) => (
-                <Link
-                  target="_blank"
-                  href={{
-                    pathname: "/doc",
-                    query: { docId: doc.doc_id },
-                  }}
+                <DocIcon
                   key={doc.doc_id}
-                >
-                  <DocIcon
-                    doc={doc}
-                    onClick={archiveToggle}
-                    recentlyViewed={true}
-                  />
-                </Link>
+                  doc={doc}
+                  onClick={archiveToggle}
+                  recentlyViewed={true}
+                />
               ))}
             </>
           ) : (
@@ -200,26 +191,9 @@ const ViewNotebooks = () => {
         <div className="doc-icons-container">
           {ownDocs && !loading ? (
             <>
-              <Link
-                target="_blank"
-                href={{
-                  pathname: "/doc",
-                  query: { docId: "new" },
-                }}
-              >
-                <DocIcon addDocIcon={true} />
-              </Link>
+              <DocIcon addDocIcon={true} />
               {ownDocs.map((doc) => (
-                <Link
-                  target="_blank"
-                  href={{
-                    pathname: "/doc",
-                    query: { docId: doc.doc_id },
-                  }}
-                  key={doc.doc_id}
-                >
-                  <DocIcon doc={doc} onClick={archiveToggle} />
-                </Link>
+                <DocIcon doc={doc} key={doc.doc_id} onClick={archiveToggle} />
               ))}
             </>
           ) : (
@@ -242,16 +216,11 @@ const ViewNotebooks = () => {
                   children: (
                     <div className="doc-icons-container">
                       {archivedDocs.map((doc) => (
-                        <Link
-                          target="_blank"
-                          href={{
-                            pathname: "/doc",
-                            query: { docId: doc.doc_id },
-                          }}
+                        <DocIcon
+                          doc={doc}
+                          onClick={archiveToggle}
                           key={doc.doc_id}
-                        >
-                          <DocIcon doc={doc} onClick={archiveToggle} />
-                        </Link>
+                        />
                       ))}
                     </div>
                   ),
@@ -282,31 +251,6 @@ const Wrap = styled.div`
     padding: 20px;
     a {
       position: relative;
-      .doc-archive-icon {
-        position: absolute;
-        top: 0px;
-        right: 0px;
-        opacity: 0;
-        font-size: 15px;
-        padding: 5px;
-        background-color: white;
-        border: 1px solid #949494;
-        border-radius: 50%;
-        height: 30px;
-        width: 30px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 4;
-        svg path:not(:first-child) {
-          stroke: #949494;
-        }
-      }
-      &:hover {
-        .doc-archive-icon {
-          opacity: 1;
-        }
-      }
     }
   }
   .header {

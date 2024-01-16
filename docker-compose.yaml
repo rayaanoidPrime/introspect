@@ -24,7 +24,8 @@ services:
       # we have to expose these ports to allow the browser to acces them
       # python server
       - "1235:1235"
-
+    volumes:
+      - agents-assets:/agents-assets/
     networks:
       - agents-network
 
@@ -59,6 +60,8 @@ services:
       - "15672"
     networks:
       - agents-network
+    volumes:
+      - agents-assets:/agents-assets/
 
   agents-postgres:
     build:
@@ -86,6 +89,7 @@ services:
 volumes:
   agents-postgres:
   agents-redis:
+  agents-assets:
 
 networks:
   agents-network:

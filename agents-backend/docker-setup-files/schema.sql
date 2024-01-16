@@ -37,7 +37,7 @@ CREATE TABLE public.defog_docs (
     doc_xml text,
     doc_uint8 jsonb,
     doc_title text,
-    archived boolean,
+    archived boolean default false
 );
 
 

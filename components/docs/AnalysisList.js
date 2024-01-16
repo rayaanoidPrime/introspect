@@ -11,7 +11,7 @@ export function AnalysisList() {
 
   useEffect(() => {
     docContext.val.userItems.analyses
-      .filter((d) => d.user_question)
+      .filter((d) => d && d.user_question)
       .map((analysis, i) => {
         let dom = analysesRef.current.querySelector(
           `#analysis-list-${analysis.report_id}`
