@@ -366,7 +366,7 @@ async def rerun_step(websocket: WebSocket):
             # get steps from db
             err, analysis_data = get_report_data(analysis_id)
 
-            metadata_dets = get_metadata(dfg_api_key)
+            metadata_dets = get_metadata()
             glossary = metadata_dets["glossary"]
             client_description = metadata_dets["client_description"]
             table_metadata_csv = metadata_dets["table_metadata_csv"]

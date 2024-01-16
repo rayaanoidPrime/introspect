@@ -25,7 +25,7 @@ services:
       # python server
       - "1235:1235"
     volumes:
-      - agents-report-assets:/agents-report-assets/
+      - agents-assets:/agents-assets/
     networks:
       - agents-network
 
@@ -61,7 +61,7 @@ services:
     networks:
       - agents-network
     volumes:
-      - agents-report-assets:/agents-report-assets/
+      - agents-assets:/agents-assets/
 
   agents-postgres:
     build:
@@ -89,7 +89,7 @@ services:
 volumes:
   agents-postgres:
   agents-redis:
-  agents-report-assets:
+  agents-assets:
 
 networks:
   agents-network:

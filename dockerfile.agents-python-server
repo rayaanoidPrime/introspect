@@ -23,12 +23,12 @@ ENV GOOGLE_APPLICATION_CREDENTIALS=/cloud-storage-creds.json
 COPY ./agents-backend/agents/ ./
 
 # create empty report assets dirs
-RUN mkdir -p /agents-report-assets/report-assets
-RUN mkdir -p /agents-report-assets/report-assets/boxplots 
-RUN mkdir -p /agents-report-assets/report-assets/datasets 
-RUN mkdir -p /agents-report-assets/report-assets/heatmaps 
-RUN mkdir -p /agents-report-assets/report-assets/kaplan-meier-plots 
-RUN mkdir -p /agents-report-assets/report-assets/linechart 
-RUN mkdir -p /agents-report-assets/report-assets/linecharts
+RUN mkdir -p /agents-assets/report-assets
+RUN mkdir -p /agents-assets/report-assets/boxplots 
+RUN mkdir -p /agents-assets/report-assets/datasets 
+RUN mkdir -p /agents-assets/report-assets/heatmaps 
+RUN mkdir -p /agents-assets/report-assets/kaplan-meier-plots 
+RUN mkdir -p /agents-assets/report-assets/linechart 
+RUN mkdir -p /agents-assets/report-assets/linecharts
 
 CMD python3 create_admin_user.py && python3 -m hypercorn main:app -b 0.0.0.0:1235
