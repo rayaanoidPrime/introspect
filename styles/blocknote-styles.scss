@@ -898,7 +898,9 @@ $grid: repeating-linear-gradient(
             padding: 1em 0;
 
             .tool-input {
-              font-family: $code;
+              * {
+                font-family: $code;
+              }
               font-size: 0.9em;
               margin: 0 0 1em 0;
               color: $text-dark;
@@ -972,7 +974,9 @@ $grid: repeating-linear-gradient(
               margin-right: 2em;
               .tool-output-data-value {
                 color: $text-medium;
-                font-family: $code;
+                * {
+                  font-family: $code;
+                }
                 font-size: 0.7em;
                 margin: 0 0 5px 0;
                 padding: 0.5em;
