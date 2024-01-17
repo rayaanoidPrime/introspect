@@ -16,6 +16,10 @@ def validate_user(token, user_type=None):
         if user_type == "admin":
             if user[0] == "admin":
                 return True
+            else:
+                return False
+        else:
+            return True
     else:
         return False
 
