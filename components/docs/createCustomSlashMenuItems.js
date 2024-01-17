@@ -1,6 +1,7 @@
 import { getDefaultReactSlashMenuItems } from "@blocknote/react";
 import { customBlockSchema } from "./createCustomBlockSchema";
 import { getBlockSchemaFromSpecs } from "@blocknote/core";
+import { v4 } from "uuid";
 
 const insertCustom = (type, editor) => (editor) => {
   // Block that the text cursor is currently in.
@@ -9,6 +10,9 @@ const insertCustom = (type, editor) => (editor) => {
   // New block we want to insert.
   const customBlock = {
     type: type,
+    props: {
+      analysisId: "analysis-" + v4(),
+    },
   };
 
   // Inserting the new block after the current one.
