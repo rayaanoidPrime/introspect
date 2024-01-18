@@ -4,6 +4,12 @@
 
 import React, { useContext, useEffect, useMemo, useRef } from "react";
 import { DocContext } from "./DocContext";
+<<<<<<< Updated upstream
+=======
+import Search from "antd/es/input/Search";
+import { Input } from "antd";
+import ErrorBoundary from "../defog-components/components/common/ErrorBoundary";
+>>>>>>> Stashed changes
 
 export function AnalysisList() {
   const docContext = useContext(DocContext);
@@ -32,6 +38,7 @@ export function AnalysisList() {
   }, [docContext]);
 
   return (
+<<<<<<< Updated upstream
     <div id="analysis-list-sidebar" ref={analysesRef} className="sidebar">
       <div className="sidebar-content">
         {(docContext?.val?.userItems?.analyses || [])
@@ -46,7 +53,30 @@ export function AnalysisList() {
               <span>{analysis.user_question}</span>
             </div>
           ))}
+=======
+    <ErrorBoundary>
+      <div id="analysis-list-sidebar" ref={analysesRef} className="sidebar">
+        <Input
+          onChange={(e) => setSearchText(e.target.value)}
+          placeholder="Filter your old analysis"
+        />
+        <div className="sidebar-content">
+          {(docContext?.val?.userItems?.analyses || [])
+            .filter((d) => d && d.user_question !== "")
+            .filter((d) => d && d?.user_question?.includes(searchText))
+            .map((analysis, i) => (
+              <div
+                draggable="true"
+                key={analysis.report_id}
+                id={`analysis-list-${analysis.report_id}`}
+                className="analysis-list-sidebar-item"
+              >
+                <span>{analysis.user_question}</span>
+              </div>
+            ))}
+        </div>
+>>>>>>> Stashed changes
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }
