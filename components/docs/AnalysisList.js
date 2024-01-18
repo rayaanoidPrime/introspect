@@ -2,7 +2,7 @@
 // for example analyses, or other things
 // expected they should be able to drag and drop these things into the doc
 
-import React, { useContext, useEffect, useMemo, useRef } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { DocContext } from "./DocContext";
 import Search from "antd/es/input/Search";
 import { Input } from "antd";
@@ -11,6 +11,7 @@ import ErrorBoundary from "../defog-components/components/common/ErrorBoundary";
 export function AnalysisList() {
   const docContext = useContext(DocContext);
   const analysesRef = useRef(null);
+  const [searchText, setSearchText] = useState("");
 
   useEffect(() => {
     docContext.val.userItems.analyses
