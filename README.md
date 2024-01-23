@@ -2,7 +2,7 @@ This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next
 
 ## Motivation
 
-This contains the self-hosted agents front-end that we will create for our enterprise users. It will help them:
+This contains the self-hosted agents front-end and back-end that we have created for our enterprise users. It will help them:
 
 1. Access our service from their own system
 2. Let admin users add and manage general users
@@ -12,12 +12,6 @@ This contains the self-hosted agents front-end that we will create for our enter
 
 To build the docker containers, make sure you have docker running on your system.
 
-Before building, you will need to:
-
-1. Create a file `.env.yaml` inside `agents-backend/agents`, using `.env.yaml.template` as an example. This file will contain all of the environment variables that the backend needs.
-2. The db will be populated with empty meta tables for now.
-
-Altogether, the steps are:
 ```bash
 docker compose up -d
 ```
@@ -26,8 +20,11 @@ To build the images and start the containers.
 
 Once the containers are running, you can access the front end app at `localhost:1234`
 
-For now, can just directly go to `localhost:1234/doc` to start up a new doc. Once we have the login page, we can redirect to that page instead.
+## Username and password
+The default username is `admin` and the default password is `admin`. This will soon be replaced with an SSO system.
 
+
+## Internals
 `agents-backend/docker-setup-files` contains the files for the initial setup for the backend + the db: supervisor confs, rabbitmq installation, startup bash script to start supervisor processes, and nginx config to redirect the partykit websocket requests to the right port.
 
 A note about the partykit server: I couldn't connect to the websocket directly on port `1999`, which is where the partykit server runs.
