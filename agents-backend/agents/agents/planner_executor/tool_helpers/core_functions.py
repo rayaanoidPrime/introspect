@@ -165,7 +165,7 @@ async def analyse_data(question: str, data: pd.DataFrame) -> str:
     Generate a short summary of the results for the given qn.
     """
     if not openai:
-        yield {"success": False, "model_analysis": "OPENAI_API_KEY not found in env"}
+        yield {"success": False, "model_analysis": ""}
         return
 
     if data is None:
@@ -173,7 +173,7 @@ async def analyse_data(question: str, data: pd.DataFrame) -> str:
         return
 
     if data.size > 50:
-        yield {"success": False, "model_analysis": "Data size too large"}
+        yield {"success": False, "model_analysis": ""}
         return
 
     if question is None or question == "":
