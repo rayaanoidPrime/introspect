@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
-test.describe('Extract Metadata', () => {
+test.describe('Extract Metadata - can be a very slow test', () => {
     test('postgres', async ({ page }) => {
+        test.setTimeout(120*1000); // 2 minutes
         await page.goto('http://localhost:1234/');
         // set the auth variables in localStorage so that we don't get redirected to /login
         await page.evaluate(() => {
@@ -26,6 +27,7 @@ test.describe('Extract Metadata', () => {
         // get tables
         await page.getByRole('button', { name: 'Get Tables' }).click();
         // table selector should populate
+        
         await expect(page.locator('#db_tables')).toContainText('Tables to index');
         await page.locator('#db_tables > div > .ant-row > div:nth-child(2) > .ant-form-item-control-input > .ant-form-item-control-input-content > .ant-select > .ant-select-selector').click();
         // not sure why but we need to click twice to get the table to be selected
