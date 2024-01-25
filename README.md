@@ -40,6 +40,9 @@ The following sections explain how to test portions of the different containers 
 We use [playwright](https://playwright.dev/) to test the UI. The tests are located in `test-ui/`. To run the tests you can directly run the following command:
 
 ```bash
+# if first time running, install playwright:
+npx playwright install
+# then run the tests:
 npx playwright test
 # or in UI mode (useful for debugging)
 npx playwright test --ui
