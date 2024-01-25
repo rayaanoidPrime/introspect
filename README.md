@@ -50,6 +50,12 @@ npx playwright test --ui
 
 This command will start all of the docker containers (if not already running) via [start-containers.sh](test-ui/start-containers.sh) and then run the tests. This is to spin up the full app and enable our tests to verify the end-to-end behavior (including the backend). If you're adding new containers to or removing any containers from our [docker-compose.yaml](docker-compose.yaml), please update the expected container count in [start-containers.sh](test-ui/start-containers.sh) to ensure that our container script expects the right number of containers.
 
+After you are done testing, you can run the following command to stop all of the containers:
+
+```bash
+docker compose down
+```
+
 #### Test Structure
 
 Each test file `*.spec.js` should correspond with a route or some component of the UI. Once the test is done, it will output the results in the `test-results` folder, with a highly readable HTML output served at a custom port. You can view the results by opening the HTML file in your browser.
