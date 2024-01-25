@@ -35,11 +35,35 @@ So I had to also open port `2000`, make an nginx that redirects `http://localhos
 
 The following sections explain how to test portions of the different containers locally. This could be helpful when debugging.
 
+### Running Agents App Locally
+
+This project requires Node.js. If you don't have it, you can follow the instructions [here](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm#using-a-node-installer-to-install-nodejs-and-npm).
+
+First, install the npm dependencies.
+```bash
+npm install
+```
+
+Next, run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
+
+Open [http://localhost:1234](http://localhost:1234) with your browser to see the result. Note that full functionality will not be available unless the backend is also running.
+
 ### Testing the UI
 
 We use [playwright](https://playwright.dev/) to test the UI. The tests are located in `test-ui/`. To run the tests you can directly run the following command:
 
 ```bash
+# run this from the root folder, not from the test-ui folder
 # if first time running, install playwright:
 npx playwright install
 # then run the tests:
@@ -71,27 +95,3 @@ You can use the following command to generate the playwright code from a set of 
 ```sh
 npx playwright codegen http://localhost:1234
 ```
-
-### Running Agents App Locally
-
-This project requires Node.js. If you don't have it, you can follow the instructions [here](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm#using-a-node-installer-to-install-nodejs-and-npm).
-
-First, install the npm dependencies.
-```bash
-npm install
-```
-
-Next, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:1234](http://localhost:1234) with your browser to see the result. Note that full functionality will not be available unless the backend is also running.
-
