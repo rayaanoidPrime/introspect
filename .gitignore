@@ -35,3 +35,9 @@ next-env.d.ts
 cloud-storage-creds.json
 genmab_sample.sql
 defog-llm-cloud-function.py
+
+# playwright test stuff
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
