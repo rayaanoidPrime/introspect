@@ -12,16 +12,21 @@ This contains the self-hosted agents front-end and back-end that we have created
 
 To build the docker containers, make sure you have docker running on your system.
 
+On Linux/Mac
 ```bash
-docker compose up -d
+ENDPOINT="localhost OR your IP" docker compose up -d
 ```
 
-To build the images and start the containers.
+On Windows
+```bash
+$env.ENDPOINT = "localhost OR your IP"
+docker compose up -d
+```
 
 Once the containers are running, you can access the front end app at `localhost:1234`
 
 ## Username and password
-The default username is `admin` and the default password is `admin`. This will soon be replaced with an SSO system.
+The default username is `admin` and the default password is `admin`.
 
 
 ## Internals
