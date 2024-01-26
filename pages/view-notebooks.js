@@ -147,7 +147,7 @@ const ViewNotebooks = () => {
 
       if (!user || !token || !userType) {
         // redirect to login page
-        router.push("/login");
+        router.push("/log-in");
         return;
       }
       setContext({
@@ -157,7 +157,7 @@ const ViewNotebooks = () => {
       });
     }
     if (!token) {
-      router.push("/login");
+      router.push("/log-in");
     } else {
       getNotebooks();
     }

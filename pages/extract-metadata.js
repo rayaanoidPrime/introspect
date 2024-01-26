@@ -85,7 +85,7 @@ const ExtractMetadata = () => {
 
       if (!user || !token || !userType) {
         // redirect to login page
-        router.push("/login");
+        router.push("/log-in");
         return;
       }
       setContext({
@@ -96,7 +96,7 @@ const ExtractMetadata = () => {
     }
     setUserType(userType);
     if (userType === undefined) {
-      router.push("/login");
+      router.push("/log-in");
     } else if (userType !== "admin") {
       router.push("/");
     }

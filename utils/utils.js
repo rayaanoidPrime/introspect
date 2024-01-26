@@ -5,7 +5,7 @@ export const getApiToken = async (
   username,
   hashed_pw,
   router,
-  errorRoute = "/login"
+  errorRoute = "/log-in"
 ) => {
   const url = "https://api.defog.ai/get_token";
   let response;
