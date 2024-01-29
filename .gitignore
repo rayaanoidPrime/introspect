@@ -35,7 +35,7 @@ cloud-storage-creds.json
 genmab_sample.sql
 defog-llm-cloud-function.py
 .env.dev.yaml
-out/
+/out
 
 # playwright test stuff
 /test-results/
