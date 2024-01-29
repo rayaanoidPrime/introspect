@@ -15,13 +15,13 @@ To build the docker containers, make sure you have docker running on your system
 On Linux/Mac
 
 ```bash
-npm run export && ENDPOINT="localhost OR your IP" OPENAI_API_KEY="your openai api key or blank" docker compose up -d
+npm run export && ENDPOINT="localhost:80 OR your IP" docker compose up -d
 ```
 
 On Windows
 
 ```bash
-npm run export && $env.ENDPOINT = "localhost OR your IP" $env.OPENAI_API_KEY="your openai api key or blank"
+npm run export && $env.ENDPOINT = "localhost:80 OR your IP"
 docker compose up -d
 ```
 

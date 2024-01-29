@@ -1,10 +1,14 @@
 import { test, expect } from "@playwright/test";
+const host = process.env.LOCAL ? "localhost:1234" : "localhost:80";
+
+console.log(host);
+
 test.describe("Extract Metadata - can be a very slow test", () => {
   test("postgres", async ({ page }) => {
-    test.setTimeout(120 * 1000); // 2 minutes
-    await page.goto("http://localhost/");
+    // test.setTimeout(120 * 1000); // 2 minutes
+    await page.goto(`http://${host}/`);
     // wait to be redirected to log-in page
-    await page.waitForURL("http://localhost/log-in");
+    await page.waitForURL(`http://${host}/log-in`);
 
     // set the auth variables in localStorage so that we don't get redirected to /log-in again
     await page.evaluate(() => {
@@ -15,12 +19,15 @@ test.describe("Extract Metadata - can be a very slow test", () => {
       );
       localStorage.setItem("defogUserType", "admin");
     });
-    await page.goto("http://localhost/extract-metadata");
-    await page.waitForURL("http://localhost/extract-metadata");
+    await page.goto(`http://${host}/extract-metadata`);
+    await page.waitForURL(`http://${host}/extract-metadata`);
+
+    // click the antd dropdown
+    await page.locator(".ant-form-item.db_type .ant-select").click();
+
     // select postgres and fill in our application's DB credentials
-    await page.getByLabel("Database Type").click();
-    return;
     await page.getByTitle("postgres").locator("div").click();
+
     await page.getByLabel("host").click();
     await page.getByLabel("host").fill("agents-postgres");
     await page.getByLabel("port").click();
