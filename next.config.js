@@ -12,6 +12,9 @@ const nextConfig = removeImports({
     return config;
   },
   experimental: { esmExternals: true },
+  compiler: {
+    styledComponents: true,
+  },
 });
 
 module.exports = nextConfig;

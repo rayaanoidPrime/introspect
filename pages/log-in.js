@@ -1,13 +1,13 @@
 // create a simple login page with React, Ant Design, and Next.js
 
-import React, { useContext, useState, useEffect } from 'react'
-import { useRouter } from 'next/router'
-import Meta from '../components/common/Meta'
-import Scaffolding from '../components/common/Scaffolding'
-import { Context } from '../components/common/Context';
-import { Input, Form, Button, } from 'antd';
-import setupBaseUrl from '../utils/setupBaseUrl';
-import SSOButton from '../components/common/SSOButton';
+import React, { useContext, useState, useEffect } from "react";
+import { useRouter } from "next/router";
+import Meta from "../components/common/Meta";
+import Scaffolding from "../components/common/Scaffolding";
+import { Context } from "../components/common/Context";
+import { Input, Form, Button } from "antd";
+import setupBaseUrl from "../utils/setupBaseUrl";
+import SSOButton from "../components/common/SSOButton";
 import { PublicClientApplication } from "@azure/msal-browser";
 
 const LogIn = () => {
@@ -22,10 +22,11 @@ const LogIn = () => {
           clientId: `${process.env.NEXT_PUBLIC_MSAL_CLIENT_ID}`,
           authority: `https://login.microsoftonline.com/${process.env.NEXT_PUBLIC_MSAL_TENANT_ID}`,
           redirectUri: `${process.env.NEXT_PUBLIC_MSAL_REDIRECT_URI}`,
-        }
+        },
       };
-      
-      const msalInstance = await PublicClientApplication.createPublicClientApplication(msalConfig);
+
+      const msalInstance =
+        await PublicClientApplication.createPublicClientApplication(msalConfig);
       setInstance(msalInstance);
     }
     init();
@@ -37,7 +38,7 @@ const LogIn = () => {
       method: "POST",
       body: JSON.stringify(values),
     });
-    
+
     const data = await response.json();
     if (data.status === "success") {
       // set context
@@ -54,13 +55,13 @@ const LogIn = () => {
       // redirect to home page
       router.push("/");
     }
-  }
+  };
 
   return (
     <>
       <Meta />
       <Scaffolding>
-        <h1 style={{paddingBottom: "1em"}}>Welcome to Defog!</h1>
+        <h1 style={{ paddingBottom: "1em" }}>Welcome to Defog!</h1>
         {/* Login with antd components */}
         <Form
           labelCol={{ span: 4 }}
@@ -75,16 +76,17 @@ const LogIn = () => {
             <Input.Password />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit">Log In</Button>
+            <Button type="primary" htmlType="submit">
+              Log In
+            </Button>
           </Form.Item>
         </Form>
 
         {/* Login with MSAL */}
         {instance ? <SSOButton msalInstance={instance} /> : null}
-
       </Scaffolding>
     </>
-  )
-}
+  );
+};
 
 export default LogIn;

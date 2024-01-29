@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useContext } from "react";
 import { Context } from "./Context";
 import { Layout, Menu } from "antd/lib";
+import { useRouter } from "next/router";
 
 const Scaffolding = ({ id, userType, children }) => {
   const { Content, Sider } = Layout;
   const [items, setItems] = useState([]);
   const [context, setContext] = useContext(Context);
+
+  const router = useRouter();
+
+  const redirect = (path) => {
+    router.push(path);
+  };
 
   const logout = () => {
     localStorage.removeItem("defogUser");
@@ -17,7 +24,7 @@ const Scaffolding = ({ id, userType, children }) => {
       userType: null,
     });
 
-    window.location.href = "/log-in";
+    redirect("/log-in");
   };
 
   useEffect(() => {
@@ -27,48 +34,45 @@ const Scaffolding = ({ id, userType, children }) => {
         {
           key: "manage-database",
           title: "Manage Database",
-          icon: <a href="/extract-metadata">💾 Manage DB</a>,
+          icon: (
+            <a onClick={() => redirect("/extract-metadata")}>💾 Manage DB</a>
+          ),
         },
         {
           key: "manage-users",
           title: "Manage Users",
-          icon: <a href="/manage-users">🔐 Manage Users</a>,
+          icon: (
+            <a onClick={() => redirect("/manage-users")}>🔐 Manage Users</a>
+          ),
         },
-        // {
-        //   key: 'manage-model',
-        //   title: 'Instruct Model',
-        //   icon: <a href="/instruct-model">👨‍🏫 Instruct Model</a>,
-        // },
         {
-          key: "view-notebook",
+          key: "view-notebooks",
           title: "View your notebook",
-          icon: <a href="/view-notebooks">📒 Your Notebooks</a>,
+          icon: (
+            <a onClick={() => redirect("/view-notebooks")}>📒 Your Notebooks</a>
+          ),
         },
         {
           key: "logout",
           title: "Logout",
-          icon: (
-            <a href="#" onClick={logout}>
-              ↪ Logout
-            </a>
-          ),
+          icon: <a onClick={logout}>↪ Logout</a>,
         },
       ];
+    } else if (!userType) {
+      items = [];
     } else {
       items = [
         {
-          key: "view-notebook",
+          key: "view-notebooks",
           title: "View your notebook",
-          icon: <a href="/view-notebooks">Your Notebooks</a>,
+          icon: (
+            <a onClick={() => redirect("/view-notebooks")}>Your Notebooks</a>
+          ),
         },
         {
           key: "logout",
           title: "Logout",
-          icon: (
-            <a href="#" onClick={logout}>
-              Logout
-            </a>
-          ),
+          icon: <a onClick={logout}>Logout</a>,
         },
       ];
     }
@@ -78,19 +82,23 @@ const Scaffolding = ({ id, userType, children }) => {
   return (
     <Layout style={{ height: "100vh" }}>
       <Content>
-        <Sider
-          style={{
-            height: "100vh",
-            position: "fixed",
-          }}
-        >
-          <Menu
-            style={{ width: 200, paddingTop: "2em", paddingBottom: "2em" }}
-            mode="inline"
-            selectedKeys={[id]}
-            items={items}
-          />
-        </Sider>
+        {items.length ? (
+          <Sider
+            style={{
+              height: "100vh",
+              position: "fixed",
+            }}
+          >
+            <Menu
+              style={{ width: 200, paddingTop: "2em", paddingBottom: "2em" }}
+              mode="inline"
+              selectedKeys={[id]}
+              items={items}
+            />
+          </Sider>
+        ) : (
+          <></>
+        )}
         <div
           style={{
             paddingLeft: 240,

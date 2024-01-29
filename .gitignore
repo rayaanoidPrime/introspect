@@ -34,11 +34,8 @@ next-env.d.ts
 cloud-storage-creds.json
 genmab_sample.sql
 defog-llm-cloud-function.py
-<<<<<<< Updated upstream
-=======
 .env.dev.yaml
-/main.py
->>>>>>> Stashed changes
+/out
 
 # playwright test stuff
 /test-results/
