@@ -12,10 +12,10 @@ test.describe('Login page', () => {
         await page.waitForNavigation();
 
         // Check that we've been redirected to /login
-        expect(page.url()).toBe('http://localhost:1234/login');
+        expect(page.url()).toBe('http://localhost:1234/log-in');
     });
     test('admin login', async ({ page }) => {
-        await page.goto('http://localhost:1234/login');
+        await page.goto('http://localhost:1234/log-in');
         await page.getByLabel('Username').click();
         await page.getByLabel('Username').fill('admin');
         await page.getByLabel('Password').click();
