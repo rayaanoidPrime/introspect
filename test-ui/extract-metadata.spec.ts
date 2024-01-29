@@ -44,6 +44,7 @@ test.describe("Extract Metadata - can be a very slow test", () => {
 
     await expect(page.locator("#db_tables")).toContainText("Tables to index");
 
+    // first clear out all the selected tables from the table dropdown
     let notEmpty = await page
       .locator("#db_tables .ant-tag-close-icon")
       .first()
@@ -57,13 +58,13 @@ test.describe("Extract Metadata - can be a very slow test", () => {
         .isVisible();
     }
 
+    // now select only one table
     await page
       .locator(
         "#db_tables > div > .ant-row > div:nth-child(2) > .ant-form-item-control-input > .ant-form-item-control-input-content > .ant-select > .ant-select-selector"
       )
       .click();
 
-    // not sure why but we need to click twice to get the table to be selected
     await page.getByTitle("defog_docs").locator("div").click();
 
     await page.getByLabel("Tables to index").click();
