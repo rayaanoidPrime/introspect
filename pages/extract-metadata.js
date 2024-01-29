@@ -16,10 +16,11 @@ import {
 
 const ExtractMetadata = () => {
   const { Option } = Select;
-  const [dbType, setDbType] = useState("databricks");
+  const [dbType, setDbType] = useState(null);
   const [dbCreds, setDbCreds] = useState({});
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [tablesLoading, setTablesLoading] = useState(false);
   const [metadata, setMetadata] = useState([]);
   const [context, setContext] = useContext(Context);
   const [selectedTables, setSelectedTables] = useState([]);
@@ -72,26 +73,6 @@ const ExtractMetadata = () => {
     }
   };
 
-  const generateMetadata = async () => {
-    const token = context.token;
-    if (!token) {
-      return;
-    }
-    const res = await fetch(
-      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_metadata`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          token,
-        }),
-      }
-    );
-    const data = await res.json();
-    if (!data.error) {
-      setMetadata(data?.metadata || []);
-    }
-  };
-
   useEffect(() => {
     setLoading(true);
     let userType = context.userType;
@@ -104,7 +85,7 @@ const ExtractMetadata = () => {
 
       if (!user || !token || !userType) {
         // redirect to login page
-        router.push("/login");
+        router.push("/log-in");
         return;
       }
       setContext({
@@ -115,7 +96,7 @@ const ExtractMetadata = () => {
     }
     setUserType(userType);
     if (userType === undefined) {
-      router.push("/login");
+      router.push("/log-in");
     } else if (userType !== "admin") {
       router.push("/");
     }
@@ -153,31 +134,52 @@ const ExtractMetadata = () => {
                 labelCol={{ span: 8 }}
                 wrapperCol={{ span: 16 }}
                 style={{ maxWidth: 400 }}
-                disabled={loading}
+                disabled={tablesLoading}
                 onFinish={async (values) => {
                   values = {
                     db_creds: values,
                     db_type: values["db_type"] || dbType,
                     token: context.token,
                   };
-                  const res = await fetch(
-                    `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_tables`,
-                    {
-                      method: "POST",
-                      body: JSON.stringify(values),
+
+                  setTablesLoading(true);
+                  try {
+                    const res = await fetch(
+                      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_tables`,
+                      {
+                        method: "POST",
+                        body: JSON.stringify(values),
+                      }
+                    );
+                    const data = await res.json();
+
+                    if (data.error) {
+                      message.error(data.error);
+                    } else {
+                      setTables(data["tables"]);
                     }
-                  );
-                  const data = await res.json();
-                  setTables(data["tables"]);
+                  } catch (e) {
+                    console.log(e);
+                  }
+                  setTablesLoading(false);
                 }}
               >
-                <Form.Item name="db_type" label="Database Type" value={dbType}>
+                <Form.Item name="db_type" label="Database Type">
                   <Select
                     style={{ width: "100%" }}
                     onChange={(e) => {
                       setDbType(e);
                     }}
-                    options={["databricks", "mysql", "postgres", "redshift", "snowflake"].map((item) => {
+                    // we need this key for default value to reflect when we update dbType from the useEffect
+                    key={"db-type-" + dbType}
+                    defaultValue={dbType}
+                    options={[
+                      "databricks",
+                      "mysql",
+                      "postgres",
+                      "redshift",
+                      "snowflake",
+                    ].map((item) => {
                       return { value: item, key: item, label: item };
                     })}
                   />
@@ -186,8 +188,13 @@ const ExtractMetadata = () => {
                 {dbCredOptions[dbType] !== undefined &&
                   dbCredOptions[dbType].map((item) => {
                     return (
-                      <Form.Item label={item} name={item} key={dbType + "_" + item}>
-                        <Input style={{ width: "100%" }} defaultValue={dbCreds[item] || ""} />
+                      <Form.Item
+                        label={item}
+                        name={item}
+                        key={dbType + "_" + item + "_" + dbCreds[item]}
+                        initialValue={dbCreds[item]}
+                      >
+                        <Input style={{ width: "100%" }} />
                       </Form.Item>
                     );
                   })}
@@ -196,6 +203,7 @@ const ExtractMetadata = () => {
                     type={"primary"}
                     style={{ width: "100%" }}
                     htmlType="submit"
+                    loading={loading}
                   >
                     Get Tables
                   </Button>
@@ -211,22 +219,36 @@ const ExtractMetadata = () => {
                   disabled={loading}
                   onFinish={async (values) => {
                     setLoading(true);
-                    const res = await fetch(
-                      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_metadata`,
-                      {
-                        method: "POST",
-                        body: JSON.stringify({
-                          tables: values["tables"],
-                          token: context.token,
-                        }),
+                    try {
+                      const res = await fetch(
+                        `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_metadata`,
+                        {
+                          method: "POST",
+                          body: JSON.stringify({
+                            tables: values["tables"],
+                            token: context.token,
+                          }),
+                        }
+                      );
+                      const data = await res.json();
+
+                      if (data.error) {
+                        message.error(data.error);
+                      } else {
+                        setMetadata(data?.metadata || []);
                       }
-                    );
-                    const data = await res.json();
+                    } catch (e) {
+                      console.log(e);
+                    }
+
                     setLoading(false);
-                    setMetadata(data?.metadata || []);
                   }}
                 >
-                  <Form.Item name="tables" label="Tables to index" value={selectedTables}>
+                  <Form.Item
+                    name="tables"
+                    label="Tables to index"
+                    initialValue={selectedTables}
+                  >
                     <Select
                       mode="multiple"
                       style={{ width: "100%", maxWidth: 400 }}
@@ -238,7 +260,9 @@ const ExtractMetadata = () => {
                       }}
                     >
                       {tables.map((table) => (
-                        <Option value={table} key={table}>{table}</Option>
+                        <Option value={table} key={table}>
+                          {table}
+                        </Option>
                       ))}
                     </Select>
                   </Form.Item>
@@ -339,7 +363,7 @@ const ExtractMetadata = () => {
             {metadata.length > 0 &&
               metadata.map((item, index) => {
                 return (
-                  <Row key={index} style={{ marginTop: "1em" }}>
+                  <Row key={index + "_" + item} style={{ marginTop: "1em" }}>
                     <Col
                       xs={{ span: 24 }}
                       md={{ span: 4 }}
@@ -363,9 +387,8 @@ const ExtractMetadata = () => {
                     </Col>
                     <Col xs={{ span: 24 }} md={{ span: 12 }}>
                       <Input.TextArea
-                        key={index}
                         placeholder="Description of what this column does"
-                        defaultValue={item.column_description}
+                        value={item.column_description}
                         autoSize={{ minRows: 2 }}
                         onChange={(e) => {
                           const newMetadata = [...metadata];

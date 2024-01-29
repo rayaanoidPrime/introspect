@@ -107,7 +107,7 @@ def initialise_report(user_question, api_key, username, custom_id=None, other_da
                     else:
                         print(
                             "Could not find parent analysis with id: ",
-                            parent_analysis_id,
+                            parent_analysis_id
                         )
 
     except Exception as e:
@@ -350,7 +350,7 @@ def get_all_reports(api_key):
 
 async def add_to_recently_viewed_docs(username, api_key, doc_id, timestamp):
     try:
-        print("Adding to recently viewed docs for user: ", username, flush=True)
+        print("Adding to recently viewed docs for user: ", username)
         with engine.begin() as conn:
             # add to recently accessed documents for this username
             # check if it exists

@@ -62,8 +62,6 @@ export function ToolResults({
         res = await getToolRunData(newId);
       }
 
-      console.log(res);
-
       if (res.success) {
         if (!hasCache) {
           // save to cache
@@ -74,6 +72,20 @@ export function ToolResults({
             };
           });
         }
+
+        // update reactive context
+        Object.keys(res?.tool_run_data?.outputs || {}).forEach((k, i) => {
+          if (!res?.tool_run_data?.outputs?.[k]?.reactive_vars) return;
+          reactiveContext.update((prev) => {
+            return {
+              ...prev,
+              [newId]: {
+                ...prev[newId],
+                [k]: res?.tool_run_data?.outputs?.[k]?.reactive_vars,
+              },
+            };
+          });
+        });
       } else {
         setToolRunDataLoading(false);
         setToolRunData(res?.tool_run_data);
@@ -85,6 +97,15 @@ export function ToolResults({
             };
           });
         }
+
+        // remove from reactive context
+        reactiveContext.update((prev) => {
+          const newContext = { ...prev };
+          if (!newContext[newId]) return newContext;
+          delete newContext[newId];
+          return newContext;
+        });
+
         return;
       }
 
@@ -114,16 +135,6 @@ export function ToolResults({
                 },
               }
             );
-            // update context
-            reactiveContext.update((prev) => {
-              return {
-                ...prev,
-                [newId]: {
-                  ...prev[newId],
-                  [k]: newData.parsedOutputs[k].reactive_vars,
-                },
-              };
-            });
           }
         }
         if (newData.outputs[k].chart_images) {
@@ -144,6 +155,8 @@ export function ToolResults({
     },
     [toolRunDataCache, reactiveContext, analysisData]
   );
+
+  if (toolRunData) console.log(toolRunData);
 
   function handleEdit({ analysis_id, tool_run_id, update_prop, new_val }) {
     if (!tool_run_id) return;
@@ -282,7 +295,6 @@ export function ToolResults({
               }
             />
             <div className="tool-run-analysis">
-              <p className="tool-run-analysis-header">ANALYSIS</p>
               <div className="tool-run-analysis-text">
                 {toolRunData?.parsedOutputs[activeNode.data.id]["analysis"] ? (
                   <p style={{ whiteSpace: "pre-wrap" }} className="small code">

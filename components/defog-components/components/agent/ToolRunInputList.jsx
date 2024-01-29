@@ -9,7 +9,7 @@ const inputTypeToUI = {
         <span className="list-bracket">[</span>
         {initialValue.map((val, i) => {
           return (
-            <span key={i + "-" + val}>
+            <span key={inputName}>
               <Input
                 defaultValue={val}
                 size="small"
@@ -108,7 +108,7 @@ const inputTypeToUI = {
     availableOutputNodes = [],
     setActiveNode = () => {}
   ) => {
-    const name_clipped = initialValue.replace(/global_dict\./g, "");
+    const name_clipped = initialValue?.replace(/global_dict\./g, "");
     const exists = availableOutputNodes.find(
       (node) => node.data.id === name_clipped
     );
@@ -188,7 +188,7 @@ export function ToolRunInputList({
     <div className="tool-input-list">
       {inputs.map((input, i) => {
         return (
-          <div key={i} className="tool-input">
+          <div key={i + "_" + toolRunId} className="tool-input">
             <span className="tool-input-type">{functionSignature[i].type}</span>
             <span className="tool-input-name">{functionSignature[i].name}</span>
 

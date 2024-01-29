@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Login page', () => {
-    test('redirects to /login if user, token, or userType is missing', async ({ page }) => {
+    test('redirects to /log-in if user, token, or userType is missing', async ({ page }) => {
         await page.goto('http://localhost:1234');
         await page.evaluate(() => {
             // remove user token userType from localStorage
@@ -11,7 +11,7 @@ test.describe('Login page', () => {
         });
         await page.waitForNavigation();
 
-        // Check that we've been redirected to /login
+        // Check that we've been redirected to /log-in
         expect(page.url()).toBe('http://localhost:1234/log-in');
     });
     test('admin login', async ({ page }) => {

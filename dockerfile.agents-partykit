@@ -12,7 +12,6 @@ RUN apt-get update && apt-get install -y nginx
 COPY ./agents-backend/docker-setup-files/nginx.conf /etc/nginx/sites-available/default
 
 EXPOSE 1999
-
 EXPOSE 2000
 
 CMD service nginx start && npx partykit dev

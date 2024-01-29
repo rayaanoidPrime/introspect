@@ -17,7 +17,7 @@ const Scaffolding = ({ id, userType, children }) => {
       userType: null,
     });
 
-    window.location.href = "/login";
+    window.location.href = "/log-in";
   };
 
   useEffect(() => {

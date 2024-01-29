@@ -86,7 +86,7 @@ class Executor:
             done: false
             inputs: ['Get patient_id, celltype, treatment, survival_in_days, and status from the patients table']
             outputs_storage_keys: ['patient_data']
-            tool_name: "data_fetcher"
+            tool_name: "data_fetcher_and_aggregator"
             tool_run_id: "3496f202-92d3-4c06-a6b2-a093f9867a00"
 
             description: "Generate a Kaplan Meier survival curve stratified by cell type and treatment type"
@@ -156,14 +156,18 @@ class Executor:
                 step["error_message"] = result.get("error_message")
 
                 # retry logic if there's an error message
-                if result.get("error_message") and retries < max_retries:
-                    retries += 1
-                    print(
-                        "There was an error running the tool: ", result["error_message"]
-                    )
-                    print("Retrying...")
-                    next_step_data_description = f"There was an error running the tool {step['tool_name']}. This was the error:\n{result['error_message']}"
-                    continue
+                if result.get("error_message"):
+                    if retries < max_retries:
+                        retries += 1
+                        print(
+                            "There was an error running the tool: ",
+                            result["error_message"],
+                        )
+                        print("Retrying...")
+                        next_step_data_description = f"There was an error running the tool {step['tool_name']}. This was the error:\n{result['error_message']}"
+                        continue
+                    else:
+                        break
 
                 self.previous_responses.append(ans)
                 step["function_signature"] = tool_function_parameters
@@ -209,6 +213,8 @@ class Executor:
                         # store max 20 columns
                         self.tool_outputs_column_descriptions += f"\n{key}: pd.DataFrame with {len(data)} rows and columns: {list(data.columns)[:20]}\n"
                         self.global_dict[key] = data
+                        # name the df too
+                        self.global_dict[key].name = key
                         # warn if more than 20 columns
                         warn_str(
                             f"More than 20 columns in dataset generated for {key}. Only storing the first 20."

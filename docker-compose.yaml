@@ -1,28 +1,13 @@
 version: "3"
 services:
-  agents-app:
-    build:
-      context: .
-      dockerfile: dockerfile.agents-app
-    ports:
-      # use a weird port to avoid conflicts with the user's local stuff
-      - "1234:1234"
-    networks:
-      - agents-network
-
   agents-python-server:
     build:
       context: .
       dockerfile: dockerfile.agents-python-server
       args:
         OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
-    # volumes:
-    # - agents-python-server:/agents-python-server/
-    ports:
-      # we have to expose these ports to allow the browser to acces them
-      # python server
-      - "1235:1235"
     volumes:
+      # persist assets so they are not lost when the container is rebuilt
       - agents-assets:/agents-assets/
 
     networks:
@@ -33,13 +18,8 @@ services:
       context: .
       dockerfile: dockerfile.agents-partykit
     ports:
-      # partykit
       - "1999:1999"
-      # partykit also for nginx redirect
       - "2000:2000"
-    expose:
-      - "1999"
-      - "2000"
     networks:
       - agents-network
 
@@ -65,6 +45,20 @@ services:
       - agents-network
     volumes:
       - agents-redis:/data
+  
+  agents-nginx:
+    build:
+      context: .
+      dockerfile: dockerfile.agents-nginx
+      args:
+        ENDPOINT: "${ENDPOINT}"
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - agents-python-server
+    networks:
+      - agents-network
 
 volumes:
   agents-postgres:

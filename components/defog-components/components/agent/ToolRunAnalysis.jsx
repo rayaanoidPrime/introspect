@@ -18,8 +18,6 @@ export default function ToolRunAnalysis({ question, data_csv }) {
 
       const response = JSON.parse(event.data);
 
-      console.log(response);
-
       if (response && response.model_analysis) {
         setToolRunAnalysis((prev) => {
           return (prev ? prev : "") + response.model_analysis;
@@ -49,14 +47,16 @@ export default function ToolRunAnalysis({ question, data_csv }) {
   }, []);
 
   return (
-    <p style={{ whiteSpace: "pre-wrap" }} className="small code">
-      {!toolRunAnalysis || toolRunAnalysis === "" ? (
-        <>
-          <LoadingOutlined /> Loading analysis...
-        </>
-      ) : (
-        toolRunAnalysis
-      )}
-    </p>
+    toolRunAnalysis.slice(0, 4) !== "NONE" && (
+      <p style={{ whiteSpace: "pre-wrap" }} className="small code">
+        {!toolRunAnalysis || toolRunAnalysis === "" ? (
+          <>
+            <LoadingOutlined /> Loading analysis...
+          </>
+        ) : (
+          toolRunAnalysis
+        )}
+      </p>
+    )
   );
 }

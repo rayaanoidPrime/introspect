@@ -33,7 +33,7 @@ export default function DocPage() {
 
       if (!user || !token || !userType) {
         // redirect to login page
-        router.push("/login");
+        router.push("/log-in");
         return;
       }
       setContext({
@@ -43,7 +43,7 @@ export default function DocPage() {
       });
     }
     if (!token) {
-      router.push("/login");
+      router.push("/log-in");
     }
 
     docId.current = router?.query?.docId;

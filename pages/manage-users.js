@@ -46,7 +46,7 @@ const ManageUsers = () => {
 
       if (!user || !token || !userType) {
         // redirect to login page
-        router.push("/login");
+        router.push("/log-in");
         return;
       }
       setContext({
@@ -56,7 +56,7 @@ const ManageUsers = () => {
       });
     }
     if (!token) {
-      router.push("/login");
+      router.push("/log-in");
     } else {
       getUserDets();
     }

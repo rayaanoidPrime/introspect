@@ -49,7 +49,7 @@ report_assets_dir = env["report_assets_dir"]
 app.include_router(doc_endpoints.router)
 
 
-@app.get("/")
+@app.get("/ping")
 async def root():
     return {"message": "Hello World"}
 
@@ -234,7 +234,6 @@ async def websocket_endpoint(websocket: WebSocket):
                         if "generator" in agent_output:
                             g = agent_output["generator"]
                             async for out in g():
-                                sys.stdout.flush()
                                 # allow our generators to yield None
                                 if out is not None:
                                     resp["output"] = {

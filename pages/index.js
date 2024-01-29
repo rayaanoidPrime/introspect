@@ -21,7 +21,7 @@ const QueryDatabase = () => {
 
       if (!user || !token || !userType) {
         // redirect to login page
-        router.push("/login");
+        router.push("/log-in");
         return;
       }
       setContext({

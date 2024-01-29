@@ -2,9 +2,8 @@ requests
 psycopg2-binary
 pandas
 pyyaml
-defog>=0.57.0
+defog
 snowflake-connector-python
-pandas
 sqlalchemy
 scipy
 tiktoken
@@ -20,3 +19,4 @@ matplotlib
 seaborn
 redis
 openai
+pandasql

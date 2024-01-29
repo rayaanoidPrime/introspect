@@ -131,7 +131,8 @@ async def kaplan_meier_curve(
                         },
                     }
                 )
-
+        
+        plt.close()
         success = True
     except Exception as e:
         success = False
@@ -198,4 +199,4 @@ async def hazard_ratio(
         full_data = pd.DataFrame()
         success = False
     finally:
-        return {"success": success, "outputs": [{"data": full_data}]}
+        return {"success": success, "outputs": [{"data": results}]}
