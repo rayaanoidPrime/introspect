@@ -43,20 +43,36 @@ test.describe("Extract Metadata - can be a very slow test", () => {
     // table selector should populate
 
     await expect(page.locator("#db_tables")).toContainText("Tables to index");
+
+    let notEmpty = await page
+      .locator("#db_tables .ant-tag-close-icon")
+      .first()
+      .isVisible();
+
+    while (notEmpty) {
+      await page.locator("#db_tables .ant-tag-close-icon").first().click();
+      notEmpty = await page
+        .locator("#db_tables .ant-tag-close-icon")
+        .first()
+        .isVisible();
+    }
+
     await page
       .locator(
         "#db_tables > div > .ant-row > div:nth-child(2) > .ant-form-item-control-input > .ant-form-item-control-input-content > .ant-select > .ant-select-selector"
       )
       .click();
+
     // not sure why but we need to click twice to get the table to be selected
-    await page.getByTitle("defog_docs").locator("div").dblclick();
+    await page.getByTitle("defog_docs").locator("div").click();
+
     await page.getByLabel("Tables to index").click();
     // extract metadata from just 1 table (defog_docs)
     await page.getByRole("button", { name: "Extract Metadata" }).click();
     // wait for right half of UI with metadata for each column to be visible
     await page.waitForSelector('text="Update metadata on server"');
     await expect(
-      page.getByRole("button", { name: "loading Update metadata on" })
+      page.getByRole("button", { name: "Update metadata on" })
     ).toContainText("Update metadata on server");
     await expect(page.getByRole("main")).toContainText("Column Name");
     await expect(page.getByRole("main")).toContainText(
@@ -65,7 +81,7 @@ test.describe("Extract Metadata - can be a very slow test", () => {
     await expect(page.getByText("Table Name", { exact: true })).toBeVisible();
     await expect(page.getByText("Column Name", { exact: true })).toBeVisible();
     await expect(page.getByText("Data Type", { exact: true })).toBeVisible();
-    await expect(page.getByText("Description")).toBeVisible();
+    await expect(page.getByText("Description (Optional)")).toBeVisible();
     await expect(page.getByRole("main")).toContainText("defog_docs");
     await expect(page.getByRole("main")).toContainText("username");
     await expect(page.getByRole("main")).toContainText("text");

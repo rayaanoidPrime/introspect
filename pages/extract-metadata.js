@@ -224,13 +224,32 @@ const ExtractMetadata = () => {
                     disabled={loading}
                     onFinish={async (values) => {
                       setLoading(true);
+
+                      const existingTables = values["tables"].filter((item) => {
+                        // only send tables that actually exist in the db
+                        return tables.indexOf(item) !== -1;
+                      });
+
+                      if (existingTables.length === 0) {
+                        message.error(
+                          values["tables"].length === 0
+                            ? "No tables selected"
+                            : "None of the tables selected exist in the database"
+                        );
+                        setLoading(false);
+                        return;
+                      }
+
                       try {
                         const res = await fetch(
                           `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_metadata`,
                           {
                             method: "POST",
                             body: JSON.stringify({
-                              tables: values["tables"],
+                              tables: values["tables"].filter((item) => {
+                                // only send tables that actually exist in the db
+                                return tables.indexOf(item) !== -1;
+                              }),
                               token: context.token,
                             }),
                           }
@@ -264,7 +283,6 @@ const ExtractMetadata = () => {
                             event.preventDefault();
                             event.stopPropagation();
                           };
-                          console.log(tables, label, tables.indexOf(label));
                           return (
                             <Popover
                               rootClassName="table-missing-popover"
