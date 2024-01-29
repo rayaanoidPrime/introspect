@@ -5,6 +5,7 @@ import { Context } from "../components/common/Context";
 import Meta from "../components/common/Meta";
 import { Collapse, message } from "antd";
 import Scaffolding from "../components/common/Scaffolding";
+import { useRouter } from "next/router";
 
 const ViewNotebooks = () => {
   const [loading, setLoading] = useState(false);
@@ -12,6 +13,8 @@ const ViewNotebooks = () => {
   const [ownDocs, setOwnDocs] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [archivedDocs, setArchivedDocs] = useState([]);
+
+  const router = useRouter();
 
   async function archiveToggle(doc) {
     const docId = doc.doc_id;
