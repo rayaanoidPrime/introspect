@@ -13,23 +13,26 @@ This contains the self-hosted agents front-end and back-end that we have created
 To build the docker containers, make sure you have docker running on your system.
 
 On Linux/Mac
+
 ```bash
-ENDPOINT="localhost OR your IP" docker compose up -d
+npm run export && ENDPOINT="localhost OR your IP" OPENAI_API_KEY="your openai api key or blank" docker compose up -d
 ```
 
 On Windows
+
 ```bash
-$env.ENDPOINT = "localhost OR your IP"
+npm run export && $env.ENDPOINT = "localhost OR your IP" $env.OPENAI_API_KEY="your openai api key or blank"
 docker compose up -d
 ```
 
 Once the containers are running, you can access the front end app at `localhost:1234`
 
 ## Username and password
+
 The default username is `admin` and the default password is `admin`.
 
-
 ## Internals
+
 `agents-backend/docker-setup-files` contains the files for the initial setup for the backend + the db: supervisor confs, rabbitmq installation, startup bash script to start supervisor processes, and nginx config to redirect the partykit websocket requests to the right port.
 
 A note about the partykit server: I couldn't connect to the websocket directly on port `1999`, which is where the partykit server runs.
@@ -45,6 +48,7 @@ The following sections explain how to test portions of the different containers 
 This project requires Node.js. If you don't have it, you can follow the instructions [here](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm#using-a-node-installer-to-install-nodejs-and-npm).
 
 First, install the npm dependencies.
+
 ```bash
 npm install
 ```
