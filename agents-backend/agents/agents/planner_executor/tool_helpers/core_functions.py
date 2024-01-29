@@ -33,7 +33,7 @@ with open(".env.yaml", "r") as f:
 redis_host = env["redis_server_host"]
 redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 
-if env.get("OPENAI_API_KEY") is None:
+if env.get("OPENAI_API_KEY") is None or env.get("OPENAI_API_KEY") == "None" or env.get("OPENAI_API_KEY") == "":
     print("OPENAI_API_KEY not found in env")
 else:
     openai = AsyncOpenAI(api_key=env.get("OPENAI_API_KEY"))
