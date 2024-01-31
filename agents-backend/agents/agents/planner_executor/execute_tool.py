@@ -5,10 +5,10 @@ import pandas as pd
 from typing import Tuple
 import traceback
 import inspect
-from utils import error_str
+from utils import error_str, warn_str
 
 
-def parse_function_signature(param_signatures):
+def parse_function_signature(param_signatures, fn_name):
     """
     Given a dictionary of function signature, return a list of all the parameters
     with name, default values and types.
@@ -26,6 +26,13 @@ def parse_function_signature(param_signatures):
 
         p_type = param_signatures[p].annotation
         if p_type is param_signatures[p].empty:
+            warn_str(
+                "No type annotation for parameter "
+                + p_name
+                + " in "
+                + fn_name
+                + ". Assuming type is str."
+            )
             p_type = "str"
         else:
             p_type = str(p_type)[8:-2]
@@ -85,7 +92,7 @@ async def execute_tool(tool_name, tool_inputs, global_dict={}):
                         result["code_str"] = None
 
                 return result, parse_function_signature(
-                    inspect.signature(fn).parameters
+                    inspect.signature(fn).parameters, tool_name
                 )
     # if no tool matches
     return {"error_message": "No tool matches this name"}, {}

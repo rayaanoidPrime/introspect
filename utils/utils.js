@@ -212,3 +212,17 @@ export const getToolRunData = async (toolRunId) => {
 export const isNullOrUndefined = function (val) {
   return val === null || val === undefined;
 };
+
+export const toolDisplayNames = {
+  data_fetcher_and_aggregator: "Fetch data from db",
+  global_dict_data_fetcher_and_aggregator: "Query data",
+  dataset_metadata_describer: "Dataset Metadata Describer",
+  line_plot: "Line Plot",
+  kaplan_meier_curve: "Kaplan Meier Curve",
+  hazard_ratio: "Hazard Ratio",
+  t_test: "T Test",
+  anova_test: "ANOVA Test",
+  wilcoxon_test: "Wilcoxon Test",
+  boxplot: "Boxplot",
+  heatmap: "Heatmap",
+};

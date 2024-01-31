@@ -1,9 +1,13 @@
 import datetime
+import inspect
+from uuid import uuid4
 from colorama import Fore, Style
 import traceback
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
 from agents.planner_executor.tool_helpers.rerun_step import rerun_step_and_dependents
 from agents.planner_executor.tool_helpers.core_functions import analyse_data
+from agents.planner_executor.tool_helpers.all_tools import tool_name_dict
+from agents.planner_executor.execute_tool import parse_function_signature
 import pandas as pd
 from io import StringIO
 
@@ -489,3 +493,73 @@ async def analyse_data_endpoint(websocket: WebSocket):
         # other reasons for disconnect, like websocket being closed or a timeout
         manager.disconnect(websocket)
         await websocket.close()
+
+
+@router.post("/new_step_tool_run")
+async def new_step_tool_run(request: Request):
+    """
+    This is called when a user adds a step on the front end.
+    This will receive a tool name, and tool inputs.
+    This will create a new step in the analysis, figure out what the
+    """
+    try:
+        data = await request.json()
+        print(data)
+        # check if this has analysis_id, tool_name and parent_step, and inputs
+        analysis_id = data.get("analysis_id")
+        tool_name = data.get("tool_name")
+        parent_step = data.get("parent_step")
+        inputs = data.get("inputs")
+
+        if analysis_id is None or type(analysis_id) != str:
+            return {"success": False, "error_message": "Invalid analysis id."}
+
+        if (
+            tool_name is None
+            or type(tool_name) != str
+            or tool_name not in tool_name_dict
+        ):
+            return {"success": False, "error_message": "Invalid tool name."}
+
+        if parent_step is None or type(parent_step) != dict:
+            return {"success": False, "error_message": "Invalid parent step."}
+
+        if inputs is None or type(inputs) != list:
+            return {"success": False, "error_message": "Invalid inputs."}
+
+        # try to get this analysis' data
+        err, analysis_data = get_report_data(analysis_id)
+        if err:
+            return {"success": False, "error_message": err}
+
+        # get the steps
+        steps = analysis_data.get("gen_steps")
+        if steps and steps["success"]:
+            steps = steps["steps"]
+        else:
+            return {
+                "success": False,
+                "error_message": steps.get("error_message")
+                if steps is not None
+                else "No steps found for analysis",
+            }
+        
+        fn = tool_name_dict[tool_name]["fn"]
+        
+        # add a step with the given inputs and tool_name
+        steps.append(
+            {
+                "tool_name": tool_name,
+                "inputs": inputs,
+                "function_signature": parse_function_signature(inspect.signature(fn).parameters, tool_name),
+                "tool_run_id": str(uuid4()),
+                "outputs_storage_keys": []
+            }
+        )
+
+        # validate that too
+    except Exception as e:
+        print("Error creating new step: ", e)
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}
+    return
