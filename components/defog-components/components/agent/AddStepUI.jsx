@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AddStepInputList } from "./AddStepInputList";
 import { ToolReRun } from "./ToolReRun";
 import setupBaseUrl from "../../../../utils/setupBaseUrl";
+import { v4 } from "uuid";
 
 const toolOptions = Object.keys(toolsMetadata).map((tool) => {
   return { value: tool, label: toolsMetadata[tool]?.display_name };
@@ -16,7 +17,7 @@ export function AddStepUI({ analysisId, dag, activeNode }) {
     activeNode?.data?.meta?.tool_name
   );
   const [inputs, setInputs] = useState(activeNode?.data?.meta?.inputs || []);
-  const [outputs, setOutputs] = useState([]);
+  const [outputs, setOutputs] = useState(["output_" + v4().split("-")[0]]);
 
   const availableInputDfs = useMemo(() => {
     try {
@@ -52,11 +53,12 @@ export function AddStepUI({ analysisId, dag, activeNode }) {
             activeNode.data.meta.parent_step,
             selectedTool,
             inputs,
-            analysisId
+            analysisId,
+            outputs
           );
-          // return;
+
           try {
-            await fetch(newStepToolRunEndpoint, {
+            const res = await fetch(newStepToolRunEndpoint, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -66,8 +68,11 @@ export function AddStepUI({ analysisId, dag, activeNode }) {
                 tool_name: selectedTool,
                 inputs: inputs,
                 analysis_id: analysisId,
+                outputs_storage_keys: outputs,
               }),
-            });
+            }).then((r) => r.json());
+
+            console.log(res);
           } catch (e) {
             console.log(e);
           }
@@ -113,18 +118,19 @@ export function AddStepUI({ analysisId, dag, activeNode }) {
             toolMetadata={{
               function_signature: [
                 {
-                  name: "outputs",
+                  name: "output_names",
                   default: [],
                   type: "list",
                 },
               ],
             }}
+            newListValueDefault={() => "output_" + v4().split("-")[0]}
             availableInputDfs={availableInputDfs}
             inputs={[outputs]}
             onEdit={(idx, prop, newVal) => {
               console.log(idx, prop, newVal);
-              // activeNode.data.meta.inputs[idx] = newVal;
-              // setInputs(activeNode.data.meta.inputs.slice());
+              // don't need to worry about idx, because it's always 0
+              setOutputs(newVal);
             }}
           />
         </>

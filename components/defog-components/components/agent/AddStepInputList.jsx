@@ -7,7 +7,7 @@ const inputTypeToUI = {
     inputName,
     initialValue,
     onEdit,
-    opts = { newValueDefault: "New Value" }
+    opts = { newListValueDefault: "New Value" }
   ) => {
     if (!initialValue || !Array.isArray(initialValue)) initialValue = [];
 
@@ -20,16 +20,16 @@ const inputTypeToUI = {
               <Input
                 defaultValue={val}
                 size="small"
-                suffix={
-                  <MdDeleteOutline
-                    onClick={() =>
-                      onEdit(
-                        inputName,
-                        initialValue.filter((v, j) => j !== i)
-                      )
-                    }
-                  />
-                }
+                // suffix={
+                //   <MdDeleteOutline
+                //     onClick={() =>
+                //       onEdit(
+                //         inputName,
+                //         initialValue.filter((v, j) => j !== i)
+                //       )
+                //     }
+                //   />
+                // }
                 onChange={(ev) => {
                   // replace the value at i with the new value
                   const newVal = initialValue.map((v, j) => {
@@ -49,13 +49,18 @@ const inputTypeToUI = {
             </span>
           );
         })}
-        <div className="list-add">
+        {/* <div className="list-add">
           <MdOutlineAddBox
             onClick={() => {
-              onEdit(inputName, [...initialValue, opts.newValueDefault]);
+              onEdit(inputName, [
+                ...initialValue,
+                typeof opts.newListValueDefault === "function"
+                  ? opts.newListValueDefault()
+                  : opts.newListValueDefault,
+              ]);
             }}
           ></MdOutlineAddBox>
-        </div>
+        </div> */}
         <span className="list-bracket">]</span>
       </span>
     );

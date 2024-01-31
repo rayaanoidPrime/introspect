@@ -21,7 +21,9 @@ from db_utils import (
     get_report_data,
     get_tool_run,
     get_toolboxes,
+    store_tool_run,
     update_doc_data,
+    update_report_data,
     update_table_chart_data,
     get_table_data,
     get_all_analyses,
@@ -510,6 +512,7 @@ async def new_step_tool_run(request: Request):
         tool_name = data.get("tool_name")
         parent_step = data.get("parent_step")
         inputs = data.get("inputs")
+        outputs_storage_keys = data.get("outputs_storage_keys")
 
         if analysis_id is None or type(analysis_id) != str:
             return {"success": False, "error_message": "Invalid analysis id."}
@@ -527,6 +530,19 @@ async def new_step_tool_run(request: Request):
         if inputs is None or type(inputs) != list:
             return {"success": False, "error_message": "Invalid inputs."}
 
+        if outputs_storage_keys is None or type(outputs_storage_keys) != list:
+            return {"success": False, "error_message": "Invalid outputs provided."}
+
+        if len(outputs_storage_keys) == 0:
+            return {"success": False, "error_message": "Please type in output names."}
+
+        # if any of the outputs are empty or aren't strings
+        if any([not o or type(o) != str for o in outputs_storage_keys]):
+            return {
+                "success": False,
+                "error_message": "Outputs provided are either blank or incorrect.",
+            }
+
         # try to get this analysis' data
         err, analysis_data = get_report_data(analysis_id)
         if err:
@@ -543,21 +559,72 @@ async def new_step_tool_run(request: Request):
                 if steps is not None
                 else "No steps found for analysis",
             }
-        
+
         fn = tool_name_dict[tool_name]["fn"]
-        
+
+        new_tool_run_id = str(uuid4())
+
+        # a vvvvv dummy step
+        new_step = {
+            "tool_name": tool_name,
+            "model_generated_inputs": inputs,
+            "inputs": inputs,
+            "function_signature": parse_function_signature(
+                inspect.signature(fn).parameters, tool_name
+            ),
+            "tool_run_id": new_tool_run_id,
+            "outputs_storage_keys": outputs_storage_keys,
+        }
+
         # add a step with the given inputs and tool_name
-        steps.append(
-            {
-                "tool_name": tool_name,
-                "inputs": inputs,
-                "function_signature": parse_function_signature(inspect.signature(fn).parameters, tool_name),
-                "tool_run_id": str(uuid4()),
-                "outputs_storage_keys": []
-            }
+        steps.append(new_step)
+
+        metadata_dets = get_metadata()
+        glossary = metadata_dets["glossary"]
+        client_description = metadata_dets["client_description"]
+        table_metadata_csv = metadata_dets["table_metadata_csv"]
+
+        global_dict = {
+            "user_question": analysis_data["user_question"],
+            "table_metadata_csv": table_metadata_csv,
+            "client_description": client_description,
+            "glossary": glossary,
+        }
+
+        # store a empty tool run
+        store_result = await store_tool_run(
+            analysis_id,
+            new_step,
+            {"success": True, "code_str": inspect.getsource(fn)},
+            skip_step_update=True,
         )
 
-        # validate that too
+        if not store_result["success"]:
+            return store_result
+
+        async for err, reran_id, new_data in rerun_step_and_dependents(
+            analysis_id, new_tool_run_id, steps, global_dict=global_dict
+        ):
+            print("Error: ", err)
+            print("Created and step with tool_id: ", reran_id)
+            # print("New data: ", new_data)
+            if new_data:
+                print(new_data)
+                update_report_data(
+                    analysis_id,
+                    "gen_steps",
+                    steps,
+                    replace=True,
+                )
+                return {
+                    "success": True,
+                    "tool_run_id": reran_id,
+                    "tool_run_data": new_data,
+                    "new_step": new_step,
+                }
+            else:
+                return {"success": False, "error_message": err}
+
     except Exception as e:
         print("Error creating new step: ", e)
         traceback.print_exc()

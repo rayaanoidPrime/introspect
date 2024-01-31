@@ -107,7 +107,7 @@ def initialise_report(user_question, api_key, username, custom_id=None, other_da
                     else:
                         print(
                             "Could not find parent analysis with id: ",
-                            parent_analysis_id
+                            parent_analysis_id,
                         )
 
     except Exception as e:
@@ -789,7 +789,9 @@ async def update_particular_step(analysis_id, tool_run_id, prop, new_val):
             )
 
 
-async def store_tool_run(analysis_id, step, run_result):
+# skip_step_update helps us skip a step update when createing a new step
+# we first run the tool, and only if it succeeds (aka runs fully), we create a new step in the analysis.
+async def store_tool_run(analysis_id, step, run_result, skip_step_update=False):
     try:
         insert_data = {
             "analysis_id": analysis_id,
@@ -896,13 +898,14 @@ async def store_tool_run(analysis_id, step, run_result):
             else:
                 conn.execute(insert(ToolRuns).values(insert_data))
 
-            # also update the error message in gen_steps in the reports table
-            await update_particular_step(
-                analysis_id,
-                step["tool_run_id"],
-                "error_message",
-                run_result.get("error_message"),
-            )
+            if not skip_step_update:
+                # also update the error message in gen_steps in the reports table
+                await update_particular_step(
+                    analysis_id,
+                    step["tool_run_id"],
+                    "error_message",
+                    run_result.get("error_message"),
+                )
 
         return {"success": True, "tool_run_data": insert_data}
     except Exception as e:

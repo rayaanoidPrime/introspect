@@ -162,7 +162,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
 
         yield err, tool_run_id, None
 
-    tool_run_details = tool_run_data["tool_run_details"]
+    tool_run_details = tool_run_data.get("tool_run_details")
 
     # print global_dict keys
     print(f"Global dict currently has keys: {log_str(list(global_dict.keys()))}")
@@ -184,9 +184,9 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
         # data_fetcher only gives one output so can just save directly
         output_nm = target_step["outputs_storage_keys"][0]
         # there's only one string to compare really
-        if initial_inputs[0] == resolved_inputs[0]:
+        if initial_inputs[0] == resolved_inputs[0] and tool_run_details.get("sql"):
             print(f"Data fetcher inputs are the same. Running the SQL instead.")
-            print(f"SQL: {tool_run_details['sql']}")
+            print(f"SQL: {tool_run_details.get('sql')}")
 
             err = None
             result = None
@@ -251,7 +251,9 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
 
             yield err, tool_run_id, new_data
         else:
-            print(f"Data fetcher inputs have changed. Running the function.")
+            print(
+                f"Data fetcher inputs have changed or it's a fresh run. Running the function."
+            )
             # run the data_fetcher tool normally with the new inputs
             result, signature = await execute_tool(
                 "data_fetcher_and_aggregator", resolved_inputs, global_dict
@@ -310,9 +312,13 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
     # with the resolved inputs
     else:
         code_str = tool_run_details["code_str"]
-        # if not code_str and it's the global_dict_data_fetcher_and_aggregator, get it's code_str
-        if not code_str and f_nm == "global_dict_data_fetcher_and_aggregator":
-            code_str = inspect.getsource(global_dict_data_fetcher_and_aggregator)
+        # if there's no code_str, it's either global_dict_data_fetcher_and_aggregator or a new step is being generated
+        # get its code_str
+        if not code_str:
+            if f_nm == "global_dict_data_fetcher_and_aggregator":
+                code_str = inspect.getsource(global_dict_data_fetcher_and_aggregator)
+            else:
+                code_str = inspect.getsource(tool_name_dict[f_nm])
 
         # add a line calling the function and spread the inputs
         # define the function
