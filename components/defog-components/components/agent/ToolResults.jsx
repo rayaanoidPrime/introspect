@@ -11,8 +11,9 @@ import Lottie from "lottie-react";
 import LoadingLottie from "../svg/loader.json";
 import ErrorBoundary from "../common/ErrorBoundary";
 import { csvParse } from "d3";
-import { getToolRunData } from "../../../../utils/utils";
+import { getToolRunData, toolDisplayNames } from "../../../../utils/utils";
 import ToolRunAnalysis from "./ToolRunAnalysis";
+import { AddStepUI } from "./AddStepUI";
 
 function parseData(data_csv) {
   const data = csvParse(data_csv);
@@ -192,7 +193,7 @@ export function ToolResults({
   );
 
   useEffect(() => {
-    if (!activeNode) return;
+    if (!activeNode || activeNode.data.isAddStepNode) return;
 
     async function getToolRun() {
       const toolRun = activeNode.data.isTool
@@ -259,7 +260,9 @@ export function ToolResults({
                   }}
                 ></ToolReRun>
               )}
-              <h1 className="tool-name">{toolRunData.step.tool_name}</h1>
+              <h1 className="tool-name">
+                {toolDisplayNames[toolRunData.step.tool_name]}
+              </h1>
               <h1 className="inputs-header">INPUTS</h1>
               <ToolRunInputList
                 analysisId={analysisId}
@@ -310,7 +313,13 @@ export function ToolResults({
             </div>
           </>
         ) : (
-          <></>
+          activeNode.data.isAddStepNode && (
+            <AddStepUI
+              analysisId={analysisId}
+              dag={dag}
+              activeNode={activeNode}
+            />
+          )
         ))
       )}
     </div>

@@ -83,6 +83,7 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
       api_token: apiToken,
       doc_id: docId,
       username: username,
+      protocol: "ws",
     },
   });
 

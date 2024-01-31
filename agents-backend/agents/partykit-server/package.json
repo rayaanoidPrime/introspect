@@ -10,8 +10,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "partykit": "^0.0.32",
-    "y-partykit": "^0.0.10",
-    "yjs": "^13.6.8"
+    "partykit": "^0.0.80",
+    "y-partykit": "^0.0.22",
+    "yjs": "^13.6.11"
   }
 }

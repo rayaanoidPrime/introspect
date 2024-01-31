@@ -342,8 +342,25 @@ $grid: repeating-linear-gradient(
     color: $text-medium;
     z-index: 2;
 
-    &:hover:not(.graph-node-active):not(.tool):not(.graph-node-error) {
+    &:hover:not(.graph-node-active):not(.tool):not(.graph-node-error):not(
+        .graph-node-add
+      ) {
       background-color: $text-medium;
+    }
+
+    &.graph-node-add {
+      border-radius: 0;
+      border: none;
+      background-color: transparent;
+      svg path {
+        fill: $medium-gray;
+      }
+      &:hover {
+        background-color: transparent;
+        svg path {
+          fill: $medium-orange;
+        }
+      }
     }
 
     &.tool {
@@ -401,6 +418,14 @@ $grid: repeating-linear-gradient(
           svg path {
             fill: $dark-red;
           }
+        }
+      }
+
+      &.graph-node-add {
+        border: none;
+        background-color: transparent;
+        svg path {
+          fill: $text-dark;
         }
       }
     }
@@ -1350,6 +1375,7 @@ $grid: repeating-linear-gradient(
   border-left: 8px solid $medium-green;
   border-radius: 4px;
   --antd-arrow-background-color: #949494;
+  overflow-wrap: anywhere;
 
   .ant-popover-inner {
     box-shadow: none;
@@ -1408,5 +1434,59 @@ $grid: repeating-linear-gradient(
   .tool-run-analysis-text {
     background-color: $very-light-gray;
     padding: 1em;
+  }
+}
+
+.add-step-ctr {
+  .add-step-select-tool-name {
+    margin: 1em 0;
+  }
+  .add-step-df-select-ctr {
+    min-width: 10px;
+    font-size: 18px;
+    .ant-select-selector {
+      color: $text-medium;
+      * {
+        font-family: $code;
+        overflow-wrap: anywhere;
+        width: 100%;
+        text-wrap: wrap;
+      }
+      font-size: 0.7em;
+      // margin: 0 0 5px 0;
+      padding: 0.5em;
+      // border: 1px solid $medium-gray;
+      border-color: $medium-green !important;
+      border-left: 8px solid $medium-green;
+      border-radius: 4px;
+      cursor: pointer;
+      width: fit-content;
+    }
+  }
+}
+
+.add-step-df-dropdown {
+  .ant-select-item {
+    padding: 0.1em;
+    font-size: 18px;
+    width: 100%;
+  }
+  .tool-input-data-value {
+    width: 100%;
+    color: $text-medium;
+    * {
+      font-family: $code;
+      overflow-wrap: anywhere;
+      width: 100%;
+      text-wrap: wrap;
+    }
+    font-size: 0.7em;
+    // margin: 0 0 5px 0;
+    padding: 0.5em;
+    // border: 1px solid $medium-gray;
+    border-left: 8px solid $medium-green;
+    border-radius: 4px;
+    cursor: pointer;
+    width: fit-content;
   }
 }

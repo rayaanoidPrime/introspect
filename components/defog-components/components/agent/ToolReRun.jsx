@@ -1,7 +1,7 @@
-export function ToolReRun({ onClick = () => {} }) {
+export function ToolReRun({ onClick = () => {}, text = "Re run" }) {
   return (
     <div className="tool-re-run" onClick={onClick}>
-      <p>Re run</p>
+      <p>{text}</p>
     </div>
   );
 }

@@ -2,6 +2,14 @@ import { useEffect, useState } from "react";
 import { HiWrenchScrewdriver } from "react-icons/hi2";
 import { Popover } from "antd";
 import { createDag } from "../../../../utils/draw-dag";
+import {
+  PlusCircleFilled,
+  PlusOutlined,
+  PlusSquareFilled,
+  PlusSquareOutlined,
+  PlusSquareTwoTone,
+} from "@ant-design/icons";
+import { toolDisplayNames } from "../../../../utils/utils";
 
 const nodeCssSize = 15;
 
@@ -17,10 +25,10 @@ export default function StepsDag({
   setDagLinks,
   setActiveNode,
 }) {
-  const [graph, setGraph] = useState({ nodes: [], links: [] });
+  const [graph, setGraph] = useState({ nodes: {}, links: [] });
 
   useEffect(() => {
-    let g = { nodes: [], links: [] };
+    let g = { nodes: {}, links: [] };
     steps.forEach((step) => {
       // each step is a node
       // each resulting variable is a node
@@ -114,6 +122,36 @@ export default function StepsDag({
           });
           // add this child to the list of children for this step
           g["nodes"][step_id]["children"].push(g["nodes"][child]);
+
+          if (!step.error_message) {
+            // "add step" as a child of this child
+            const addStepNodeId = child + "-add";
+
+            // add a child that is basically a plus icon to add another node
+            g["nodes"][addStepNodeId] = {
+              id: addStepNodeId,
+              data: { id: addStepNodeId },
+              isAddStepNode: true,
+              title: "+",
+              key: addStepNodeId,
+              isTool: false,
+              isError: step.error_message,
+              parents: [child],
+              children: [],
+              meta: {
+                inputs: [],
+                tool_name: null,
+                parent_step: step,
+              },
+            };
+
+            // also add a link
+            g["links"].push({
+              source: child,
+              target: addStepNodeId,
+            });
+            g["nodes"][child]["children"].push(g["nodes"][addStepNodeId]);
+          }
         });
       }
 
@@ -184,11 +222,22 @@ export default function StepsDag({
     setDagLinks(newDagLinks);
     // also set active node to the leaf node
     try {
-      setActiveNode([...dag.leaves()][0]);
+      // last node in topological order which isn't an add step node
+      const lastNode = dag
+        .topological()
+        .reverse()
+        .find((d) => {
+          return !d.data.isAddStepNode;
+        });
+
+      setActiveNode(lastNode);
     } catch (e) {
       console.log("Error setting active node: ", e);
     }
+    console.log(g);
   }, [steps]);
+
+  // console.log([...dag.nodes()]);
 
   return (
     <div className="analysis-graph">
@@ -204,19 +253,32 @@ export default function StepsDag({
                     (d.data.isError ? "popover-error " : "")
                   }
                   placement="left"
-                  title={d?.data?.meta?.tool_name || null}
-                  content={d?.data?.meta?.description || d.data.id}
+                  title={
+                    d?.data?.isAddStepNode
+                      ? ""
+                      : toolDisplayNames[d?.data?.meta?.tool_name] || null
+                  }
+                  content={
+                    d?.data?.isAddStepNode
+                      ? "Create new step"
+                      : d?.data?.meta?.description || d.data.id
+                  }
                   key={d.data.id}
                 >
                   <div
                     className={
-                      "graph-node " +
-                      (d.data.isTool ? "tool " : "var ") +
+                      "graph-node" +
+                      " " +
+                      (d.data.isTool ? "tool" : "var") +
+                      " " +
                       (activeNode?.data?.id === d.data.id
                         ? "graph-node-active "
                         : "") +
-                      (d.data.isError ? "graph-node-error " : "") +
-                      d.data.id
+                      (d.data.isError ? "graph-node-error" : "") +
+                      " " +
+                      d.data.id +
+                      " " +
+                      (d.data.isAddStepNode ? "graph-node-add" : "")
                     }
                     style={{
                       top: horizontal ? d.x : d.y,
@@ -227,7 +289,13 @@ export default function StepsDag({
                       setActiveNode(d);
                     }}
                   >
-                    {d.data.isTool ? <HiWrenchScrewdriver /> : <></>}
+                    {d.data.isTool ? (
+                      <HiWrenchScrewdriver />
+                    ) : d.data.isAddStepNode ? (
+                      <PlusSquareOutlined />
+                    ) : (
+                      <></>
+                    )}
                   </div>
                 </Popover>
               );
@@ -239,16 +307,18 @@ export default function StepsDag({
               const target = d.target;
               const source_x =
                 nodeCssSize / 2 + (horizontal ? source.y : source.x);
-              const source_y = horizontal ? source.x : source.y;
+              const source_y = horizontal ? source.x : source.y + nodeCssSize;
               const target_x =
                 nodeCssSize / 2 + (horizontal ? target.y : target.x);
-              const target_y = horizontal
-                ? target.x + nodeCssSize
-                : target.y + nodeCssSize;
+              const target_y = horizontal ? target.x : target.y;
 
               return (
                 <path
-                  className="link"
+                  className={
+                    "link" +
+                    " " +
+                    (target.data.isAddStepNode ? "link-add-node" : "")
+                  }
                   d={`M ${source_x} ${source_y} L ${target_x} ${target_y}`}
                   stroke="black"
                   fill="none"
