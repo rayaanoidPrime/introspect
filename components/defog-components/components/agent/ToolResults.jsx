@@ -49,6 +49,10 @@ export function ToolResults({
   const [edited, setEdited] = useState(false);
   const [isStepReRunning, setIsStepReRunning] = useState(false);
 
+  useEffect(() => {
+    console.log(toolRunData);
+  }, [toolRunData]);
+
   const getNewData = useCallback(
     async (newId) => {
       setToolRunDataLoading(true);
