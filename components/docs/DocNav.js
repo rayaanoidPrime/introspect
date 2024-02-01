@@ -1,6 +1,10 @@
-import React, { Fragment, useEffect, useState } from "react";
+import React, { Fragment, useCallback, useEffect, useState } from "react";
 import OtherDocs from "./OtherDocs";
 import { GrNewWindow } from "react-icons/gr";
+import { MdDeleteOutline } from "react-icons/md";
+import { Modal, message } from "antd";
+import { deleteDoc } from "../../utils/utils";
+import { useRouter } from "next/router";
 
 const sidebarWidth = 170;
 
@@ -9,6 +13,40 @@ export default function DocNav({ apiToken, username, currentDocId }) {
     "analysis-list-sidebar": false,
     "db-creds-sidebar": false,
   });
+
+  const router = useRouter();
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  const showModal = (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDelete = async (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const res = await deleteDoc(currentDocId);
+
+    if (res.success) {
+      message.success("Doc deleted successfully. Redirecting to home page...");
+
+      setTimeout(() => {
+        router.push("/view-notebooks");
+      }, 1500);
+    } else {
+      message.error("Error deleting doc: " + (res.error_message || ""));
+    }
+    setIsDeleteModalOpen(false);
+  };
+
+  const handleCancel = (ev) => {
+    // prevent trigger on the delete button
+    ev.preventDefault();
+    ev.stopPropagation();
+    setIsDeleteModalOpen(false);
+  };
 
   useEffect(() => {
     let ctr = document.getElementById("doc-sidebars");
@@ -69,6 +107,20 @@ export default function DocNav({ apiToken, username, currentDocId }) {
             username={username}
             currentDocId={currentDocId}
           ></OtherDocs>
+        </div>
+
+        {/* delete this doc */}
+        <div id="nav-delete-doc" title="Delete this doc" onClick={showModal}>
+          <span>Delete</span>
+          <MdDeleteOutline fontSize={16} />
+          <Modal
+            okText={"Yes, delete"}
+            okType="danger"
+            title="Are you sure?"
+            open={isDeleteModalOpen}
+            onOk={handleDelete}
+            onCancel={handleCancel}
+          ></Modal>
         </div>
 
         <div className="nav-spacer"></div>
