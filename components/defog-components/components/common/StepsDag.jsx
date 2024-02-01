@@ -19,6 +19,7 @@ export default function StepsDag({
   nodeRadius = 5,
   activeNode = null,
   stageDone = true,
+  reRunningSteps = [],
   dag,
   setDag,
   dagLinks,
@@ -26,6 +27,7 @@ export default function StepsDag({
   setActiveNode,
 }) {
   const [graph, setGraph] = useState({ nodes: {}, links: [] });
+  const [nodes, setNodes] = useState([]);
 
   useEffect(() => {
     let g = { nodes: {}, links: [] };
@@ -41,7 +43,6 @@ export default function StepsDag({
       // create node for this step
       g["nodes"][step_id] = {
         id: step_id,
-        data: { id: step_id },
         title: step["tool_name"],
         key: step["tool_name"],
         isError: step.error_message,
@@ -189,37 +190,41 @@ export default function StepsDag({
     // if the order changes, the animation for drawing a link resets and re runs
     // so only get the new links
 
-    const linksToAdd = [...dag.links()].filter((d) => {
-      return !dagLinks.find((l) => {
-        return (
-          l.source.data.id === d.source.data.id &&
-          l.target.data.id === d.target.data.id
-        );
-      });
-    });
+    // const linksToAdd = [...dag.links()].filter((d) => {
+    //   return !dagLinks.find((l) => {
+    //     return (
+    //       l.source.data.id === d.source.data.id &&
+    //       l.target.data.id === d.target.data.id
+    //     );
+    //   });
+    // });
 
-    // find links to remove
-    const linksToRemove = dagLinks.filter((d) => {
-      return ![...dag.links()].find((l) => {
-        return (
-          l.source.data.id === d.source.data.id &&
-          l.target.data.id === d.target.data.id
-        );
-      });
-    });
+    // // find links to remove
+    // const linksToRemove = dagLinks.filter((d) => {
+    //   return ![...dag.links()].find((l) => {
+    //     return (
+    //       l.source.data.id === d.source.data.id &&
+    //       l.target.data.id === d.target.data.id
+    //     );
+    //   });
+    // });
 
-    const newDagLinks = [...dagLinks, ...linksToAdd].filter((d) => {
-      return !linksToRemove.find((l) => {
-        return (
-          l.source.data.id === d.source.data.id &&
-          l.target.data.id === d.target.data.id
-        );
-      });
-    });
+    // const newDagLinks = [...dagLinks, ...linksToAdd].filter((d) => {
+    //   return !linksToRemove.find((l) => {
+    //     return (
+    //       l.source.data.id === d.source.data.id &&
+    //       l.target.data.id === d.target.data.id
+    //     );
+    //   });
+    // });
+
+    // // update these with the latest values from [...dag.links()]
+    // newDagLinks.forEach((d) => {
 
     setGraph(g);
     setDag(dag);
-    setDagLinks(newDagLinks);
+    setDagLinks([...dag.links()]);
+    setNodes([...dag.nodes()]);
     // also set active node to the leaf node
     try {
       // last node in topological order which isn't an add step node
@@ -234,18 +239,15 @@ export default function StepsDag({
     } catch (e) {
       console.log("Error setting active node: ", e);
     }
-    console.log(g);
   }, [steps]);
 
-  // console.log([...dag.nodes()]);
-
   return (
-    <div className="analysis-graph">
+    <div className="analysis-graph" key={steps?.length}>
       {dag ? (
         <div className="graph" style={{ height: dag.height + 100 + "px" }}>
           {dag &&
             dag.nodes &&
-            [...dag.nodes()].map((d) => {
+            nodes.map((d) => {
               return (
                 <Popover
                   rootClassName={
@@ -278,7 +280,11 @@ export default function StepsDag({
                       " " +
                       d.data.id +
                       " " +
-                      (d.data.isAddStepNode ? "graph-node-add" : "")
+                      (d.data.isAddStepNode ? "graph-node-add" : "") +
+                      " " +
+                      (reRunningSteps.indexOf(d.data.id) !== -1
+                        ? "graph-node-re-running"
+                        : "")
                     }
                     style={{
                       top: horizontal ? d.x : d.y,
@@ -311,6 +317,7 @@ export default function StepsDag({
               const target_x =
                 nodeCssSize / 2 + (horizontal ? target.y : target.x);
               const target_y = horizontal ? target.x : target.y;
+              let pathData = `M ${source_x} ${source_y} L ${target_x} ${target_y}`;
 
               return (
                 <path
@@ -319,10 +326,11 @@ export default function StepsDag({
                     " " +
                     (target.data.isAddStepNode ? "link-add-node" : "")
                   }
-                  d={`M ${source_x} ${source_y} L ${target_x} ${target_y}`}
+                  id={source.data.id + "-" + target.data.id}
+                  d={pathData}
                   stroke="black"
                   fill="none"
-                  key={source.data.id + " - " + target.data.id}
+                  key={source.data.id + " - " + target.data.id + "-" + pathData}
                 />
               );
             })}

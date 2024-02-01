@@ -75,6 +75,11 @@ export const AnalysisAgent = ({
 
   const [toolRunDataCache, setToolRunDataCache] = useState({});
 
+  const [currentStage, setCurrentStage] = useState(null);
+  const [stageDone, setStageDone] = useState(true);
+  const searchRef = useRef(null);
+  const docContext = useContext(DocContext);
+
   function setActiveNode(node) {
     setActiveNodePrivate(node);
     // if update_prop is "sql" or "code_str" or "analysis", update tool_run_details
@@ -112,7 +117,6 @@ export const AnalysisAgent = ({
 
     setPendingToolRunUpdates({});
   }
-
   useEffect(() => {
     if (analysisData?.gen_steps?.success && analysisData?.gen_steps?.steps) {
       setAnalysisSteps(
@@ -132,11 +136,6 @@ export const AnalysisAgent = ({
       [analysisId]: relatedAnalyses,
     });
   }, [relatedAnalyses]);
-
-  const [currentStage, setCurrentStage] = useState(null);
-  const [stageDone, setStageDone] = useState(true);
-  const searchRef = useRef(null);
-  const docContext = useContext(DocContext);
 
   function onMessage(event) {
     if (!event.data) {
@@ -233,6 +232,14 @@ export const AnalysisAgent = ({
 
   async function onReRunMessage(event) {
     const res = JSON.parse(event.data);
+    // re run messages can be of two types:
+    // 1. which step is GOING TO BE RUN. this won't just be the step that was asked to be re run by the user.
+    // this can also be the step's parents and it's children.
+    // 2. the result of a re run of a step
+    if (res.pre_tool_run_message) {
+      // means this is just a notification
+      return;
+    }
     // remove the tool run id from rerunning steps
     setRerunningSteps((prev) => prev.filter((d) => d !== res.tool_run_id));
 
@@ -241,7 +248,10 @@ export const AnalysisAgent = ({
         `Something went wrong while re running ${res.tool_run_id}. Please try again.`
       );
       message.error(res.error_message);
+      return;
     }
+
+    console.log(res);
 
     if (res.success) {
       setToolRunDataCache((prev) => {
@@ -282,7 +292,7 @@ export const AnalysisAgent = ({
       if (idx > -1) {
         newSteps[idx] = {
           ...newSteps[idx],
-          error_message: res.error_message,
+          error_message: res.tool_run_data.error_message,
         };
       }
       return newSteps;
@@ -477,7 +487,7 @@ export const AnalysisAgent = ({
   }
 
   const handleReRun = useCallback(
-    (toolRunId) => {
+    (toolRunId, preRunActions = {}) => {
       if (
         !toolRunId ||
         !dag ||
@@ -492,6 +502,24 @@ export const AnalysisAgent = ({
         message.error("Not connected to servers. Trying to reconnect.");
         message.error("Please contact us if this persists");
         return;
+      }
+
+      // preRunActions = {
+      // "action": "add_step",
+      // "new_step": {...}
+      // }
+
+      if (
+        preRunActions &&
+        preRunActions?.action === "add_step" &&
+        preRunActions?.new_step
+      ) {
+        // add the new step to analysisData
+        setAnalysisData((prev) => {
+          const newAnalysisData = { ...prev };
+          newAnalysisData.gen_steps.steps.push(preRunActions.new_step);
+          return newAnalysisData;
+        });
       }
 
       const desc = [...activeNode.descendants()]
@@ -595,6 +623,7 @@ export const AnalysisAgent = ({
                               }
                               toolRunDataCache={toolRunDataCache}
                               setToolRunDataCache={setToolRunDataCache}
+                              setAnalysisData={setAnalysisData}
                             ></ToolResults>
                           ) : (
                             analysisBusy && (
@@ -616,6 +645,7 @@ export const AnalysisAgent = ({
                           steps={analysisSteps}
                           nodeRadius={5}
                           setActiveNode={setActiveNode}
+                          reRunningSteps={reRunningSteps}
                           activeNode={activeNode}
                           stageDone={
                             currentStage === "gen_steps" ? stageDone : true

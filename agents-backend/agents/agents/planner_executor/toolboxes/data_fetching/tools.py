@@ -83,9 +83,8 @@ async def global_dict_data_fetcher_and_aggregator(
     print(
         "Running global_dict_data_fetcher_and_aggregator with this custom metadata: \n"
     )
-    print("\n\n")
     print(metadata)
-    print("\n\n")
+    print("\n")
 
     question += ". Give me SQLite SQL, not Postgres. Remember that SQLite does not support all the features of Postgres like stddev, variance, etc. You will have to calculate them yourself."
 

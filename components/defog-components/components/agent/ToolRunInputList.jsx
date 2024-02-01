@@ -3,15 +3,16 @@ import React, { useEffect, useMemo, useState } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
 
 const inputTypeToUI = {
-  list: (inputName, initialValue, onEdit) => {
+  list: (toolRunId, inputName, initialValue, onEdit) => {
+    if (!initialValue) initialValue = [];
     return (
       <span className="tool-input-value tool-input-type-list">
         <span className="list-bracket">[</span>
         {initialValue.map((val, i) => {
           return (
-            <span key={inputName}>
+            <span key={toolRunId + "_" + inputName}>
               <Input
-                defaultValue={val}
+                value={val}
                 size="small"
                 suffix={
                   <MdDeleteOutline
@@ -53,21 +54,27 @@ const inputTypeToUI = {
       </span>
     );
   },
-  str: (inputName, initialValue, onEdit) => (
-    <Input
-      rootClassName="tool-input-value"
-      defaultValue={initialValue}
-      size="small"
-      onChange={(ev) => {
-        onEdit(inputName, ev.target.value);
-      }}
-    />
-  ),
-  bool: (inputName, initialValue, onEdit) => {
+  str: (toolRunId, inputName, initialValue, onEdit) => {
+    if (!initialValue) initialValue = "";
+    return (
+      <Input
+        rootClassName="tool-input-value"
+        value={initialValue}
+        key={toolRunId + "_" + inputName}
+        size="small"
+        onChange={(ev) => {
+          onEdit(inputName, ev.target.value);
+        }}
+      />
+    );
+  },
+  bool: (toolRunId, inputName, initialValue, onEdit) => {
+    if (!initialValue) initialValue = false;
     return (
       <Select
         rootClassName="tool-input-value"
-        defaultValue={String(initialValue)}
+        value={String(initialValue)}
+        key={toolRunId + "_" + inputName}
         size="small"
         popupClassName="tool-input-value-dropdown"
         options={[
@@ -80,34 +87,45 @@ const inputTypeToUI = {
       />
     );
   },
-  int: (inputName, initialValue, onEdit) => (
-    <Input
-      rootClassName="tool-input-value"
-      defaultValue={initialValue}
-      type="number"
-      size="small"
-      onChange={(ev) => {
-        onEdit(inputName, parseFloat(ev.target.value));
-      }}
-    />
-  ),
-  float: (inputName, initialValue, onEdit) => (
-    <Input
-      defaultValue={initialValue}
-      size="small"
-      type="number"
-      onChange={(ev) => {
-        onEdit(inputName, parseFloat(ev.target.value));
-      }}
-    />
-  ),
+  int: (toolRunId, inputName, initialValue, onEdit) => {
+    if (!initialValue) initialValue = 0;
+
+    return (
+      <Input
+        rootClassName="tool-input-value"
+        key={toolRunId + "_" + inputName}
+        value={initialValue}
+        type="number"
+        size="small"
+        onChange={(ev) => {
+          onEdit(inputName, parseFloat(ev.target.value));
+        }}
+      />
+    );
+  },
+  float: (toolRunId, inputName, initialValue, onEdit) => {
+    if (!initialValue) initialValue = 0.0;
+    return (
+      <Input
+        value={initialValue}
+        key={toolRunId + "_" + inputName}
+        size="small"
+        type="number"
+        onChange={(ev) => {
+          onEdit(inputName, parseFloat(ev.target.value));
+        }}
+      />
+    );
+  },
   "pandas.core.frame.DataFrame": (
+    toolRunId,
     inputName,
     initialValue,
     onEdit,
     availableOutputNodes = [],
     setActiveNode = () => {}
   ) => {
+    if (!initialValue) initialValue = "";
     const name_clipped = initialValue?.replace(/global_dict\./g, "");
     const exists = availableOutputNodes.find(
       (node) => node.data.id === name_clipped
@@ -185,7 +203,7 @@ export function ToolRunInputList({
   }, [step]);
 
   return (
-    <div className="tool-input-list">
+    <div className="tool-input-list" key={toolRunId}>
       {inputs.map((input, i) => {
         return (
           <div key={i + "_" + toolRunId} className="tool-input">
@@ -194,6 +212,7 @@ export function ToolRunInputList({
 
             {inputTypeToUI[functionSignature[i].type] ? (
               inputTypeToUI[functionSignature[i].type](
+                toolRunId,
                 functionSignature[i].name,
                 input,
                 function (prop, newVal) {

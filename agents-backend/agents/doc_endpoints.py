@@ -421,19 +421,32 @@ async def rerun_step(websocket: WebSocket):
             async for err, reran_id, new_data in rerun_step_and_dependents(
                 analysis_id, tool_run_id, steps, global_dict=global_dict
             ):
-                print("Error: ", err)
-                print("Reran step: ", reran_id)
                 # print("New data: ", new_data)
-                if new_data:
-                    await manager.send_personal_message(
-                        {
-                            "success": True,
-                            "tool_run_id": reran_id,
-                            "tool_run_data": new_data,
-                        },
-                        websocket,
-                    )
+                if new_data and type(new_data) == dict:
+                    if reran_id:
+                        print("Reran step: ", reran_id)
+                        await manager.send_personal_message(
+                            {
+                                "success": True,
+                                "tool_run_id": reran_id,
+                                "tool_run_data": new_data,
+                            },
+                            websocket,
+                        )
+                    elif new_data.get("pre_tool_run_message"):
+                        print(
+                            f"Starting rerunning of step: {new_data.get('pre_tool_run_message')}"
+                        )
+                        await manager.send_personal_message(
+                            {
+                                "pre_tool_run_message": new_data.get(
+                                    "pre_tool_run_message"
+                                ),
+                            },
+                            websocket,
+                        )
                 else:
+                    print("Error: ", err)
                     await manager.send_personal_message(
                         {
                             "success": False,
@@ -497,12 +510,13 @@ async def analyse_data_endpoint(websocket: WebSocket):
         await websocket.close()
 
 
-@router.post("/new_step_tool_run")
-async def new_step_tool_run(request: Request):
+@router.post("/create_new_step")
+async def create_new_step(request: Request):
     """
     This is called when a user adds a step on the front end.
     This will receive a tool name, and tool inputs.
-    This will create a new step in the analysis, figure out what the
+    This will create a new step in the analysis.
+    No tool run will occur. Though a tool run id will be created for this step in case rerun is called in the future.
     """
     try:
         data = await request.json()
@@ -560,11 +574,13 @@ async def new_step_tool_run(request: Request):
                 else "No steps found for analysis",
             }
 
-        fn = tool_name_dict[tool_name]["fn"]
+        tool = tool_name_dict[tool_name]
+
+        fn = tool["fn"]
 
         new_tool_run_id = str(uuid4())
 
-        # a vvvvv dummy step
+        # a new empty step
         new_step = {
             "tool_name": tool_name,
             "model_generated_inputs": inputs,
@@ -579,51 +595,31 @@ async def new_step_tool_run(request: Request):
         # add a step with the given inputs and tool_name
         steps.append(new_step)
 
-        metadata_dets = get_metadata()
-        glossary = metadata_dets["glossary"]
-        client_description = metadata_dets["client_description"]
-        table_metadata_csv = metadata_dets["table_metadata_csv"]
-
-        global_dict = {
-            "user_question": analysis_data["user_question"],
-            "table_metadata_csv": table_metadata_csv,
-            "client_description": client_description,
-            "glossary": glossary,
-        }
-
         # store a empty tool run
         store_result = await store_tool_run(
             analysis_id,
             new_step,
-            {"success": True, "code_str": inspect.getsource(fn)},
+            {
+                "success": True,
+                "code_str": inspect.getsource(fn) if not tool.get("no_code") else None,
+            },
             skip_step_update=True,
         )
 
         if not store_result["success"]:
             return store_result
 
-        async for err, reran_id, new_data in rerun_step_and_dependents(
-            analysis_id, new_tool_run_id, steps, global_dict=global_dict
-        ):
-            print("Error: ", err)
-            print("Created and step with tool_id: ", reran_id)
-            # print("New data: ", new_data)
-            if new_data:
-                print(new_data)
-                update_report_data(
-                    analysis_id,
-                    "gen_steps",
-                    steps,
-                    replace=True,
-                )
-                return {
-                    "success": True,
-                    "tool_run_id": reran_id,
-                    "tool_run_data": new_data,
-                    "new_step": new_step,
-                }
-            else:
-                return {"success": False, "error_message": err}
+        # update report data
+        update_err = update_report_data(analysis_id, "gen_steps", [new_step])
+
+        if update_err:
+            return {"success": False, "error_message": update_err}
+
+        return {
+            "success": True,
+            "new_step": new_step,
+            "tool_run_id": new_tool_run_id,
+        }
 
     except Exception as e:
         print("Error creating new step: ", e)

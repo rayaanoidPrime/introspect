@@ -285,9 +285,6 @@ $grid: repeating-linear-gradient(
 }
 
 .graph {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   position: relative;
 
   .graph-node-loading {
@@ -467,12 +464,13 @@ $grid: repeating-linear-gradient(
     .hide {
       opacity: 0;
     }
+
+    &.graph-node-re-running {
+      border: 1px solid $medium-orange;
+    }
   }
   svg {
-    position: absolute;
     z-index: 1;
-    top: 0;
-    left: 0;
     path.link {
       stroke-dasharray: 450;
       stroke-dashoffset: 450;
@@ -915,6 +913,12 @@ $grid: repeating-linear-gradient(
             font-weight: bold;
             font-size: 0.8em;
             cursor: pointer;
+
+            &.tool-re-run-loading {
+              background-color: $text-very-light;
+              color: $text-light;
+              cursor: default;
+            }
           }
 
           .tool-input-list {

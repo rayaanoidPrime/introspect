@@ -67,7 +67,6 @@ const inputTypeToUI = {
   },
   str: (inputName, initialValue, onEdit) => {
     if (!initialValue) initialValue = "";
-    console.log(initialValue);
     return (
       <Input
         rootClassName="tool-input-value"
@@ -132,6 +131,7 @@ const inputTypeToUI = {
 
     return (
       <Select
+        showSearch
         placeholder="Select a value"
         rootClassName="add-step-df-select-ctr"
         onChange={(val) => {
@@ -169,8 +169,6 @@ export function AddStepInputList({
   newListValueDefault = "New Value",
 }) {
   const functionSignature = toolMetadata?.function_signature || [];
-
-  console.log(toolRunId, inputs);
 
   return (
     <div className="tool-input-list" key={toolRunId}>
