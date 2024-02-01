@@ -40,6 +40,7 @@ export function ToolResults({
   setPendingToolRunUpdates = () => {},
   toolRunDataCache = {},
   setToolRunDataCache = () => {},
+  setAnalysisData = () => {},
 }) {
   const [toolRunId, setToolRunId] = useState(null);
   const [toolRunData, setToolRunData] = useState(null);
@@ -147,8 +148,6 @@ export function ToolResults({
         }
       });
 
-      // console.log("here", newData);
-
       setToolRunId(newId);
       setToolRunData(newData);
       setEdited(newData.edited);
@@ -157,7 +156,7 @@ export function ToolResults({
     [toolRunDataCache, reactiveContext, analysisData]
   );
 
-  if (toolRunData) console.log(toolRunData);
+  console.log(toolRunData);
 
   function handleEdit({ analysis_id, tool_run_id, update_prop, new_val }) {
     if (!tool_run_id) return;
@@ -316,8 +315,9 @@ export function ToolResults({
           activeNode.data.isAddStepNode && (
             <AddStepUI
               analysisId={analysisId}
-              dag={dag}
               activeNode={activeNode}
+              dag={dag}
+              handleReRun={handleReRun}
             />
           )
         ))

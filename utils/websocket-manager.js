@@ -26,7 +26,9 @@ export function setupWebsocketManager(
       socket = new WebSocket(url);
 
       socket.onopen = function () {
-        console.log("reconnected to", url);
+        if (log) {
+          console.log("reconnected to", url);
+        }
 
         clearInterval(interval);
         resolve();

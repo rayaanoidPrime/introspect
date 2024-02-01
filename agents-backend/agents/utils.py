@@ -146,3 +146,19 @@ def log_str(msg=""):
 
 def warn_str(msg=""):
     return f"{Fore.YELLOW}{Style.BRIGHT}{msg}{Style.RESET_ALL}"
+
+
+def log_success(msg=""):
+    print(f"{Fore.GREEN}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
+
+
+def log_error(msg=""):
+    print(f"{Fore.RED}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
+
+
+def log_msg(msg=""):
+    print(f"{Fore.BLUE}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
+
+
+def log_warn(msg=""):
+    print(f"{Fore.YELLOW}{Style.BRIGHT}{msg}{Style.RESET_ALL}")

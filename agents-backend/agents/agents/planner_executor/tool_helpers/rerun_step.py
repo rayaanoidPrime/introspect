@@ -6,7 +6,12 @@ from agents.planner_executor.execute_tool import execute_tool
 
 # from gcs_utils import file_exists_in_gcs, get_file_from_gcs
 from agents.planner_executor.tool_helpers.core_functions import *
-from utils import error_str, log_str, success_str
+from utils import (
+    log_str,
+    log_msg,
+    log_error,
+    log_success,
+)
 from agents.planner_executor.tool_helpers.core_functions import *
 import pandas as pd
 import traceback
@@ -43,10 +48,8 @@ async def rerun_step_and_dependents(analysis_id, tool_run_id, steps, global_dict
                 if type(inp) == str and inp.startswith("global_dict."):
                     var = inp.replace("global_dict.", "")
                     if var == output_nm:
-                        print(
-                            log_str(
-                                f"Found a step that uses the output of the step that was re run. Rerunning this step. "
-                            )
+                        log_msg(
+                            f"Found a step that uses the output of the step that was re run. Rerunning this step."
                         )
 
                         async for err, dependent_run_id, new_data in rerun_step_and_dependents(
@@ -94,21 +97,19 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
             # if it doesn't exist in global_dict, find the step that produces that output
             # so find the step that has the output_storage_key that matches the input
             for s in steps:
-                print(log_str(f"Looking for input {var} for step."))
+                log_msg(f"Looking for input {var} for step.")
                 if var in s["outputs_storage_keys"]:
                     f_name = s["tool_run_id"] + "_output-" + var + ".feather"
                     err, tool_run_data = await get_tool_run(s["tool_run_id"])
 
                     if err:
-                        print(error_str(f"Error getting tool run data: {err}"))
+                        log_error(f"Error getting tool run data: {err}")
                         yield err, s["tool_run_id"], None
 
                     source_tool = tool_run_data["tool_name"]
 
-                    print(
-                        log_str(
-                            f"Looks like input {var} was generated using the tool {source_tool}. Checking if the results exist or the tool has been edited."
-                        )
+                    log_msg(
+                        f"Looks like input {var} was generated using the tool {source_tool}. Checking if the results exist or the tool has been edited."
                     )
 
                     # check if the file exists
@@ -116,17 +117,8 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
                     f_path = os.path.join(report_assets_dir, "datasets", f_name)
                     if not tool_run_data["edited"]:
                         if os.path.isfile(f_path):
-                            print(log_str(f"Input {var} found in the file system."))
+                            log_msg(f"Input {var} found in the file system.")
                             found = True
-
-                        # elif await file_exists_in_gcs(f_path):
-                        #     print(log_str(f"Input {var} found in GCS."))
-                        #     # load the file and replace the global_dict.variable_name reference with the dataset
-                        #     err = await get_file_from_gcs(f_path)
-                        #     if err:
-                        #         found = False
-                        #     else:
-                        #         found = True
 
                         if found:
                             df = pd.read_feather(f_path)
@@ -136,13 +128,15 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
                     if not found or tool_run_data["edited"]:
                         # if file doesn't exist or was unable to be recovered from gcs or file system, or the tool was edited, run the rerun_step function recursively on the target_step
                         if tool_run_data["edited"]:
-                            print(
-                                error_str(
-                                    f"The tool {source_tool} associated with the input {var} was edited. Re running."
-                                )
+                            log_error(
+                                f"The tool {source_tool} associated with the input {var} was edited. Re running."
                             )
                         else:
                             print(f"Input {var} not found for step. Re running.")
+
+                        # yield a pre run message
+                        # that just notifies the front end what is going to be re run
+                        yield None, None, {"pre_tool_run_message": s["tool_run_id"]}
 
                         async for err, parent_step_id, new_data in rerun_step_and_parents(
                             analysis_id,
@@ -156,11 +150,13 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
 
     # once inputs are prepared, actually re run the step
     err, tool_run_data = await get_tool_run(tool_run_id)
-    print(log_str(f"Running step {tool_run_id}"))
+
     if err:
-        print(error_str(f"Error getting tool run data: {err}{Style.RESET_ALL}"))
+        log_error(f"Error getting tool run data: {err}{Style.RESET_ALL}")
 
         yield err, tool_run_id, None
+
+    log_msg(f"Running step {tool_run_id}")
 
     tool_run_details = tool_run_data.get("tool_run_details")
 
@@ -171,7 +167,11 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
     print("Inputs resolved. Running tool: ", f_nm)
     resolved_inputs = resolve_input(target_step["inputs"], global_dict)
 
-    print(log_str(f"Running tool {f_nm} with inputs {resolved_inputs}"))
+    log_msg(f"Running tool {f_nm} with inputs {resolved_inputs}")
+
+    # yield a pre run message
+    # that just notifies the front end what is going to be re run
+    yield None, None, {"pre_tool_run_message": tool_run_id}
 
     # if this tool is data_fetcher
     # we need to check if the initial inputs to the function have changed
@@ -217,35 +217,27 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
                     {output_nm: {"data": result}},
                 )
                 if not update_res["success"]:
-                    print(
-                        error_str(
-                            f"Error saving the outputs of re running step: {update_res['error_message']}"
-                        )
+                    log_error(
+                        f"Error saving the outputs of re running step: {update_res['error_message']}"
                     )
+
                     new_data = None
                     err = update_res["error_message"]
                 else:
                     new_data = update_res["tool_run_data"]
-                    print(
-                        success_str(f"Successfully saved output of running tool:"), f_nm
-                    )
+                    log_success(f"Successfully saved output of running tool:" + f_nm)
             else:
                 # if there was an error, store new tool result with that error
                 update_res = await update_tool_run_data(
                     analysis_id, tool_run_id, "error_message", err
                 )
                 if not update_res["success"]:
-                    print(
-                        error_str(
-                            f"Error re running step: {update_res['error_message']}"
-                        )
-                    )
+                    log_error(f"Error re running step: {update_res['error_message']}")
+
                 else:
-                    print(
-                        error_str(
-                            f"Had errors, but managed to save output of running tool: "
-                            + f_nm
-                        ),
+                    log_error(
+                        f"Had errors, but managed to save output of running tool: "
+                        + f_nm
                     )
                     new_data = update_res["tool_run_data"]
 
@@ -272,17 +264,10 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
                 store_res = await store_tool_run(analysis_id, target_step, result)
 
                 if not store_res["success"]:
-                    print(
-                        error_str(
-                            f"Error re running step: {store_res['error_message']}"
-                        )
-                    )
+                    log_error(f"Error re running step: {store_res['error_message']}")
+
                 else:
-                    print(
-                        success_str(
-                            f"Successfully saved output of running tool: " + f_nm
-                        )
-                    )
+                    log_success(f"Successfully saved output of running tool: " + f_nm)
                     new_data = store_res["tool_run_data"]
 
             else:
@@ -291,20 +276,15 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
                     analysis_id, tool_run_id, "error_message", err
                 )
                 if not update_res["success"]:
-                    print(
-                        error_str(
-                            f"Error re running step: {update_res['error_message']}"
-                        )
-                    )
+                    log_error(f"Error re running step: {update_res['error_message']}")
+
                 else:
-                    print(
-                        error_str(
-                            f"Had errors, but managed to save output of running tool: "
-                            + f_nm
-                        ),
+                    log_error(
+                        f"Had errors, but managed to save output of running tool: "
+                        + f_nm
                     )
                     new_data = update_res["tool_run_data"]
-                print(error_str(f"Error re running step: {err}"))
+                log_error(f"Error re running step: {err}")
 
             yield err, tool_run_id, new_data
 
@@ -312,13 +292,9 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
     # with the resolved inputs
     else:
         code_str = tool_run_details["code_str"]
-        # if there's no code_str, it's either global_dict_data_fetcher_and_aggregator or a new step is being generated
-        # get its code_str
+        # if there's no code_str, get its code_str
         if not code_str:
-            if f_nm == "global_dict_data_fetcher_and_aggregator":
-                code_str = inspect.getsource(global_dict_data_fetcher_and_aggregator)
-            else:
-                code_str = inspect.getsource(tool_name_dict[f_nm])
+            code_str = inspect.getsource(tool_name_dict[f_nm]["fn"])
 
         # add a line calling the function and spread the inputs
         # define the function
@@ -348,12 +324,10 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
         store_res = await store_tool_run(analysis_id, target_step, result)
 
         if not store_res["success"]:
-            print(error_str(f"Error storing step: {store_res['error_message']}"))
+            log_error(f"Error storing step: {store_res['error_message']}")
             err = store_res["error_message"]
         else:
-            print(
-                success_str(f"Successfully saved output of running tool: " + f_nm),
-            )
+            log_success(f"Successfully saved output of running tool: " + f_nm)
             new_data = store_res["tool_run_data"]
 
         if not err:
@@ -363,8 +337,8 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
                     global_dict[out] = result["outputs"][i]["data"]
                     global_dict[out].name = out
         else:
-            print(error_str(f"Error re running step: {err}"))
+            log_error(f"Error re running step: {err}")
 
         yield err, tool_run_id, new_data
 
-    print(success_str(f"Finished running tool: " + f_nm))
+    log_success(f"Finished running tool: " + f_nm)
