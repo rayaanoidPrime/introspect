@@ -3,7 +3,7 @@ import traceback
 import datetime
 import uuid
 import pandas as pd
-from sqlalchemy import create_engine, select, update, insert
+from sqlalchemy import create_engine, select, update, insert, delete
 from sqlalchemy.ext.automap import automap_base
 from agents.planner_executor.tool_helpers.toolbox_manager import all_toolboxes
 from agents.planner_executor.tool_helpers.core_functions import (
@@ -463,6 +463,31 @@ async def get_doc_data(doc_id, api_key, username, col_name="doc_blocks"):
         return err, doc_data
 
 
+async def delete_doc(doc_id):
+    err = None
+    try:
+        with engine.begin() as conn:
+            # first get the data
+            rows = conn.execute(select(Docs).where(Docs.doc_id == doc_id))
+
+            if rows.rowcount != 0:
+                print("Deleting document with id: ", doc_id)
+                conn.execute(delete(Docs).where(Docs.doc_id == doc_id))
+                print("Deleted doc with id: ", doc_id)
+            else:
+                err = "Doc not found."
+                print("\n\n\n")
+                print(err)
+                print("\n\n\n")
+                raise ValueError(err)
+    except Exception as e:
+        err = str(e)
+        print(e)
+        traceback.print_exc()
+    finally:
+        return err
+
+
 async def update_doc_data(doc_id, col_names=[], new_data={}):
     err = None
     if len(col_names) == 0 and len(new_data) == 0:
@@ -661,6 +686,7 @@ async def get_all_docs(username):
                     doc = row._mapping
                     for recent_doc in doc["recent_docs"]:
                         # get the doc data from the docs table
+                        # this will skip docs that have been deleted because of the where clause
                         match = conn.execute(
                             select(
                                 Docs.__table__.columns["doc_id"],

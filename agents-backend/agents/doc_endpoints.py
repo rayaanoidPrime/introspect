@@ -28,6 +28,7 @@ from db_utils import (
     get_table_data,
     get_all_analyses,
     update_tool_run_data,
+    delete_doc,
 )
 
 from utils import get_metadata
@@ -626,3 +627,27 @@ async def create_new_step(request: Request):
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
     return
+
+
+@router.post("/delete_doc")
+async def delete_doc_endpoint(request: Request):
+    """
+    Delete a document using the id passed.
+    """
+    try:
+        data = await request.json()
+        doc_id = data.get("doc_id")
+
+        if doc_id is None or type(doc_id) != str:
+            return {"success": False, "error_message": "Invalid document id."}
+
+        err = await delete_doc(doc_id)
+
+        if err:
+            return {"success": False, "error_message": err}
+
+        return {"success": True}
+    except Exception as e:
+        print("Error deleting doc: ", e)
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}

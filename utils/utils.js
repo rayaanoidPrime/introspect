@@ -22,7 +22,7 @@ export const getApiToken = async (
     });
   } catch (e) {
     router.push(errorRoute);
-    return;
+    return { success: false, error_message: e };
   }
   const json = await response.json();
   return json;
@@ -42,7 +42,7 @@ export const getAnalysis = async (reportId) => {
       }),
     });
   } catch (e) {
-    return;
+    return { success: false, error_message: e };
   }
   const json = await response.json();
   return json;
@@ -72,7 +72,7 @@ export const createAnalysis = async (
       }),
     });
   } catch (e) {
-    return;
+    return { success: false, error_message: e };
   }
   const json = await response.json();
   return json;
@@ -96,7 +96,7 @@ export const getAllDocs = async (apiToken, username) => {
     });
     return response.json();
   } catch (e) {
-    return;
+    return { success: false, error_message: e };
   }
 };
 
@@ -115,7 +115,7 @@ export const getTableData = async (tableId) => {
     });
     return response.json();
   } catch (e) {
-    return;
+    return { success: false, error_message: e };
   }
 };
 
@@ -134,7 +134,7 @@ export const getAllAnalyses = async (apiToken) => {
     });
     return response.json();
   } catch (e) {
-    return;
+    return { success: false, error_message: e };
   }
 };
 
@@ -153,7 +153,7 @@ export const getToolboxes = async (username) => {
     });
     return response.json();
   } catch (e) {
-    return;
+    return { success: false, error_message: e };
   }
 };
 
@@ -205,12 +205,31 @@ export const getToolRunData = async (toolRunId) => {
     });
     return response.json();
   } catch (e) {
-    return;
+    return { success: false, error_message: e };
   }
 };
 
 export const isNullOrUndefined = function (val) {
   return val === null || val === undefined;
+};
+
+export const deleteDoc = async (docId) => {
+  const url = setupBaseUrl("http", "delete_doc");
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        doc_id: docId,
+      }),
+    });
+    return response.json();
+  } catch (e) {
+    return { success: false, error_message: e };
+  }
 };
 
 export const toolDisplayNames = {
