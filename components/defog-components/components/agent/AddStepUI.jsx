@@ -18,10 +18,25 @@ export function AddStepUI({
   dag,
   handleReRun = () => {},
 }) {
+  console.log("Adding a new step...")
   const [selectedTool, setSelectedTool] = useState(
     activeNode?.data?.meta?.tool_name
   );
-  const [inputs, setInputs] = useState(activeNode?.data?.meta?.inputs || []);
+
+  // all the default inputs are null, except for pandas dataframes, which are the parent's output
+  const sanitizeInputs = (inputs) => {
+    // if none of the inputs start with "global_dict.", then add it to the first input that is a string
+    
+    if (inputs.filter((i) => typeof(i) === "string").filter((i) => i.startsWith("global_dict.")).length === 0) {
+      const firstStringInputIdx = inputs.findIndex((i) => typeof i === "string");
+      if (firstStringInputIdx !== -1) {
+        inputs[firstStringInputIdx] = "global_dict." + inputs[firstStringInputIdx];
+      }
+    }
+    return inputs;
+  };
+
+  const [inputs, setInputs] = useState(sanitizeInputs(activeNode?.data?.meta?.inputs || []));
   const [outputs, setOutputs] = useState(["output_" + v4().split("-")[0]]);
   const [loading, setLoading] = useState(false);
 
@@ -48,8 +63,7 @@ export function AddStepUI({
 
   useEffect(() => {
     setSelectedTool(activeNode?.data?.meta?.tool_name);
-
-    setInputs(activeNode?.data?.meta?.inputs || []);
+    setInputs(sanitizeInputs(activeNode?.data?.meta?.inputs || []));
     setLoading(activeNode?.data?.meta?.loading || false);
   }, [activeNode?.data?.id]);
 
