@@ -131,7 +131,6 @@ export default function StepsDag({
             // add a child that is basically a plus icon to add another node
             g["nodes"][addStepNodeId] = {
               id: addStepNodeId,
-              data: { id: addStepNodeId },
               isAddStepNode: true,
               title: "+",
               key: addStepNodeId,

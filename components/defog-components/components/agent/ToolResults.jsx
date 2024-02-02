@@ -52,6 +52,9 @@ export function ToolResults({
   useEffect(() => {
     console.log(toolRunData);
   }, [toolRunData]);
+  useEffect(() => {
+    console.log(activeNode);
+  }, [activeNode]);
 
   const getNewData = useCallback(
     async (newId) => {
@@ -239,90 +242,84 @@ export function ToolResults({
             lottie={<Lottie animationData={LoadingLottie} loop={true} />}
           />
         </div>
-      ) : (
-        activeNode &&
-        toolRunData &&
-        (toolRunData.error_message && !activeNode.data.isTool ? (
-          <ToolRunError
-            error_message={toolRunData.error_message}
-          ></ToolRunError>
-        ) : activeNode.data.isTool ? (
-          <>
-            <ErrorBoundary maybeOldAnalysis={true}>
-              {toolRunData.error_message && (
-                <ToolRunError
-                  error_message={toolRunData.error_message}
-                ></ToolRunError>
-              )}
-              {edited && (
-                <ToolReRun
-                  onClick={() => {
-                    handleReRun(toolRunId);
-                  }}
-                ></ToolReRun>
-              )}
-              <h1 className="tool-name">
-                {toolDisplayNames[toolRunData.step.tool_name]}
-              </h1>
-              <h1 className="inputs-header">INPUTS</h1>
-              <ToolRunInputList
-                analysisId={analysisId}
-                toolRunId={toolRunId}
-                step={toolRunData.step}
-                availableOutputNodes={availableOutputNodes}
-                setActiveNode={setActiveNode}
-                handleEdit={handleEdit}
-              ></ToolRunInputList>
-              <h1 className="details-header">OUTPUTS</h1>
-              <ToolRunOutputList
-                analysisId={analysisId}
-                toolRunId={toolRunId}
-                step={toolRunData.step}
-                codeStr={toolRunData?.tool_run_details?.code_str}
-                sql={toolRunData?.tool_run_details?.sql}
-                handleEdit={handleEdit}
-                availableOutputNodes={availableOutputNodes}
-                setActiveNode={setActiveNode}
-              ></ToolRunOutputList>
-            </ErrorBoundary>
-          </>
-        ) : toolRunData?.parsedOutputs[activeNode.data.id] ? (
-          <>
-            <ToolResultsTable
-              toolRunId={toolRunId}
-              tableData={toolRunData?.parsedOutputs[activeNode.data.id]["data"]}
-              chartImages={
-                toolRunData?.parsedOutputs[activeNode.data.id]["chart_images"]
-              }
-              reactiveVars={
-                toolRunData?.parsedOutputs[activeNode.data.id]["reactive_vars"]
-              }
-            />
-            <div className="tool-run-analysis">
-              <div className="tool-run-analysis-text">
-                {toolRunData?.parsedOutputs[activeNode.data.id]["analysis"] ? (
-                  <p style={{ whiteSpace: "pre-wrap" }} className="small code">
-                    {toolRunData?.parsedOutputs[activeNode.data.id]["analysis"]}
-                  </p>
-                ) : (
-                  <ToolRunAnalysis
-                    question={analysisData.user_question}
-                    data_csv={toolRunData?.outputs[activeNode.data.id]["data"]}
-                  />
-                )}
-              </div>
-            </div>
-          </>
-        ) : (
-          activeNode.data.isAddStepNode && (
-            <AddStepUI
+      ) : activeNode && toolRunData && activeNode.data.isAddStepNode ? (
+        <AddStepUI
+          analysisId={analysisId}
+          activeNode={activeNode}
+          dag={dag}
+          handleReRun={handleReRun}
+        />
+      ) : toolRunData.error_message && !activeNode.data.isTool ? (
+        <ToolRunError error_message={toolRunData.error_message}></ToolRunError>
+      ) : activeNode.data.isTool ? (
+        <>
+          <ErrorBoundary maybeOldAnalysis={true}>
+            {toolRunData.error_message && (
+              <ToolRunError
+                error_message={toolRunData.error_message}
+              ></ToolRunError>
+            )}
+            {edited && (
+              <ToolReRun
+                onClick={() => {
+                  handleReRun(toolRunId);
+                }}
+              ></ToolReRun>
+            )}
+            <h1 className="tool-name">
+              {toolDisplayNames[toolRunData.step.tool_name]}
+            </h1>
+            <h1 className="inputs-header">INPUTS</h1>
+            <ToolRunInputList
               analysisId={analysisId}
-              activeNode={activeNode}
-              dag={dag}
-              handleReRun={handleReRun}
-            />
-          )
-        ))
+              toolRunId={toolRunId}
+              step={toolRunData.step}
+              availableOutputNodes={availableOutputNodes}
+              setActiveNode={setActiveNode}
+              handleEdit={handleEdit}
+            ></ToolRunInputList>
+            <h1 className="details-header">OUTPUTS</h1>
+            <ToolRunOutputList
+              analysisId={analysisId}
+              toolRunId={toolRunId}
+              step={toolRunData.step}
+              codeStr={toolRunData?.tool_run_details?.code_str}
+              sql={toolRunData?.tool_run_details?.sql}
+              handleEdit={handleEdit}
+              availableOutputNodes={availableOutputNodes}
+              setActiveNode={setActiveNode}
+            ></ToolRunOutputList>
+          </ErrorBoundary>
+        </>
+      ) : toolRunData?.parsedOutputs[activeNode.data.id] ? (
+        <>
+          <ToolResultsTable
+            toolRunId={toolRunId}
+            tableData={toolRunData?.parsedOutputs[activeNode.data.id]["data"]}
+            chartImages={
+              toolRunData?.parsedOutputs[activeNode.data.id]["chart_images"]
+            }
+            reactiveVars={
+              toolRunData?.parsedOutputs[activeNode.data.id]["reactive_vars"]
+            }
+          />
+          <div className="tool-run-analysis">
+            <div className="tool-run-analysis-text">
+              {toolRunData?.parsedOutputs[activeNode.data.id]["analysis"] ? (
+                <p style={{ whiteSpace: "pre-wrap" }} className="small code">
+                  {toolRunData?.parsedOutputs[activeNode.data.id]["analysis"]}
+                </p>
+              ) : (
+                <ToolRunAnalysis
+                  question={analysisData.user_question}
+                  data_csv={toolRunData?.outputs[activeNode.data.id]["data"]}
+                />
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <></>
       )}
     </div>
   );

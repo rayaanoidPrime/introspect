@@ -1446,8 +1446,9 @@ $grid: repeating-linear-gradient(
     margin: 1em 0;
   }
   .add-step-df-select-ctr {
-    min-width: 10px;
+    min-width: 100px;
     font-size: 18px;
+    height: 30px;
     .ant-select-selector {
       color: $text-medium;
       * {
