@@ -146,7 +146,7 @@ export function AddStepUI({
             if (sig.type === "pandas.core.frame.DataFrame") {
               try {
                 activeNode.data.meta.inputs[idx] =
-                  activeNode?.data?.parentIds?.[0];
+                  "global_dict." + activeNode?.data?.parentIds?.[0];
               } catch (e) {
                 console.log(e);
               }
