@@ -34,7 +34,8 @@ export function AddStepUI({
           (d) =>
             !d.data.isTool &&
             d.data.id !== activeNode.data.id &&
-            !d.data.isError
+            !d.data.isError &&
+            !d.data.isAddStepNode
         )
         .map((ancestor) => ancestor);
 
@@ -112,9 +113,23 @@ export function AddStepUI({
         options={toolOptions}
         value={selectedTool}
         onChange={(value) => {
+          if (!activeNode.data.meta.inputs) return;
+
           activeNode.data.meta.inputs = Array(
             toolsMetadata[value].function_signature.length
           ).fill(null);
+
+          // if there's a pandas dataframe type in the inputs, default that to the parent's output
+          toolsMetadata[value].function_signature.forEach((sig, idx) => {
+            if (sig.type === "pandas.core.frame.DataFrame") {
+              try {
+                activeNode.data.meta.inputs[idx] =
+                  activeNode?.data?.parentIds?.[0];
+              } catch (e) {
+                console.log(e);
+              }
+            }
+          });
 
           setInputs(activeNode.data.meta.inputs.slice());
 
@@ -133,6 +148,7 @@ export function AddStepUI({
             toolRunId={activeNode.data.id}
             toolMetadata={toolsMetadata[selectedTool]}
             availableInputDfs={availableInputDfs}
+            analysisId={analysisId}
             inputs={inputs}
             onEdit={(idx, prop, newVal) => {
               activeNode.data.meta.inputs[idx] = newVal;

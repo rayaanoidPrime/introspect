@@ -467,12 +467,9 @@ async def delete_doc(doc_id):
     err = None
     try:
         with engine.begin() as conn:
-            # first get the data
-            rows = conn.execute(select(Docs).where(Docs.doc_id == doc_id))
+            result = conn.execute(delete(Docs).where(Docs.doc_id == doc_id))
 
-            if rows.rowcount != 0:
-                print("Deleting document with id: ", doc_id)
-                conn.execute(delete(Docs).where(Docs.doc_id == doc_id))
+            if result.rowcount != 0:
                 print("Deleted doc with id: ", doc_id)
             else:
                 err = "Doc not found."
