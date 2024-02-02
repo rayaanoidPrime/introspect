@@ -26,7 +26,7 @@ j_str = json.dumps(j, indent=2)
 
 j_str = "export const toolsMetadata = " + j_str
 
-with open("../../utils/tools_metadata.js", "w") as f:
+with open("../../../utils/tools_metadata.js", "w") as f:
     f.write(j_str)
     f.close()
 
