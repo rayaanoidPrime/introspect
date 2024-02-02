@@ -291,7 +291,6 @@ export default function StepsDag({
                     }}
                     key={d.data.id}
                     onClick={() => {
-                      console.log(d.data);
                       setActiveNode(d);
                     }}
                   >

@@ -236,15 +236,7 @@ export function ToolResults({
 
   const isStepReRunning = reRunningSteps.indexOf(toolRunId) > -1;
 
-  console.log(
-    toolRunData,
-    activeNode,
-    activeNode?.data,
-    reRunningSteps,
-    toolRunId,
-    isStepReRunning,
-    toolRunDataLoading
-  );
+  console.log(reRunningSteps);
 
   return !activeNode || !activeNode.data || !toolRunData ? (
     <></>

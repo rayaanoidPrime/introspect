@@ -255,6 +255,8 @@ export const AnalysisAgent = ({
         `Something went wrong while re running ${res.tool_run_id}. Please try again.`
       );
       message.error(res.error_message);
+      // clear rerunning steps
+      setRerunningSteps([]);
       return;
     }
 
