@@ -238,8 +238,15 @@ export const AnalysisAgent = ({
     // 2. the result of a re run of a step
     if (res.pre_tool_run_message) {
       // means this is just a notification
+      setRerunningSteps((prev) => {
+        const n = prev.slice();
+        n.push(res.pre_tool_run_message);
+        return n;
+      });
+
       return;
     }
+
     // remove the tool run id from rerunning steps
     setRerunningSteps((prev) => prev.filter((d) => d !== res.tool_run_id));
 
@@ -504,11 +511,6 @@ export const AnalysisAgent = ({
         return;
       }
 
-      // preRunActions = {
-      // "action": "add_step",
-      // "new_step": {...}
-      // }
-
       if (
         preRunActions &&
         preRunActions?.action === "add_step" &&
@@ -521,15 +523,6 @@ export const AnalysisAgent = ({
           return newAnalysisData;
         });
       }
-
-      const desc = [...activeNode.descendants()]
-        .filter((d) => d.data.isTool)
-        .map((d) => d.data.meta.tool_run_id);
-      const anc = [...activeNode.ancestors()]
-        .filter((d) => d.data.isTool)
-        .map((d) => d.data.meta.tool_run_id);
-
-      setRerunningSteps(Array.from(new Set([...desc, ...anc])));
 
       if (reRunManager && reRunManager.send) {
         reRunManager.send({

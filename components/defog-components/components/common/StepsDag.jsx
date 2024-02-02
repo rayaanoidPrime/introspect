@@ -219,22 +219,22 @@ export default function StepsDag({
 
     // // update these with the latest values from [...dag.links()]
     // newDagLinks.forEach((d) => {
+    const n = [...dag.nodes()];
 
     setGraph(g);
     setDag(dag);
     setDagLinks([...dag.links()]);
-    setNodes([...dag.nodes()]);
+    setNodes(n);
     // also set active node to the leaf node
     try {
-      // last node in topological order which isn't an add step node
-      const lastNode = dag
-        .topological()
-        .reverse()
-        .find((d) => {
-          return !d.data.isAddStepNode;
-        });
-
-      setActiveNode(lastNode);
+      // last step node as active
+      const lastStep = steps?.[steps.length - 1];
+      // get the first output of this step
+      const lastStepOutput = lastStep?.["outputs_storage_keys"]?.[0];
+      const lastStepOutputNode = n?.find((d) => d.data.id === lastStepOutput);
+      if (lastStepOutputNode) {
+        setActiveNode(lastStepOutputNode);
+      }
     } catch (e) {
       console.log("Error setting active node: ", e);
     }
@@ -291,6 +291,7 @@ export default function StepsDag({
                     }}
                     key={d.data.id}
                     onClick={() => {
+                      console.log(d.data);
                       setActiveNode(d);
                     }}
                   >

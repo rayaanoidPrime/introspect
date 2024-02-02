@@ -47,14 +47,15 @@ export function ToolResults({
   const [toolRunDataLoading, setToolRunDataLoading] = useState(false);
   const reactiveContext = useContext(ReactiveVariablesContext);
   const [edited, setEdited] = useState(false);
-  const [isStepReRunning, setIsStepReRunning] = useState(false);
+  // const [isStepReRunning, setIsStepReRunning] = useState(false);
 
-  useEffect(() => {
-    console.log(toolRunData);
-  }, [toolRunData]);
-  useEffect(() => {
-    console.log(activeNode);
-  }, [activeNode]);
+  // useEffect(() => {
+  //   console.log(toolRunData);
+  // }, [toolRunData]);
+
+  // useEffect(() => {
+  //   console.log(activeNode);
+  // }, [activeNode]);
 
   const getNewData = useCallback(
     async (newId) => {
@@ -219,19 +220,33 @@ export function ToolResults({
     getToolRun();
   }, [activeNode, reRunningSteps]);
 
-  useEffect(() => {
-    if (!toolRunId) return;
+  // useEffect(() => {
+  //   if (!toolRunId) return;
 
-    if (toolRunId && reRunningSteps.indexOf(toolRunId) > -1) {
-      setIsStepReRunning(true);
-    } else {
-      // if isStepReRunning is being changed from true to false
-      // then get new data
-      setIsStepReRunning(false);
-    }
-  }, [reRunningSteps]);
+  //   console.log(reRunningSteps, toolRunId);
 
-  return !activeNode || !activeNode.data ? (
+  //   if (toolRunId && reRunningSteps.indexOf(toolRunId) > -1) {
+  //     setIsStepReRunning(true);
+  //   } else {
+  //     // if isStepReRunning is being changed from true to false
+  //     // then get new data
+  //     setIsStepReRunning(false);
+  //   }
+  // }, [reRunningSteps]);
+
+  const isStepReRunning = reRunningSteps.indexOf(toolRunId) > -1;
+
+  console.log(
+    toolRunData,
+    activeNode,
+    activeNode?.data,
+    reRunningSteps,
+    toolRunId,
+    isStepReRunning,
+    toolRunDataLoading
+  );
+
+  return !activeNode || !activeNode.data || !toolRunData ? (
     <></>
   ) : (
     <div className="tool-results-ctr" data-is-tool={activeNode.data.isTool}>
