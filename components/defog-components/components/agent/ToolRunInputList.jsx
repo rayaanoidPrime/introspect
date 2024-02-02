@@ -1,5 +1,5 @@
 import { Input, Select } from "antd";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
 
 const inputTypeToUI = {
@@ -173,6 +173,7 @@ export function ToolRunInputList({
   availableOutputNodes = [],
   setActiveNode = () => {},
   handleEdit = () => {},
+  autoFocus = true,
 }) {
   //   parse inputs
   // if inputs doesn't start with global_dict, then it's it's type is whatever typeof returns
@@ -183,6 +184,8 @@ export function ToolRunInputList({
   const [functionSignature, setFunctionSignature] = useState(
     step.function_signature
   );
+
+  const ctr = useRef(null);
 
   // index is index in the step["inputs"] array
   function onEdit(index, prop, newVal) {
@@ -202,8 +205,15 @@ export function ToolRunInputList({
     setFunctionSignature(step.function_signature);
   }, [step]);
 
+  useEffect(() => {
+    // if autoFocus, focus onthe first input
+    if (ctr && autoFocus) {
+      ctr?.current?.querySelector("input[type=text]")?.focus();
+    }
+  });
+
   return (
-    <div className="tool-input-list" key={toolRunId}>
+    <div className="tool-input-list" key={toolRunId} ref={ctr}>
       {inputs.map((input, i) => {
         return (
           <div key={i + "_" + toolRunId} className="tool-input">

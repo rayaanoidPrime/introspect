@@ -1,5 +1,5 @@
 import { Input, Select } from "antd";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
 
 const onHover = (ev, label, analysisId) => {
@@ -43,6 +43,7 @@ const inputTypeToUI = {
           return (
             <span key={inputName}>
               <Input
+                autoFocus={config?.autoFocus}
                 defaultValue={val}
                 size="small"
                 onChange={(ev) => {
@@ -68,10 +69,11 @@ const inputTypeToUI = {
       </span>
     );
   },
-  str: (inputName, initialValue, onEdit) => {
+  str: (inputName, initialValue, onEdit, config = {}) => {
     if (!initialValue) initialValue = "";
     return (
       <Input
+        autoFocus={config?.autoFocus}
         rootClassName="tool-input-value"
         defaultValue={initialValue || ""}
         size="small"
@@ -81,9 +83,10 @@ const inputTypeToUI = {
       />
     );
   },
-  bool: (inputName, initialValue, onEdit) => {
+  bool: (inputName, initialValue, onEdit, config = {}) => {
     return (
       <Select
+        autoFocus={config?.autoFocus}
         rootClassName="tool-input-value"
         placeholder="Select a value"
         defaultValue={initialValue || null}
@@ -99,8 +102,9 @@ const inputTypeToUI = {
       />
     );
   },
-  int: (inputName, initialValue, onEdit) => (
+  int: (inputName, initialValue, onEdit, config = {}) => (
     <Input
+      autoFocus={config?.autoFocus}
       rootClassName="tool-input-value"
       defaultValue={initialValue || ""}
       type="number"
@@ -110,8 +114,9 @@ const inputTypeToUI = {
       }}
     />
   ),
-  float: (inputName, initialValue, onEdit) => (
+  float: (inputName, initialValue, onEdit, config = {}) => (
     <Input
+      autoFocus={config?.autoFocus}
       size="small"
       type="number"
       defaultValue={initialValue}
@@ -124,7 +129,7 @@ const inputTypeToUI = {
     inputName,
     initialValue,
     onEdit,
-    config = { availableInputDfs: [], analysisId: "" }
+    config = { availableInputDfs: [], analysisId: "", autoFocus: false }
   ) => {
     const options =
       config?.availableInputDfs?.map((df) => {
@@ -184,11 +189,20 @@ export function AddStepInputList({
   inputs = [],
   onEdit = () => {},
   newListValueDefault = "New Value",
+  autoFocus = true,
 }) {
   const functionSignature = toolMetadata?.function_signature || [];
+  const ctr = useRef(null);
+
+  useEffect(() => {
+    // if autoFocus, focus onthe first input
+    if (ctr && autoFocus) {
+      ctr?.current?.querySelector("input[type=text]")?.focus();
+    }
+  });
 
   return (
-    <div className="tool-input-list" key={toolRunId}>
+    <div className="tool-input-list" key={toolRunId} ref={ctr}>
       {inputs.map((input, i) => {
         return (
           <div key={i + "_" + toolRunId} className="tool-input">

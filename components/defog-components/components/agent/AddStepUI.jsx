@@ -18,7 +18,6 @@ export function AddStepUI({
   dag,
   handleReRun = () => {},
 }) {
-  console.log("Adding a new step...");
   const [selectedTool, setSelectedTool] = useState(
     activeNode?.data?.meta?.tool_name
   );
@@ -192,6 +191,7 @@ export function AddStepUI({
                 },
               ],
             }}
+            autoFocus={false}
             newListValueDefault={() => "output_" + v4().split("-")[0]}
             availableInputDfs={availableInputDfs}
             inputs={[outputs]}

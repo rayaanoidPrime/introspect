@@ -1449,12 +1449,15 @@ $grid: repeating-linear-gradient(
   .add-step-df-select-ctr {
     min-width: 100px;
     font-size: 18px;
-    height: 30px;
+    min-height: 30px;
+    max-height: none !important;
     input {
-      height: 30px !important;
+      min-height: 30px !important;
+      max-height: none !important;
     }
     .ant-select-selector {
-      height: 30px;
+      min-height: 30px;
+      max-height: none !important;
       color: $text-medium;
       * {
         font-family: $code;
