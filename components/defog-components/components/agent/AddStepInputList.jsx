@@ -2,12 +2,37 @@ import { Input, Select } from "antd";
 import React, { useEffect, useMemo, useState } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
 
+const onHover = (ev, label, analysisId) => {
+  // get the closest .analysis-content to the mouseovered element
+  const closest = document.querySelector(
+    `div[data-analysis-id="${analysisId}"]`
+  );
+  if (!closest) return;
+  // now get the closest .graph-node with the class name output
+  const node = closest.querySelector(`.graph-node.${label}`);
+  if (!node) return;
+  // add a class highlighted
+  node.classList.add("highlighted");
+};
+const onHoverOut = (ev, label, analysisId) => {
+  // get the closest .analysis-content to the mouseovered element
+  const closest = document.querySelector(
+    `div[data-analysis-id="${analysisId}"]`
+  );
+  if (!closest) return;
+  // now get the closest .graph-node with the class name output
+  const node = closest.querySelector(`.graph-node.${label}`);
+  if (!node) return;
+  // remove the class highlighted
+  node.classList.remove("highlighted");
+};
+
 const inputTypeToUI = {
   list: (
     inputName,
     initialValue,
     onEdit,
-    opts = { newListValueDefault: "New Value" }
+    config = { newListValueDefault: "New Value" }
   ) => {
     if (!initialValue || !Array.isArray(initialValue)) initialValue = [];
 
@@ -20,16 +45,6 @@ const inputTypeToUI = {
               <Input
                 defaultValue={val}
                 size="small"
-                // suffix={
-                //   <MdDeleteOutline
-                //     onClick={() =>
-                //       onEdit(
-                //         inputName,
-                //         initialValue.filter((v, j) => j !== i)
-                //       )
-                //     }
-                //   />
-                // }
                 onChange={(ev) => {
                   // replace the value at i with the new value
                   const newVal = initialValue.map((v, j) => {
@@ -49,18 +64,6 @@ const inputTypeToUI = {
             </span>
           );
         })}
-        {/* <div className="list-add">
-          <MdOutlineAddBox
-            onClick={() => {
-              onEdit(inputName, [
-                ...initialValue,
-                typeof opts.newListValueDefault === "function"
-                  ? opts.newListValueDefault()
-                  : opts.newListValueDefault,
-              ]);
-            }}
-          ></MdOutlineAddBox>
-        </div> */}
         <span className="list-bracket">]</span>
       </span>
     );
@@ -121,11 +124,12 @@ const inputTypeToUI = {
     inputName,
     initialValue,
     onEdit,
-    opts = { availableInputDfs: [] }
+    config = { availableInputDfs: [], analysisId: "" }
   ) => {
-    const options = opts.availableInputDfs.map((df) => {
-      return { label: df.data.id, value: "global_dict." + df.data.id };
-    });
+    const options =
+      config?.availableInputDfs?.map((df) => {
+        return { label: df.data.id, value: "global_dict." + df.data.id };
+      }) || [];
 
     // return <span className="tool-input-value type-df">{name_clipped}</span>;
 
@@ -140,14 +144,26 @@ const inputTypeToUI = {
         defaultValue={initialValue}
         optionRender={(option) => {
           return (
-            <div className="tool-input-data-value">
+            <div
+              className="tool-input-data-value"
+              onMouseOver={(ev) => onHover(ev, option.label, config.analysisId)}
+              onMouseOut={(ev) =>
+                onHoverOut(ev, option.label, config.analysisId)
+              }
+            >
               <span>{option?.label}</span>
             </div>
           );
         }}
         tagRender={(option) => {
           return (
-            <div className="tool-input-data-value">
+            <div
+              className="tool-input-data-value"
+              onMouseOver={(ev) => onHover(ev, option.label, config.analysisId)}
+              onMouseOut={(ev) =>
+                onHoverOut(ev, option.label, config.analysisId)
+              }
+            >
               <span>{option?.label}</span>
             </div>
           );
@@ -162,6 +178,7 @@ const inputTypeToUI = {
 
 export function AddStepInputList({
   toolRunId,
+  analysisId,
   toolMetadata,
   availableInputDfs = [],
   inputs = [],
@@ -186,6 +203,7 @@ export function AddStepInputList({
               {
                 availableInputDfs,
                 newListValueDefault,
+                analysisId,
               }
             )}
           </div>
