@@ -249,14 +249,14 @@ export function ToolResults({
           dag={dag}
           handleReRun={handleReRun}
         />
-      ) : toolRunData.error_message && !activeNode.data.isTool ? (
-        <ToolRunError error_message={toolRunData.error_message}></ToolRunError>
+      ) : toolRunData?.error_message && !activeNode.data.isTool ? (
+        <ToolRunError error_message={toolRunData?.error_message}></ToolRunError>
       ) : activeNode.data.isTool ? (
         <>
           <ErrorBoundary maybeOldAnalysis={true}>
-            {toolRunData.error_message && (
+            {toolRunData?.error_message && (
               <ToolRunError
-                error_message={toolRunData.error_message}
+                error_message={toolRunData?.error_message}
               ></ToolRunError>
             )}
             {edited && (
