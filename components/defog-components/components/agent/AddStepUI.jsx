@@ -106,7 +106,7 @@ export function AddStepUI({
 
             if (!newStepSuccess.success) {
               message.error(
-                newStepSuccess.error_message || "Something went wrong"
+                newStepSuccess?.error_message || "Something went wrong"
               );
               return;
             } else if (

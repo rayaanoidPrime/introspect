@@ -150,10 +150,10 @@ export const AnalysisAgent = ({
 
     console.log(response);
 
-    if (response.error_message) {
+    if (response?.error_message) {
       setStageDone(true);
       setAnalysisBusy(false);
-      message.error(response.error_message);
+      message.error(response?.error_message);
 
       // revert the next stage to the previous one
       setCurrentStage((prev) => {
@@ -254,7 +254,7 @@ export const AnalysisAgent = ({
       message.error(
         `Something went wrong while re running ${res.tool_run_id}. Please try again.`
       );
-      message.error(res.error_message);
+      message.error(res?.error_message);
       // clear rerunning steps
       setRerunningSteps([]);
       return;
@@ -301,7 +301,7 @@ export const AnalysisAgent = ({
       if (idx > -1) {
         newSteps[idx] = {
           ...newSteps[idx],
-          error_message: res.tool_run_data.error_message,
+          error_message: res?.tool_run_data?.error_message,
         };
       }
       return newSteps;
@@ -348,7 +348,7 @@ export const AnalysisAgent = ({
 
           if (!analysisData.success || !analysisData.report_data) {
             // stop loading, and delete this block
-            message.error(analysisData.error_message);
+            message.error(analysisData?.error_message);
             editor.removeBlocks([block]);
           } else {
             analysisData = analysisData.report_data;

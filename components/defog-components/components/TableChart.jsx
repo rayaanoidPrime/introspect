@@ -100,9 +100,9 @@ export function TableChart({
     console.log(msg);
     const res = JSON.parse(msg.data);
     console.log("Ran again response", res);
-    if (!res.success) {
-      if (res.error_message) {
-        message.error("Failed with error: " + res.error_message);
+    if (!res?.success) {
+      if (res?.error_message) {
+        message.error("Failed with error: " + res?.error_message);
       }
       setReRunning(false);
       return;
