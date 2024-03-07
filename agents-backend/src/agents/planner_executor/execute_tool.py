@@ -7,6 +7,7 @@ from typing import Tuple
 import traceback
 import inspect
 from utils import error_str, warn_str
+import asyncio
 
 
 def parse_function_signature(param_signatures, fn_name):
@@ -82,9 +83,23 @@ async def execute_tool(tool_name, tool_inputs, global_dict={}):
     for tool in tools:
         if tool["name"] == tool_name:
             fn = tool["fn"]
+            task = asyncio.create_task(fn(*tool_inputs, global_dict=global_dict))
             try:
                 # expand tool inputs
-                result = await fn(*tool_inputs, global_dict=global_dict)
+                # if it takes more than 120 seconds, then timeout
+                result = await asyncio.wait_for(task, timeout=2)
+            except asyncio.TimeoutError:
+                print(error_str(f"Error for tool {tool_name}: TimeoutError"))
+                result = {
+                    "error_message": "Tool {tool} was taking more 2 mins to run and was stopped. This might be due to a long running SQL query, or creating a very complex plot. Please try filtering your data for a faster execution"
+                }
+
+                task.cancel()
+                try:
+                    # Wait for the task cancellation to complete, catching any cancellation exceptions
+                    await task
+                except asyncio.CancelledError:
+                    print("Task was successfully cancelled upon timeout")
 
             # if keyerror, then error string will not have "key error" in it but just the name of the key
             except KeyError as e:
