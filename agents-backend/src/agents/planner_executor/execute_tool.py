@@ -91,7 +91,7 @@ async def execute_tool(tool_name, tool_inputs, global_dict={}):
             except asyncio.TimeoutError:
                 print(error_str(f"Error for tool {tool_name}: TimeoutError"))
                 result = {
-                    "error_message": "Tool {tool} was taking more 2 mins to run and was stopped. This might be due to a long running SQL query, or creating a very complex plot. Please try filtering your data for a faster execution"
+                    "error_message": f"Tool {tool} was taking more 2 mins to run and was stopped. This might be due to a long running SQL query, or creating a very complex plot. Please try filtering your data for a faster execution"
                 }
 
                 task.cancel()
