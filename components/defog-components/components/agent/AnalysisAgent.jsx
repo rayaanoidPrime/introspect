@@ -143,7 +143,16 @@ export const AnalysisAgent = ({
           (a, b) => agentRequestTypes.indexOf(a) - agentRequestTypes.indexOf(b)
         )
         .pop();
-      setCurrentStage(lastExistingStage);
+      // if lastExistingStage comes out to be "gen_steps", but there are 0 steps
+      // then the last existing stage is "clarify"
+      if (
+        lastExistingStage === "gen_steps" &&
+        !analysisData?.gen_steps?.steps?.length
+      ) {
+        setCurrentStage("clarify");
+      } else {
+        setCurrentStage(lastExistingStage);
+      }
     }
   }, [analysisData]);
 
@@ -252,14 +261,15 @@ export const AnalysisAgent = ({
 
         return newAnalysisData;
       });
+    } else {
+      // if the response doesn't have any output, set the stage to done
+      setStageDone(true);
+      setAnalysisBusy(false);
     }
+
     if (response.done) {
       setStageDone(true);
       setAnalysisBusy(false);
-      // if the length of steps is 0, set stage to clarify
-      if (rType === "gen_steps" && !analysisData?.gen_steps?.steps?.length) {
-        setCurrentStage("clarify");
-      }
     }
   }
   async function onReRunMessage(event) {
