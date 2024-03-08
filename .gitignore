@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+frontend/node_modules
 /.pnp
 .pnp.js
 .yarn/install-state.gz
@@ -10,10 +10,11 @@
 /coverage
 
 # next.js
-/.next/
+frontend/.next/
 
 # production
-/build
+frontend/build
+frontend/out
 
 # misc
 .DS_Store
@@ -38,7 +39,7 @@ defog-llm-cloud-function.py
 /out
 
 # playwright test stuff
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/playwright/.cache/
