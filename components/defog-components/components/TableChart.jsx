@@ -118,8 +118,6 @@ export function TableChart({
 
     async function setupSocket() {
       try {
-        // check if agents_endpoint variable contains the string localhost
-        // if it does, then we are running locally, so use ws instead of wss
         const urlToConnect = setupBaseUrl("ws", "table_chart");
         const mgr = await setupWebsocketManager(urlToConnect, onMessage);
         setSocketManager(mgr);

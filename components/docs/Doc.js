@@ -96,6 +96,7 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
       username: username,
       protocol: "ws",
     },
+    protocol: "ws",
   });
 
   const editor = useBlockNote({
