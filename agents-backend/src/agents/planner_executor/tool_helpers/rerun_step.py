@@ -52,7 +52,11 @@ async def rerun_step_and_dependents(analysis_id, tool_run_id, steps, global_dict
                             f"Found a step that uses the output of the step that was re run. Rerunning this step."
                         )
 
-                        async for err, dependent_run_id, new_data in rerun_step_and_dependents(
+                        async for (
+                            err,
+                            dependent_run_id,
+                            new_data,
+                        ) in rerun_step_and_dependents(
                             analysis_id,
                             step["tool_run_id"],
                             steps,
@@ -138,7 +142,11 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
                         # that just notifies the front end what is going to be re run
                         yield None, None, {"pre_tool_run_message": s["tool_run_id"]}
 
-                        async for err, parent_step_id, new_data in rerun_step_and_parents(
+                        async for (
+                            err,
+                            parent_step_id,
+                            new_data,
+                        ) in rerun_step_and_parents(
                             analysis_id,
                             s["tool_run_id"],
                             steps,
@@ -167,7 +175,16 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
     print("Inputs resolved. Running tool: ", f_nm)
     resolved_inputs = resolve_input(target_step["inputs"], global_dict)
 
-    log_msg(f"Running tool {f_nm} with inputs {resolved_inputs}")
+    inputs_to_log = []
+    for i in resolved_inputs:
+        if isinstance(i, pd.DataFrame):
+            inputs_to_log.append(
+                f"Pandas dataframe with shape {i.shape} and columns {i.columns}"
+            )
+        else:
+            inputs_to_log.append(i)
+
+    log_msg(f"Running tool {f_nm} with inputs {inputs_to_log}")
 
     # yield a pre run message
     # that just notifies the front end what is going to be re run
