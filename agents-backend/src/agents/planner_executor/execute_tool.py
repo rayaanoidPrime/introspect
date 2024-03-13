@@ -77,7 +77,16 @@ def parse_function_signature(param_signatures, fn_name):
 
 async def execute_tool(tool_name, tool_inputs, global_dict={}):
     print(f"Executing tool: {tool_name}")
-    print(f"Tool inputs: {tool_inputs}")
+
+    inputs_to_log = []
+    for i in tool_inputs:
+        if isinstance(i, pd.DataFrame):
+            inputs_to_log.append(
+                f"Pandas dataframe with shape {i.shape} and columns {i.columns}"
+            )
+        else:
+            inputs_to_log.append(i)
+    print(f"Tool inputs: {inputs_to_log}")
     # print(f"Global dict: {global_dict}")
     result = {}
     for tool in tools:
