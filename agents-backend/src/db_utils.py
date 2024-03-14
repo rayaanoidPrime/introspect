@@ -3,6 +3,7 @@ import traceback
 import datetime
 import uuid
 import pandas as pd
+from regex import R
 from sqlalchemy import create_engine, select, update, insert, delete
 from sqlalchemy.ext.automap import automap_base
 from agents.planner_executor.tool_helpers.toolbox_manager import all_toolboxes
@@ -301,10 +302,10 @@ def update_report_data(
 def report_data_from_row(row):
     rpt = None
     try:
-        clarify = row.clarify or None
-        understand = row.understand or None
-        gen_approaches = row.gen_approaches or None
-        gen_steps = row.gen_steps or None
+        clarify = None if row.clarify is None else row.clarify
+        understand = None if row.understand is None else row.understand
+        gen_approaches = None if row.gen_approaches is None else row.gen_approaches
+        gen_steps = None if row.gen_steps is None else row.gen_steps
         gen_report = row.gen_report or None
         report_markdown = row.report_markdown or ""
         parent_analyses = row.parent_analyses or []
@@ -321,28 +322,28 @@ def report_data_from_row(row):
             "follow_up_analyses": follow_up_analyses,
         }
 
-        if clarify:
+        if clarify is not None:
             rpt["clarify"] = {
                 "success": True,
                 "clarification_questions": clarify,
             }
-        if understand:
+        if understand is not None:
             rpt["understand"] = {
                 "success": True,
                 "understanding": understand,
             }
-        if gen_approaches:
+        if gen_approaches is not None:
             rpt["gen_approaches"] = {
                 "success": True,
                 "approaches": gen_approaches,
             }
 
-        if gen_steps:
+        if gen_steps is not None:
             rpt["gen_steps"] = {
                 "success": True,
                 "steps": gen_steps,
             }
-        if gen_report:
+        if gen_report is not None:
             rpt["gen_report"] = {
                 "success": True,
                 "report_sections": gen_report,
