@@ -308,7 +308,7 @@ export const AnalysisAgent = ({
       return;
     }
 
-    console.log("re run message");
+    console.log("re run result");
     console.log(res);
 
     // remove the tool run id from rerunning steps and clear it's timeout
