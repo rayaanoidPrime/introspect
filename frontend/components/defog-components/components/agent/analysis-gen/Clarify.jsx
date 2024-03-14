@@ -1,5 +1,5 @@
 import { Button, Divider, Input, Select, Slider, Space } from "antd";
-import React, { useState, useRef, Fragment, useMemo } from "react";
+import React, { useState, useRef, Fragment, useMemo, useEffect } from "react";
 import styled from "styled-components";
 import Lottie from "lottie-react";
 import LoadingLottie from "../../svg/loader.json";
@@ -107,16 +107,11 @@ export default function Clarify({
       );
     }, 100);
   }
-
-  if (
-    stageDone &&
-    success &&
-    clarification_questions.length === 0 &&
-    !submitted &&
-    isCurrentStage
-  ) {
-    onSubmit();
-  }
+  useEffect(() => {
+    if (stageDone && success && !submitted && isCurrentStage) {
+      onSubmit();
+    }
+  }, [stageDone, success, submitted, isCurrentStage]);
 
   const UIs = {
     "multi select": (q, i, opts) => {
