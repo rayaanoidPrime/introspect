@@ -473,13 +473,13 @@ export function ToolResults({
               ></ToolRunError>
             )}
             <div className="tool-action-buttons">
-              {edited && (
-                <ToolReRun
-                  onClick={() => {
-                    handleReRun(toolRunId);
-                  }}
-                ></ToolReRun>
-              )}
+              {/* {edited && ( */}
+              <ToolReRun
+                onClick={() => {
+                  handleReRun(toolRunId);
+                }}
+              ></ToolReRun>
+              {/* )} */}
               <ToolReRun
                 onClick={showModal}
                 text="Delete"
