@@ -50,7 +50,6 @@ export default function AnalysisGen({
     setActiveTab(currentStage === "clarify" ? "1" : "2");
   }, [currentStage]);
 
-  console.log(analysisData);
   // tabs array for antd tabs
   const tabs = useMemo(
     () =>
