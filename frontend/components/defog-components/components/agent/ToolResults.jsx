@@ -77,7 +77,6 @@ export function ToolResults({
   toolRunDataCache = {},
   setToolRunDataCache = () => {},
   setAnalysisData = () => {},
-  setAnalysisSteps = () => {},
 }) {
   const [toolRunId, setToolRunId] = useState(null);
   const [toolRunData, setToolRunData] = useState(null);
@@ -133,9 +132,6 @@ export function ToolResults({
             };
           }
         });
-
-        // also set setAnalysisSteps
-        // setAnalysisSteps(res.new_steps);
       }
     } catch (e) {
       console.log(e);
@@ -440,7 +436,12 @@ export function ToolResults({
     }
   }, [activeNode, reRunningSteps]);
 
-  const isStepReRunning = reRunningSteps.indexOf(toolRunId) > -1;
+  // rerunningstepsis array of object: {tool_run_id: res.pre_tool_run_message,
+  // timeout: funciton
+  // clearTimeout: function}
+  const isStepReRunning = useMemo(() => {
+    return reRunningSteps.some((s) => s.tool_run_id === toolRunId);
+  }, [reRunningSteps, toolRunId]);
 
   return !activeNode || !activeNode.data || !toolRunData ? (
     <></>
@@ -449,7 +450,7 @@ export function ToolResults({
       {toolRunDataLoading || isStepReRunning ? (
         <div className="tool-run-loading">
           <AgentLoader
-            message={toolRunDataLoading ? "Loading..." : "Tool re running..."}
+            message={toolRunDataLoading ? "Loading..." : "Running..."}
             lottie={<Lottie animationData={LoadingLottie} loop={true} />}
           />
         </div>

@@ -273,37 +273,62 @@ export const AnalysisAgent = ({
   }
   async function onReRunMessage(event) {
     const res = JSON.parse(event.data);
-    console.log(res);
+
     if (res?.analysis_id !== analysisId) return;
     // re run messages can be of two types:
     // 1. which step is GOING TO BE RUN. this won't just be the step that was asked to be re run by the user.
     // this can also be the step's parents and it's children.
     // 2. the result of a re run of a step
     if (res.pre_tool_run_message) {
-      // means this is just a notification
+      // means this is just a notification that this step is going to be re run
+      // so add this step to rerunning steps
+      // this has better UX: lets us move and click around the dag on
+      // any node but the currently rerunning step
+      console.log("step re running started: ", res.pre_tool_run_message);
       setRerunningSteps((prev) => {
         const n = prev.slice();
-        n.push(res.pre_tool_run_message);
+
+        n.push({
+          tool_run_id: res.pre_tool_run_message,
+          timeout: setTimeout(() => {
+            message.error(`Rerun took longer than expected and was aborted.`);
+            setRerunningSteps((prev) =>
+              prev.filter((d) => d.tool_run_id !== res.pre_tool_run_message)
+            );
+          }, 40000),
+          clearTimeout: function () {
+            // function to clear the above timeout.
+            clearTimeout(this.timeout);
+          },
+        });
+
         return n;
       });
 
       return;
     }
 
-    // remove the tool run id from rerunning steps
-    setRerunningSteps((prev) => prev.filter((d) => d !== res.tool_run_id));
+    console.log("re run message");
+    console.log(res);
+
+    // remove the tool run id from rerunning steps and clear it's timeout
+    setRerunningSteps((prev) =>
+      prev.filter((d) => {
+        if (d.tool_run_id === res.tool_run_id) {
+          d.clearTimeout();
+          return false;
+        }
+        return true;
+      })
+    );
 
     if (!res.success) {
       message.error(
         `Something went wrong while re running ${res.tool_run_id}. Please try again.`
       );
       message.error(res?.error_message);
-      // clear rerunning steps
-      setRerunningSteps([]);
       return;
     }
-
-    console.log(res);
 
     if (res.success) {
       setToolRunDataCache((prev) => {

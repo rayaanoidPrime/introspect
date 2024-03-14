@@ -199,11 +199,42 @@ export function ToolResultsTable({
         component: (
           <Table
             key="0"
+            size="small"
             dataSource={roundedData}
             // don't show index column in table
-            columns={tableData.columns.filter((d) => d.title !== "index")}
-            // scroll={{ x: "max-content" }}
-            size="small"
+            columns={tableData.columns
+              .filter((d) => d.title !== "index")
+              .map((d) => {
+                d.render = (text, record, index) => {
+                  // popover with a copy button
+                  return (
+                    <Popover
+                      content={() => (
+                        <div
+                          style={{
+                            padding: 8,
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            navigator.clipboard.writeText(text).then(() => {
+                              message.success("Copied to clipboard.");
+                            });
+                          }}
+                        >
+                          <FaRegCopy className="table-chart-cell-copy-icon" />
+                        </div>
+                      )}
+                      arrow={false}
+                      placement="right"
+                      rootClassName="table-chart-cell-copy-popover"
+                    >
+                      <div style={{ padding: 8 }}>{text}</div>
+                    </Popover>
+                  );
+                };
+                return d;
+              })}
             pagination={{ defaultPageSize: 10, showSizeChanger: true }}
           />
         ),
