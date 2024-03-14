@@ -139,9 +139,7 @@ export default function AnalysisGen({
     <AnalysisGenWrap theme={theme}>
       <div className="analysis-gen-ctr">
         <div className="analysis-toolbox-selection-ctr">
-          <div className="analysis-toolbox-selection-header">
-            EDIT OR CHANGE YOUR ANALYSIS
-          </div>
+          <div className="analysis-toolbox-selection-header">SETUP</div>
           {toolboxDropdown}
         </div>
         <div key={"user_question"} className="user-question-search-ctr">
