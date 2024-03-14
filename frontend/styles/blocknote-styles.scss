@@ -226,6 +226,10 @@ $grid: repeating-linear-gradient(
     input {
       border-radius: 4px;
     }
+    .search-info-on-question-change {
+      font-size: 11px;
+      color: $dark-red;
+    }
   }
 
   .approach-heading {

@@ -196,24 +196,25 @@ export default function Clarify({
 
   return (
     <ClarifyWrap>
-      {success && clarification_questions.length ? (
-        <>
-          <ul>
-            {clarification_questions.map((q, i) => (
-              <li key={q.question}>
-                <Writer s={q.question} animate={!stageDone}>
-                  <p className="q-desc writer-target"></p>
-                  <div className="writer-children">
-                    {UIs[q.ui_tool](q, i, q.ui_tool_options)}
-                  </div>
-                </Writer>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : (
-        <></>
-      )}
+      {success &&
+        (clarification_questions.length ? (
+          <>
+            <ul>
+              {clarification_questions.map((q, i) => (
+                <li key={q.question}>
+                  <Writer s={q.question} animate={!stageDone}>
+                    <p className="q-desc writer-target"></p>
+                    <div className="writer-children">
+                      {UIs[q.ui_tool](q, i, q.ui_tool_options)}
+                    </div>
+                  </Writer>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <>No refinements needed</>
+        ))}
       {stageDone ? (
         <></>
       ) : (

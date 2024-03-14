@@ -11,6 +11,7 @@ import styled from "styled-components";
 import Search from "antd/lib/input/Search";
 import { Select, Tabs } from "antd";
 import { DocContext } from "../../../../docs/DocContext";
+import { InfoCircleFilled, InfoCircleOutlined } from "@ant-design/icons";
 
 const generationStages = ["clarify"];
 
@@ -43,10 +44,13 @@ export default function AnalysisGen({
     currentStage === "clarify" ? "1" : "2"
   );
 
+  const [questionEdited, setQuestionEdited] = useState(false);
+
   useEffect(() => {
     setActiveTab(currentStage === "clarify" ? "1" : "2");
   }, [currentStage]);
 
+  console.log(analysisData);
   // tabs array for antd tabs
   const tabs = useMemo(
     () =>
@@ -135,12 +139,21 @@ export default function AnalysisGen({
     <AnalysisGenWrap theme={theme}>
       <div className="analysis-gen-ctr">
         <div className="analysis-toolbox-selection-ctr">
-          <div className="analysis-toolbox-selection-header">PROJECT</div>
+          <div className="analysis-toolbox-selection-header">
+            EDIT OR CHANGE YOUR ANALYSIS
+          </div>
           {toolboxDropdown}
         </div>
         <div key={"user_question"} className="user-question-search-ctr">
           <Search
             onPressEnter={(ev) => handleSubmit(ev)}
+            onChange={(ev) => {
+              if (ev.target.value !== user_question) {
+                setQuestionEdited(true);
+              } else {
+                setQuestionEdited(false);
+              }
+            }}
             onSearch={(ev) => {
               handleSubmit(ev, {
                 toolboxes: toolboxSelection ? [toolboxSelection] : [],
@@ -152,6 +165,13 @@ export default function AnalysisGen({
             enterButton={currentStage === null ? "Start" : "Restart"}
             defaultValue={user_question}
           ></Search>
+          {questionEdited && (
+            <span className="search-info-on-question-change">
+              <InfoCircleOutlined style={{ marginRight: 5, marginLeft: 2 }} />
+              If you want to change the main question, press Restart on the
+              right instead of Run Analysis.
+            </span>
+          )}
         </div>
         {currentStage !== null ? (
           <Tabs
