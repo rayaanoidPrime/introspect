@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { HiWrenchScrewdriver } from "react-icons/hi2";
 import { Popover } from "antd";
 import { createDag } from "../../../../utils/draw-dag";
@@ -281,7 +281,7 @@ export default function StepsDag({
                       " " +
                       (d.data.isAddStepNode ? "graph-node-add" : "") +
                       " " +
-                      (reRunningSteps.indexOf(d.data.id) !== -1
+                      (reRunningSteps.some((s) => s.tool_run_id === d.data.id)
                         ? "graph-node-re-running"
                         : "")
                     }

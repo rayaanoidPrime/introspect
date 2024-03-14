@@ -563,12 +563,17 @@ $grid: repeating-linear-gradient(
       th {
         color: $text-dark;
       }
+      td {
+        padding: 0;
+      }
       th.ant-table-column-has-sorters {
         &:hover {
-          color: white !important;
+          color: $very-light-gray;
+          background-color: $medium-gray;
         }
         &.ant-table-column-sort {
-          color: white;
+          color: $very-light-gray;
+          background-color: $medium-gray;
         }
         .ant-table-column-sorter-inner {
           span {
@@ -1577,5 +1582,19 @@ $grid: repeating-linear-gradient(
     border-radius: 4px;
     cursor: pointer;
     width: fit-content;
+  }
+}
+
+.table-chart-cell-copy-popover {
+  cursor: pointer;
+  .ant-popover-content {
+    .ant-popover-inner {
+      padding: 0px;
+    }
+    &:hover {
+      .ant-popover-inner {
+        // inset shadow
+      }
+    }
   }
 }
