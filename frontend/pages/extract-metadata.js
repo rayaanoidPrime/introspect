@@ -126,14 +126,14 @@ const ExtractMetadata = () => {
       <Scaffolding id={"manage-database"} userType={"admin"}>
         <h1 style={{ paddingBottom: "1em" }}>Extract Metadata</h1>
         {/* select database type */}
-        <Row type={"flex"} height={"100vh"}>
-          <Col md={{ span: 8 }} xs={{ span: 24 }}>
+        <Row type={"flex"} height={"100vh"} gutter={20}>
+          <Col md={{ span: 12 }} xs={{ span: 24 }}>
             <div>
               <Form
                 name="db_creds"
-                labelCol={{ span: 8 }}
-                wrapperCol={{ span: 16 }}
-                style={{ maxWidth: 400 }}
+                labelCol={{ span: 4 }}
+                wrapperCol={{ span: 20 }}
+                style={{ maxWidth: 800 }}
                 disabled={tablesLoading}
                 onFinish={async (values) => {
                   values = {
@@ -217,9 +217,9 @@ const ExtractMetadata = () => {
               {tables.length > 0 && (
                 <Form
                   name="db_tables"
-                  labelCol={{ span: 8 }}
-                  wrapperCol={{ span: 16 }}
-                  style={{ maxWidth: 400 }}
+                  labelCol={{ span: 4 }}
+                  wrapperCol={{ span: 20 }}
+                  style={{ maxWidth: 800 }}
                   disabled={loading}
                   onFinish={async (values) => {
                     setLoading(true);
@@ -269,7 +269,7 @@ const ExtractMetadata = () => {
                 >
                   <Form.Item
                     name="tables"
-                    label="Tables to index"
+                    label="Tables"
                     initialValue={selectedTables}
                   >
                     <Select
@@ -324,11 +324,49 @@ const ExtractMetadata = () => {
                   <Form.Item wrapperCol={{ span: 24 }}>
                     <Button
                       type="primary"
-                      style={{ width: "100%", maxWidth: 535 }}
+                      style={{ width: "50%", paddingRight: "1em"}}
                       htmlType="submit"
                     >
                       Extract Metadata
                     </Button>
+
+                    {metadata.length > 0 && (
+                      <Button
+                        type="dashed"
+                        style={{ width: "50%" }}
+                        disabled={loading}
+                        loading={loading}
+                        onClick={async () => {
+                          setLoading(true);
+                          const res = await fetch(
+                            `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/update_metadata`,
+                            {
+                              method: "POST",
+                              body: JSON.stringify({
+                                token: context.token,
+                                metadata: metadata,
+                              }),
+                            }
+                          );
+                          const data = await res.json();
+                          console.log(data);
+                          setLoading(false);
+                          if (
+                            data["suggested_joins"] !== undefined &&
+                            data["suggested_joins"] !== null &&
+                            data["suggested_joins"] !== ""
+                          ) {
+                            // also update the value of the text area
+                            document.getElementById("allowed-joins").value =
+                              data["suggested_joins"];
+                          }
+
+                          message.success("Metadata updated successfully!");
+                        }}
+                      >
+                        Update metadata on server
+                      </Button>
+                    )}
                   </Form.Item>
                 </Form>
               )}
@@ -336,47 +374,10 @@ const ExtractMetadata = () => {
           </Col>
 
           <Col
-            md={{ span: 16 }}
+            md={{ span: 24 }}
             xs={{ span: 24 }}
             style={{ paddingRight: "2em", height: 600, overflowY: "scroll" }}
           >
-            {metadata.length > 0 && (
-              <Button
-                type="primary"
-                style={{ width: "100%", maxWidth: 535 }}
-                disabled={loading}
-                loading={loading}
-                onClick={async () => {
-                  setLoading(true);
-                  const res = await fetch(
-                    `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/update_metadata`,
-                    {
-                      method: "POST",
-                      body: JSON.stringify({
-                        token: context.token,
-                        metadata: metadata,
-                      }),
-                    }
-                  );
-                  const data = await res.json();
-                  console.log(data);
-                  setLoading(false);
-                  if (
-                    data["suggested_joins"] !== undefined &&
-                    data["suggested_joins"] !== null &&
-                    data["suggested_joins"] !== ""
-                  ) {
-                    // also update the value of the text area
-                    document.getElementById("allowed-joins").value =
-                      data["suggested_joins"];
-                  }
-
-                  message.success("Metadata updated successfully!");
-                }}
-              >
-                Update metadata on server
-              </Button>
-            )}
             {metadata.length > 0 ? (
               <Row
                 style={{
@@ -418,7 +419,7 @@ const ExtractMetadata = () => {
             {metadata.length > 0 &&
               metadata.map((item, index) => {
                 return (
-                  <Row key={index + "_" + item} style={{ marginTop: "1em" }}>
+                  <Row key={index + "_" + item} style={{ marginTop: "1em" }} gutter={10}>
                     <Col
                       xs={{ span: 24 }}
                       md={{ span: 4 }}
