@@ -126,14 +126,14 @@ const ExtractMetadata = () => {
       <Scaffolding id={"manage-database"} userType={"admin"}>
         <h1 style={{ paddingBottom: "1em" }}>Extract Metadata</h1>
         {/* select database type */}
-        <Row type={"flex"} height={"100vh"}>
-          <Col md={{ span: 8 }} xs={{ span: 24 }}>
+        <Row type={"flex"} height={"100vh"} gutter={20}>
+          <Col md={{ span: 12 }} xs={{ span: 24 }}>
             <div>
               <Form
                 name="db_creds"
-                labelCol={{ span: 8 }}
-                wrapperCol={{ span: 16 }}
-                style={{ maxWidth: 400 }}
+                labelCol={{ span: 4 }}
+                wrapperCol={{ span: 20 }}
+                style={{ maxWidth: 800 }}
                 disabled={tablesLoading}
                 onFinish={async (values) => {
                   values = {
@@ -217,9 +217,9 @@ const ExtractMetadata = () => {
               {tables.length > 0 && (
                 <Form
                   name="db_tables"
-                  labelCol={{ span: 8 }}
-                  wrapperCol={{ span: 16 }}
-                  style={{ maxWidth: 400 }}
+                  labelCol={{ span: 4 }}
+                  wrapperCol={{ span: 20 }}
+                  style={{ maxWidth: 800 }}
                   disabled={loading}
                   onFinish={async (values) => {
                     setLoading(true);
@@ -269,7 +269,7 @@ const ExtractMetadata = () => {
                 >
                   <Form.Item
                     name="tables"
-                    label="Tables to index"
+                    label="Tables"
                     initialValue={selectedTables}
                   >
                     <Select
@@ -324,139 +324,180 @@ const ExtractMetadata = () => {
                   <Form.Item wrapperCol={{ span: 24 }}>
                     <Button
                       type="primary"
-                      style={{ width: "100%", maxWidth: 535 }}
+                      style={{ width: "50%", paddingRight: "1em" }}
                       htmlType="submit"
                     >
                       Extract Metadata
                     </Button>
+
+                    {metadata.length > 0 && (
+                      <Button
+                        type="dashed"
+                        style={{ width: "50%" }}
+                        disabled={loading}
+                        loading={loading}
+                        onClick={async () => {
+                          setLoading(true);
+                          const res = await fetch(
+                            `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/update_metadata`,
+                            {
+                              method: "POST",
+                              body: JSON.stringify({
+                                token: context.token,
+                                metadata: metadata,
+                              }),
+                            }
+                          );
+                          const data = await res.json();
+                          console.log(data);
+                          setLoading(false);
+                          if (
+                            data["suggested_joins"] !== undefined &&
+                            data["suggested_joins"] !== null &&
+                            data["suggested_joins"] !== ""
+                          ) {
+                            // also update the value of the text area
+                            document.getElementById("allowed-joins").value =
+                              data["suggested_joins"];
+                          }
+
+                          message.success("Metadata updated successfully!");
+                        }}
+                      >
+                        Update metadata on server
+                      </Button>
+                    )}
                   </Form.Item>
                 </Form>
               )}
             </div>
           </Col>
+          {/* add an inset box shadow at the bottom edge */}
 
-          <Col
-            md={{ span: 16 }}
-            xs={{ span: 24 }}
-            style={{ paddingRight: "2em", height: 600, overflowY: "scroll" }}
+          <div
+            style={{
+              padding: "1em 0",
+              margin: "2em 0",
+              // boxShadow: "0px 0px 10px 0px rgba(0, 0, 0, 0.1);",
+              // backgroundColor: "white",
+            }}
           >
-            {metadata.length > 0 && (
-              <Button
-                type="primary"
-                style={{ width: "100%", maxWidth: 535 }}
-                disabled={loading}
-                loading={loading}
-                onClick={async () => {
-                  setLoading(true);
-                  const res = await fetch(
-                    `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/update_metadata`,
-                    {
-                      method: "POST",
-                      body: JSON.stringify({
-                        token: context.token,
-                        metadata: metadata,
-                      }),
-                    }
-                  );
-                  const data = await res.json();
-                  console.log(data);
-                  setLoading(false);
-                  if (
-                    data["suggested_joins"] !== undefined &&
-                    data["suggested_joins"] !== null &&
-                    data["suggested_joins"] !== ""
-                  ) {
-                    // also update the value of the text area
-                    document.getElementById("allowed-joins").value =
-                      data["suggested_joins"];
-                  }
+            <Col
+              md={{ span: 23 }}
+              xs={{ span: 23 }}
+              style={{
+                height: 600,
+                overflowY: "scroll",
 
-                  message.success("Metadata updated successfully!");
-                }}
-              >
-                Update metadata on server
-              </Button>
-            )}
-            {metadata.length > 0 ? (
-              <Row
-                style={{
-                  marginTop: "1em",
-                  position: "sticky",
-                  top: 0,
-                  paddingBottom: "1em",
-                  paddingTop: "1em",
-                  backgroundColor: "white",
-                  zIndex: 100,
-                }}
-              >
-                <Col
-                  xs={{ span: 24 }}
-                  md={{ span: 4 }}
-                  style={{ overflowWrap: "break-word" }}
+                // border: "1px solid black",
+              }}
+            >
+              {metadata.length > 0 ? (
+                <Row
+                  style={{
+                    // marginTop: "1em",
+                    position: "sticky",
+                    top: 0,
+                    paddingBottom: "1em",
+                    paddingTop: "1em",
+                    backgroundColor: "gray",
+                    color: "white",
+                    zIndex: 100,
+                  }}
                 >
-                  <b>Table Name</b>
-                </Col>
-                <Col
-                  xs={{ span: 24 }}
-                  md={{ span: 4 }}
-                  style={{ overflowWrap: "break-word" }}
-                >
-                  <b>Column Name</b>
-                </Col>
-                <Col
-                  xs={{ span: 24 }}
-                  md={{ span: 4 }}
-                  style={{ overflowWrap: "break-word" }}
-                >
-                  <b>Data Type</b>
-                </Col>
-                <Col xs={{ span: 24 }} md={{ span: 12 }}>
-                  <b>Description (Optional)</b>
-                </Col>
-              </Row>
-            ) : null}
-            {metadata.length > 0 &&
-              metadata.map((item, index) => {
-                return (
-                  <Row key={index + "_" + item} style={{ marginTop: "1em" }}>
-                    <Col
-                      xs={{ span: 24 }}
-                      md={{ span: 4 }}
-                      style={{ overflowWrap: "break-word" }}
+                  <Col
+                    xs={{ span: 24 }}
+                    md={{ span: 4 }}
+                    style={{
+                      overflowWrap: "break-word",
+                      padding: "0 1em",
+                    }}
+                  >
+                    <b>Table Name</b>
+                  </Col>
+                  <Col
+                    xs={{ span: 24 }}
+                    md={{ span: 4 }}
+                    style={{ overflowWrap: "break-word", padding: "0 1em" }}
+                  >
+                    <b>Column Name</b>
+                  </Col>
+                  <Col
+                    xs={{ span: 24 }}
+                    md={{ span: 4 }}
+                    style={{ overflowWrap: "break-word", padding: "0 1em" }}
+                  >
+                    <b>Data Type</b>
+                  </Col>
+                  <Col xs={{ span: 24 }} md={{ span: 12 }}>
+                    <b>Description (Optional)</b>
+                  </Col>
+                </Row>
+              ) : null}
+              {metadata.length > 0 &&
+                metadata.map((item, index) => {
+                  return (
+                    <Row
+                      key={index + "_" + item}
+                      // gutter={10}
+                      style={{ borderBottom: "1px solid #e6e6e6" }}
                     >
-                      {item.table_name}
-                    </Col>
-                    <Col
-                      xs={{ span: 24 }}
-                      md={{ span: 4 }}
-                      style={{ overflowWrap: "break-word" }}
-                    >
-                      {item.column_name}
-                    </Col>
-                    <Col
-                      xs={{ span: 24 }}
-                      md={{ span: 4 }}
-                      style={{ overflowWrap: "break-word" }}
-                    >
-                      {item.data_type}
-                    </Col>
-                    <Col xs={{ span: 24 }} md={{ span: 12 }}>
-                      <Input.TextArea
-                        placeholder="Description of what this column does"
-                        value={item.column_description}
-                        autoSize={{ minRows: 2 }}
-                        onChange={(e) => {
-                          const newMetadata = [...metadata];
-                          newMetadata[index]["column_description"] =
-                            e.target.value;
-                          setMetadata(newMetadata);
+                      <Col
+                        xs={{ span: 24 }}
+                        md={{ span: 4 }}
+                        style={{
+                          overflowWrap: "break-word",
+                          backgroundColor: "#eee",
+                          padding: "1em 1em",
                         }}
-                      />
-                    </Col>
-                  </Row>
-                );
-              })}
-          </Col>
+                      >
+                        {item.table_name}
+                      </Col>
+                      <Col
+                        xs={{ span: 24 }}
+                        md={{ span: 4 }}
+                        style={{
+                          overflowWrap: "break-word",
+                          padding: "1em 1em",
+                        }}
+                      >
+                        {item.column_name}
+                      </Col>
+                      <Col
+                        xs={{ span: 24 }}
+                        md={{ span: 4 }}
+                        style={{
+                          overflowWrap: "break-word",
+                          padding: "1em 1em",
+                          backgroundColor: "#eee",
+                        }}
+                      >
+                        {item.data_type}
+                      </Col>
+                      <Col
+                        xs={{ span: 24 }}
+                        md={{ span: 12 }}
+                        style={{
+                          padding: "1em 1em",
+                        }}
+                      >
+                        <Input.TextArea
+                          placeholder="Description of what this column does"
+                          value={item.column_description}
+                          autoSize={{ minRows: 2 }}
+                          onChange={(e) => {
+                            const newMetadata = [...metadata];
+                            newMetadata[index]["column_description"] =
+                              e.target.value;
+                            setMetadata(newMetadata);
+                          }}
+                        />
+                      </Col>
+                    </Row>
+                  );
+                })}
+            </Col>
+          </div>
         </Row>
       </Scaffolding>
     </>
