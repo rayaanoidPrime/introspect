@@ -372,14 +372,23 @@ const ExtractMetadata = () => {
               )}
             </div>
           </Col>
-          <div style={{ padding: "1em 0" }}>
+          {/* add an inset box shadow at the bottom edge */}
+
+          <div
+            style={{
+              padding: "1em 0",
+              margin: "2em 0",
+              // boxShadow: "0px 0px 10px 0px rgba(0, 0, 0, 0.1);",
+              // backgroundColor: "white",
+            }}
+          >
             <Col
-              md={{ span: 24 }}
-              xs={{ span: 24 }}
+              md={{ span: 23 }}
+              xs={{ span: 23 }}
               style={{
                 height: 600,
                 overflowY: "scroll",
-                margin: "2em 0",
+
                 // border: "1px solid black",
               }}
             >
