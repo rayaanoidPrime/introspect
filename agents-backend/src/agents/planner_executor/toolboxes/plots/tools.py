@@ -386,8 +386,9 @@ async def line_plot(
                 )
             try:
                 plot.xticks(rotation=45)
-            except:
-                print("Error in rotating xticks")
+            except Exception as e:
+                print(str(e), flush=True)
+                print("Error in rotating xticks", flush=True)
 
     plt.xticks(rotation=45)
 
