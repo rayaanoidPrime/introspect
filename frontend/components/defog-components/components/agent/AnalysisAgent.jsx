@@ -142,18 +142,30 @@ export const AnalysisAgent = ({
           (a, b) => agentRequestTypes.indexOf(a) - agentRequestTypes.indexOf(b)
         )
         .pop();
-      // if lastExistingStage comes out to be "gen_steps", but there are 0 steps
-      // then the last existing stage is "clarify"
-      if (
-        lastExistingStage === "gen_steps" &&
-        !analysisData?.gen_steps?.steps?.length
-      ) {
-        setCurrentStage("clarify");
-      } else {
-        setCurrentStage(lastExistingStage);
+
+      if (!analysisBusy && stageDone) {
+        // if lastExistingStage comes out to be "gen_steps", but there are 0 steps
+        // then the last existing stage is "clarify"
+        if (
+          lastExistingStage === "gen_steps" &&
+          !analysisData?.gen_steps?.steps?.length
+        ) {
+          setCurrentStage("clarify");
+        } else {
+          setCurrentStage(lastExistingStage);
+          // if last existing stage is clarify, and it's done, check if clarification questions are empty
+          // if so, submit for the next stage
+          if (
+            lastExistingStage === "clarify" &&
+            stageDone &&
+            analysisData?.clarify?.clarification_questions?.length === 0
+          ) {
+            handleSubmit(null, { clarification_questions: [] }, "clarify");
+          }
+        }
       }
     }
-  }, [analysisData]);
+  }, [analysisData, analysisBusy, stageDone]);
 
   useEffect(() => {
     if (!analysisData || !analysisId) return;
@@ -162,7 +174,7 @@ export const AnalysisAgent = ({
       ...relatedAnalysesContext.val,
       [analysisId]: relatedAnalyses,
     });
-  }, [relatedAnalyses]);
+  }, [relatedAnalyses, analysisData]);
 
   function onMessage(event) {
     if (!event.data) {
@@ -266,12 +278,22 @@ export const AnalysisAgent = ({
     if (response.done) {
       setStageDone(true);
       setAnalysisBusy(false);
-      // if this is clarify, and the length is 0, autosubmit for next stage
-      if (rType === "clarify" && analysisData?.[rType]?.[prop]?.length === 0) {
-        handleSubmit(null, { clarification_questions: [] }, "clarify");
-      }
+
+      //   setAnalysisData((prev) => {
+      //     // hacky. I don't want to change state, just want to do some cleanup here
+      //     // if this is clarify, and the length is 0, autosubmit for next stage
+      //     if (
+      //       rType === "clarify" &&
+      //       prev?.clarify?.clarification_questions?.length === 0
+      //     ) {
+      //       handleSubmit(null, { clarification_questions: [] }, "clarify");
+      //     }
+
+      //     return prev;
+      //   });
     }
   }
+
   async function onReRunMessage(event) {
     const res = JSON.parse(event.data);
 
@@ -471,6 +493,11 @@ export const AnalysisAgent = ({
       const nextStage =
         agentRequestTypes[agentRequestTypes.indexOf(submitSourceStage) + 1];
 
+      // if current stage is gen_steps, hide the recipe
+      if (nextStage === "gen_steps") {
+        setRecipeShowing(false);
+      }
+
       // if submitSourceStage is null, we're submitting the question for the first time
       // so set the user_question property in analysisData.report_data
       if (!submitSourceStage) {
@@ -510,32 +537,31 @@ export const AnalysisAgent = ({
       setCurrentStage(nextStage);
       setStageDone(false);
       setAnalysisBusy(nextStage);
-      let newAnalysisData = { ...analysisData, user_question: query };
-      newAnalysisData[nextStage] = {
-        [propNames[nextStage]]: [],
-        success: true,
-      };
 
-      // if current stage is gen_steps, hide the recipe
-      if (currentStage === "gen_steps") {
-        setRecipeShowing(false);
-      }
+      setAnalysisData((prev) => {
+        let newAnalysisData = { ...prev, user_question: query };
+        newAnalysisData[nextStage] = {
+          [propNames[nextStage]]: [],
+          success: true,
+        };
+
+        // if any of the stages includeing and after nextStage exists
+        // remove all data from those stages (to mimic what happens on the backend)
+        let idx = agentRequestTypes.indexOf(nextStage) + 1;
+        if (idx < agentRequestTypes.length) {
+          while (idx < agentRequestTypes.length) {
+            delete newAnalysisData[agentRequestTypes[idx]];
+            idx++;
+          }
+        }
+        // empty the next stage data
+        // deleting a prop removes a tab
+        newAnalysisData[nextStage][propNames[nextStage]] = [];
+
+        return newAnalysisData;
+      });
 
       setAnalysisTitle(query?.toUpperCase());
-
-      // if any of the stages includeing and after nextStage exists
-      // remove all data from those stages (to mimic what happens on the backend)
-      let idx = agentRequestTypes.indexOf(nextStage) + 1;
-      if (idx < agentRequestTypes.length) {
-        while (idx < agentRequestTypes.length) {
-          delete newAnalysisData[agentRequestTypes[idx]];
-          idx++;
-        }
-      }
-      // empty the next stage data
-      // deleting a prop removes a tab
-      newAnalysisData[nextStage][propNames[nextStage]] = [];
-      setAnalysisData(newAnalysisData);
 
       return true;
     } catch (err) {
@@ -646,7 +672,6 @@ export const AnalysisAgent = ({
                     ></div>
                     <AnalysisGen
                       analysisData={analysisData}
-                      user_question={analysisData?.user_question}
                       stageDone={stageDone}
                       globalLoading={analysisBusy}
                       currentStage={currentStage}

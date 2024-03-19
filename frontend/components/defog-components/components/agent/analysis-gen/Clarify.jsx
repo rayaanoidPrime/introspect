@@ -208,7 +208,7 @@ export default function Clarify({
             </ul>
           </>
         ) : (
-          <>Your question is very clear and we do not needed additional refinements. Please click on the Run Analysis button to start running an analysis that answers this question.</>
+          !isCurrentStage && <>Your question is clear and we do not need additional refinements. Please click on the Run Analysis button to start running an analysis that answers this question.</>
         ))}
       {stageDone ? (
         <></>
