@@ -165,13 +165,13 @@ export default function AnalysisGen({
             enterButton={currentStage === null ? "Start" : "Restart"}
             defaultValue={analysisData?.user_question}
           ></Search>
-          {questionEdited && currentStage !== null && !globalLoading && (
+          {/* {questionEdited && currentStage !== null && !globalLoading && (
             <span className="search-info-on-question-change">
               <InfoCircleOutlined style={{ marginRight: 5, marginLeft: 2 }} />
               If you want to change the main question, press Restart on the
               right instead of Run Analysis.
             </span>
-          )}
+          )} */}
         </div>
         {currentStage !== null ? (
           <Tabs
