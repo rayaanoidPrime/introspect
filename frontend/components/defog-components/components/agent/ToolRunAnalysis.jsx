@@ -44,6 +44,14 @@ export default function ToolRunAnalysis({ question, data_csv }) {
     }
 
     setup();
+
+    return () => {
+      if (socketManager && socketManager.close) {
+        socketManager.close();
+        // also stop the timeout
+        socketManager.clearSocketTimeout();
+      }
+    };
   }, []);
 
   return (

@@ -126,6 +126,7 @@ async def generate_metadata(request: Request):
     try:
         defog = Defog(api_key, db_type, db_creds)
 
+        schema = None
         if "schema" in db_creds:
             schema = db_creds["schema"]
             tables = [table.replace(schema + ".", "") for table in tables]
@@ -185,9 +186,10 @@ async def generate_metadata(request: Request):
             lambda x: hard_coded_descriptions.get(x, x)
         )
 
-        table_metadata["table_name"] = table_metadata["table_name"].apply(
-            lambda x: "gmb_gxp_rdap_dev." + schema + "." + x
-        )
+        if schema:
+            table_metadata["table_name"] = table_metadata["table_name"].apply(
+                lambda x: "gmb_gxp_rdap_dev." + schema + "." + x
+            )
 
         metadata = table_metadata.to_dict(orient="records")
         table_metadata = table_metadata.to_csv(index=False)

@@ -460,18 +460,20 @@ export const AnalysisAgent = ({
   }, []);
 
   useEffect(() => {
+    let mainIdx = -1;
+    let reRunIdx = -1;
     // add handlers to socket managers using addevent listener
     if (mainManager && mainManager.addEventListener) {
-      mainManager.addEventListener("message", onMessage);
+      mainIdx = mainManager.addEventListener("message", onMessage);
     }
     if (reRunManager && reRunManager.addEventListener) {
-      reRunManager.addEventListener("message", onReRunMessage);
+      reRunIdx = reRunManager.addEventListener("message", onReRunMessage);
     }
 
     return () => {
       // remove handlers from socket managers using remove event listener
-      mainManager?.removeEventListener("message", onMessage);
-      reRunManager?.removeEventListener("message", onReRunMessage);
+      mainManager?.removeEventListener("message", onMessage, mainIdx);
+      reRunManager?.removeEventListener("message", onReRunMessage, reRunIdx);
     };
   }, [mainManager, reRunManager]);
 
@@ -585,8 +587,10 @@ export const AnalysisAgent = ({
         !reRunManager ||
         !reRunManager.send ||
         !activeNode
-      )
+      ) {
+        console.log(toolRunId, dag, analysisId, reRunManager, activeNode);
         return;
+      }
 
       if (!reRunManager.isConnected()) {
         message.error("Not connected to servers. Trying to reconnect.");

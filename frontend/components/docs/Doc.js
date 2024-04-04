@@ -123,16 +123,16 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
     return () => {
       if (socketManager && socketManager.close) {
         socketManager.close();
-        // also stop the interval
-        clearInterval(socketManager.interval);
+        // also stop the timeout
+        socketManager.clearSocketTimeout();
       }
       if (reRunManager && reRunManager.close) {
         reRunManager.close();
-        clearInterval(reRunManager.interval);
+        reRunManager.clearSocketTimeout();
       }
       if (toolSocketManager && toolSocketManager.close) {
         toolSocketManager.close();
-        clearInterval(toolSocketManager.interval);
+        toolSocketManager.clearSocketTimeout();
       }
     };
   }, []);
