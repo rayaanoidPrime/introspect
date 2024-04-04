@@ -1,5 +1,4 @@
 import { message } from "antd";
-import { uuid4 } from "uuid";
 
 export function setupWebsocketManager(
   url = `ws://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/editor`,
@@ -78,7 +77,7 @@ export function setupWebsocketManager(
     if (socket && socket.readyState === WebSocket.OPEN) {
       if (reconnectCount >= 1 && !isPing) {
         // means we've reconnected once
-        message.error(
+        message.warning(
           "Connection was previously lost and there might be connectivity issues while running this. Please refresh the page for best performance."
         );
       }
