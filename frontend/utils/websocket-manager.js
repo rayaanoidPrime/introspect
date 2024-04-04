@@ -114,7 +114,7 @@ export function setupWebsocketManager(
     if (socket) {
       socket.removeEventListener(event, cb);
       // remove from eventListeners array
-      eventListeners.splice(listenerIdx, 1);
+      if (listenerIdx !== -1) eventListeners.splice(listenerIdx, 1);
     }
   }
 
