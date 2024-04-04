@@ -83,6 +83,9 @@ async def doc_websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
+            if "ping" in data:
+                # don't do anything
+                continue
             if data.get("doc_uint8") is None:
                 print("No document data provided.", data)
                 # send error back
@@ -279,7 +282,10 @@ async def update_table_chart(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
-            run_again = data.get("run_again")
+            if "ping" in data:
+                # don't do anything
+                continue
+
             if data.get("table_id") is None:
                 print("No table id ")
                 continue
@@ -374,6 +380,11 @@ async def edit_tool_run(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
+
+            if "ping" in data:
+                # don't do anything
+                continue
+
             print(data)
             if data.get("tool_run_id") is None:
                 print("No tool run id ")
@@ -416,6 +427,10 @@ async def rerun_step(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
+            if "ping" in data:
+                # don't do anything
+                continue
+
             print(data)
             tool_run_id = data.get("tool_run_id")
             analysis_id = data.get("analysis_id")
@@ -486,7 +501,7 @@ async def rerun_step(websocket: WebSocket):
                         )
                     elif new_data.get("pre_tool_run_message"):
                         print(
-                            f"Starting rerunning of step: {new_data.get('pre_tool_run_message')}"
+                            f"Starting rerunning of step: {new_data.get('pre_tool_run_message')} with websocket: {websocket} in application_state: {websocket.application_state} and client_state: {websocket.client_state}"
                         )
                         await manager.send_personal_message(
                             {
@@ -510,7 +525,7 @@ async def rerun_step(websocket: WebSocket):
                     )
 
     except WebSocketDisconnect as e:
-        # print("Disconnected. Error: ", e)
+        print("Disconnected. Error: ", e)
         # traceback.print_exc()
         manager.disconnect(websocket)
         await websocket.close()
@@ -529,6 +544,9 @@ async def analyse_data_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
+            if "ping" in data:
+                # don't do anything
+                continue
             if data.get("question") is None:
                 await manager.send_personal_message(
                     {"success": False, "error_message": "No question"}, websocket

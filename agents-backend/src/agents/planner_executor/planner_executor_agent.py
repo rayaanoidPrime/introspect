@@ -243,6 +243,7 @@ class Executor:
                     next_step_data_description = f"There was an error running the tool {step['tool_name']}. This was the error:\n{result['error_message']}\n Instead of suffixing older output names with _updated, _v2, etc, re use the older output names of previously generated steps."
                     continue
 
+                print(yield_val)
                 yield yield_val
 
                 for key, output in zip(step["outputs_storage_keys"], result["outputs"]):
