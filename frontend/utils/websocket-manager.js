@@ -53,8 +53,11 @@ export function setupWebsocketManager(
 
       // add all other event listeners
       eventListeners.forEach((l) => {
-        let event = l[0];
-        let cb = l[1];
+        if (l.disabled) return;
+
+        let event = l.event;
+        let cb = l.cb;
+        l.disabled = false;
         socket.addEventListener(event, cb);
       });
 
@@ -94,7 +97,13 @@ export function setupWebsocketManager(
       socket.addEventListener(event, cb);
       // push returns new length of the array so last
       // element has index return_val - 1
-      return eventListeners.push([event, cb]) - 1;
+      return (
+        eventListeners.push({
+          event,
+          cb,
+          disabled: false,
+        }) - 1
+      );
     }
     return -1;
   }
@@ -113,7 +122,9 @@ export function setupWebsocketManager(
     if (socket) {
       socket.removeEventListener(event, cb);
       // remove from eventListeners array
-      if (listenerIdx !== -1) eventListeners.splice(listenerIdx, 1);
+      if (listenerIdx !== -1) {
+        eventListeners[listenerIdx].disabled = true;
+      }
     }
   }
 
@@ -123,6 +134,10 @@ export function setupWebsocketManager(
 
   function clearSocketTimeout() {
     clearTimeout(timeout);
+  }
+
+  function getEventListeners() {
+    return eventListeners;
   }
 
   window.requestAnimationFrame(pinger);
@@ -138,6 +153,7 @@ export function setupWebsocketManager(
         logging,
         clearSocketTimeout,
         getSocket,
+        getEventListeners,
       };
     })
     .catch((e) => {});

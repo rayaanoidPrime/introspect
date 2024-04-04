@@ -107,6 +107,12 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
         },
       });
 
+      window.managers = {
+        mainManager: mgr,
+        reRunManager: rerunMgr,
+        toolSocketManager: toolSocketManager,
+      };
+
       // add to recently viewed docs for this user
       await fetch(recentlyViewedEndpoint, {
         method: "POST",
