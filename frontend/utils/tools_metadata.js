@@ -1,318 +1,287 @@
 export const toolsMetadata = {
-  "data_fetcher_and_aggregator": {
-    "name": "data_fetcher_and_aggregator",
-    "display_name": "Fetch data from database",
-    "function_signature": [
+  data_fetcher_and_aggregator: {
+    name: "data_fetcher_and_aggregator",
+    display_name: "Fetch data from database",
+    function_signature: [
       {
-        "name": "question",
-        "default": null,
-        "type": "str"
-      }
-    ]
+        name: "question",
+        default: null,
+        type: "str",
+      },
+    ],
   },
-  "global_dict_data_fetcher_and_aggregator": {
-    "name": "global_dict_data_fetcher_and_aggregator",
-    "display_name": "Query data from a pandas dataframe",
-    "function_signature": [
+  global_dict_data_fetcher_and_aggregator: {
+    name: "global_dict_data_fetcher_and_aggregator",
+    display_name: "Query data from a pandas dataframe",
+    function_signature: [
       {
-        "name": "question",
-        "default": null,
-        "type": "str"
+        name: "question",
+        default: null,
+        type: "str",
       },
       {
-        "name": "input_df",
-        "default": null,
-        "type": "pandas.core.frame.DataFrame"
-      }
-    ]
+        name: "input_df",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
+      },
+    ],
   },
-  "dataset_metadata_describer": {
-    "name": "dataset_metadata_describer",
-    "display_name": "Dataset Metadata Describer",
-    "function_signature": []
+  dataset_metadata_describer: {
+    name: "dataset_metadata_describer",
+    display_name: "Dataset Metadata Describer",
+    function_signature: [],
   },
-  "line_plot": {
-    "name": "line_plot",
-    "display_name": "Line Plot",
-    "function_signature": [
+  line_plot: {
+    name: "line_plot",
+    display_name: "Line Plot",
+    function_signature: [
       {
-        "name": "full_data",
-        "default": null,
-        "type": "pandas.core.frame.DataFrame"
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
       },
       {
-        "name": "x_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "x_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "y_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "y_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "hue_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "hue_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "facet_col",
-        "default": null,
-        "type": "DBColumn"
+        name: "facet_col",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "estimator",
-        "default": [
-          "mean",
-          "median",
-          "max",
-          "min",
-          "sum",
-          "None"
-        ],
-        "type": "DropdownSingleSelect"
+        name: "estimator",
+        default: ["mean", "median", "max", "min", "sum", "None"],
+        type: "DropdownSingleSelect",
       },
       {
-        "name": "units",
-        "default": null,
-        "type": "DBColumn"
+        name: "units",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "plot_average_line",
-        "default": [
-          "False",
-          "True"
-        ],
-        "type": "DropdownSingleSelect"
+        name: "plot_average_line",
+        default: ["False", "True"],
+        type: "DropdownSingleSelect",
       },
       {
-        "name": "average_type",
-        "default": [
-          "mean",
-          "median",
-          "max",
-          "min",
-          "mode"
-        ],
-        "type": "DropdownSingleSelect"
-      }
-    ]
+        name: "average_type",
+        default: ["mean", "median", "max", "min", "mode"],
+        type: "DropdownSingleSelect",
+      },
+    ],
   },
-  "kaplan_meier_curve": {
-    "name": "kaplan_meier_curve",
-    "display_name": "Kaplan Meier Curve",
-    "function_signature": [
+  kaplan_meier_curve: {
+    name: "kaplan_meier_curve",
+    display_name: "Kaplan Meier Curve",
+    function_signature: [
       {
-        "name": "full_data",
-        "default": null,
-        "type": "pandas.core.frame.DataFrame"
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
       },
       {
-        "name": "survival_time_col",
-        "default": null,
-        "type": "DBColumn"
+        name: "survival_time_col",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "status_col",
-        "default": null,
-        "type": "DBColumn"
+        name: "status_col",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "stratification_vars",
-        "default": [],
-        "type": "DBColumnList_0"
-      }
-    ]
+        name: "stratification_vars",
+        default: [],
+        type: "DBColumnList_0",
+      },
+    ],
   },
-  "hazard_ratio": {
-    "name": "hazard_ratio",
-    "display_name": "Hazard Ratio",
-    "function_signature": [
+  hazard_ratio: {
+    name: "hazard_ratio",
+    display_name: "Hazard Ratio",
+    function_signature: [
       {
-        "name": "full_data",
-        "default": null,
-        "type": "pandas.core.frame.DataFrame"
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
       },
       {
-        "name": "survival_time_col",
-        "default": null,
-        "type": "DBColumn"
+        name: "survival_time_col",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "status_col",
-        "default": null,
-        "type": "DBColumn"
-      }
-    ]
+        name: "status_col",
+        default: null,
+        type: "DBColumn",
+      },
+    ],
   },
-  "t_test": {
-    "name": "t_test",
-    "display_name": "T Test",
-    "function_signature": [
+  t_test: {
+    name: "t_test",
+    display_name: "T Test",
+    function_signature: [
       {
-        "name": "full_data",
-        "default": null,
-        "type": "pandas.core.frame.DataFrame"
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
       },
       {
-        "name": "group_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "group_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "score_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "score_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "name_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "name_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "t_test_type",
-        "default": [
-          "unpaired",
-          "paired"
-        ],
-        "type": "DropdownSingleSelect"
-      }
-    ]
+        name: "t_test_type",
+        default: ["unpaired", "paired"],
+        type: "DropdownSingleSelect",
+      },
+    ],
   },
-  "anova_test": {
-    "name": "anova_test",
-    "display_name": "ANOVA Test",
-    "function_signature": [
+  anova_test: {
+    name: "anova_test",
+    display_name: "ANOVA Test",
+    function_signature: [
       {
-        "name": "full_data",
-        "default": null,
-        "type": "pandas.core.frame.DataFrame"
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
       },
       {
-        "name": "group_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "group_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "score_column",
-        "default": null,
-        "type": "DBColumn"
-      }
-    ]
+        name: "score_column",
+        default: null,
+        type: "DBColumn",
+      },
+    ],
   },
-  "wilcoxon_test": {
-    "name": "wilcoxon_test",
-    "display_name": "Wilcoxon Test",
-    "function_signature": [
+  wilcoxon_test: {
+    name: "wilcoxon_test",
+    display_name: "Wilcoxon Test",
+    function_signature: [
       {
-        "name": "full_data",
-        "default": null,
-        "type": "pandas.core.frame.DataFrame"
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
       },
       {
-        "name": "group_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "group_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "score_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "score_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "name_column",
-        "default": null,
-        "type": "DBColumn"
-      }
-    ]
+        name: "name_column",
+        default: null,
+        type: "DBColumn",
+      },
+    ],
   },
-  "boxplot": {
-    "name": "boxplot",
-    "display_name": "Boxplot",
-    "function_signature": [
+  boxplot: {
+    name: "boxplot",
+    display_name: "Boxplot",
+    function_signature: [
       {
-        "name": "full_data",
-        "default": null,
-        "type": "pandas.core.frame.DataFrame"
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
       },
       {
-        "name": "boxplot_cols",
-        "default": null,
-        "type": "DBColumnList_1_2"
+        name: "boxplot_cols",
+        default: null,
+        type: "DBColumnList_1_2",
       },
       {
-        "name": "facet",
-        "default": false,
-        "type": "bool"
+        name: "facet",
+        default: false,
+        type: "bool",
       },
       {
-        "name": "facet_col",
-        "default": null,
-        "type": "DBColumn"
+        name: "facet_col",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "color",
-        "default": [
+        name: "color",
+        default: [
           "#000000",
           "#009D94",
           "#0057CF",
           "#FFBD00",
           "#FF5C1C",
-          "#691A6B"
+          "#691A6B",
         ],
-        "type": "DropdownSingleSelect"
+        type: "DropdownSingleSelect",
       },
       {
-        "name": "opacity",
-        "default": [
-          0.1,
-          0.2,
-          0.3,
-          0.4,
-          0.5
-        ],
-        "type": "DropdownSingleSelect"
-      }
-    ]
+        name: "opacity",
+        default: [0.1, 0.2, 0.3, 0.4, 0.5],
+        type: "DropdownSingleSelect",
+      },
+    ],
   },
-  "heatmap": {
-    "name": "heatmap",
-    "display_name": "Heatmap",
-    "function_signature": [
+  heatmap: {
+    name: "heatmap",
+    display_name: "Heatmap",
+    function_signature: [
       {
-        "name": "full_data",
-        "default": null,
-        "type": "pandas.core.frame.DataFrame"
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
       },
       {
-        "name": "x_position_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "x_position_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "y_position_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "y_position_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "color_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "color_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "aggregation_type",
-        "default": [
-          "mean",
-          "median",
-          "max",
-          "min",
-          "sum"
-        ],
-        "type": "DropdownSingleSelect"
+        name: "aggregation_type",
+        default: ["mean", "median", "max", "min", "sum"],
+        type: "DropdownSingleSelect",
       },
       {
-        "name": "color_scale",
-        "default": [
+        name: "color_scale",
+        default: [
           "magma",
           "inferno",
           "plasma",
@@ -490,41 +459,41 @@ export const toolsMetadata = {
           "flare",
           "flare_r",
           "crest",
-          "crest_r"
+          "crest_r",
         ],
-        "type": "DropdownSingleSelect"
-      }
-    ]
+        type: "DropdownSingleSelect",
+      },
+    ],
   },
-  "fold_change": {
-    "name": "fold_change",
-    "display_name": "Fold Change",
-    "function_signature": [
+  fold_change: {
+    name: "fold_change",
+    display_name: "Fold Change",
+    function_signature: [
       {
-        "name": "full_data",
-        "default": null,
-        "type": "pandas.core.frame.DataFrame"
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
       },
       {
-        "name": "value_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "value_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "individual_id_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "individual_id_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "time_column",
-        "default": null,
-        "type": "DBColumn"
+        name: "time_column",
+        default: null,
+        type: "DBColumn",
       },
       {
-        "name": "group_column",
-        "default": null,
-        "type": "DBColumn"
-      }
-    ]
-  }
-}
+        name: "group_column",
+        default: null,
+        type: "DBColumn",
+      },
+    ],
+  },
+};

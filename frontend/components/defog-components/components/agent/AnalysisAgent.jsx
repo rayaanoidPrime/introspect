@@ -34,6 +34,7 @@ import {
   getToolRunData,
 } from "../../../../utils/utils";
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
+import { AnalysisFeedback } from "./feedback/AnalysisFeedback";
 
 // the name of the prop where the data is stored for each stage
 const propNames = {
@@ -49,7 +50,7 @@ export const AnalysisAgent = ({
   analysisId,
   apiToken,
   username,
-  updateHook = () => {},
+  updateHook = () => { },
   editor,
   block,
 }) => {
@@ -217,7 +218,7 @@ export const AnalysisAgent = ({
         // keep inserting as we receive them
         updateHook(
           response.output?.report_sections?.length &&
-            response.output?.report_sections
+          response.output?.report_sections
         );
       }
 
@@ -627,18 +628,21 @@ export const AnalysisAgent = ({
         {/* {analysisTitle.length ? ( */}
         <>
           {currentStage === "gen_steps" ? (
-            <div
-              className="analysis-title"
-              onClick={() => {
-                setRecipeShowing(!recipeShowing);
-              }}
-            >
-              <div className="remake-analysis">
-                <Popover content={<span>Remake analysis</span>}>
-                  <SettingOutlined />
-                </Popover>
+            <div className="flex flex-row justify-between	">
+              <div
+                className="analysis-title"
+                onClick={() => {
+                  setRecipeShowing(!recipeShowing);
+                }}
+              >
+                <div className="remake-analysis">
+                  <Popover content={<span>Remake analysis</span>}>
+                    <SettingOutlined />
+                  </Popover>
+                </div>
+                {analysisTitle}
               </div>
-              {analysisTitle}
+              <AnalysisFeedback />
             </div>
           ) : (
             <></>
@@ -811,6 +815,6 @@ export const AnalysisAgent = ({
           )}
         </ThemeContext.Provider>
       </div>
-    </ErrorBoundary>
+    </ErrorBoundary >
   );
 };
