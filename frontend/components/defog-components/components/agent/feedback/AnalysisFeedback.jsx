@@ -7,12 +7,12 @@ import BadModal from "./BadModal";
 import { Popover } from "antd";
 
 
-export function AnalysisFeedback() {
+export function AnalysisFeedback({ analysisSteps }) {
     const [modalVisible, setModalVisible] = useState(null);
 
     return (
         <div className="analysis-feedback flex flex-row content-center">
-            <p className="text-sm mr-4 text-gray-400">Was this the desired plan?</p>
+            <p className="text-sm mr-4 text-gray-400">Was this your desired result?</p>
 
             <Popover content="Yep!">
                 <div className="good-feedback mr-4 h-4 w-4 cursor-pointer" onClick={() => setModalVisible("good")}>
@@ -27,8 +27,8 @@ export function AnalysisFeedback() {
                 </div>
             </Popover>
 
-            <GoodModal open={modalVisible === "good"} setModalVisible={setModalVisible} />
-            <BadModal open={modalVisible === "bad"} setModalVisible={setModalVisible} />
+            <GoodModal open={modalVisible === "good"} setModalVisible={setModalVisible} analysisSteps={analysisSteps} />
+            <BadModal open={modalVisible === "bad"} setModalVisible={setModalVisible} analysisSteps={analysisSteps} />
         </div>
     );
 }

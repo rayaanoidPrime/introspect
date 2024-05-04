@@ -642,7 +642,7 @@ export const AnalysisAgent = ({
                 </div>
                 {analysisTitle}
               </div>
-              <AnalysisFeedback />
+              <AnalysisFeedback analysisSteps={analysisSteps} />
             </div>
           ) : (
             <></>

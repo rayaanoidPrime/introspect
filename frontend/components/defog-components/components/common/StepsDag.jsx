@@ -20,11 +20,12 @@ export default function StepsDag({
   activeNode = null,
   stageDone = true,
   reRunningSteps = [],
-  dag,
-  setDag,
-  dagLinks,
-  setDagLinks,
-  setActiveNode,
+  dag = null,
+  setDag = () => { },
+  dagLinks = [],
+  setDagLinks = () => { },
+  setActiveNode = () => { },
+  skipAddStepNode = false,
 }) {
   const [graph, setGraph] = useState({ nodes: {}, links: [] });
   const [nodes, setNodes] = useState([]);
@@ -124,7 +125,7 @@ export default function StepsDag({
           // add this child to the list of children for this step
           g["nodes"][step_id]["children"].push(g["nodes"][child]);
 
-          if (!step.error_message) {
+          if (!step.error_message && !skipAddStepNode) {
             // "add step" as a child of this child
             const addStepNodeId = child + "-add";
 
