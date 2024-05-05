@@ -70,13 +70,13 @@ export function ToolResults({
   activeNode,
   toolSocketManager = null,
   dag = null,
-  setActiveNode = () => {},
-  handleReRun = () => {},
+  setActiveNode = () => { },
+  handleReRun = () => { },
   reRunningSteps = [],
-  setPendingToolRunUpdates = () => {},
+  setPendingToolRunUpdates = () => { },
   toolRunDataCache = {},
-  setToolRunDataCache = () => {},
-  setAnalysisData = () => {},
+  setToolRunDataCache = () => { },
+  setAnalysisData = () => { },
 }) {
   const [toolRunId, setToolRunId] = useState(null);
   const [toolRunData, setToolRunData] = useState(null);
@@ -101,7 +101,7 @@ export function ToolResults({
 
       const deleteToolRunIds = [...activeNode.descendants()]
         .filter((d) => d?.data?.isTool)
-        .map((d) => d?.data?.meta?.tool_run_id);
+        .map((d) => d?.data?.step?.tool_run_id);
 
       const res = await fetch(deleteStepsEndpoint, {
         method: "POST",
@@ -357,7 +357,7 @@ export function ToolResults({
         const toolRun = activeNode.data.isTool
           ? activeNode
           : [...activeNode?.parents()][0];
-        const newId = toolRun?.data?.meta?.tool_run_id;
+        const newId = toolRun?.data?.step?.tool_run_id;
 
         if (!toolRun?.data?.isTool) {
           console.error(

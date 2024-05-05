@@ -16,14 +16,14 @@ export function AnalysisFeedback({ analysisSteps }) {
 
             <Popover content="Yep!">
                 <div className="good-feedback mr-4 h-4 w-4 cursor-pointer" onClick={() => setModalVisible("good")}>
-                    <ThumbsUp fill="fill-gray-300 hover:fill-dark-green" />
+                    <ThumbsUp fill="fill-gray-300 hover:fill-medium-blue" />
                 </div>
             </Popover>
             <Popover content="Nope">
                 <div className="bad-feedback h-4 w-4 pt-1 cursor-pointer"
                     onClick={() => setModalVisible("bad")}
                 >
-                    <ThumbsDown fill="fill-gray-300 hover:fill-dark-red" />
+                    <ThumbsDown fill="fill-gray-300 hover:fill-medium-blue" />
                 </div>
             </Popover>
 

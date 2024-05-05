@@ -26,6 +26,10 @@ export default function StepsDag({
   setDagLinks = () => { },
   setActiveNode = () => { },
   skipAddStepNode = false,
+  setLastOutputNodeAsActive = true,
+  disablePopovers = false,
+  onPopoverOpenChange = () => { },
+  alwaysShowPopover = false,
 }) {
   const [graph, setGraph] = useState({ nodes: {}, links: [] });
   const [nodes, setNodes] = useState([]);
@@ -50,7 +54,7 @@ export default function StepsDag({
         isTool: true,
         parents: new Set(),
         children: [],
-        meta: step,
+        step: step,
       };
       // to find if this step could have parents, we will regex search for all matches for "global.*" in the inputs
 
@@ -139,7 +143,7 @@ export default function StepsDag({
               isError: step.error_message,
               parents: [child],
               children: [],
-              meta: {
+              step: {
                 inputs: [],
                 tool_name: null,
                 parent_step: step,
@@ -230,11 +234,20 @@ export default function StepsDag({
     try {
       // last step node as active
       const lastStep = steps?.[steps.length - 1];
-      // get the first output of this step
-      const lastStepOutput = lastStep?.["outputs_storage_keys"]?.[0];
-      const lastStepOutputNode = n?.find((d) => d.data.id === lastStepOutput);
-      if (lastStepOutputNode) {
-        setActiveNode(lastStepOutputNode);
+      if (setLastOutputNodeAsActive) {
+        // get the first output of this step
+        const lastStepOutput = lastStep?.["outputs_storage_keys"]?.[0];
+        const lastStepOutputNode = n?.find((d) => d.data.id === lastStepOutput);
+        if (lastStepOutputNode) {
+          setActiveNode(lastStepOutputNode);
+        }
+      } else {
+        // set the first step as active
+        const firstStep = steps?.[0];
+        const firstStepNode = n?.find((d) => d.data.id === firstStep.id);
+        if (firstStepNode) {
+          setActiveNode(firstStepNode);
+        }
       }
     } catch (e) {
       console.log("Error setting active node: ", e);
@@ -248,22 +261,28 @@ export default function StepsDag({
           {dag &&
             dag.nodes &&
             nodes.map((d) => {
+              const extraProps = {}
+              if (alwaysShowPopover) {
+                extraProps.open = activeNode?.data?.id === d.data.id;
+              }
               return (
                 <Popover
+                  {...extraProps}
+                  onOpenChange={(visible) => onPopoverOpenChange(d, visible)}
                   rootClassName={
                     "graph-node-popover " +
                     (d.data.isError ? "popover-error " : "")
                   }
                   placement="left"
                   title={
-                    d?.data?.isAddStepNode
+                    !disablePopovers && (d?.data?.isAddStepNode
                       ? ""
-                      : toolDisplayNames[d?.data?.meta?.tool_name] || null
+                      : toolDisplayNames[d?.data?.step?.tool_name] || null)
                   }
                   content={
-                    d?.data?.isAddStepNode
+                    !disablePopovers && (d?.data?.isAddStepNode
                       ? "Create new step"
-                      : d?.data?.meta?.description || d.data.id
+                      : d?.data?.step?.description || d.data.id)
                   }
                   key={d.data.id}
                 >
@@ -292,7 +311,6 @@ export default function StepsDag({
                     }}
                     key={d.data.id}
                     onClick={() => {
-                      console.log(d.data);
                       setActiveNode(d);
                     }}
                   >
