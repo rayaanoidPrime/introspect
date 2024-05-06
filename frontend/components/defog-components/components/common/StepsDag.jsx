@@ -277,12 +277,12 @@ export default function StepsDag({
                   title={
                     !disablePopovers && (d?.data?.isAddStepNode
                       ? ""
-                      : toolDisplayNames[d?.data?.step?.tool_name] || null)
+                      : (d?.data?.isTool ? (toolDisplayNames[d?.data?.step?.tool_name] || null) : `Output`))
                   }
                   content={
                     !disablePopovers && (d?.data?.isAddStepNode
                       ? "Create new step"
-                      : d?.data?.step?.description || d.data.id)
+                      : (d?.data?.isTool ? (d?.data?.step?.description || d.data.id) : null))
                   }
                   key={d.data.id}
                 >

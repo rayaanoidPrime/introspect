@@ -15,7 +15,9 @@ export default function BadModal({ open, setModalVisible, analysisSteps }) {
     // extend setActiveNode to prevent changing node when we click an "output" node
     // only change the node when we click a tool node
     const setActiveNode = useCallback((node) => {
-        _setActiveNode(node);
+        if (node.data.isTool) {
+            _setActiveNode(node);
+        }
     })
 
 
@@ -66,7 +68,7 @@ export default function BadModal({ open, setModalVisible, analysisSteps }) {
         onCancel={(ev) => {
             ev.preventDefault();
             ev.stopPropagation();
-            setModalVisible(null)
+            setModalVisible(false)
         }}
         centered
         className={"w-10/12 h-10/12"}

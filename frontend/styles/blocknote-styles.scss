@@ -1468,12 +1468,16 @@ $grid: repeating-linear-gradient(
   .ant-popover-inner {
     box-shadow: none;
     cursor: pointer;
+    .ant-popover-title {
+      margin-bottom: 0;
+    }
   }
   font-family: $code;
   .ant-popover-inner-content {
     color: $text-medium;
     box-shadow: 0px 0px 2px white;
     font-size: 0.9em;
+    margin-top: 8px;
   }
   &.popover-error {
     border-left: 8px solid $medium-red;
@@ -1598,16 +1602,19 @@ $grid: repeating-linear-gradient(
   }
 }
 
-// .step-wise-feedback {
-//   .graph {
-//     .graph-node {
-//       &.graph-node-active {
-//         svg {
-//           path {
-//             fill: $dark-red;
-//           }
-//         }
-//       }
-//     }
-//   }
-// }
+.step-wise-feedback {
+  .graph {
+    .graph-node {
+      &:not(.graph-node-active):not(.tool):not(.graph-node-error):not(
+          .graph-node-add
+        ) {
+        background-color: #efefef;
+        border: 1px solid #eaeaea;
+        cursor: not-allowed;
+        &:hover {
+          background-color: #eaeaea;
+        }
+      }
+    }
+  }
+}
