@@ -262,6 +262,20 @@ export const toolDisplayNames = {
   heatmap: "Heatmap",
 };
 
+export const toolShortNames = {
+  data_fetcher_and_aggregator: "Fetch ",
+  global_dict_data_fetcher_and_aggregator: "Query ",
+  dataset_metadata_describer: "Describer",
+  line_plot: "Line",
+  kaplan_meier_curve: "KM Curve",
+  hazard_ratio: "Hazard Ratio",
+  t_test: "T Test",
+  anova_test: "ANOVA Test",
+  wilcoxon_test: "Wilcoxon Test",
+  boxplot: "Boxplot",
+  heatmap: "Heatmap",
+};
+
 export const easyColumnTypes = {
   DBColumn: "Column name",
   DBColumnList: "List of column names",

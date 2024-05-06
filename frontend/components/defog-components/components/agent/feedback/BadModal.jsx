@@ -1,7 +1,7 @@
 import { Modal } from "antd";
 import StepsDag from "../../common/StepsDag";
 import { useCallback, useEffect, useState } from "react";
-import { toolDisplayNames } from "../../../../../utils/utils";
+import { toolDisplayNames, toolShortNames } from "../../../../../utils/utils";
 
 export default function BadModal({
   open,
@@ -139,7 +139,8 @@ export default function BadModal({
               <div className="relative">
                 <StepsDag
                   steps={analysisSteps}
-                  nodeRadius={5}
+                  nodeSize={[40, 10]}
+                  nodeGap={[30, 50]}
                   dag={dag}
                   setDag={setDag}
                   setDagLinks={setDagLinks}
@@ -148,7 +149,18 @@ export default function BadModal({
                   setActiveNode={setActiveNode}
                   activeNode={activeNode}
                   setLastOutputNodeAsActive={false}
-                  alwaysShowPopover={activeSection === "step"}
+                  // alwaysShowPopover={activeSection === "step"}
+                  extraNodeClasses={(node) => {
+                    return node.data.isTool
+                      ? `rounded-md px-1 text-center`
+                      : "";
+                  }}
+                  toolIcon={(node) => (
+                    <p className="text-sm m-0">
+                      {toolShortNames[node?.data?.step?.tool_name] ||
+                        "Unknown tool"}
+                    </p>
+                  )}
                 />
               </div>
               <div className="user-comments-ctr flex flex-col pl-8 relative flex-grow">

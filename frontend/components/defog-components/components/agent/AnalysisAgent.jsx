@@ -32,6 +32,8 @@ import {
   createAnalysis,
   getAnalysis,
   getToolRunData,
+  toolDisplayNames,
+  toolShortNames,
 } from "../../../../utils/utils";
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
 import { AnalysisFeedback } from "./feedback/AnalysisFeedback";
@@ -729,7 +731,8 @@ export const AnalysisAgent = ({
                       <div className="analysis-steps">
                         <StepsDag
                           steps={analysisSteps}
-                          nodeRadius={5}
+                          nodeSize={[40, 10]}
+                          nodeGap={[30, 50]}
                           setActiveNode={setActiveNode}
                           reRunningSteps={reRunningSteps}
                           activeNode={activeNode}
@@ -740,6 +743,18 @@ export const AnalysisAgent = ({
                           setDag={setDag}
                           dagLinks={dagLinks}
                           setDagLinks={setDagLinks}
+                          // alwaysShowPopover={activeSection === "step"}
+                          extraNodeClasses={(node) => {
+                            return node.data.isTool
+                              ? `rounded-md px-1 text-center`
+                              : "";
+                          }}
+                          toolIcon={(node) => (
+                            <p className="text-sm truncate m-0">
+                              {toolShortNames[node?.data?.step?.tool_name] ||
+                                "Unknown tool"}
+                            </p>
+                          )}
                         />
                       </div>
                     </div>
