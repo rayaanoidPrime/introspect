@@ -50,7 +50,7 @@ export const AnalysisAgent = ({
   analysisId,
   apiToken,
   username,
-  updateHook = () => { },
+  updateHook = () => {},
   editor,
   block,
 }) => {
@@ -218,7 +218,7 @@ export const AnalysisAgent = ({
         // keep inserting as we receive them
         updateHook(
           response.output?.report_sections?.length &&
-          response.output?.report_sections
+            response.output?.report_sections
         );
       }
 
@@ -642,7 +642,10 @@ export const AnalysisAgent = ({
                 </div>
                 {analysisTitle}
               </div>
-              <AnalysisFeedback analysisSteps={analysisSteps} />
+              <AnalysisFeedback
+                analysisSteps={analysisSteps}
+                analysisId={analysisId}
+              />
             </div>
           ) : (
             <></>
@@ -815,6 +818,6 @@ export const AnalysisAgent = ({
           )}
         </ThemeContext.Provider>
       </div>
-    </ErrorBoundary >
+    </ErrorBoundary>
   );
 };
