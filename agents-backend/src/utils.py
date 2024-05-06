@@ -121,8 +121,8 @@ def missing_param_error(param_name):
     )
 
 
-# clean yaml strings
-# change double quotes to single quotes inside strings
+def get_db_type():
+    return redis_client.get("integration:db_type")
 
 
 def get_metadata():

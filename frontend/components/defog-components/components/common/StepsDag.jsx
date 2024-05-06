@@ -195,40 +195,6 @@ export default function StepsDag({
     dag.width = horizontal ? height : width;
     dag.height = horizontal ? width : height;
 
-    // new links can be in any order
-    // if the order changes, the animation for drawing a link resets and re runs
-    // so only get the new links
-
-    // const linksToAdd = [...dag.links()].filter((d) => {
-    //   return !dagLinks.find((l) => {
-    //     return (
-    //       l.source.data.id === d.source.data.id &&
-    //       l.target.data.id === d.target.data.id
-    //     );
-    //   });
-    // });
-
-    // // find links to remove
-    // const linksToRemove = dagLinks.filter((d) => {
-    //   return ![...dag.links()].find((l) => {
-    //     return (
-    //       l.source.data.id === d.source.data.id &&
-    //       l.target.data.id === d.target.data.id
-    //     );
-    //   });
-    // });
-
-    // const newDagLinks = [...dagLinks, ...linksToAdd].filter((d) => {
-    //   return !linksToRemove.find((l) => {
-    //     return (
-    //       l.source.data.id === d.source.data.id &&
-    //       l.target.data.id === d.target.data.id
-    //     );
-    //   });
-    // });
-
-    // // update these with the latest values from [...dag.links()]
-    // newDagLinks.forEach((d) => {
     const n = [...dag.nodes()];
 
     setGraph(g);

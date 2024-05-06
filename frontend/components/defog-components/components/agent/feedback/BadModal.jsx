@@ -1,4 +1,4 @@
-import { Modal } from "antd";
+import { Button, Modal, message } from "antd";
 import StepsDag from "../../common/StepsDag";
 import { useCallback, useEffect, useState } from "react";
 import { toolDisplayNames, toolShortNames } from "../../../../../utils/utils";
@@ -8,6 +8,7 @@ export default function BadModal({
   setModalVisible,
   analysisId,
   analysisSteps,
+  submitFeedback,
 }) {
   const [dag, setDag] = useState(null);
   const [dagLinks, setDagLinks] = useState([]);
@@ -25,7 +26,29 @@ export default function BadModal({
     }
   });
 
-  const [comments, _setComments] = useState({});
+  const [comments, _setComments] = useState({
+    general: "",
+    step_wise: {},
+  });
+
+  const handleSubmit = useCallback(async () => {
+    // setModalVisible(false);
+    console.log(comments);
+
+    const submitRes = await submitFeedback({
+      review: "bad",
+      analysis_id: analysisId,
+      comments: comments,
+    });
+
+    if (submitRes.success) {
+      message.success("Feedback submitted successfully");
+    } else {
+      message.error(
+        "Failed to submit feedback. Error: " + submitRes.error_message
+      );
+    }
+  }, [analysisId, comments, submitFeedback, setModalVisible]);
 
   const setComments = (newComments) => {
     _setComments(newComments);
@@ -60,16 +83,17 @@ export default function BadModal({
 
     // start a comments object with the parsed comments so far
     const newComments = {
-      ...parsedComments,
+      general: parsedComments["general"] || "",
+      step_wise: parsedComments["step_wise"] || {},
     };
 
     analysisSteps.forEach((step) => {
       // if this exists, don't do anything
-      if (newComments[step.tool_run_id]) {
+      if (newComments["step_wise"][step.tool_run_id]) {
         return;
       }
 
-      newComments[step.tool_run_id] = {
+      newComments["step_wise"][step.tool_run_id] = {
         description: {
           heading: "Step description",
           value: step.description,
@@ -177,10 +201,12 @@ export default function BadModal({
                   activeNode.data.isTool ? (
                     <div>
                       {Object.keys(
-                        comments[activeNode.data.step.tool_run_id]
+                        comments["step_wise"][activeNode.data.step.tool_run_id]
                       ).map((key) => {
                         const comment =
-                          comments[activeNode.data.step.tool_run_id][key];
+                          comments["step_wise"][
+                            activeNode.data.step.tool_run_id
+                          ][key];
 
                         return (
                           <div key={key} className="mb-4">
@@ -206,9 +232,10 @@ export default function BadModal({
                                 const newComments = {
                                   ...comments,
                                 };
-                                newComments[activeNode.data.step.tool_run_id][
-                                  key
-                                ].comments = ev.target.value;
+                                newComments["step_wise"][
+                                  activeNode.data.step.tool_run_id
+                                ][key].comments = ev.target.value;
+
                                 setComments(newComments);
                               }}
                             />
@@ -229,6 +256,9 @@ export default function BadModal({
           </div>
         </div>
       </div>
+      <Button type="primary" onClick={handleSubmit}>
+        Submit
+      </Button>
     </Modal>
   );
 }

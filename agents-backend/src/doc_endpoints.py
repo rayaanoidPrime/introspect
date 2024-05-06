@@ -4,6 +4,8 @@ import os
 from uuid import uuid4
 from colorama import Fore, Style
 import traceback
+
+import requests
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
 from agents.planner_executor.tool_helpers.rerun_step import rerun_step_and_dependents
 from agents.planner_executor.tool_helpers.core_functions import analyse_data
@@ -11,7 +13,7 @@ from agents.planner_executor.tool_helpers.all_tools import tool_name_dict
 from agents.planner_executor.execute_tool import parse_function_signature
 import pandas as pd
 from io import StringIO
-from utils import log_msg
+from utils import get_db_type, log_msg
 
 DEFOG_API_KEY = "genmab-survival-test"
 
@@ -868,3 +870,55 @@ async def delete_steps(request: Request):
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
     return
+
+
+@router.post("/submit_feedback")
+async def submit_feedback(request: Request):
+    """
+    Submit feedback to the backend.
+    """
+    error = None
+    try:
+        data = await request.json()
+        analysis_id = data.get("analysis_id")
+        feedback = data.get("feedback")
+
+        # get metadata
+        metadata = get_metadata()
+
+        db_type = get_db_type()
+
+        if analysis_id is None or type(analysis_id) != str:
+            raise Exception("Invalid analysis id.")
+
+        err, analysis_data = get_report_data(analysis_id)
+        if err:
+            raise Exception(err)
+
+        # send it to defog servers
+        url = None
+
+        # send the feedback
+        payload = {
+            "analysis_id": analysis_id,
+            "analysis_data": analysis_data,
+            "feedback": feedback,
+            "metadata": metadata,
+            "db_type": db_type,
+        }
+
+        res = requests.post(url, json=payload)
+
+        if res.status_code != 200:
+            raise Exception(f"Error sending feedback: {res.text}")
+
+    except Exception as e:
+        print(str(e))
+        error = str(e)[:300]
+        print(error)
+        traceback.print_exc()
+    finally:
+        if error is not None:
+            return {"success": False, "error_message": error}
+        else:
+            return {"success": True}
