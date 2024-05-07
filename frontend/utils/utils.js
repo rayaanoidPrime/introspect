@@ -1,5 +1,6 @@
 import { contrast, random } from "chroma-js";
 import setupBaseUrl from "../utils/setupBaseUrl";
+import { EditorState, Transaction } from "@codemirror/state";
 
 export const getApiToken = async (
   username,
@@ -312,19 +313,45 @@ export const snakeCase = (str) => {
     .toLowerCase();
 };
 
-// // https://discuss.codemirror.net/t/how-to-make-certain-ranges-readonly-in-codemirror6/3400/5
-// function readOnlyTransactionFilter(EditorState) {
-//   return EditorState.transactionFilter.of((tr) => {
-//     let readonlyRangeSet = tr.startState.field(underlineField, false)
-//     if (readonlyRangeSet && tr.docChanged && !tr.annotation(Transaction.remote)) {
-//       let block = false
-//       tr.changes.iterChangedRanges((chFrom, chTo) => {
-//         readonlyRangeSet.between(chFrom, chTo, (roFrom, roTo) => {
-//           if (chTo > roFrom && chFrom < roTo) block = true
-//         })
-//       })
-//       if (block) return []
-//     }
-//     return tr
-//   }
-// }
+// https://discuss.codemirror.net/t/how-to-make-certain-ranges-readonly-in-codemirror6/3400/5
+export function createReadOnlyTransactionFilter(readonlyRangeSet) {
+  return () => {
+    return EditorState.transactionFilter.of((tr) => {
+      if (
+        readonlyRangeSet &&
+        tr.docChanged &&
+        !tr.annotation(Transaction.remote)
+      ) {
+        let block = false;
+        tr.changes.iterChangedRanges((chFrom, chTo) => {
+          readonlyRangeSet.between(chFrom, chTo, (roFrom, roTo) => {
+            if (chTo > roFrom && chFrom < roTo) block = true;
+          });
+        });
+        if (block) return [];
+      }
+      return tr;
+    });
+  };
+}
+
+// from: https://github.com/andrebnassis/codemirror-readonly-ranges/blob/master/src/lib/index.ts
+export const preventModifyTargetRanges = (getReadOnlyRanges) =>
+  EditorState.transactionFilter.of((tr) => {
+    let readonlyRangeSet = getReadOnlyRanges(tr.startState);
+    if (
+      readonlyRangeSet &&
+      tr.docChanged &&
+      !tr.annotation(Transaction.remote)
+    ) {
+      let block = false;
+      tr.changes.iterChangedRanges((chFrom, chTo) => {
+        readonlyRangeSet.between(chFrom, chTo, (roFrom, roTo) => {
+          if (chTo > roFrom && chFrom < roTo) block = true;
+        });
+      });
+      if (block) return [];
+      return tr;
+    }
+    return tr;
+  });

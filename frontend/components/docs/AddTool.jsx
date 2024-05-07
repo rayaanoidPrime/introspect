@@ -2,15 +2,17 @@ import setupBaseUrl from "../../utils/setupBaseUrl";
 import { Button, Input, Modal, Select } from "antd";
 import {
   easyToolInputTypes,
+  preventModifyTargetRanges,
   snakeCase,
   toolboxDisplayNames,
 } from "../../utils/utils";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ReactCodeMirror from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
-import { CiCircleMinus } from "react-icons/ci";
 import { MdDeleteOutline } from "react-icons/md";
+import { Range, RangeSet, RangeValue } from "@codemirror/state";
+import { classname } from "@uiw/codemirror-extensions-classname";
 
 const getToolsEndpoint = setupBaseUrl("http", "get_tools");
 const setToolsEndpoint = setupBaseUrl("http", "set_tools");
@@ -18,27 +20,53 @@ const skipImages = true;
 
 export default function AddTool({ toolbox }) {
   const [modalOpen, setModalOpen] = useState(false);
-  const [toolCode, setToolCode] = useState("\n  # your function body here");
-  // inputs have a name and a type
+  const [toolFunctionBody, setToolFunctionBody] = useState(
+    "\n  #\n  # YOUR FUNCTION BODY HERE\n  #\n  pass\n"
+  );
+
   const [toolInputs, setToolInputs] = useState([]);
   const [toolDefStatement, setToolDefStatement] = useState("");
-  // format of return statement {
-  // return {
-  //   "outputs": [
-  //       {
-  //           "data": full_data,
-  //           "chart_images": [
-  //               {
-  //                   "name": "image_name",
-  //               }
-  //           ],
-  //       }
-  //   ],
-  // }
+
   const [toolReturnStatement, setToolReturnStatement] = useState("");
-  // outputs will look like this
-  // name: name of the output
-  // chart_images: array of chart images: each with type and path
+
+  const getReadOnlyRanges = useCallback(
+    (editorState) => {
+      const defStatementLines = toolDefStatement.split("\n").length;
+      // get lines from the end of the
+      const toolFunctionBodyLines = toolFunctionBody.split("\n").length;
+
+      return RangeSet.of([
+        new Range(0, toolDefStatement.length, new RangeValue(toolDefStatement)),
+        new Range(
+          toolDefStatement.length + toolFunctionBody.length,
+          editorState.doc.length,
+          new RangeValue(toolReturnStatement)
+        ),
+      ]);
+    },
+    [toolDefStatement, toolReturnStatement, toolFunctionBody]
+  );
+
+  const classnameExt = useMemo(
+    () =>
+      classname({
+        add: (lineNumber) => {
+          if (lineNumber <= toolDefStatement.split("\n").length) {
+            return "def-line";
+          }
+          if (
+            lineNumber >=
+            toolDefStatement.split("\n").length +
+              toolFunctionBody.split("\n").length -
+              1
+          ) {
+            return "return-line";
+          }
+        },
+      }),
+    [toolDefStatement, toolReturnStatement, toolFunctionBody]
+  );
+
   const [toolOutputs, setToolOutputs] = useState([]);
   const [toolName, setToolName] = useState("New Tool");
   const editor = useRef();
@@ -72,7 +100,7 @@ export default function AddTool({ toolbox }) {
 
     newDefStr += "):";
 
-    let returnStr = '\n  return {\n    "outputs": [\n';
+    let returnStr = '  return {\n    "outputs": [\n';
     toolOutputs.forEach((output, idx) => {
       returnStr += "      {\n";
       returnStr += '        "data": ' + output.name + ",\n";
@@ -88,7 +116,7 @@ export default function AddTool({ toolbox }) {
       }
     });
 
-    returnStr += "    ],\n  }\n";
+    returnStr += "    ],\n  }";
 
     setToolDefStatement(newDefStr);
     setToolReturnStatement(returnStr);
@@ -327,19 +355,31 @@ export default function AddTool({ toolbox }) {
             <div className="add-code  w-6/12">
               <h2 className="text-sm uppercase font-light mb-2">Code</h2>
               <ReactCodeMirror
-                value={toolDefStatement + toolCode + toolReturnStatement}
-                extensions={[python()]}
+                className="*:outline-0 *:focus:outline-0 "
+                // refresh if the toolDefStatement or toolReturnStatement changes
+                key={toolDefStatement + toolReturnStatement}
+                value={
+                  toolDefStatement + toolFunctionBody + toolReturnStatement
+                }
+                extensions={[
+                  python(),
+                  preventModifyTargetRanges(getReadOnlyRanges),
+                  classnameExt,
+                ]}
                 basicSetup={{
                   lineNumbers: false,
+                  highlightActiveLine: false,
                 }}
                 language="python"
                 onChange={(val) => {
-                  // val is the new value of the code editor
-                  // we need to split the val into two parts
-                  // the def (which holds the current toolDefStatement)
-                  // the actual function body (which holds the current toolCode)
-                  // const newToolCode = val.slice(toolDefStatement.length);
-                  // setToolCode(newToolCode);
+                  // remove toolDefStatement from the start and
+                  // toolReturnStatement from the end
+                  // and set the funciton body to the tool code
+                  setToolFunctionBody(
+                    val
+                      .replace(toolDefStatement, "")
+                      .replace(toolReturnStatement, "")
+                  );
                 }}
               />
             </div>
