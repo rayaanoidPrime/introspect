@@ -170,10 +170,10 @@ const ViewNotebooks = () => {
     <Wrap>
       <Meta />
       <Scaffolding id={"view-notebooks"} userType={context.userType}>
-        <h1>Notebooks</h1>
+        <h1 className="text-2xl font-bold mb-4">Notebooks</h1>
 
-        <h2 className="header">Your notebooks</h2>
-        <div className="doc-icons-container">
+        <h2 className="text-lg mb-4">Your notebooks</h2>
+        <div className="flex flex-wrap justify-start">
           {ownDocs && !loading ? (
             <>
               <DocIcon addDocIcon={true} />
@@ -187,9 +187,9 @@ const ViewNotebooks = () => {
         </div>
 
         {recentlyViewed.length ? (
-          <h2 className="header">Recently viewed</h2>
+          <h2 className="text-lg mb-4">Recently viewed</h2>
         ) : null}
-        <div className="doc-icons-container">
+        <div className="flex flex-wrap justify-start">
           {recentlyViewed && !loading ? (
             <>
               {recentlyViewed.map((doc) => (
@@ -247,19 +247,6 @@ const Wrap = styled.div`
         padding: 0;
       }
     }
-  }
-  .doc-icons-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: left;
-    margin: 0 auto;
-    padding: 20px;
-    a {
-      position: relative;
-    }
-  }
-  .header {
-    margin: 20px;
   }
 `;
 

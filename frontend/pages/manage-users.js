@@ -16,15 +16,18 @@ const ManageUsers = () => {
     if (!context.token) {
       return;
     }
-    const res = await fetch(`http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/admin/get_users`, {
-      method: "POST",
-      body: JSON.stringify({
-        token: context.token,
-      }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const res = await fetch(
+      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/admin/get_users`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          token: context.token,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
     const data = await res.json();
     if (data.users) {
       setUserDets(data.users);
@@ -66,17 +69,17 @@ const ManageUsers = () => {
     <>
       <Meta />
       <Scaffolding id={"manage-users"} userType={"admin"}>
-        <h1>Add New Users</h1>
-        <Row gutter={
-          {
+        <h1 className="text-2xl font-bold mb-4">Add New Users</h1>
+        <Row
+          gutter={{
             xs: 8,
             sm: 16,
             md: 24,
             lg: 32,
-          }
-        }>
-          <Col span={{ xs: 24, md: 12 }} >
-            <h2>Add Users</h2>
+          }}
+        >
+          <Col span={{ xs: 24, md: 12 }}>
+            <h2 className="text-lg mb-4">Add Users</h2>
             <p>
               Paste in user details as a CSV file with the headers:
               `username,password,user_type`
@@ -86,16 +89,19 @@ const ManageUsers = () => {
               disabled={loading}
               onFinish={async (values) => {
                 setLoading(true);
-                const res = await fetch(`http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/admin/add_users`, {
-                  method: "POST",
-                  body: JSON.stringify({
-                    ...values,
-                    token: context.token,
-                  }),
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                });
+                const res = await fetch(
+                  `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/admin/add_users`,
+                  {
+                    method: "POST",
+                    body: JSON.stringify({
+                      ...values,
+                      token: context.token,
+                    }),
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                  }
+                );
                 const data = await res.json();
                 if (data.status === "success") {
                   message.success(
@@ -121,7 +127,7 @@ const ManageUsers = () => {
             </Form>
           </Col>
           <Col span={{ xs: 24, md: 12 }}>
-            <h2>Users</h2>
+            <h2 className="text-lg mb-4">Current users</h2>
             {/* display a table of all users with the headers: `username`, `user_type`, `delete_user` */}
             <Table
               dataSource={userDets}
@@ -144,16 +150,19 @@ const ManageUsers = () => {
                       <a
                         onClick={async () => {
                           setLoading(true);
-                          const res = await fetch(`http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/admin/delete_user`, {
-                            method: "POST",
-                            body: JSON.stringify({
-                              username: record.username,
-                              token: context.token,
-                            }),
-                            headers: {
-                              "Content-Type": "application/json",
-                            },
-                          });
+                          const res = await fetch(
+                            `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/admin/delete_user`,
+                            {
+                              method: "POST",
+                              body: JSON.stringify({
+                                username: record.username,
+                                token: context.token,
+                              }),
+                              headers: {
+                                "Content-Type": "application/json",
+                              },
+                            }
+                          );
                           const data = await res.json();
                           if (data.status === "success") {
                             message.success(

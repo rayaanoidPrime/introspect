@@ -124,7 +124,9 @@ const ExtractMetadata = () => {
     <>
       <Meta />
       <Scaffolding id={"manage-database"} userType={"admin"}>
-        <h1 style={{ paddingBottom: "1em" }}>Extract Metadata</h1>
+        <h1 className="text-2xl font-bold" style={{ paddingBottom: "1em" }}>
+          Extract Metadata
+        </h1>
         {/* select database type */}
         <Row type={"flex"} height={"100vh"} gutter={20}>
           <Col md={{ span: 12 }} xs={{ span: 24 }}>

@@ -9,6 +9,7 @@ export const toolsMetadata = {
         type: "str",
       },
     ],
+    toolbox: "data_fetching",
   },
   global_dict_data_fetcher_and_aggregator: {
     name: "global_dict_data_fetcher_and_aggregator",
@@ -25,11 +26,175 @@ export const toolsMetadata = {
         type: "pandas.core.frame.DataFrame",
       },
     ],
+    toolbox: "data_fetching",
+  },
+  kaplan_meier_curve: {
+    name: "kaplan_meier_curve",
+    display_name: "Kaplan Meier Curve",
+    function_signature: [
+      {
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
+      },
+      {
+        name: "survival_time_col",
+        default: null,
+        type: "DBColumn",
+      },
+      {
+        name: "status_col",
+        default: null,
+        type: "DBColumn",
+      },
+      {
+        name: "stratification_vars",
+        default: [],
+        type: "DBColumnList_0",
+      },
+    ],
+    toolbox: "cancer_survival",
+  },
+  hazard_ratio: {
+    name: "hazard_ratio",
+    display_name: "Hazard Ratio",
+    function_signature: [
+      {
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
+      },
+      {
+        name: "survival_time_col",
+        default: null,
+        type: "DBColumn",
+      },
+      {
+        name: "status_col",
+        default: null,
+        type: "DBColumn",
+      },
+    ],
+    toolbox: "cancer_survival",
   },
   dataset_metadata_describer: {
     name: "dataset_metadata_describer",
     display_name: "Dataset Metadata Describer",
     function_signature: [],
+    toolbox: "stats",
+  },
+  t_test: {
+    name: "t_test",
+    display_name: "T Test",
+    function_signature: [
+      {
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
+      },
+      {
+        name: "group_column",
+        default: null,
+        type: "DBColumn",
+      },
+      {
+        name: "score_column",
+        default: null,
+        type: "DBColumn",
+      },
+      {
+        name: "name_column",
+        default: null,
+        type: "DBColumn",
+      },
+      {
+        name: "t_test_type",
+        default: ["unpaired", "paired"],
+        type: "DropdownSingleSelect",
+      },
+    ],
+    toolbox: "stats",
+  },
+  fold_change: {
+    name: "fold_change",
+    display_name: "Fold Change",
+    function_signature: [
+      {
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
+      },
+      {
+        name: "value_column",
+        default: null,
+        type: "DBColumn",
+      },
+      {
+        name: "individual_id_column",
+        default: null,
+        type: "DBColumn",
+      },
+      {
+        name: "time_column",
+        default: null,
+        type: "DBColumn",
+      },
+      {
+        name: "group_column",
+        default: null,
+        type: "DBColumn",
+      },
+    ],
+    toolbox: "stats",
+  },
+  anova_test: {
+    name: "anova_test",
+    display_name: "ANOVA Test",
+    function_signature: [
+      {
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
+      },
+      {
+        name: "group_column",
+        default: null,
+        type: "DBColumn",
+      },
+      {
+        name: "score_column",
+        default: null,
+        type: "DBColumn",
+      },
+    ],
+    toolbox: "stats",
+  },
+  wilcoxon_test: {
+    name: "wilcoxon_test",
+    display_name: "Wilcoxon Test",
+    function_signature: [
+      {
+        name: "full_data",
+        default: null,
+        type: "pandas.core.frame.DataFrame",
+      },
+      {
+        name: "group_column",
+        default: null,
+        type: "DBColumn",
+      },
+      {
+        name: "score_column",
+        default: null,
+        type: "DBColumn",
+      },
+      {
+        name: "name_column",
+        default: null,
+        type: "DBColumn",
+      },
+    ],
+    toolbox: "stats",
   },
   line_plot: {
     name: "line_plot",
@@ -81,131 +246,7 @@ export const toolsMetadata = {
         type: "DropdownSingleSelect",
       },
     ],
-  },
-  kaplan_meier_curve: {
-    name: "kaplan_meier_curve",
-    display_name: "Kaplan Meier Curve",
-    function_signature: [
-      {
-        name: "full_data",
-        default: null,
-        type: "pandas.core.frame.DataFrame",
-      },
-      {
-        name: "survival_time_col",
-        default: null,
-        type: "DBColumn",
-      },
-      {
-        name: "status_col",
-        default: null,
-        type: "DBColumn",
-      },
-      {
-        name: "stratification_vars",
-        default: [],
-        type: "DBColumnList_0",
-      },
-    ],
-  },
-  hazard_ratio: {
-    name: "hazard_ratio",
-    display_name: "Hazard Ratio",
-    function_signature: [
-      {
-        name: "full_data",
-        default: null,
-        type: "pandas.core.frame.DataFrame",
-      },
-      {
-        name: "survival_time_col",
-        default: null,
-        type: "DBColumn",
-      },
-      {
-        name: "status_col",
-        default: null,
-        type: "DBColumn",
-      },
-    ],
-  },
-  t_test: {
-    name: "t_test",
-    display_name: "T Test",
-    function_signature: [
-      {
-        name: "full_data",
-        default: null,
-        type: "pandas.core.frame.DataFrame",
-      },
-      {
-        name: "group_column",
-        default: null,
-        type: "DBColumn",
-      },
-      {
-        name: "score_column",
-        default: null,
-        type: "DBColumn",
-      },
-      {
-        name: "name_column",
-        default: null,
-        type: "DBColumn",
-      },
-      {
-        name: "t_test_type",
-        default: ["unpaired", "paired"],
-        type: "DropdownSingleSelect",
-      },
-    ],
-  },
-  anova_test: {
-    name: "anova_test",
-    display_name: "ANOVA Test",
-    function_signature: [
-      {
-        name: "full_data",
-        default: null,
-        type: "pandas.core.frame.DataFrame",
-      },
-      {
-        name: "group_column",
-        default: null,
-        type: "DBColumn",
-      },
-      {
-        name: "score_column",
-        default: null,
-        type: "DBColumn",
-      },
-    ],
-  },
-  wilcoxon_test: {
-    name: "wilcoxon_test",
-    display_name: "Wilcoxon Test",
-    function_signature: [
-      {
-        name: "full_data",
-        default: null,
-        type: "pandas.core.frame.DataFrame",
-      },
-      {
-        name: "group_column",
-        default: null,
-        type: "DBColumn",
-      },
-      {
-        name: "score_column",
-        default: null,
-        type: "DBColumn",
-      },
-      {
-        name: "name_column",
-        default: null,
-        type: "DBColumn",
-      },
-    ],
+    toolbox: "plots",
   },
   boxplot: {
     name: "boxplot",
@@ -249,6 +290,7 @@ export const toolsMetadata = {
         type: "DropdownSingleSelect",
       },
     ],
+    toolbox: "plots",
   },
   heatmap: {
     name: "heatmap",
@@ -365,6 +407,10 @@ export const toolsMetadata = {
           "tab20",
           "tab20b",
           "tab20c",
+          "grey",
+          "gist_grey",
+          "gist_yerg",
+          "Grays",
           "magma_r",
           "inferno_r",
           "plasma_r",
@@ -464,36 +510,6 @@ export const toolsMetadata = {
         type: "DropdownSingleSelect",
       },
     ],
-  },
-  fold_change: {
-    name: "fold_change",
-    display_name: "Fold Change",
-    function_signature: [
-      {
-        name: "full_data",
-        default: null,
-        type: "pandas.core.frame.DataFrame",
-      },
-      {
-        name: "value_column",
-        default: null,
-        type: "DBColumn",
-      },
-      {
-        name: "individual_id_column",
-        default: null,
-        type: "DBColumn",
-      },
-      {
-        name: "time_column",
-        default: null,
-        type: "DBColumn",
-      },
-      {
-        name: "group_column",
-        default: null,
-        type: "DBColumn",
-      },
-    ],
+    toolbox: "plots",
   },
 };

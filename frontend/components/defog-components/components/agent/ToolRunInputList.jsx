@@ -1,7 +1,7 @@
 import { Input, Select, message } from "antd";
 import React, { useCallback, useEffect, useState } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
-import { easyColumnTypes } from "../../../../utils/utils";
+import { easyToolInputTypes } from "../../../../utils/utils";
 
 const inputTypeToUI = {
   list: (toolRunId, inputName, initialValue, onEdit) => {
@@ -443,7 +443,7 @@ export function ToolRunInputList({
         return (
           <div key={i + "_" + toolRunId} className="tool-input">
             <span className="tool-input-type">
-              {easyColumnTypes[sanitizedType] || sanitizedType}
+              {easyToolInputTypes[sanitizedType] || sanitizedType}
             </span>
             <span className="tool-input-name">{functionSignature[i].name}</span>
 

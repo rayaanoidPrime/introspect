@@ -260,6 +260,7 @@ export const toolDisplayNames = {
   wilcoxon_test: "Wilcoxon Test",
   boxplot: "Boxplot",
   heatmap: "Heatmap",
+  fold_change: "Fold Change",
 };
 
 export const toolShortNames = {
@@ -274,9 +275,10 @@ export const toolShortNames = {
   wilcoxon_test: "Wilcoxon Test",
   boxplot: "Boxplot",
   heatmap: "Heatmap",
+  fold_change: "Fold Change",
 };
 
-export const easyColumnTypes = {
+export const easyToolInputTypes = {
   DBColumn: "Column name",
   DBColumnList: "List of column names",
   "pandas.core.frame.DataFrame": "Dataframe",
@@ -288,3 +290,41 @@ export const easyColumnTypes = {
   list: "List",
   DropdownSingleSelect: "String",
 };
+
+export const toolboxDisplayNames = {
+  cancer_survival: "Cancer Survival",
+  data_fetching: "Data Fetching",
+  plots: "Plots",
+  stats: "Stats",
+};
+
+export const kebabCase = (str) => {
+  return str
+    .replace(/([a-z])([A-Z])/g, "$1-$2")
+    .replace(/[\s_]+/g, "-")
+    .toLowerCase();
+};
+
+export const snakeCase = (str) => {
+  return str
+    .replace(/([a-z])([A-Z])/g, "$1_$2")
+    .replace(/[\s-]+/g, "_")
+    .toLowerCase();
+};
+
+// // https://discuss.codemirror.net/t/how-to-make-certain-ranges-readonly-in-codemirror6/3400/5
+// function readOnlyTransactionFilter(EditorState) {
+//   return EditorState.transactionFilter.of((tr) => {
+//     let readonlyRangeSet = tr.startState.field(underlineField, false)
+//     if (readonlyRangeSet && tr.docChanged && !tr.annotation(Transaction.remote)) {
+//       let block = false
+//       tr.changes.iterChangedRanges((chFrom, chTo) => {
+//         readonlyRangeSet.between(chFrom, chTo, (roFrom, roTo) => {
+//           if (chTo > roFrom && chFrom < roTo) block = true
+//         })
+//       })
+//       if (block) return []
+//     }
+//     return tr
+//   }
+// }

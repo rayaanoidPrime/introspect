@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
-import { easyColumnTypes } from "../../../../utils/utils";
+import { easyToolInputTypes } from "../../../../utils/utils";
 
 const onHover = (ev, label, analysisId) => {
   // get the closest .analysis-content to the mouseovered element
@@ -34,7 +34,7 @@ const onHoverOut = (ev, label, analysisId) => {
   node.classList.remove("highlighted");
 };
 
-const inputTypeToUI = {
+export const inputTypeToUI = {
   list: (
     inputName,
     initialValue,
@@ -419,7 +419,7 @@ export function AddStepInputList({
         return (
           <div key={i + "_" + toolRunId} className="tool-input">
             <span className="tool-input-type">
-              {easyColumnTypes[sanitizedType] || sanitizedType}
+              {easyToolInputTypes[sanitizedType] || sanitizedType}
             </span>
             <span className="tool-input-name">{functionSignature[i].name}</span>
             {inputTypeToUI[sanitizedType] &&
