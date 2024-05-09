@@ -1,6 +1,13 @@
 import inspect
 import json
 import os
+import sys
+
+# add to path
+module_path = os.path.abspath(os.path.join(".."))
+if module_path not in sys.path:
+    sys.path.append(module_path)
+
 from agents.planner_executor.execute_tool import parse_function_signature
 from agents.planner_executor.tool_helpers.all_tools import tools
 
@@ -17,6 +24,7 @@ def generate_tool_json_for_frontend():
             "name": tool_name,
             "display_name": tool["display_name"],
             "function_signature": tool_function_signature,
+            "toolbox": tool["toolbox"],
         }
     return tool_json
 

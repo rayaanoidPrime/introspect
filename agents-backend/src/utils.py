@@ -125,6 +125,10 @@ def get_db_type():
     return redis_client.get("integration:db_type")
 
 
+def get_all_tools():
+    return redis_client.get("integration:tools") or {}
+
+
 def get_metadata():
     table_metadata_csv = redis_client.get("integration:metadata")
     client_description = "In this assignment, assume that you are a medical data analyst who is working with lab sample data for T cells of cancer patients."

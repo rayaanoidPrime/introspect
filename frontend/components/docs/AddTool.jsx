@@ -12,11 +12,13 @@ import ReactCodeMirror from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
 import { MdDeleteOutline } from "react-icons/md";
 import { Range, RangeSet, RangeValue } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import { classname } from "@uiw/codemirror-extensions-classname";
+import TextArea from "antd/es/input/TextArea";
 
 const getToolsEndpoint = setupBaseUrl("http", "get_tools");
 const setToolsEndpoint = setupBaseUrl("http", "set_tools");
-const skipImages = true;
+const skipImages = false;
 
 export default function AddTool({ toolbox }) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -30,6 +32,12 @@ export default function AddTool({ toolbox }) {
   const [toolReturnStatement, setToolReturnStatement] = useState("");
 
   const getReadOnlyRanges = useCallback(
+    // we want to make the function definition, the function doctstring
+    // and the return statement read only inside of codemirror
+    // this function uses the toolDefStatement, toolFunctionBody and toolReturnStatement
+    // to create "read only text ranges" (a codemirror internal thing)
+    // which is used in conjunction with the preventModifyTargetRanges function
+    // which checks if a range is read only and prevents modification
     (editorState) => {
       const defStatementLines = toolDefStatement.split("\n").length;
       // get lines from the end of the
@@ -47,7 +55,10 @@ export default function AddTool({ toolbox }) {
     [toolDefStatement, toolReturnStatement, toolFunctionBody]
   );
 
-  const classnameExt = useMemo(
+  const classnameCodeMirrorExtension = useMemo(
+    // code mirror extension
+    // adds class names to def statements and return statements (read only ranges)
+    // in case we want to style them differently later
     () =>
       classname({
         add: (lineNumber) => {
@@ -69,6 +80,7 @@ export default function AddTool({ toolbox }) {
 
   const [toolOutputs, setToolOutputs] = useState([]);
   const [toolName, setToolName] = useState("New Tool");
+  const [toolDocString, setToolDocString] = useState("");
   const editor = useRef();
 
   const mandatoryInputs = [
@@ -100,6 +112,30 @@ export default function AddTool({ toolbox }) {
 
     newDefStr += "):";
 
+    // add doc string
+    // split to max of 60 characters
+    // first split on newlines
+    // then split on spaces
+    newDefStr +=
+      '\n  """\n  ' +
+      toolDocString
+        .split("\n")
+        .map((line) => {
+          return line
+            .split(" ")
+            .reduce((acc, word) => {
+              if (acc.length && acc[acc.length - 1].length + word.length < 60) {
+                acc[acc.length - 1] += " " + word;
+              } else {
+                acc.push(word);
+              }
+              return acc;
+            }, [])
+            .join("\n  ");
+        })
+        .join("\n  ") +
+      '\n  """';
+
     let returnStr = '  return {\n    "outputs": [\n';
     toolOutputs.forEach((output, idx) => {
       returnStr += "      {\n";
@@ -120,7 +156,7 @@ export default function AddTool({ toolbox }) {
 
     setToolDefStatement(newDefStr);
     setToolReturnStatement(returnStr);
-  }, [toolInputs, toolName, toolOutputs]);
+  }, [toolInputs, toolName, toolOutputs, toolDocString]);
 
   return (
     <>
@@ -150,6 +186,17 @@ export default function AddTool({ toolbox }) {
                   placeholder="Tool name"
                   onChange={(ev) => setToolName(ev.target.value)}
                   value={toolName}
+                />
+                <h2 className="text-sm uppercase font-light mb-2">
+                  Tool description
+                </h2>
+                <TextArea
+                  title="sss"
+                  type="text"
+                  rootClassName="mb-2 text-gray-600 font-mono"
+                  placeholder="What does this tool do?"
+                  onChange={(ev) => setToolDocString(ev.target.value)}
+                  value={toolDocString}
                 />
               </div>
               <div className="tool-inputs mb-8">
@@ -230,7 +277,7 @@ export default function AddTool({ toolbox }) {
                       ...toolInputs,
                       {
                         name: "input_" + toolInputs.length,
-                        type: "String",
+                        type: "str",
                       },
                     ]);
                   }}
@@ -364,7 +411,8 @@ export default function AddTool({ toolbox }) {
                 extensions={[
                   python(),
                   preventModifyTargetRanges(getReadOnlyRanges),
-                  classnameExt,
+                  classnameCodeMirrorExtension,
+                  EditorView.lineWrapping,
                 ]}
                 basicSetup={{
                   lineNumbers: false,

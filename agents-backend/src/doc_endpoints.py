@@ -869,7 +869,15 @@ async def delete_steps(request: Request):
         print("Error deleting steps: ", e)
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
-    return
+
+
+@router.post("/get_user_tools")
+def get_all_tools(request: Request):
+    """
+    Get all tools available to the user.
+    """
+    tools = get_all_tools()
+    return {"success": True, "tools": tools}
 
 
 @router.post("/submit_feedback")

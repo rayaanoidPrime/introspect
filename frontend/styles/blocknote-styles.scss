@@ -1647,6 +1647,7 @@ $grid: repeating-linear-gradient(
     .return-line {
       background-color: $light-gray;
       opacity: 0.6;
+      caret-color: transparent;
     }
   }
 }

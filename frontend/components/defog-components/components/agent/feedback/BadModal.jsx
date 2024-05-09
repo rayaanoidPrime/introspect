@@ -72,13 +72,16 @@ export default function BadModal({
         `analysis-${analysisId}-comments`
       );
 
-      // try to parse it
-      parsedComments = JSON.parse(storedComments);
+      if (storedComments) {
+        // try to parse it
+        parsedComments = JSON.parse(storedComments);
+      }
     } catch (e) {
       console.error(
         "Error parsing comments from local storage. Starting fresh comments object",
         e
       );
+      parsedComments = {};
     }
 
     // start a comments object with the parsed comments so far
@@ -140,7 +143,7 @@ export default function BadModal({
           <p className="text-sm  text-gray-400">
             You can leave general comments about the overall plan here
           </p>
-          <div className={`p-5 border rounded-md mr-4`}>
+          <div className={`mr-4`}>
             <textarea
               className="w-full min-h-10 p-2 border border-gray-300 rounded-md"
               placeholder="Leave your feedback here..."

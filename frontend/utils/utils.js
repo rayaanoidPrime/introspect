@@ -337,6 +337,9 @@ export function createReadOnlyTransactionFilter(readonlyRangeSet) {
 
 // from: https://github.com/andrebnassis/codemirror-readonly-ranges/blob/master/src/lib/index.ts
 export const preventModifyTargetRanges = (getReadOnlyRanges) =>
+  // code mirror extension that
+  // takes a function that returns read only ranges
+  // and prevents modification on them
   EditorState.transactionFilter.of((tr) => {
     let readonlyRangeSet = getReadOnlyRanges(tr.startState);
     if (
@@ -347,7 +350,13 @@ export const preventModifyTargetRanges = (getReadOnlyRanges) =>
       let block = false;
       tr.changes.iterChangedRanges((chFrom, chTo) => {
         readonlyRangeSet.between(chFrom, chTo, (roFrom, roTo) => {
-          if (chTo > roFrom && chFrom < roTo) block = true;
+          if (
+            (chTo > roFrom && chFrom < roTo) ||
+            // also prevent adding at the start or end of a readonly range
+            chFrom === roTo ||
+            chTo === roFrom
+          )
+            block = true;
         });
       });
       if (block) return [];

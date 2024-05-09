@@ -167,6 +167,24 @@ CREATE TABLE public.defog_users (
 ALTER TABLE public.defog_users OWNER TO postgres;
 
 --
+-- Name: defog_plans_feedback; Type: TABLE; Schema: public; Owner: postgres
+-- Stores both golden plans and bad plans
+--
+
+CREATE TABLE public.defog_plans_feedback (
+    api_key text NOT NULL,
+    username text NOT NULL,
+    feedback jsonb,
+    user_question text NOT NULL,
+    -- if thumbs up on the UI, this will be true
+    is_correct boolean NOT NULL,
+    -- join on this with the defog_reports table to get the actual plan data
+    report_id text NOT NULL,
+);
+
+ALTER TABLE public.defog_plans_feedback OWNER TO postgres;
+
+--
 -- Name: defog_docs defog_docs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
