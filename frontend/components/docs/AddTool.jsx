@@ -14,7 +14,7 @@ import { MdDeleteOutline } from "react-icons/md";
 import { Range, RangeSet, RangeValue } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { classname } from "@uiw/codemirror-extensions-classname";
-import TextArea from "antd/es/input/TextArea";
+const { TextArea } = Input;
 
 const getToolsEndpoint = setupBaseUrl("http", "get_tools");
 const setToolsEndpoint = setupBaseUrl("http", "set_tools");

@@ -23,6 +23,7 @@ SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
+SET search_path TO public;
 CREATE EXTENSION IF NOT EXISTS vector;
 
 --

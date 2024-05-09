@@ -1,5 +1,6 @@
 import datetime
 import inspect
+import json
 import os
 from uuid import uuid4
 from colorama import Fore, Style
@@ -890,7 +891,7 @@ async def submit_feedback(request: Request):
     try:
         data = await request.json()
         analysis_id = data.get("analysis_id")
-        comments = data.get("comments", None)
+        comments = data.get("comments", {})
         is_correct = data.get("is_correct", False)
         user_question = data.get("user_question")
         analysis_id = data.get("analysis_id")
@@ -898,9 +899,10 @@ async def submit_feedback(request: Request):
         api_key = data.get("api_key")
 
         # get metadata
-        metadata = get_metadata()["table_metadata_csv"]
-        client_description = get_metadata()["client_description"]
-        glossary = get_metadata()["glossary"]
+        m = get_metadata()
+        metadata = m["table_metadata_csv"]
+        client_description = m["client_description"]
+        glossary = m["glossary"]
 
         db_type = get_db_type()
 
@@ -913,13 +915,11 @@ async def submit_feedback(request: Request):
         if user_question is None or type(user_question) != str:
             raise Exception("Invalid user question.")
 
-        if comments is None or type(comments) != dict:
-            raise Exception("Invalid comments.")
-
         err, analysis_data = get_report_data(analysis_id)
         if err:
             raise Exception(err)
 
+        print(type(comments))
         # store in the defog_plans_feedback table
         err, did_overwrite = await store_feedback(
             api_key,

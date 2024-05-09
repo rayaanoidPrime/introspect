@@ -5,7 +5,17 @@ import datetime
 import uuid
 import pandas as pd
 from regex import R
-from sqlalchemy import create_engine, select, text, update, insert, delete
+from sqlalchemy import (
+    create_engine,
+    select,
+    text,
+    update,
+    insert,
+    delete,
+    Text,
+    Boolean,
+    JSON,
+)
 from sqlalchemy.ext.automap import automap_base
 from agents.planner_executor.tool_helpers.toolbox_manager import all_toolboxes
 from agents.planner_executor.tool_helpers.core_functions import (
@@ -13,6 +23,8 @@ from agents.planner_executor.tool_helpers.core_functions import (
 )
 
 from pgvector.psycopg2 import register_vector
+from pgvector.sqlalchemy import Vector
+from sqlalchemy.orm import Session
 import psycopg2
 import yaml
 
@@ -33,25 +45,24 @@ db_creds = {
 
 
 connection_uri = f"postgresql+psycopg2://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
+
 engine = create_engine(
     connection_uri,
     pool_pre_ping=True,
 )
 
-with engine.connect() as conn:
-    conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-    conn.commit()
-
 Base = automap_base()
-Base.prepare(autoload_with=engine)
-Reports = Base.classes.defog_reports
+Base.prepare(engine, reflect=True)
+
 Docs = Base.classes.defog_docs
-Users = Base.classes.defog_users
-TableCharts = Base.classes.defog_table_charts
-Toolboxes = Base.classes.defog_toolboxes
-ToolRuns = Base.classes.defog_tool_runs
 RecentlyViewedDocs = Base.classes.defog_recently_viewed_docs
+Reports = Base.classes.defog_reports
+TableCharts = Base.classes.defog_table_charts
+ToolRuns = Base.classes.defog_tool_runs
+Toolboxes = Base.classes.defog_toolboxes
+Users = Base.classes.defog_users
 Feedback = Base.classes.defog_plans_feedback
+
 
 free_tier_quota = 100
 
@@ -1213,53 +1224,67 @@ async def store_feedback(
 
         print(qn_embedding)
 
+        session = Session(engine)
+        session.connection()
         with engine.connect() as conn:
             print("registering vector")
             register_vector(conn.connection)
             print("registered")
+            cursor = conn.connection.cursor()
             # check if entry exists with this analysis_id
-            rows = conn.execute(
-                select(Feedback).where(Feedback.analysis_id == analysis_id)
+            cursor.execute(
+                "SELECT * FROM defog_plans_feedback WHERE analysis_id = %s",
+                (analysis_id,),
             )
-            if rows.rowcount != 0:
+            rows = cursor.fetchall()
+            if len(rows) != 0:
                 print("Feedback exists for this analysis_id. Updating...")
                 # update the row
-                conn.execute(
-                    update(Feedback)
-                    .where(Feedback.analysis_id == analysis_id)
-                    .values(
-                        api_key=api_key,
-                        username=username,
-                        user_question=user_question,
-                        is_correct=is_correct,
-                        comments=comments,
-                        embedding=qn_embedding,
-                        metadata=metadata,
-                        client_description=client_description,
-                        glossary=glossary,
-                        db_type=db_type,
-                    )
+                cursor.execute(
+                    """
+                    UPDATE defog_plans_feedback
+                    SET api_key = %s, username = %s, user_question = %s, embedding = %s, is_correct = %s, comments = %s, metadata = %s, client_description = %s, glossary = %s, db_type = %s
+                    WHERE analysis_id = %s
+                    """,
+                    (
+                        api_key,
+                        username,
+                        user_question,
+                        qn_embedding,
+                        is_correct,
+                        # comments is a dict
+                        json.dumps(comments),
+                        metadata,
+                        client_description,
+                        glossary,
+                        db_type,
+                        analysis_id,
+                    ),
                 )
                 did_overwrite = True
             else:
                 print("Feedback does not exist for this analysis_id. Inserting...")
-                conn.execute(
-                    insert(Feedback).values(
-                        {
-                            "api_key": api_key,
-                            "username": username,
-                            "analysis_id": analysis_id,
-                            "user_question": user_question,
-                            "is_correct": is_correct,
-                            "embedding": qn_embedding,
-                            "comments": comments,
-                            "metadata": metadata,
-                            "db_type": db_type,
-                            "client_description": client_description,
-                            "glossary": glossary,
-                        }
-                    )
+                cursor.execute(
+                    """
+                    INSERT INTO defog_plans_feedback (api_key, username, analysis_id, user_question, embedding, is_correct, comments, metadata, db_type, client_description, glossary)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        api_key,
+                        username,
+                        analysis_id,
+                        user_question,
+                        qn_embedding,
+                        is_correct,
+                        # comments is a dict
+                        json.dumps(comments),
+                        metadata,
+                        db_type,
+                        client_description,
+                        glossary,
+                    ),
                 )
+            conn.connection.commit()
     except Exception as e:
         print(e)
         traceback.print_exc()
