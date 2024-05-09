@@ -687,7 +687,7 @@ async def create_new_step(request: Request):
             return store_result
 
         # update report data
-        update_err = update_report_data(analysis_id, "gen_steps", [new_step])
+        update_err = await update_report_data(analysis_id, "gen_steps", [new_step])
 
         if update_err:
             return {"success": False, "error_message": update_err}
@@ -858,7 +858,7 @@ async def delete_steps(request: Request):
         new_steps = [s for s in steps if s["tool_run_id"] not in tool_run_ids]
 
         # # # update report data
-        update_err = update_report_data(
+        update_err = await update_report_data(
             analysis_id, "gen_steps", new_steps, replace=True
         )
 

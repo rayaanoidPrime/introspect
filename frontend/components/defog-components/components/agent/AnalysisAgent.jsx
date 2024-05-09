@@ -528,6 +528,7 @@ export const AnalysisAgent = ({
         skip_text_gen: true,
         user_email: user,
         db_creds: null,
+        api_key: apiToken,
       };
 
       if (docContext.val.dbCreds.hasCreds) {
@@ -618,6 +619,7 @@ export const AnalysisAgent = ({
         reRunManager.send({
           tool_run_id: toolRunId,
           analysis_id: analysisId,
+          api_key: apiToken,
         });
       }
     },

@@ -59,12 +59,14 @@ class Clarifier:
     def __init__(
         self,
         user_question,
+        api_key,
         client_description,
         glossary,
         table_metadata_csv,
         parent_analyses=[],
     ):
         self.user_question = user_question
+        self.api_key = api_key
         self.client_description = client_description
         self.glossary = glossary
         self.table_metadata_csv = table_metadata_csv

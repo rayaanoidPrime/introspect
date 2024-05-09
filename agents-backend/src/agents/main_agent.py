@@ -16,6 +16,7 @@ dfg_api_key = env["api_key"]
 # that will be run before the next stage and will process the incoming user input if any for the next stage
 async def get_clarification(
     user_question="",
+    api_key="",
     client_description="",
     table_metadata_csv="",
     glossary="",
@@ -30,6 +31,7 @@ async def get_clarification(
     try:
         clarifier = Clarifier(
             user_question,
+            api_key,
             client_description,
             glossary,
             table_metadata_csv,
@@ -57,6 +59,7 @@ async def get_clarification(
 
 async def execute(
     report_id="",
+    api_key="",
     user_question="",
     client_description="",
     table_metadata_csv="",
@@ -74,9 +77,10 @@ async def execute(
     This takes quite long as of now. Needs to be parallelised for the future.
     """
     print("Evaling approaches")
-    
+
     executor = Executor(
         report_id,
+        api_key,
         user_question,
         client_description,
         glossary,

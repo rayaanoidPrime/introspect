@@ -32,6 +32,7 @@ class Executor:
     def __init__(
         self,
         report_id,
+        api_key,
         user_question,
         client_description,
         glossary,
@@ -43,6 +44,7 @@ class Executor:
         parent_analyses=[],
     ):
         self.user_question = user_question
+        self.api_key = api_key
         self.client_description = client_description
         self.glossary = glossary
         self.table_metadata_csv = table_metadata_csv

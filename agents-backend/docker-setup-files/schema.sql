@@ -89,6 +89,8 @@ CREATE TABLE public.defog_reports (
     understand jsonb,
     gen_approaches jsonb,
     user_question text,
+    -- embedding of the question
+    embedding vector,
     gen_report jsonb,
     report_id text NOT NULL,
     gen_steps jsonb,

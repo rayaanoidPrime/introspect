@@ -220,7 +220,7 @@ def get_report_data(report_id):
         return err, report_data
 
 
-def update_report_data(
+async def update_report_data(
     report_id, request_type=None, new_data=None, replace=False, overwrite_key=None
 ):
     err = None
@@ -243,6 +243,9 @@ def update_report_data(
 
         else:
             with engine.begin() as conn:
+                print("registering vector")
+                register_vector(conn.connection)
+                print("registered")
                 # first get the data
                 rows = conn.execute(
                     select(Reports.__table__.columns[request_type]).where(
@@ -296,11 +299,20 @@ def update_report_data(
                     print("writing to ", request_type, "in report id: ", report_id)
                     print("writing array of length: ", len(curr_data))
                     # insert back into reports table
-                    conn.execute(
-                        update(Reports)
-                        .where(Reports.report_id == report_id)
-                        .values({request_type: curr_data})
-                    )
+                    # if the request type is user_question, we will also update the embedding
+                    if request_type == "user_question":
+                        cursor = conn.connection.cursor()
+                        new_embedding = await embed_qn(new_data)
+                        cursor.execute(
+                            "UPDATE defog_reports SET user_question = %s, embedding = %s WHERE report_id = %s",
+                            (new_data, new_embedding, report_id),
+                        )
+                    else:
+                        conn.execute(
+                            update(Reports)
+                            .where(Reports.report_id == report_id)
+                            .values({request_type: curr_data})
+                        )
                 else:
                     err = "Report not found."
                     print("\n\n\n")
@@ -1292,3 +1304,56 @@ async def store_feedback(
         did_overwrite = False
     finally:
         return error, did_overwrite
+
+
+# get golden plans
+async def get_similar_golden_plans(report_id, api_key):
+    err = None
+    similar_plans = []
+    try:
+        # use the feedback table to get similar golden plans
+        # filter to where feedback is_correct is true
+        # get the embedding column from the report_id
+        # run the cosine distance function directly in the ORDER BY clause, as it cannot be stored as an alias
+        # as a reminder, `<=>` is cosine distance, `<->` is L2 distance, and `<#>` is inner product
+        with engine.connect() as conn:
+            cur = conn.connection.cursor()
+            target_embedding = None
+            cur.execute(
+                """
+                SELECT embedding FROM defog_reports WHERE report_id = %s
+                """,
+                (report_id,),
+            )
+            rows = cur.fetchall()
+            if len(rows) == 0:
+                raise ValueError("Report not found.")
+
+            target_embedding = rows[0][0]
+
+            cur.execute(
+                """
+                SELECT user_question, analysis_id
+                FROM defog_plans_feedback
+                WHERE api_key = %s AND is_correct = TRUE
+                ORDER BY (embedding <=> %s) LIMIT 10;
+                """,
+                (api_key, target_embedding),
+            )
+
+            rows = cur.fetchall()
+            # get all data for these analyses
+            for plan in rows:
+                analysis_id = plan[1]
+                row = conn.execute(
+                    select(Reports).where(Reports.report_id == analysis_id)
+                ).fetchone()
+                if row is not None:
+                    similar_plans.append(row.user_question)
+
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        err = str(e)
+    finally:
+        return err, similar_plans
