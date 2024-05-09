@@ -20,6 +20,7 @@ with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
 
 dfg_api_key = env["api_key"]
+llm_calls_url = env["llm_calls_url"]
 
 
 class Executor:
@@ -100,7 +101,7 @@ class Executor:
             """
             next_step_data_description = ""
             while True:
-                url = "https://defog-llm-calls-ktcmdcmg4q-uc.a.run.app"
+                url = llm_calls_url
 
                 if next_step_data_description.startswith("There was an error"):
                     payload = {

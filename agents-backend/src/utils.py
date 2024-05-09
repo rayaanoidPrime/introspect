@@ -10,6 +10,10 @@ from colorama import Fore, Style
 
 # import pika
 import redis
+from openai import AsyncOpenAI
+
+import numpy as np
+from typing import Optional
 
 env = None
 
@@ -17,6 +21,9 @@ with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
 
 redis_host = env["redis_server_host"]
+openai_api_key = env["openai_api_key"]
+
+openai = AsyncOpenAI(api_key=openai_api_key)
 
 redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 
@@ -184,3 +191,18 @@ def log_msg(msg=""):
 
 def log_warn(msg=""):
     print(f"{Fore.YELLOW}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
+
+
+async def embed_qn(
+    question: str, model: str = "text-embedding-3-large"
+) -> Optional[np.array]:
+    """
+    Use OpenAI to generate embeddings for the question
+    """
+    try:
+        question_embedding = await openai.embeddings.create(input=question, model=model)
+        question_embedding = question_embedding.data[0].embedding
+        return np.array(question_embedding)
+    except Exception as e:
+        print(e)
+        return None

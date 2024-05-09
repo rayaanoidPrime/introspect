@@ -9,7 +9,12 @@ import setupBaseUrl from "../../../../../utils/setupBaseUrl";
 
 const feedbackUrl = setupBaseUrl("http", "submit_feedback");
 
-export function AnalysisFeedback({ analysisId, analysisSteps }) {
+export function AnalysisFeedback({
+  analysisId,
+  analysisSteps,
+  user_question,
+  username,
+}) {
   const [modalVisible, setModalVisible] = useState(null);
 
   const submitFeedback = async (feedback) => {
@@ -19,25 +24,29 @@ export function AnalysisFeedback({ analysisId, analysisSteps }) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        feedback,
+        ...feedback,
         analysis_id: analysisId,
+        api_key: process.env.NEXT_PUBLIC_API_KEY,
+        user_question: user_question,
+        username: username,
       }),
     })
       .then((d) => d.json())
+      .then((d) => {
+        console.log(d);
+        if (d.success) {
+          message.success(
+            `Feedback ${d.did_overwrite ? "updated" : "submitted"} successfully`
+          );
+        } else {
+          message.error(
+            "Failed to submit feedback" + (d["error_message"] || "")
+          );
+        }
+      })
       .catch((error) => {
-        message.error("Failed to submit feedback", error);
-        return { success: false, error_message: res.error_message };
+        message.error("Failed to submit feedback" + error);
       });
-
-    console.log(res);
-
-    if (res.success) {
-      message.success("Feedback submitted successfully");
-      return { success: true };
-    } else {
-      message.error("Failed to submit feedback", res);
-      return { success: false, error_message: res.error_message };
-    }
   };
 
   return (
@@ -52,7 +61,10 @@ export function AnalysisFeedback({ analysisId, analysisSteps }) {
             className="good-feedback mr-4 h-4 w-4 cursor-pointer"
             onClick={() => {
               setModalVisible("good");
-              submitFeedback({ review: "good", analysisId });
+              submitFeedback({
+                is_correct: true,
+                comments: {},
+              });
             }}
           >
             <ThumbsUp fill="fill-gray-300 hover:fill-medium-blue" />

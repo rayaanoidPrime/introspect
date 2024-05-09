@@ -10,9 +10,9 @@ import yaml
 with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
 
-OPENAI_API_KEY = env["OPENAI_API_KEY"]
+openai_api_key = env["openai_api_key"]
 
-openai = OpenAI(api_key=OPENAI_API_KEY)
+openai = OpenAI(api_key=openai_api_key)
 
 tool_library_prompt = """- tool_name: data_fetcher_and_aggregator
   description: Converting a natural language question into a SQL query, that then runs on an external database. Fetches, joins, filters, aggregates, and performs arithmetic computations on data. Remember that this tool does not have access to the data returned by the previous steps. It only has access to the data in the database. We should attempt to give this tool very specific questions that pertain to the user question, instead of overly broad or generic ones. However, do not make any mention of which table to query when you give it your question. You can use this exactly once among all steps.

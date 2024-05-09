@@ -23,6 +23,8 @@ SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
+CREATE EXTENSION IF NOT EXISTS vector;
+
 --
 -- Name: defog_docs; Type: TABLE; Schema: public; Owner: postgres
 --
@@ -174,15 +176,27 @@ ALTER TABLE public.defog_users OWNER TO postgres;
 CREATE TABLE public.defog_plans_feedback (
     api_key text NOT NULL,
     username text NOT NULL,
-    feedback jsonb,
     user_question text NOT NULL,
-    -- if thumbs up on the UI, this will be true
+    embedding vector, -- The embedding of the question
+    comments jsonb,
     is_correct boolean NOT NULL,
-    -- join on this with the defog_reports table to get the actual plan data
-    report_id text NOT NULL,
+    -- join on this with the defog_reports.report_id table to get the actual plan data
+    analysis_id text NOT NULL,
+    -- store for later reference. in case metadata changes later
+    metadata text NOT NULL,
+    client_description text,
+    glossary text,
+    db_type text NOT NULL
 );
 
 ALTER TABLE public.defog_plans_feedback OWNER TO postgres;
+
+--
+-- Name: defog_docs defog_plans_feedback; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.defog_plans_feedback
+    ADD CONSTRAINT defog_plans_feedback_pkey PRIMARY KEY (analysis_id);
 
 --
 -- Name: defog_docs defog_docs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres

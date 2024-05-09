@@ -25,6 +25,7 @@ from db_utils import (
     get_report_data,
     get_tool_run,
     get_toolboxes,
+    store_feedback,
     store_tool_run,
     update_doc_data,
     update_report_data,
@@ -889,44 +890,58 @@ async def submit_feedback(request: Request):
     try:
         data = await request.json()
         analysis_id = data.get("analysis_id")
-        feedback = data.get("feedback")
+        comments = data.get("comments", None)
+        is_correct = data.get("is_correct", False)
+        user_question = data.get("user_question")
+        analysis_id = data.get("analysis_id")
+        username = data.get("username")
+        api_key = data.get("api_key")
 
         # get metadata
-        metadata = get_metadata()
+        metadata = get_metadata()["table_metadata_csv"]
+        client_description = get_metadata()["client_description"]
+        glossary = get_metadata()["glossary"]
 
         db_type = get_db_type()
 
         if analysis_id is None or type(analysis_id) != str:
             raise Exception("Invalid analysis id.")
 
+        if api_key is None or type(api_key) != str:
+            raise Exception("Invalid api key.")
+
+        if user_question is None or type(user_question) != str:
+            raise Exception("Invalid user question.")
+
+        if comments is None or type(comments) != dict:
+            raise Exception("Invalid comments.")
+
         err, analysis_data = get_report_data(analysis_id)
         if err:
             raise Exception(err)
 
-        # send it to defog servers
-        url = None
+        # store in the defog_plans_feedback table
+        err, did_overwrite = await store_feedback(
+            api_key,
+            username,
+            user_question,
+            analysis_id,
+            is_correct,
+            comments,
+            metadata,
+            client_description,
+            glossary,
+            db_type,
+        )
 
-        # send the feedback
-        payload = {
-            "analysis_id": analysis_id,
-            "analysis_data": analysis_data,
-            "feedback": feedback,
-            "metadata": metadata,
-            "db_type": db_type,
-        }
+        if err is not None:
+            raise Exception(err)
 
-        res = requests.post(url, json=payload)
-
-        if res.status_code != 200:
-            raise Exception(f"Error sending feedback: {res.text}")
+        return {"success": True, "did_overwrite": did_overwrite}
 
     except Exception as e:
         print(str(e))
         error = str(e)[:300]
         print(error)
         traceback.print_exc()
-    finally:
-        if error is not None:
-            return {"success": False, "error_message": error}
-        else:
-            return {"success": True}
+        return {"success": False, "error_message": error}

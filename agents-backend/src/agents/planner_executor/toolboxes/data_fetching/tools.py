@@ -8,6 +8,14 @@ import requests
 from pandasql import sqldf
 
 
+import yaml
+
+with open(".env.yaml", "r") as f:
+    env = yaml.safe_load(f)
+
+llm_calls_url = env["llm_calls_url"]
+
+
 async def data_fetcher_and_aggregator(
     question: str,
     global_dict: dict = {},
@@ -25,7 +33,7 @@ async def data_fetcher_and_aggregator(
     print(f"Global dict currently has keys: {list(global_dict.keys())}")
 
     # send the data to an API, and get a response from it
-    url = "https://defog-llm-calls-ktcmdcmg4q-uc.a.run.app"
+    url = llm_calls_url
     payload = {
         "request_type": "generate_sql",
         "question": question,
@@ -95,7 +103,7 @@ async def global_dict_data_fetcher_and_aggregator(
     question += ". Give me SQLite SQL, not Postgres. Remember that SQLite does not support all the features of Postgres like stddev, variance, etc. You will have to calculate them yourself."
 
     # send the data to an API, and get a response from it
-    url = "https://defog-llm-calls-ktcmdcmg4q-uc.a.run.app"
+    url = llm_calls_url
     payload = {
         "request_type": "generate_sql",
         "question": question,

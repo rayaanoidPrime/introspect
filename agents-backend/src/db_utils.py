@@ -1,21 +1,24 @@
+from atexit import register
 import json
 import traceback
 import datetime
 import uuid
 import pandas as pd
 from regex import R
-from sqlalchemy import create_engine, select, update, insert, delete
+from sqlalchemy import create_engine, select, text, update, insert, delete
 from sqlalchemy.ext.automap import automap_base
 from agents.planner_executor.tool_helpers.toolbox_manager import all_toolboxes
 from agents.planner_executor.tool_helpers.core_functions import (
     execute_code,
 )
+
+from pgvector.psycopg2 import register_vector
 import psycopg2
 import yaml
 
-from utils import warn_str, YieldList
+from utils import embed_qn, warn_str, YieldList
 
-with open(".env.yaml", "r") as f:
+with open("/agents-python-server/.env.yaml", "r") as f:
     env = yaml.safe_load(f)
 
 report_assets_dir = env["report_assets_dir"]
@@ -29,15 +32,17 @@ db_creds = {
 }
 
 
-Base = automap_base()
 connection_uri = f"postgresql+psycopg2://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
-print(connection_uri)
 engine = create_engine(
     connection_uri,
     pool_pre_ping=True,
 )
 
+with engine.connect() as conn:
+    conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+    conn.commit()
 
+Base = automap_base()
 Base.prepare(autoload_with=engine)
 Reports = Base.classes.defog_reports
 Docs = Base.classes.defog_docs
@@ -46,6 +51,7 @@ TableCharts = Base.classes.defog_table_charts
 Toolboxes = Base.classes.defog_toolboxes
 ToolRuns = Base.classes.defog_tool_runs
 RecentlyViewedDocs = Base.classes.defog_recently_viewed_docs
+Feedback = Base.classes.defog_plans_feedback
 
 free_tier_quota = 100
 
@@ -1176,3 +1182,88 @@ def get_db_conn():
         port=env["port"],
     )
     return conn
+
+
+async def store_feedback(
+    api_key,
+    username,
+    user_question,
+    analysis_id,
+    is_correct,
+    comments,
+    metadata,
+    client_description,
+    glossary,
+    db_type,
+):
+    error = None
+    did_overwrite = False
+    try:
+        qn_embedding = None
+        # only embed if it's a correct plan
+        if is_correct:
+            print("Embedding question", user_question)
+            # get embedding of question
+            qn_embedding = await embed_qn(user_question)
+
+            if qn_embedding is None:
+                raise ValueError("Could not embed the question.")
+
+            print("Embedding done")
+
+        print(qn_embedding)
+
+        with engine.connect() as conn:
+            print("registering vector")
+            register_vector(conn.connection)
+            print("registered")
+            # check if entry exists with this analysis_id
+            rows = conn.execute(
+                select(Feedback).where(Feedback.analysis_id == analysis_id)
+            )
+            if rows.rowcount != 0:
+                print("Feedback exists for this analysis_id. Updating...")
+                # update the row
+                conn.execute(
+                    update(Feedback)
+                    .where(Feedback.analysis_id == analysis_id)
+                    .values(
+                        api_key=api_key,
+                        username=username,
+                        user_question=user_question,
+                        is_correct=is_correct,
+                        comments=comments,
+                        embedding=qn_embedding,
+                        metadata=metadata,
+                        client_description=client_description,
+                        glossary=glossary,
+                        db_type=db_type,
+                    )
+                )
+                did_overwrite = True
+            else:
+                print("Feedback does not exist for this analysis_id. Inserting...")
+                conn.execute(
+                    insert(Feedback).values(
+                        {
+                            "api_key": api_key,
+                            "username": username,
+                            "analysis_id": analysis_id,
+                            "user_question": user_question,
+                            "is_correct": is_correct,
+                            "embedding": qn_embedding,
+                            "comments": comments,
+                            "metadata": metadata,
+                            "db_type": db_type,
+                            "client_description": client_description,
+                            "glossary": glossary,
+                        }
+                    )
+                )
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        error = str(e)
+        did_overwrite = False
+    finally:
+        return error, did_overwrite

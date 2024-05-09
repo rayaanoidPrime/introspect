@@ -20,6 +20,13 @@ default_values = {
 }
 
 
+with open(".env.yaml", "r") as f:
+    env = yaml.safe_load(f)
+
+dfg_api_key = env["api_key"]
+llm_calls_url = env["llm_calls_url"]
+
+
 def parse_q(q):
     try:
         q = re.sub("```", "", q).strip()
@@ -79,7 +86,7 @@ class Clarifier:
             # gather responses into text
             # pass it to the clarifier as "answers from the user", and ask it to turn them into statements
 
-            url = "https://defog-llm-calls-ktcmdcmg4q-uc.a.run.app"
+            url = llm_calls_url
             payload = {
                 "request_type": "turn_into_statement",
                 "clarification_questions": clarification_questions,
@@ -96,7 +103,7 @@ class Clarifier:
         print("Running clarifier...")
 
         async def generator():
-            url = "https://defog-llm-calls-ktcmdcmg4q-uc.a.run.app"
+            url = llm_calls_url
             payload = {
                 "request_type": "clarify_task",
                 "question": self.user_question,

@@ -35,19 +35,10 @@ export default function BadModal({
     // setModalVisible(false);
     console.log(comments);
 
-    const submitRes = await submitFeedback({
-      review: "bad",
-      analysis_id: analysisId,
+    await submitFeedback({
+      is_correct: false,
       comments: comments,
     });
-
-    if (submitRes.success) {
-      message.success("Feedback submitted successfully");
-    } else {
-      message.error(
-        "Failed to submit feedback. Error: " + submitRes.error_message
-      );
-    }
   }, [analysisId, comments, submitFeedback, setModalVisible]);
 
   const setComments = (newComments) => {

@@ -647,6 +647,8 @@ export const AnalysisAgent = ({
               <AnalysisFeedback
                 analysisSteps={analysisSteps}
                 analysisId={analysisId}
+                user_question={analysisData?.user_question}
+                username={username}
               />
             </div>
           ) : (
