@@ -1,279 +1,359 @@
 export const toolsMetadata = {
   data_fetcher_and_aggregator: {
     name: "data_fetcher_and_aggregator",
-    display_name: "Fetch data from database",
-    function_signature: [
+    function_name: "Fetch data from database",
+    description:
+      "Converting a natural language question into a SQL query, that then runs on an external database. Fetches, filters, aggregates, and performs arithmetic computations on data. Remember that this tool does not have access to the data returned by the previous steps. It only has access to the data in the database.",
+    inputs: [
       {
         name: "question",
         default: null,
+        description:
+          "natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string",
         type: "str",
       },
     ],
     toolbox: "data_fetching",
+    outputs_desc: "output_df",
   },
   global_dict_data_fetcher_and_aggregator: {
     name: "global_dict_data_fetcher_and_aggregator",
-    display_name: "Query data from a pandas dataframe",
-    function_signature: [
+    function_name: "Query data from a pandas dataframe",
+    description:
+      "Converting a natural language question into a SQL query, that then runs on a database that is stored in global_dict. Fetches, filters, aggregates, and performs arithmetic computations on data. This tool has access to all of global_dict. This will only run on the data that is stored in global_dict. For external databases, use the data_fetcher_and_aggregator tool.",
+    inputs: [
       {
         name: "question",
         default: null,
+        description:
+          "natural language description of the data required as a string",
         type: "str",
       },
       {
         name: "input_df",
         default: null,
+        meta_: "global_dict.<input_df_name>",
+        description: "The dataframe to query",
         type: "pandas.core.frame.DataFrame",
       },
     ],
     toolbox: "data_fetching",
+    outputs_desc: "output_df",
   },
   kaplan_meier_curve: {
     name: "kaplan_meier_curve",
-    display_name: "Kaplan Meier Curve",
-    function_signature: [
+    function_name: "Kaplan Meier Curve",
+    description:
+      "Generates a kaplan meier survival function. You have to run data_fetcher before this.",
+    inputs: [
       {
         name: "full_data",
         default: null,
+        description: "full_patient_data_df",
         type: "pandas.core.frame.DataFrame",
       },
       {
         name: "survival_time_col",
         default: null,
+        description: "survival time column name",
         type: "DBColumn",
       },
       {
         name: "status_col",
         default: null,
+        description: "status/event column name",
         type: "DBColumn",
       },
       {
         name: "stratification_vars",
         default: [],
+        description: "array of stratification variables if any otherwise None",
         type: "DBColumnList_0",
       },
     ],
     toolbox: "cancer_survival",
+    outputs_desc:
+      "as many pandas dfs as there are stratification variables. Make sure the outputs length matches the number of stratification variables. only one pandas df is output if stratification variables is None",
   },
   hazard_ratio: {
     name: "hazard_ratio",
-    display_name: "Hazard Ratio",
-    function_signature: [
+    function_name: "Hazard Ratio",
+    description: "",
+    inputs: [
       {
         name: "full_data",
         default: null,
+        description: "full_patient_data_df",
         type: "pandas.core.frame.DataFrame",
       },
       {
         name: "survival_time_col",
         default: null,
+        description: "survival time column name",
         type: "DBColumn",
       },
       {
         name: "status_col",
         default: null,
+        description: "status/event column name",
         type: "DBColumn",
       },
     ],
     toolbox: "cancer_survival",
+    outputs_desc: "pandas df",
   },
   dataset_metadata_describer: {
     name: "dataset_metadata_describer",
-    display_name: "Dataset Metadata Describer",
-    function_signature: [],
+    function_name: "Dataset Metadata Describer",
+    description: "Describes the columns available inside a dataset",
+    inputs: [],
     toolbox: "stats",
+    outputs_desc: "pandas df",
   },
   t_test: {
     name: "t_test",
-    display_name: "T Test",
-    function_signature: [
+    function_name: "T Test",
+    description:
+      "This function gets two groups and runs a t-test to check if there is a significant difference between their means. There are two ways to run the test: paired and unpaired. Paired test has one group column, unpaired has one group column.",
+    inputs: [
       {
         name: "full_data",
         default: null,
+        description: "input_df_name",
         type: "pandas.core.frame.DataFrame",
       },
       {
         name: "group_column",
         default: null,
+        description: "group column",
         type: "DBColumn",
       },
       {
         name: "score_column",
         default: null,
+        description: "score column",
         type: "DBColumn",
       },
       {
         name: "name_column",
         default: null,
+        description: "name column or None",
         type: "DBColumn",
       },
       {
         name: "t_test_type",
         default: ["unpaired", "paired"],
+        description: "type of t test as a string (paired or unpaired)",
         type: "DropdownSingleSelect",
       },
     ],
     toolbox: "stats",
+    outputs_desc: "output_df",
   },
   fold_change: {
     name: "fold_change",
-    display_name: "Fold Change",
-    function_signature: [
+    function_name: "Fold Change",
+    description:
+      "This function calculates the fold change over time for different groups. Fold change is the ratio of the final value to the initial value.",
+    inputs: [
       {
         name: "full_data",
         default: null,
+        description: "input_df_name",
         type: "pandas.core.frame.DataFrame",
       },
       {
         name: "value_column",
         default: null,
+        description: "value column (the numerical value)",
         type: "DBColumn",
       },
       {
         name: "individual_id_column",
         default: null,
+        description:
+          "individual id column (the column that represents individual ids to calculate fold change for)",
         type: "DBColumn",
       },
       {
         name: "time_column",
         default: null,
+        description: "time column (the column that represents the time point)",
         type: "DBColumn",
       },
       {
         name: "group_column",
         default: null,
+        description:
+          "group column or None (the column that represents the groups that individuals belong to, like cohort or study)",
         type: "DBColumn",
       },
     ],
     toolbox: "stats",
+    outputs_desc: "output_df",
   },
   anova_test: {
     name: "anova_test",
-    display_name: "ANOVA Test",
-    function_signature: [
+    function_name: "ANOVA Test",
+    description:
+      "This function gets more than two groups and runs an anova test to check if there is a significant difference between their means.",
+    inputs: [
       {
         name: "full_data",
         default: null,
+        description: "input_df_name",
         type: "pandas.core.frame.DataFrame",
       },
       {
         name: "group_column",
         default: null,
+        description: "group column",
         type: "DBColumn",
       },
       {
         name: "score_column",
         default: null,
+        description: "score column",
         type: "DBColumn",
       },
     ],
     toolbox: "stats",
+    outputs_desc: "output_df",
   },
   wilcoxon_test: {
     name: "wilcoxon_test",
-    display_name: "Wilcoxon Test",
-    function_signature: [
+    function_name: "Wilcoxon Test",
+    description:
+      "This function gets two groups and runs a wilcoxon test to check if there is a significant difference between their means.",
+    inputs: [
       {
         name: "full_data",
         default: null,
+        description: "input_df_name",
         type: "pandas.core.frame.DataFrame",
       },
       {
         name: "group_column",
         default: null,
+        description: "group column",
         type: "DBColumn",
       },
       {
         name: "score_column",
         default: null,
+        description: "score column",
         type: "DBColumn",
       },
       {
         name: "name_column",
         default: null,
+        description: " name column",
         type: "DBColumn",
       },
     ],
     toolbox: "stats",
+    outputs_desc: "output_df",
   },
   line_plot: {
     name: "line_plot",
-    display_name: "Line Plot",
-    function_signature: [
+    function_name: "Line Plot",
+    description:
+      "This function generates a line plot using python's seaborn library. It should be used when the user wants to see how a variable changes over time, and should be used immediately after the data_fetcher tool.",
+    inputs: [
       {
         name: "full_data",
         default: null,
+        description: "input_df_name",
         type: "pandas.core.frame.DataFrame",
       },
       {
         name: "x_column",
         default: null,
+        description: "(exactly a single column - often a datetime or string)",
         type: "DBColumn",
       },
       {
         name: "y_column",
         default: null,
+        description: "(exactly a single column - always a numerical value)",
         type: "DBColumn",
       },
       {
         name: "hue_column",
         default: null,
+        description: "column name to use for hue or None",
         type: "DBColumn",
       },
       {
         name: "facet_col",
         default: null,
+        description: "column name to use for faceting or None",
         type: "DBColumn",
       },
       {
         name: "estimator",
         default: ["mean", "median", "max", "min", "sum", "None"],
+        description:
+          '"mean" if data must be aggregated, "None" if it is not aggregated',
         type: "DropdownSingleSelect",
       },
       {
         name: "units",
         default: null,
+        description:
+          "column name or None - refers to the column that contains individual data points, often some kind of id",
         type: "DBColumn",
       },
       {
         name: "plot_average_line",
         default: ["False", "True"],
+        description: "True if the user wants to plot an average or median line",
         type: "DropdownSingleSelect",
       },
       {
         name: "average_type",
         default: ["mean", "median", "max", "min", "mode"],
+        description:
+          "the kind of value for the average line to have. Can be mean, median, max, min, or mode. None if no average line required",
         type: "DropdownSingleSelect",
       },
     ],
     toolbox: "plots",
+    outputs_desc: "pandas df",
   },
   boxplot: {
     name: "boxplot",
-    display_name: "Boxplot",
-    function_signature: [
+    function_name: "Boxplot",
+    description:
+      "Generates a boxplot using python's seaborn library. Also accepts a faceting column. This usually required the full dataset and not summary statistics. Use the facet feature only when specifically asked for it.",
+    inputs: [
       {
         name: "full_data",
         default: null,
+        description: "input_df_name",
         type: "pandas.core.frame.DataFrame",
       },
       {
         name: "boxplot_cols",
         default: null,
+        description: "Array of boxplot x column and boxplot y column",
         type: "DBColumnList_1_2",
       },
       {
         name: "facet",
         default: false,
+        description: "True if the user wants to facet the boxplot else False",
         type: "bool",
       },
       {
         name: "facet_col",
         default: null,
+        description: "column name to use for faceting or None",
         type: "DBColumn",
       },
       {
         name: "color",
+        description: "color to use for the boxplot",
         default: [
           "#000000",
           "#009D94",
@@ -287,42 +367,53 @@ export const toolsMetadata = {
       {
         name: "opacity",
         default: [0.1, 0.2, 0.3, 0.4, 0.5],
+        description: "numerical value between 0 and 1",
         type: "DropdownSingleSelect",
       },
     ],
     toolbox: "plots",
+    outputs_desc: "output_df",
   },
   heatmap: {
     name: "heatmap",
-    display_name: "Heatmap",
-    function_signature: [
+    function_name: "Heatmap",
+    description:
+      "Generates a heatmap using python's seaborn library. This accepts the full dataset as the first parameter, and not summary statistics or aggregates.",
+    inputs: [
       {
         name: "full_data",
         default: null,
+        description: "input_df_name",
         type: "pandas.core.frame.DataFrame",
       },
       {
         name: "x_position_column",
         default: null,
+        description: "heatmap_x_column",
         type: "DBColumn",
       },
       {
         name: "y_position_column",
         default: null,
+        description: "heatmap_y_column",
         type: "DBColumn",
       },
       {
         name: "color_column",
         default: null,
+        description: "heatmap_value_column",
         type: "DBColumn",
       },
       {
         name: "aggregation_type",
         default: ["mean", "median", "max", "min", "sum"],
+        description: "a string (can be mean, median, max, min or sum)",
         type: "DropdownSingleSelect",
       },
       {
         name: "color_scale",
+        description:
+          "color_scale (only if specified by the user. defaults to YlGnBu)",
         default: [
           "magma",
           "inferno",
@@ -511,5 +602,6 @@ export const toolsMetadata = {
       },
     ],
     toolbox: "plots",
+    outputs_desc: "output df",
   },
 };

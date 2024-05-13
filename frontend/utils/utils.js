@@ -1,6 +1,6 @@
 import { contrast, random } from "chroma-js";
 import setupBaseUrl from "../utils/setupBaseUrl";
-import { EditorState, Transaction } from "@codemirror/state";
+import { Annotation, EditorState, Transaction } from "@codemirror/state";
 
 export const getApiToken = async (
   username,
@@ -335,6 +335,8 @@ export function createReadOnlyTransactionFilter(readonlyRangeSet) {
   };
 }
 
+export const forcedAnnotation = Annotation.define();
+
 // from: https://github.com/andrebnassis/codemirror-readonly-ranges/blob/master/src/lib/index.ts
 export const preventModifyTargetRanges = (getReadOnlyRanges) =>
   // code mirror extension that
@@ -342,9 +344,11 @@ export const preventModifyTargetRanges = (getReadOnlyRanges) =>
   // and prevents modification on them
   EditorState.transactionFilter.of((tr) => {
     let readonlyRangeSet = getReadOnlyRanges(tr.startState);
+
     if (
       readonlyRangeSet &&
       tr.docChanged &&
+      !tr.annotation(forcedAnnotation) &&
       !tr.annotation(Transaction.remote)
     ) {
       let block = false;
@@ -360,7 +364,41 @@ export const preventModifyTargetRanges = (getReadOnlyRanges) =>
         });
       });
       if (block) return [];
-      return tr;
     }
     return tr;
   });
+
+// breaks new lines, and split to max of maxLength characters
+// first split on newlines
+// then split on spaces
+export function breakLinesPretty(str, maxLength = 60, indent = 1) {
+  return str
+    .split("\n")
+    .map((line) => {
+      return line
+        .split(" ")
+        .reduce((acc, word) => {
+          if (
+            acc.length &&
+            acc[acc.length - 1].length + word.length < maxLength
+          ) {
+            acc[acc.length - 1] += " " + word;
+          } else {
+            acc.push(word);
+          }
+          return acc;
+        }, [])
+        .join("\n" + "  ".repeat(indent));
+    })
+    .join("\n" + "  ".repeat(indent));
+}
+
+export function createPythonFunctionInputString(inputDict, indent = 2) {
+  return (
+    "  ".repeat(indent) +
+    inputDict.name +
+    ": " +
+    inputDict.type +
+    (inputDict.description ? " # " + inputDict.description : "")
+  );
+}

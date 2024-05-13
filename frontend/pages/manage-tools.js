@@ -1,99 +1,243 @@
-import { Modal } from "antd";
+import { Button, Modal, message } from "antd";
 import Meta from "../components/common/Meta";
 import Scaffolding from "../components/common/Scaffolding";
-import { toolsMetadata } from "../utils/tools_metadata";
 import {
   easyToolInputTypes,
   toolDisplayNames,
   toolboxDisplayNames,
 } from "../utils/utils";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AddTool from "../components/docs/AddTool";
+import setupBaseUrl from "../utils/setupBaseUrl";
+
+const toggleDisableToolEndpoint = setupBaseUrl("http", "toggle_disable_tool");
+const deleteToolEndpoint = setupBaseUrl("http", "delete_tool");
 
 export default function ManageTools() {
   // group tools by "toolbox"
-  const groupedTools = {};
+  const [tools, setTools] = useState(null);
+
+  const groupedTools = useMemo(() => {
+    if (tools) {
+      // group tools by toolbox
+      const grouped = {};
+      Object.values(tools).forEach((tool) => {
+        if (!grouped[tool.toolbox]) {
+          grouped[tool.toolbox] = {};
+        }
+        grouped[tool.toolbox][tool.tool_name] = tool;
+      });
+      return grouped;
+    }
+    return null;
+  }, [tools]);
+
   const [selectedTool, setSelectedTool] = useState(null);
 
-  for (const tool in toolsMetadata) {
-    const toolbox = toolsMetadata[tool].toolbox;
-    if (!toolbox) {
-      toolsMetadata[tool].toolbox = "Other";
-    }
-    if (!groupedTools[toolbox]) {
-      groupedTools[toolbox] = {};
+  const onAddTool = (toolName, toolDict) => {
+    setTools({
+      ...tools,
+      [toolName]: toolDict,
+    });
+  };
+
+  useEffect(() => {
+    async function fetchTools() {
+      const response = await fetch(setupBaseUrl("http", "get_user_tools"), {
+        method: "POST",
+      });
+      const data = (await response.json())["tools"];
+      setTools(data);
     }
 
-    groupedTools[toolbox][tool] = toolsMetadata[tool];
-  }
+    fetchTools();
+  }, []);
+
   return (
     <>
       <Meta />
       <Scaffolding id={"add-tools"} userType={"admin"}>
-        <Modal
-          open={selectedTool ? true : false}
-          onCancel={(ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            setSelectedTool(null);
-          }}
-          footer={null}
-        >
-          {selectedTool ? (
-            <>
-              <h1 className="text-lg font-bold mb-4">
-                Tool: {toolDisplayNames[selectedTool]}
-              </h1>
-              <div className="tool-inputs">
-                <h2 className="text-xs uppercase font-light mb-4">Inputs</h2>
-                {toolsMetadata[selectedTool].function_signature.map((input) => (
-                  <div className="tool-input mb-4 text-xs">
-                    <span className="rounded-md border-gray-200 font-mono mr-3 text-gray-400 bg-gray-200 px-1 py-1">
-                      {easyToolInputTypes[input["type"]] || input["type"]}
-                    </span>
-                    <span className="">{input["name"]}</span>
+        {!tools || !groupedTools ? (
+          <div>Fetching your tools...</div>
+        ) : (
+          <>
+            <Modal
+              open={selectedTool ? true : false}
+              onCancel={(ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                setSelectedTool(null);
+              }}
+              footer={null}
+            >
+              {selectedTool ? (
+                <>
+                  <h1 className="text-lg font-bold mb-1">
+                    Tool: {selectedTool}
+                  </h1>
+                  <div className="tool-status mb-4">
+                    {tools[selectedTool].disabled ? (
+                      <span className="rounded-md font-mono mr-3 text-white bg-pink-300 px-1 py-1 text-xs">
+                        Disabled
+                      </span>
+                    ) : (
+                      <span className="rounded-md font-mono mr-3 text-teal-700 bg-teal-200 px-1 py-1 text-xs">
+                        Enabled
+                      </span>
+                    )}
+                    {tools[selectedTool].cannot_disable && (
+                      <span className="rounded-md font-mono mr-3 text-gray-600 bg-gray-300 px-1 py-1 text-xs">
+                        Cannot disable
+                      </span>
+                    )}
+                    {tools[selectedTool].cannot_delete && (
+                      <span className="rounded-md font-mono mr-3 text-gray-600 bg-gray-300 px-1 py-1 text-xs">
+                        Cannot delete
+                      </span>
+                    )}
                   </div>
-                ))}
+                  <div className="tool-inputs">
+                    <h2 className="text-xs uppercase font-light mb-4">
+                      Inputs
+                    </h2>
+                    {tools[selectedTool].inputs.map((input) => (
+                      <div className="tool-input mb-4 text-xs">
+                        <span className="rounded-md border-gray-200 font-mono mr-3 text-gray-400 bg-gray-200 px-1 py-1">
+                          {easyToolInputTypes[input["type"]] || input["type"]}
+                        </span>
+                        <span className="">{input["name"]}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="tool-actions mt-10">
+                    {!tools[selectedTool].cannot_disable && (
+                      <Button
+                        type="primary"
+                        className="font-mono mr-5"
+                        onClick={async () => {
+                          const goalStatus = tools[selectedTool].disabled
+                            ? "enabled"
+                            : "disabled";
+                          const res = await fetch(toggleDisableToolEndpoint, {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                              function_name: tools[selectedTool].function_name,
+                            }),
+                          }).then((d) => d.json());
+
+                          if (res.success) {
+                            message.success(
+                              `Tool ${selectedTool} is now ${goalStatus}`
+                            );
+                            setTools((prevTools) => {
+                              const newTools = { ...prevTools };
+                              newTools[selectedTool].disabled =
+                                !newTools[selectedTool].disabled;
+
+                              return newTools;
+                            });
+                          } else {
+                            message.error(
+                              `Failed to ${goalStatus.slice(0, -1)} tool. ${
+                                res.error_message
+                                  ? "Error: " + res.error_message
+                                  : ""
+                              }`
+                            );
+                          }
+                        }}
+                      >
+                        {tools[selectedTool].disabled
+                          ? "Enable tool"
+                          : "Disable tool"}
+                      </Button>
+                    )}
+                    {!tools[selectedTool].cannot_delete && (
+                      <Button
+                        type="primary"
+                        className="font-mono mr-5 bg-red"
+                        onClick={async () => {
+                          const res = await fetch(deleteToolEndpoint, {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                              function_name: tools[selectedTool].function_name,
+                            }),
+                          }).then((d) => d.json());
+
+                          if (res.success) {
+                            message.success(
+                              `Tool ${selectedTool} is now deleted`
+                            );
+                            setTools((prevTools) => {
+                              const newTools = { ...prevTools };
+                              delete newTools[selectedTool];
+
+                              return newTools;
+                            });
+                            setSelectedTool(null);
+                          } else {
+                            message.error(
+                              `Failed to delete tool. ${
+                                res.error_message
+                                  ? "Error: " + res.error_message
+                                  : ""
+                              }`
+                            );
+                          }
+                        }}
+                      >
+                        Delete tool
+                      </Button>
+                    )}
+                  </div>
+                </>
+              ) : (
+                "Please select a tool"
+              )}
+            </Modal>
+
+            <div>
+              <h1 className="text-2xl font-bold mb-4">Tool management</h1>
+              <div className="tool-list">
+                {Object.keys(groupedTools).map((toolbox) => {
+                  {
+                    return (
+                      <div key={toolbox}>
+                        <h1 className="text-md font-bold mb-4">
+                          {toolboxDisplayNames[toolbox]}
+                        </h1>
+                        <div className="toolbox flex flex-wrap flex-row mb-10">
+                          {Object.keys(groupedTools[toolbox]).map((tool) => {
+                            return (
+                              <div
+                                className="tool rounded mr-3 mb-3 bg-gray-50 border border-gray-400 p-3 w-60 cursor-pointer hover:shadow-lg"
+                                key={tool}
+                                onClick={() => setSelectedTool(tool)}
+                              >
+                                <div className="tool-name text-md">{tool}</div>
+                              </div>
+                            );
+                          })}
+
+                          <AddTool
+                            toolbox={toolbox}
+                            onAddTool={onAddTool}
+                          ></AddTool>
+                        </div>
+                      </div>
+                    );
+                  }
+                })}
               </div>
-            </>
-          ) : (
-            "Please select a tool"
-          )}
-        </Modal>
-
-        <div>
-          <h1 className="text-2xl font-bold mb-4">Tool management</h1>
-          <div className="tool-list">
-            {Object.keys(groupedTools).map((toolbox) => {
-              {
-                return (
-                  <div key={toolbox}>
-                    <h1 className="text-md font-bold mb-4">
-                      {toolboxDisplayNames[toolbox]}
-                    </h1>
-                    <div className="toolbox flex flex-wrap flex-row mb-10">
-                      {Object.keys(groupedTools[toolbox]).map((tool) => {
-                        return (
-                          <div
-                            className="tool rounded mr-3 mb-3 bg-gray-50 border border-gray-400 p-3 w-60 cursor-pointer hover:shadow-lg"
-                            key={tool}
-                            onClick={() => setSelectedTool(tool)}
-                          >
-                            <div className="tool-name text-md">
-                              {toolDisplayNames[tool]}
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                      <AddTool toolbox={toolbox}></AddTool>
-                    </div>
-                  </div>
-                );
-              }
-            })}
-          </div>
-        </div>
+            </div>
+          </>
+        )}
       </Scaffolding>
     </>
   );

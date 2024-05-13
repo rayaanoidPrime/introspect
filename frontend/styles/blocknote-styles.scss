@@ -1642,6 +1642,10 @@ $grid: repeating-linear-gradient(
     color: theme("colors.gray.600");
   }
 
+  .ant-modal {
+    height: 90%;
+  }
+
   .cm-editor {
     .def-line,
     .return-line {

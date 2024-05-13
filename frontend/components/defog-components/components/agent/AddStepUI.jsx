@@ -7,7 +7,7 @@ import setupBaseUrl from "../../../../utils/setupBaseUrl";
 import { v4 } from "uuid";
 
 const toolOptions = Object.keys(toolsMetadata).map((tool) => {
-  return { value: tool, label: toolsMetadata[tool]?.display_name };
+  return { value: tool, label: toolsMetadata[tool]?.tool_name };
 });
 
 const createNewStepEndpoint = setupBaseUrl("http", "create_new_step");
@@ -16,7 +16,7 @@ export function AddStepUI({
   analysisId,
   activeNode,
   dag,
-  handleReRun = () => { },
+  handleReRun = () => {},
   parentNodeData = {},
 }) {
   const [selectedTool, setSelectedTool] = useState(
