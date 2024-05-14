@@ -33,13 +33,13 @@ def get_tool_library_prompt(toolboxes=[]):
         toolbox = tool["toolbox"]
         if toolbox in toolboxes:
             tool_inputs_prompt = {}
-            for input in tool["inputs"]:
+            for input in tool["input_metadata"]:
                 tool_inputs_prompt[input["name"]] = (
                     f"{create_simple_tool_types(input['type'])} - {input['description']}"
                 )
 
             tool_outputs_prompt = {}
-            for output in tool["outputs"]:
+            for output in tool["output_metadata"]:
                 tool_outputs_prompt[output["name"]] = (
                     f"{create_simple_tool_types(output['type'])}, {output['description']}"
                 )
@@ -58,4 +58,4 @@ def get_tool_library_prompt(toolboxes=[]):
     return prompt
 
 
-print(get_tool_library_prompt())
+# print(get_tool_library_prompt())

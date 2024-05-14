@@ -397,8 +397,7 @@ export function createPythonFunctionInputString(inputDict, indent = 2) {
   return (
     "  ".repeat(indent) +
     inputDict.name +
-    ": " +
-    inputDict.type +
+    (inputDict.type ? ": " + inputDict.type : "") +
     (inputDict.description ? " # " + inputDict.description : "")
   );
 }

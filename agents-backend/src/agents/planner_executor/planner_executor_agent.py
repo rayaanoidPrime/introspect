@@ -3,6 +3,8 @@
 from copy import deepcopy
 from uuid import uuid4
 
+from colorama import Fore, Style
+
 from agents.planner_executor.execute_tool import execute_tool
 from agents.planner_executor.tool_helpers.core_functions import resolve_input
 from db_utils import store_tool_run
@@ -22,6 +24,7 @@ with open(".env.yaml", "r") as f:
 
 dfg_api_key = env["api_key"]
 llm_calls_url = env["llm_calls_url"]
+report_assets_dir = env["report_assets_dir"]
 
 
 class Executor:
@@ -69,6 +72,8 @@ class Executor:
             "toolboxes": toolboxes,
             "assignment_understanding": assignment_understanding,
             "dfg": None,
+            "llm_calls_url": llm_calls_url,
+            "report_assets_dir": report_assets_dir,
         }
 
         # keep storing store column names of each step's generated data
@@ -154,9 +159,9 @@ class Executor:
 
                 # prepare to execute this step, by resolving the inputs
                 # if there's a global_dict.variable_name reference in step["inputs"], replace it with the value from global_dict
-                resolved_inputs = []
-                for _, inp in step["inputs"].items():
-                    resolved_inputs.append(resolve_input(inp, self.global_dict))
+                resolved_inputs = {}
+                for input_name, val in step["inputs"].items():
+                    resolved_inputs[input_name] = resolve_input(val, self.global_dict)
 
                 # execute this step
                 result, tool_function_parameters = await execute_tool(
@@ -179,7 +184,12 @@ class Executor:
                     len(step.get("outputs_storage_keys")) != len(result.get("outputs"))
                 ):
                     # TODO: REDO THIS STEP
-                    print("Length of outputs_storage_keys and outputs don't match")
+                    print(
+                        Fore.RED
+                        + "Length of outputs_storage_keys and outputs don't match. Force matching the length."
+                        + Style.RESET_ALL
+                    )
+
                     pass
 
                 # if we're here, means this step ran successfully.

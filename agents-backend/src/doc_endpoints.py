@@ -11,7 +11,6 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
 from agents.planner_executor.tool_helpers.rerun_step import rerun_step_and_dependents
 from agents.planner_executor.tool_helpers.core_functions import analyse_data
 from agents.planner_executor.tool_helpers.all_tools import tool_name_dict
-from agents.planner_executor.execute_tool import parse_function_signature
 import pandas as pd
 from io import StringIO
 from utils import get_db_type, log_msg
@@ -53,6 +52,7 @@ with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
 
 dfg_api_key = env["api_key"]
+llm_calls_url = env["llm_calls_url"]
 
 report_assets_dir = env["report_assets_dir"]
 
@@ -469,6 +469,8 @@ async def rerun_step(websocket: WebSocket):
                 "table_metadata_csv": table_metadata_csv,
                 "client_description": client_description,
                 "glossary": glossary,
+                "llm_calls_url": llm_calls_url,
+                "report_assets_dir": report_assets_dir,
             }
 
             if err:
@@ -655,9 +657,11 @@ async def create_new_step(request: Request):
                 ),
             }
 
-        tool = tool_name_dict[tool_name]
+        err, tools = get_all_tools()
+        if err:
+            return {"success": False, "error_message": err}
 
-        fn = tool["fn"]
+        tool = tools[tool_name]
 
         new_tool_run_id = str(uuid4())
 
@@ -666,9 +670,7 @@ async def create_new_step(request: Request):
             "tool_name": tool_name,
             "model_generated_inputs": inputs,
             "inputs": inputs,
-            "function_signature": parse_function_signature(
-                inspect.signature(fn).parameters, tool_name
-            ),
+            "function_signature": tool["input_metadata"],
             "tool_run_id": new_tool_run_id,
             "outputs_storage_keys": outputs_storage_keys,
         }
@@ -682,7 +684,7 @@ async def create_new_step(request: Request):
             new_step,
             {
                 "success": True,
-                "code_str": inspect.getsource(fn) if not tool.get("no_code") else None,
+                "code_str": tool["code"],
             },
             skip_step_update=True,
         )
@@ -778,6 +780,8 @@ async def download_csv(request: Request):
                 "table_metadata_csv": table_metadata_csv,
                 "client_description": client_description,
                 "glossary": glossary,
+                "llm_calls_url": llm_calls_url,
+                "report_assets_dir": report_assets_dir,
             }
 
             if err:
@@ -949,8 +953,8 @@ async def add_tool_endpoint(request: Request):
         function_name = data.get("function_name")
         description = data.get("description")
         code = data.get("code")
-        inputs = data.get("inputs")
-        outputs = data.get("outputs")
+        input_metadata = data.get("input_metadata")
+        output_metadata = data.get("output_metadata")
         toolbox = data.get("toolbox")
         no_code = data.get("no_code", False)
 
@@ -967,11 +971,18 @@ async def add_tool_endpoint(request: Request):
         if code is None or type(code) != str or len(code) == 0:
             return {"success": False, "error_message": "Invalid code."}
 
-        if inputs is None or type(inputs) != list:
-            return {"success": False, "error_message": "Invalid inputs."}
+        if input_metadata is None or type(input_metadata) != list:
+            return {"success": False, "error_message": "Invalid input_metadata."}
 
-        if outputs is None or type(outputs) != list or len(outputs) == 0:
-            return {"success": False, "error_message": "Invalid or empty outputs."}
+        if (
+            output_metadata is None
+            or type(output_metadata) != list
+            or len(output_metadata) == 0
+        ):
+            return {
+                "success": False,
+                "error_message": "Invalid or empty output_metadata.",
+            }
 
         if tool_name is None or type(tool_name) != str or len(tool_name) == 0:
             return {"success": False, "error_message": "Invalid display name."}
@@ -987,8 +998,8 @@ async def add_tool_endpoint(request: Request):
             function_name,
             description,
             code,
-            inputs,
-            outputs,
+            input_metadata,
+            output_metadata,
             toolbox,
             no_code,
         )

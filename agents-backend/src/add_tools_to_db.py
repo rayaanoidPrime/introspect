@@ -14,20 +14,17 @@ async def main():
         fn = tool["fn"]
         tool_name = tool["tool_name"]
         toolbox = tool["toolbox"]
-        no_code = tool.get("no_code", False)
-
-        inputs = tool["inputs"]
-        outputs = tool["outputs"]
+        input_metadata = tool["input_metadata"]
+        output_metadata = tool["output_metadata"]
 
         err = await add_tool(
             tool_name,
             function_name,
             description,
             code,
-            inputs,
-            outputs,
+            input_metadata,
+            output_metadata,
             toolbox,
-            no_code,
             cannot_delete=True,
             cannot_disable=True,
         )

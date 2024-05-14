@@ -1,13 +1,11 @@
-from operator import and_
 import re
-from .tool_helpers.all_tools import tools
-from defog import Defog
 import pandas as pd
-from typing import Tuple
 import traceback
 import inspect
 from utils import error_str, warn_str
+from db_utils import get_all_tools
 import asyncio
+from tool_code_utilities import default_top_level_imports
 
 
 def parse_function_signature(param_signatures, fn_name):
@@ -74,25 +72,40 @@ def parse_function_signature(param_signatures, fn_name):
     return params
 
 
-async def execute_tool(function_name, tool_inputs, global_dict={}):
-    print(f"Executing tool: {function_name}")
-    print(tool_inputs)
+async def execute_tool(function_name, tool_function_inputs, global_dict={}):
+    print(f"Executing tool: {function_name} with inputs: {tool_function_inputs}")
     inputs_to_log = []
-    for i in tool_inputs:
-        if isinstance(i, pd.DataFrame):
+    for _, inp in tool_function_inputs.items():
+        if isinstance(inp, pd.DataFrame):
             inputs_to_log.append(
-                f"Pandas dataframe with shape {i.shape} and columns {i.columns}"
+                f"Pandas dataframe with shape {inp.shape} and columns {inp.columns}"
             )
         else:
-            inputs_to_log.append(i)
+            inputs_to_log.append(inp)
     print(f"Tool inputs: {inputs_to_log}")
     # print(f"Global dict: {global_dict}")
     result = {}
+
+    err, tools = get_all_tools()
+    if err:
+        return {"error_message": f"Error getting tools: {err}"}, {}
+
     for key in tools:
         tool = tools[key]
         if tool["function_name"] == function_name:
-            fn = tool["fn"]
-            task = asyncio.create_task(fn(*tool_inputs, global_dict=global_dict))
+            # add param types to import
+
+            code = tool["code"]
+
+            # add a few default top level imports so input types can be defined in the function definition
+            code = default_top_level_imports + "\n" + code
+
+            exec(code, globals())
+            fn = globals()[function_name]
+
+            task = asyncio.create_task(
+                fn(**tool_function_inputs, global_dict=global_dict)
+            )
             try:
                 # expand tool inputs
                 # if it takes more than 120 seconds, then timeout
@@ -132,15 +145,8 @@ async def execute_tool(function_name, tool_inputs, global_dict={}):
                 traceback.print_exc()
                 result = {"error_message": str(e)[:300]}
             finally:
-                # if result has no code_str, use inspect.getsource to get code_str
-                if "code_str" not in result:
-                    if not tool.get("no_code"):
-                        result["code_str"] = inspect.getsource(fn)
-                    else:
-                        result["code_str"] = None
+                result["code_str"] = tool["code"]
 
-                return result, parse_function_signature(
-                    inspect.signature(fn).parameters, function_name
-                )
+                return result, {inp["name"]: inp for inp in tool["input_metadata"]}
     # if no tool matches
     return {"error_message": "No tool matches this name"}, {}

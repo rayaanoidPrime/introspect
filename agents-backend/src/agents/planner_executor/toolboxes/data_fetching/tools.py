@@ -1,19 +1,7 @@
-from agents.planner_executor.tool_helpers.core_functions import (
-    safe_sql,
-    fetch_query_into_df,
-)
 import pandas as pd
 import asyncio
 import requests
 from pandasql import sqldf
-
-
-import yaml
-
-with open(".env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
-llm_calls_url = env["llm_calls_url"]
 
 
 async def data_fetcher_and_aggregator(
@@ -24,6 +12,11 @@ async def data_fetcher_and_aggregator(
     """
     This function generates a SQL query and runs it to get the answer.
     """
+    import requests
+    import asyncio
+    import pandas as pd
+    from tool_code_utilities import safe_sql, fetch_query_into_df
+
     if question == "" or question is None:
         raise ValueError("Question cannot be empty")
 
@@ -33,7 +26,7 @@ async def data_fetcher_and_aggregator(
     print(f"Global dict currently has keys: {list(global_dict.keys())}")
 
     # send the data to an API, and get a response from it
-    url = llm_calls_url
+    url = global_dict["llm_calls_url"]
     payload = {
         "request_type": "generate_sql",
         "question": question,
@@ -79,6 +72,12 @@ async def global_dict_data_fetcher_and_aggregator(
     """
     This function generates a SQL query and runs it on df to get the answer.
     """
+    import requests
+    import asyncio
+    import pandas as pd
+    from pandasql import sqldf
+    from tool_code_utilities import safe_sql
+
     if question == "" or question is None:
         raise ValueError("Question cannot be empty")
 
@@ -103,7 +102,7 @@ async def global_dict_data_fetcher_and_aggregator(
     question += ". Give me SQLite SQL, not Postgres. Remember that SQLite does not support all the features of Postgres like stddev, variance, etc. You will have to calculate them yourself."
 
     # send the data to an API, and get a response from it
-    url = llm_calls_url
+    url = global_dict["llm_calls_url"]
     payload = {
         "request_type": "generate_sql",
         "question": question,

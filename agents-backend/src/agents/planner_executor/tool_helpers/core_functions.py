@@ -104,8 +104,8 @@ async def execute_code(codestr):
     full_data = None
     try:
         # add some imports to the codestr
-        exec(codestr)
-        analysis, full_data = await locals()["exec_code"]()
+        exec(codestr, globals())
+        analysis, full_data = await globals()["exec_code"]()
         full_data.code_str = codestr
     except Exception as e:
         traceback.print_exc()

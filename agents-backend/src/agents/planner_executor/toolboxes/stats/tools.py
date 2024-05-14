@@ -1,11 +1,6 @@
-from defog import Defog
 import pandas as pd
-from typing import Tuple
-
 from io import StringIO
 from scipy import stats
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 from agents.planner_executor.tool_helpers.tool_param_types import (
     DBColumn,
@@ -13,13 +8,10 @@ from agents.planner_executor.tool_helpers.tool_param_types import (
     ListWithDefault,
 )
 
-from agents.planner_executor.tool_helpers.sorting_functions import natural_sort
 from agents.planner_executor.toolboxes.plots.tools import line_plot
 
 
-async def dataset_metadata_describer(
-    global_dict={}, **kwargs
-) -> Tuple[str, pd.DataFrame]:
+async def dataset_metadata_describer(global_dict={}, **kwargs):
     print(global_dict.get("table_metadata_csv"))
     temp_df = pd.read_csv(StringIO(global_dict.get("table_metadata_csv"), ""))
     temp_df = temp_df[["column_name", "data_type", "column_description"]]
@@ -39,11 +31,13 @@ async def t_test(
     ),
     global_dict: dict = {},
     **kwargs,
-) -> Tuple[str, pd.DataFrame]:
+):
     """
     This function gets two samples and runs a t-test to check if there is a significant difference between their means.
     There are two ways to run the test: paired and unpaired.
     """
+    import pandas as pd
+    from scipy import stats
 
     print(group_column)
     print(score_column)
@@ -173,6 +167,9 @@ async def wilcoxon_test(
     """
     This function gets two samples and runs a wilcoxon test to check if there is a significant difference between their means.
     """
+    import pandas as pd
+    from scipy import stats
+
     df = full_data.dropna()
     group_name_1, group_name_2 = df[group_column].unique().tolist()
 
@@ -238,10 +235,11 @@ async def anova_test(
     """
     This function gets multple samples and runs an ANOVA test to check if there is a significant difference between their means.
     """
+    import pandas as pd
+
     df = full_data.dropna(subset=[group_column, score_column])
 
     # run an ANOVA test
-    import statsmodels
     from statsmodels.stats.oneway import anova_oneway
 
     res = anova_oneway(
@@ -295,6 +293,8 @@ async def fold_change(
     """
     This function calculates the fold change between two groups of values.
     """
+    from tool_code_utilities import natural_sort
+
     df = full_data.dropna(subset=[value_column, individual_id_column, time_column])
 
     if group_column is not None:

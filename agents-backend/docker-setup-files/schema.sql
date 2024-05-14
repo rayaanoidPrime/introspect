@@ -162,11 +162,10 @@ CREATE TABLE public.defog_tools (
     function_name TEXT NOT NULL,
     description TEXT NOT NULL,
     code TEXT NOT NULL,
-    inputs jsonb,
-    outputs jsonb,
+    input_metadata jsonb,
+    output_metadata jsonb,
     toolbox TEXT,
     disabled BOOLEAN NOT NULL DEFAULT FALSE,
-    no_code BOOLEAN NOT NULL DEFAULT FALSE,
     cannot_delete BOOLEAN NOT NULL DEFAULT FALSE,
     cannot_disable BOOLEAN NOT NULL DEFAULT FALSE,
 );

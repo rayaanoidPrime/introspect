@@ -72,10 +72,12 @@ export default function ManageTools() {
             >
               {selectedTool ? (
                 <>
-                  <h1 className="text-lg font-bold mb-1">
-                    Tool: {selectedTool}
+                  <h1 className="text-lg mb-2">{selectedTool}</h1>
+                  <h1 className="text-xs mb-5 text-gray-400 font-mono">
+                    {tools[selectedTool].description}
                   </h1>
-                  <div className="tool-status mb-4">
+                  <div className="tool-tags mb-6">
+                    <h1 className="text-xs uppercase font-light mb-2">Tags</h1>
                     {tools[selectedTool].disabled ? (
                       <span className="rounded-md font-mono mr-3 text-white bg-pink-300 px-1 py-1 text-xs">
                         Disabled
@@ -96,7 +98,7 @@ export default function ManageTools() {
                       </span>
                     )}
                   </div>
-                  <div className="tool-inputs">
+                  <div className="tool-inputs mb-6">
                     <h2 className="text-xs uppercase font-light mb-4">
                       Inputs
                     </h2>

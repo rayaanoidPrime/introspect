@@ -1,26 +1,6 @@
-from defog import Defog
-import pandas as pd
-from typing import Tuple
-
 import yaml
+import pandas as pd
 
-with open(".env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
-report_assets_dir = env["report_assets_dir"]
-
-import traceback
-from uuid import uuid4
-import numpy as np
-from sksurv.preprocessing import OneHotEncoder
-
-
-from sksurv.nonparametric import kaplan_meier_estimator
-from sksurv.datasets import get_x_y
-from sksurv.compare import compare_survival
-from sksurv.linear_model import CoxPHSurvivalAnalysis
-from sklearn.model_selection import GridSearchCV, KFold
-import matplotlib.pyplot as plt
 
 from agents.planner_executor.tool_helpers.tool_param_types import (
     DBColumn,
@@ -35,6 +15,7 @@ async def kaplan_meier_curve(
     survival_time_col: DBColumn,
     status_col: DBColumn,
     stratification_vars: db_column_list_type_creator(0) = [],
+    global_dict: dict = {},
     **kwargs,
 ):
     """
@@ -42,10 +23,20 @@ async def kaplan_meier_curve(
     It can be used to generate a survival function for a given survival time column and status column.
     It can also be used to generate a survival function for a given survival time column and status column, stratified by a third column.
     """
+    import traceback
+    from uuid import uuid4
+    import numpy as np
+    from sksurv.nonparametric import kaplan_meier_estimator
+    from sksurv.datasets import get_x_y
+    from sksurv.compare import compare_survival
+    import matplotlib.pyplot as plt
+    import pandas as pd
+
     success = False
     error = None
     kmc_plot_path = ""
     outputs = []
+    report_assets_dir = global_dict.get("report_assets_dir", "report_assets")
     try:
         data_x, data_y = get_x_y(
             full_data,
@@ -161,14 +152,24 @@ async def hazard_ratio(
     full_data: pd.DataFrame,
     survival_time_col: DBColumn,
     status_col: DBColumn,
+    global_dict: dict = {},
     **kwargs,
 ):
     """
     This function generates the cox index (hazard ratio) using the sksurv library.
     Investigate which single variable is the best risk predictor. We fit a Cox model to each variable individually and record the c-index on the training set.
     """
+    import traceback
+    import numpy as np
+    from sksurv.preprocessing import OneHotEncoder
+    from sksurv.datasets import get_x_y
+    from sksurv.linear_model import CoxPHSurvivalAnalysis
+    import matplotlib.pyplot as plt
+    import pandas as pd
+
     analysis = ""
     success = False
+    report_assets_dir = global_dict.get("report_assets_dir", "report_assets")
     try:
 
         def fit_and_score_features(X, y):

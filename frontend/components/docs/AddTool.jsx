@@ -82,7 +82,7 @@ export default function AddTool({ toolbox, onAddTool }) {
 
   const [toolOutputs, setToolOutputs] = useState([]);
   const [toolName, setToolName] = useState("New Tool");
-  const [toolDocString, setToolDocString] = useState("");
+  const [toolDocString, setToolDocString] = useState("This tool does XX");
   const editor = useRef();
 
   const mandatoryInputs = [
@@ -90,6 +90,9 @@ export default function AddTool({ toolbox, onAddTool }) {
       name: "global_dict",
       description: "Stores all previous outputs from the plan",
       type: "dict",
+    },
+    {
+      name: "**kwargs",
     },
   ];
 
@@ -107,8 +110,8 @@ export default function AddTool({ toolbox, onAddTool }) {
       function_name: snakeCase(toolName),
       description: toolDocString,
       code: toolDefStatement + toolFunctionBody + toolReturnStatement,
-      inputs: toolInputs,
-      outputs: toolOutputs,
+      input_metadata: toolInputs,
+      output_metadata: toolOutputs,
       toolbox: toolbox,
       no_code: false,
     };

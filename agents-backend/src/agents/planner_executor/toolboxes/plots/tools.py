@@ -1,18 +1,9 @@
-from typing import List
+from tool_code_utilities import available_colors
+
 import seaborn as sns
-from uuid import uuid4
-import matplotlib.pyplot as plt
-import pandas as pd
-
-# set default font to Arial
-# TODO: enable this after figuring out how to install Arial font inside Docker
-# plt.rcParams["font.family"] = "Arial"
-
-available_colors = plt.colormaps()
 
 sns.set_palette(["#009D94", "#FF5C1C", "#0057CF", "#691A6B", "#FFBD00"])
-
-import yaml
+import pandas as pd
 
 from agents.planner_executor.tool_helpers.tool_param_types import (
     DBColumn,
@@ -20,12 +11,8 @@ from agents.planner_executor.tool_helpers.tool_param_types import (
     ListWithDefault,
     db_column_list_type_creator,
 )
-from agents.planner_executor.tool_helpers.sorting_functions import natural_sort
 
-with open(".env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
-report_assets_dir = env["report_assets_dir"]
+import yaml
 
 
 def validate_column(df, col_name):
@@ -61,6 +48,12 @@ async def boxplot(
     """
     Generates a boxplot using python's seaborn library. Also accepts faceting columns.
     """
+    import seaborn as sns
+    from uuid import uuid4
+    import matplotlib.pyplot as plt
+    import pandas as pd
+
+    report_assets_dir = global_dict.get("report_assets_dir", "report_assets")
 
     if type(color) == ListWithDefault:
         color = color.default_value
@@ -186,10 +179,16 @@ async def heatmap(
     """
     Generates a heatmap using python's seaborn library.
     """
+    import seaborn as sns
+    from uuid import uuid4
+    import matplotlib.pyplot as plt
+    import pandas as pd
+
     outputs = []
     heatmap_path = f"heatmaps/heatmap-{uuid4()}.png"
     fig, ax = plt.subplots()
     plt.xticks(rotation=45)
+    report_assets_dir = global_dict.get("report_assets_dir", "report_assets")
 
     if not aggregation_type or type(aggregation_type) != str:
         raise ValueError("Aggregation type must be a string")
@@ -251,6 +250,13 @@ async def line_plot(
     """
     Creates a line plot of the data, using seaborn
     """
+    from tool_code_utilities import natural_sort
+    import seaborn as sns
+    from uuid import uuid4
+    import matplotlib.pyplot as plt
+
+    report_assets_dir = global_dict.get("report_assets_dir", "report_assets")
+
     if type(average_type) == ListWithDefault:
         average_type = average_type[0]
 
