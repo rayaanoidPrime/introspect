@@ -59,10 +59,10 @@ export default function StepsDag({
         children: [],
         step: step,
       };
-      // to find if this step could have parents, we will regex search for all matches for "global.*" in the inputs
 
-      //  and  get unique parents
-      let parents = step["inputs"].reduce((acc, input, i) => {
+      // to find if this step could have parents, we will regex search for all matches for "global.*" in the inputs
+      // and get unique parents
+      let parents = Object.values(step["inputs"]).reduce((acc, input, i) => {
         let inp = input;
         // if input is a string, convert to array and do
         if (!Array.isArray(input)) {

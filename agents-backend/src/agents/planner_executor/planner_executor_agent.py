@@ -171,27 +171,7 @@ class Executor:
                 # when we're re running, we will need to reconstruct the model messages
                 # store these for later
                 # later we'll have to replace these with the user's edited inputs perhaps.
-                step["model_generated_inputs"] = step["inputs"].copy()
-
-                # replace the inputs with values from the step's inputs
-                step["inputs"] = list(step["inputs"].values())
-
-                # use function signature to fill in all the remaining inputs
-                # both are arrays, so fill in the remaining inputs with default values from function parameters
-                if len(step["function_signature"]) > len(step["inputs"]):
-                    for i in range(
-                        len(step["inputs"]), len(step["function_signature"])
-                    ):
-                        default = step["function_signature"][i].get("default")
-                        if isinstance(default, ListWithDefault):
-                            # get the default value of this list
-                            step["inputs"].append(default.default_value)
-
-                        # if this is a normal list, then just use the first value
-                        elif isinstance(default, list):
-                            step["inputs"].append(default[0])
-                        else:
-                            step["inputs"].append(default)
+                step["model_generated_inputs"] = deepcopy(step["inputs"])
 
                 # if there's no error, check if zip is possible
                 # this should never really happen

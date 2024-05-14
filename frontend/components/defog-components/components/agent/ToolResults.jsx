@@ -70,13 +70,13 @@ export function ToolResults({
   activeNode,
   toolSocketManager = null,
   dag = null,
-  setActiveNode = () => { },
-  handleReRun = () => { },
+  setActiveNode = () => {},
+  handleReRun = () => {},
   reRunningSteps = [],
-  setPendingToolRunUpdates = () => { },
+  setPendingToolRunUpdates = () => {},
   toolRunDataCache = {},
-  setToolRunDataCache = () => { },
-  setAnalysisData = () => { },
+  setToolRunDataCache = () => {},
+  setAnalysisData = () => {},
 }) {
   const [toolRunId, setToolRunId] = useState(null);
   const [toolRunData, setToolRunData] = useState(null);
@@ -228,7 +228,7 @@ export function ToolResults({
         const inputs = newData?.step?.inputs || [];
 
         let parentDfs = Array.from(
-          inputs.reduce((acc, input, i) => {
+          Object.values(inputs).reduce((acc, input, i) => {
             let inp = input;
             // if input is a string, convert to array and do
             if (!Array.isArray(input)) {

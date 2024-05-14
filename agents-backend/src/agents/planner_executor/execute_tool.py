@@ -15,7 +15,7 @@ def parse_function_signature(param_signatures, fn_name):
     Given a dictionary of function signature, return a list of all the parameters
     with name, default values and types.
     """
-    params = []
+    params = {}
     for p in param_signatures:
         # ignore kwargs
         if p == "kwargs" or p == "global_dict":
@@ -65,13 +65,12 @@ def parse_function_signature(param_signatures, fn_name):
         if type(p_default_val) == type:
             p_default_val = str(p_default_val)[8:-2]
 
-        params.append(
-            {
-                "name": p_name,
-                "default": p_default_val,
-                "type": p_type,
-            }
-        )
+        params[p_name] = {
+            "name": p_name,
+            "default": p_default_val,
+            "type": p_type,
+        }
+
     return params
 
 
