@@ -1,12 +1,13 @@
 # the executor converts the user's task to steps and maps those steps to tools.
 # also runs those steps
+from copy import deepcopy
 from uuid import uuid4
 
 from agents.planner_executor.execute_tool import execute_tool
 from agents.planner_executor.tool_helpers.core_functions import resolve_input
 from db_utils import store_tool_run
 from utils import warn_str, YieldList
-from .tool_helpers.toolbox_manager import get_tool_library
+from .tool_helpers.toolbox_manager import get_tool_library_prompt
 from .tool_helpers.tool_param_types import ListWithDefault
 import asyncio
 import requests
@@ -56,7 +57,8 @@ class Executor:
         self.previous_responses = []
 
         self.dfg = dfg
-        self.tool_library = get_tool_library(toolboxes)
+
+        self.tool_library_prompt = get_tool_library_prompt(toolboxes)
 
         self.global_dict = {
             "user_question": user_question,
@@ -110,7 +112,7 @@ class Executor:
                         "request_type": "fix_error",
                         "question": self.user_question,
                         "metadata": self.table_metadata_csv,
-                        "toolbox": self.tool_library,
+                        "tool_library_prompt": self.tool_library_prompt,
                         "assignment_understanding": self.assignment_understanding,
                         "parent_questions": [
                             p["user_question"] for p in self.parent_analyses
@@ -126,7 +128,7 @@ class Executor:
                         "request_type": "create_plan",
                         "question": self.user_question,
                         "metadata": self.table_metadata_csv,
-                        "toolbox": self.tool_library,
+                        "tool_library_prompt": self.tool_library_prompt,
                         "assignment_understanding": self.assignment_understanding,
                         "parent_questions": [
                             p["user_question"] for p in self.parent_analyses
@@ -152,7 +154,9 @@ class Executor:
 
                 # prepare to execute this step, by resolving the inputs
                 # if there's a global_dict.variable_name reference in step["inputs"], replace it with the value from global_dict
-                resolved_inputs = resolve_input(step["inputs"], self.global_dict)
+                resolved_inputs = []
+                for _, inp in step["inputs"].items():
+                    resolved_inputs.append(resolve_input(inp, self.global_dict))
 
                 # execute this step
                 result, tool_function_parameters = await execute_tool(
@@ -168,6 +172,9 @@ class Executor:
                 # store these for later
                 # later we'll have to replace these with the user's edited inputs perhaps.
                 step["model_generated_inputs"] = step["inputs"].copy()
+
+                # replace the inputs with values from the step's inputs
+                step["inputs"] = list(step["inputs"].values())
 
                 # use function signature to fill in all the remaining inputs
                 # both are arrays, so fill in the remaining inputs with default values from function parameters

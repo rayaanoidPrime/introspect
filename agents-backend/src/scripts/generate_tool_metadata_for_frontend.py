@@ -14,15 +14,16 @@ from agents.planner_executor.tool_helpers.all_tools import tools
 
 def generate_tool_json_for_frontend():
     tool_json = {}
-    for tool in tools:
+    for key in tools:
+        tool = tools[key]
         tool_name = tool["name"]
         tool_fn = tool["fn"]
         tool_function_signature = parse_function_signature(
             inspect.signature(tool_fn).parameters, tool_name
         )
         tool_json[tool_name] = {
-            "name": tool_name,
-            "display_name": tool["display_name"],
+            "function_name": tool_name,
+            "tool_name": tool["tool_name"],
             "function_signature": tool_function_signature,
             "toolbox": tool["toolbox"],
         }

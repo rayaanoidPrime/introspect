@@ -21,6 +21,8 @@ DEFOG_API_KEY = "genmab-survival-test"
 from connection_manager import ConnectionManager
 from db_utils import (
     add_to_recently_viewed_docs,
+    add_tool,
+    delete_tool,
     get_all_docs,
     get_doc_data,
     get_report_data,
@@ -28,6 +30,7 @@ from db_utils import (
     get_toolboxes,
     store_feedback,
     store_tool_run,
+    toggle_disable_tool,
     update_doc_data,
     update_report_data,
     update_table_chart_data,
@@ -35,6 +38,7 @@ from db_utils import (
     get_all_analyses,
     update_tool_run_data,
     delete_doc,
+    get_all_tools,
 )
 
 from utils import get_metadata
@@ -874,12 +878,131 @@ async def delete_steps(request: Request):
 
 
 @router.post("/get_user_tools")
-def get_all_tools(request: Request):
+async def get_user_tools(request: Request):
     """
     Get all tools available to the user.
     """
-    tools = get_all_tools()
+    err, tools = get_all_tools()
+    if err:
+        return {"success": False, "error_message": err}
     return {"success": True, "tools": tools}
+
+
+@router.post("/delete_tool")
+async def delete_tool_endpoint(request: Request):
+    """
+    Delete a tool using the tool name.
+    """
+    try:
+        data = await request.json()
+        function_name = data.get("function_name")
+
+        if function_name is None or type(function_name) != str:
+            return {"success": False, "error_message": "Invalid tool name."}
+
+        err = await delete_tool(function_name)
+
+        if err:
+            return {"success": False, "error_message": err}
+
+        return {"success": True}
+    except Exception as e:
+        print("Error disabling tool: ", e)
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}
+
+
+@router.post("/toggle_disable_tool")
+async def toggle_disable_tool_endpoint(request: Request):
+    """
+    Toggle the disabled property of a tool using the tool name.
+    """
+    try:
+        data = await request.json()
+        function_name = data.get("function_name")
+
+        if function_name is None or type(function_name) != str:
+            return {"success": False, "error_message": "Invalid tool name."}
+
+        err = await toggle_disable_tool(function_name)
+
+        if err:
+            raise Exception(err)
+
+        print("Toggled tool: ", function_name)
+
+        return {"success": True}
+    except Exception as e:
+        print("Error disabling tool: ", e)
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}
+
+
+@router.post("/add_tool")
+async def add_tool_endpoint(request: Request):
+    """
+    Add a tool to the defog_tools table.
+    """
+    try:
+        data = await request.json()
+        tool_name = data.get("tool_name")
+        function_name = data.get("function_name")
+        description = data.get("description")
+        code = data.get("code")
+        inputs = data.get("inputs")
+        outputs = data.get("outputs")
+        toolbox = data.get("toolbox")
+        no_code = data.get("no_code", False)
+
+        if (
+            function_name is None
+            or type(function_name) != str
+            or len(function_name) == 0
+        ):
+            return {"success": False, "error_message": "Invalid tool name."}
+
+        if description is None or type(description) != str or len(description) == 0:
+            return {"success": False, "error_message": "Invalid description."}
+
+        if code is None or type(code) != str or len(code) == 0:
+            return {"success": False, "error_message": "Invalid code."}
+
+        if inputs is None or type(inputs) != list:
+            return {"success": False, "error_message": "Invalid inputs."}
+
+        if outputs is None or type(outputs) != list or len(outputs) == 0:
+            return {"success": False, "error_message": "Invalid or empty outputs."}
+
+        if tool_name is None or type(tool_name) != str or len(tool_name) == 0:
+            return {"success": False, "error_message": "Invalid display name."}
+
+        if toolbox is None or type(toolbox) != str or len(toolbox) == 0:
+            return {"success": False, "error_message": "Invalid toolbox."}
+
+        if no_code is None or type(no_code) != bool:
+            return {"success": False, "error_message": "Invalid no code."}
+
+        err = await add_tool(
+            tool_name,
+            function_name,
+            description,
+            code,
+            inputs,
+            outputs,
+            toolbox,
+            no_code,
+        )
+
+        if err:
+            raise Exception(err)
+
+        print("Added tool: ", function_name)
+
+        return {"success": True}
+    except Exception as e:
+        print("Error adding tool: ", e)
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}
 
 
 @router.post("/submit_feedback")

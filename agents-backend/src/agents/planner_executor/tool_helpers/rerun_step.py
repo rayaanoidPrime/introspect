@@ -172,9 +172,11 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
     print(f"Global dict currently has keys: {log_str(list(global_dict.keys()))}")
 
     f_nm = target_step["tool_name"]
-    print("Inputs resolved. Running tool: ", f_nm)
-    resolved_inputs = resolve_input(target_step["inputs"], global_dict)
+    resolved_inputs = []
+    for _, inp in target_step["inputs"]:
+        resolved_inputs.append(resolve_input(inp, global_dict))
 
+    print("Inputs resolved. Running tool: ", f_nm)
     inputs_to_log = []
     for i in resolved_inputs:
         if isinstance(i, pd.DataFrame):
@@ -321,7 +323,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
         try:
             exec(code_str)
             exec_result = await locals()[f_nm](
-                *resolved_inputs, global_dict=global_dict
+                **resolved_inputs, global_dict=global_dict
             )
             err = exec_result.get("error_message")
             result.update(exec_result)

@@ -154,6 +154,30 @@ CREATE TABLE public.defog_toolboxes (
 ALTER TABLE public.defog_toolboxes OWNER TO postgres;
 
 --
+-- Name: defog_tools; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.defog_tools (
+    tool_name TEXT NOT NULL,
+    function_name TEXT NOT NULL,
+    description TEXT NOT NULL,
+    code TEXT NOT NULL,
+    inputs jsonb,
+    outputs jsonb,
+    toolbox TEXT,
+    disabled BOOLEAN NOT NULL DEFAULT FALSE,
+    no_code BOOLEAN NOT NULL DEFAULT FALSE,
+    cannot_delete BOOLEAN NOT NULL DEFAULT FALSE,
+    cannot_disable BOOLEAN NOT NULL DEFAULT FALSE,
+);
+
+
+ALTER TABLE public.defog_tools OWNER TO postgres;
+
+ALTER TABLE ONLY public.defog_tools
+    ADD CONSTRAINT defog_tools_pkey PRIMARY KEY (function_name);
+
+--
 -- Name: defog_users; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -173,7 +197,7 @@ ALTER TABLE public.defog_users OWNER TO postgres;
 
 --
 -- Name: defog_plans_feedback; Type: TABLE; Schema: public; Owner: postgres
--- Stores both golden plans and bad plans
+-- Stores both correct (golden) plans and bad plans
 --
 
 CREATE TABLE public.defog_plans_feedback (

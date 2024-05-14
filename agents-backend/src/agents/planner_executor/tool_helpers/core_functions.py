@@ -136,32 +136,32 @@ def estimate_tokens_left(messages: List[Dict], model: str) -> int:
 
 # resolves an input to a tool
 # by replacing global_dict references to the actual variable values
-def resolve_input(input, global_dict):
-    # if input is list, replace each element in the list with call to resolve_input
-    if isinstance(input, list):
+def resolve_input(inp, global_dict):
+    # if inp is list, replace each element in the list with call to resolve_input
+    if isinstance(inp, list):
         resolved_inputs = []
-        for inp in input:
+        for inp in inp:
             resolved_inputs.append(resolve_input(inp, global_dict))
 
         return resolved_inputs
 
-    elif isinstance(input, str) and input.startswith("global_dict."):
-        variable_name = input.split(".")[1]
-        print(input)
+    elif isinstance(inp, str) and inp.startswith("global_dict."):
+        variable_name = inp.split(".")[1]
+        print(inp)
         return global_dict.get(variable_name)
 
     else:
-        if isinstance(input, str):
+        if isinstance(inp, str):
             # if only numbers, return float
-            if input.isnumeric():
-                return float(input)
+            if inp.isnumeric():
+                return float(inp)
 
             # if None as a string after stripping, return None
-            if input.strip() == "None":
+            if inp.strip() == "None":
                 return None
-            return input
+            return inp
 
-        return input
+        return inp
 
 
 async def analyse_data(question: str, data: pd.DataFrame) -> str:

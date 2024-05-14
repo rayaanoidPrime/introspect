@@ -75,9 +75,9 @@ def parse_function_signature(param_signatures, fn_name):
     return params
 
 
-async def execute_tool(tool_name, tool_inputs, global_dict={}):
-    print(f"Executing tool: {tool_name}")
-
+async def execute_tool(function_name, tool_inputs, global_dict={}):
+    print(f"Executing tool: {function_name}")
+    print(tool_inputs)
     inputs_to_log = []
     for i in tool_inputs:
         if isinstance(i, pd.DataFrame):
@@ -89,8 +89,9 @@ async def execute_tool(tool_name, tool_inputs, global_dict={}):
     print(f"Tool inputs: {inputs_to_log}")
     # print(f"Global dict: {global_dict}")
     result = {}
-    for tool in tools:
-        if tool["name"] == tool_name:
+    for key in tools:
+        tool = tools[key]
+        if tool["function_name"] == function_name:
             fn = tool["fn"]
             task = asyncio.create_task(fn(*tool_inputs, global_dict=global_dict))
             try:
@@ -98,7 +99,7 @@ async def execute_tool(tool_name, tool_inputs, global_dict={}):
                 # if it takes more than 120 seconds, then timeout
                 result = await asyncio.wait_for(task, timeout=120)
             except asyncio.TimeoutError:
-                print(error_str(f"Error for tool {tool_name}: TimeoutError"))
+                print(error_str(f"Error for tool {function_name}: TimeoutError"))
                 result = {
                     "error_message": f"Tool {tool} was taking more 2 mins to run and was stopped. This might be due to a long running SQL query, or creating a very complex plot. Please try filtering your data for a faster execution"
                 }
@@ -114,7 +115,7 @@ async def execute_tool(tool_name, tool_inputs, global_dict={}):
             except KeyError as e:
                 print(
                     error_str(
-                        f"Error for tool {tool_name}: KeyError, key not found {e}"
+                        f"Error for tool {function_name}: KeyError, key not found {e}"
                     )
                 )
                 traceback.print_exc()
@@ -122,13 +123,13 @@ async def execute_tool(tool_name, tool_inputs, global_dict={}):
                     "error_message": f"KeyError: key not found {e}. This might be due to missing columns in the generated data from earlier. You might need to run data fetcher again to make sure the required columns is in the data."
                 }
             except IndexError as e:
-                print(error_str(f"Error for tool {tool_name}: IndexError: {e}"))
+                print(error_str(f"Error for tool {function_name}: IndexError: {e}"))
                 traceback.print_exc()
                 result = {
                     "error_message": f"IndexError: index not found {e}. This might be due to empty dataframes from columns in the generated data from earlier. You might need to run data fetcher again to make sure the query is correct."
                 }
             except Exception as e:
-                print(error_str(f"Error for tool {tool_name}: {e}"))
+                print(error_str(f"Error for tool {function_name}: {e}"))
                 traceback.print_exc()
                 result = {"error_message": str(e)[:300]}
             finally:
@@ -140,7 +141,7 @@ async def execute_tool(tool_name, tool_inputs, global_dict={}):
                         result["code_str"] = None
 
                 return result, parse_function_signature(
-                    inspect.signature(fn).parameters, tool_name
+                    inspect.signature(fn).parameters, function_name
                 )
     # if no tool matches
     return {"error_message": "No tool matches this name"}, {}

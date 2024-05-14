@@ -1,27 +1,61 @@
-from agents.planner_executor.toolboxes.toolbox_prompts import toolbox_prompts
+import asyncio
+from db_utils import get_all_tools
+from utils import create_simple_tool_types
+import yaml
 
-all_toolboxes = ["cancer-survival", "f1"]
+prompt_format = """
+- tool_name: tool.function_name
+  description: tool.description
+  inputs:
+    - input.name: input.type, input.description
+    ...
+  outputs:
+    - output.name: output.type, output.description
+    ..."""
 
 
-def get_tool_library(toolboxes=[]):
-    toolboxes += ["data-fetching", "stats", "plots", "cancer-survival"]
+def get_tool_library_prompt(toolboxes=[]):
+    toolboxes += ["data_fetching", "stats", "plots", "cancer_survival"]
     toolboxes = list(set(toolboxes))
-    prompt = ""
+    prompt = []
+    err, tools = get_all_tools()
+
+    if err:
+        return ""
+
     # now get the prompt for each
-    for toolbox in toolboxes:
-        try:
-            if (
-                toolbox in toolbox_prompts
-                and type(toolbox_prompts[toolbox]) == str
-                and toolbox_prompts[toolbox].strip() != ""
-            ):
-                prompt += "\n\n" + toolbox_prompts[toolbox].strip()
-            else:
-                raise ValueError(f"Toolbox {toolbox} not found.")
-        except Exception as e:
-            print(
-                f"Either toolbox: {toolbox} was not found or the prompt description is empty.\nAre you sure you have the right toolbox name and have added the descriptions to the toolbox_prompts.py file?\n"
-            )
+    for _, tool in tools.items():
+        # if it's disabled, skip
+        if tool["disabled"]:
             continue
 
+        # if it's in toolboxes
+        toolbox = tool["toolbox"]
+        if toolbox in toolboxes:
+            tool_inputs_prompt = {}
+            for input in tool["inputs"]:
+                tool_inputs_prompt[input["name"]] = (
+                    f"{create_simple_tool_types(input['type'])} - {input['description']}"
+                )
+
+            tool_outputs_prompt = {}
+            for output in tool["outputs"]:
+                tool_outputs_prompt[output["name"]] = (
+                    f"{create_simple_tool_types(output['type'])}, {output['description']}"
+                )
+
+            prompt.append(
+                {
+                    "tool_name": tool["function_name"],
+                    "description": tool["description"],
+                    "inputs": tool_inputs_prompt,
+                    "outputs": tool_outputs_prompt,
+                }
+            )
+
+    prompt = yaml.dump(prompt, sort_keys=False)
+
     return prompt
+
+
+print(get_tool_library_prompt())

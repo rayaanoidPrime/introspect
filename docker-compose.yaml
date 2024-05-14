@@ -7,8 +7,6 @@ services:
       dockerfile: dockerfile.agents-llm-calls
     networks:
       - agents-network
-    volumes:
-      - agents-llm-calls:/agents-llm-calls/
 
   agents-python-server:
     build:
@@ -89,7 +87,6 @@ volumes:
   agents-postgres:
   agents-redis:
   agents-assets:
-  agents-llm-calls:
 
 networks:
   agents-network:

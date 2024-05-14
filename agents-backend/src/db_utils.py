@@ -17,7 +17,6 @@ from sqlalchemy import (
     JSON,
 )
 from sqlalchemy.ext.automap import automap_base
-from agents.planner_executor.tool_helpers.toolbox_manager import all_toolboxes
 from agents.planner_executor.tool_helpers.core_functions import (
     execute_code,
 )
@@ -60,6 +59,7 @@ Reports = Base.classes.defog_reports
 TableCharts = Base.classes.defog_table_charts
 ToolRuns = Base.classes.defog_tool_runs
 Toolboxes = Base.classes.defog_toolboxes
+Tools = Base.classes.defog_tools
 Users = Base.classes.defog_users
 Feedback = Base.classes.defog_plans_feedback
 
@@ -243,9 +243,7 @@ async def update_report_data(
 
         else:
             with engine.begin() as conn:
-                print("registering vector")
                 register_vector(conn.connection)
-                print("registered")
                 # first get the data
                 rows = conn.execute(
                     select(Reports.__table__.columns[request_type]).where(
@@ -835,7 +833,7 @@ async def get_toolboxes(username):
                     continue
 
                 if row_dict["toolboxes"][0] == "*":
-                    toolboxes = all_toolboxes
+                    toolboxes = ["data-fetching", "stats", "plots", "cancer-survival"]
                     break
 
                 else:
@@ -878,7 +876,7 @@ async def update_particular_step(analysis_id, tool_run_id, prop, new_val):
 
 
 # skip_step_update helps us skip a step update when createing a new step
-# we first run the tool, and only if it succeeds (aka runs fully), we create a new step in the analysis.
+# we first run the tool, and only if it runs fully, we create a new step in the analysis.
 async def store_tool_run(analysis_id, step, run_result, skip_step_update=False):
     try:
         insert_data = {
@@ -1239,9 +1237,7 @@ async def store_feedback(
         session = Session(engine)
         session.connection()
         with engine.connect() as conn:
-            print("registering vector")
             register_vector(conn.connection)
-            print("registered")
             cursor = conn.connection.cursor()
             # check if entry exists with this analysis_id
             cursor.execute(
@@ -1306,12 +1302,12 @@ async def store_feedback(
         return error, did_overwrite
 
 
-# get golden plans
-async def get_similar_golden_plans(report_id, api_key):
+# get correct plans
+async def get_similar_correct_plans(report_id, api_key):
     err = None
     similar_plans = []
     try:
-        # use the feedback table to get similar golden plans
+        # use the feedback table to get similar correct plans
         # filter to where feedback is_correct is true
         # get the embedding column from the report_id
         # run the cosine distance function directly in the ORDER BY clause, as it cannot be stored as an alias
@@ -1357,3 +1353,120 @@ async def get_similar_golden_plans(report_id, api_key):
         err = str(e)
     finally:
         return err, similar_plans
+
+
+def get_all_tools():
+    err = None
+    tools = {}
+    try:
+        with engine.connect() as conn:
+            rows = conn.execute(select(Tools)).fetchall()
+            for row in rows:
+                tools[row.tool_name] = row._mapping
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        err = str(e)
+    finally:
+        return err, tools
+
+
+async def add_tool(
+    tool_name,
+    function_name,
+    description,
+    code,
+    inputs,
+    outputs,
+    toolbox,
+    no_code=False,
+    cannot_delete=False,
+    cannot_disable=False,
+):
+    err = None
+    try:
+        # insert into the tools table
+        with engine.begin() as conn:
+            # first check if it exists
+            rows = conn.execute(select(Tools).where(Tools.tool_name == tool_name))
+            if rows.rowcount != 0:
+                raise ValueError(f"Tool {tool_name} already exists.")
+            else:
+                conn.execute(
+                    insert(Tools).values(
+                        {
+                            "tool_name": tool_name,
+                            "function_name": function_name,
+                            "code": code,
+                            "description": description,
+                            "toolbox": toolbox,
+                            "inputs": inputs,
+                            "outputs": outputs,
+                            "no_code": no_code,
+                            "cannot_delete": cannot_delete,
+                            "cannot_disable": cannot_disable,
+                            "disabled": False,
+                        }
+                    )
+                )
+
+    except ValueError as e:
+        err = str(e)
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        err = str(e)
+    finally:
+        return err
+
+
+async def toggle_disable_tool(function_name):
+    err = None
+    try:
+        with engine.begin() as conn:
+            # check cannot_disable
+            rows = conn.execute(
+                select(Tools).where(Tools.function_name == function_name)
+            ).fetchone()
+            if rows is None:
+                raise ValueError(f"Tool {function_name} does not exist.")
+            elif rows.cannot_disable:
+                raise ValueError(
+                    f"Tool {function_name} cannot be disabled. Please contact admin."
+                )
+            else:
+                conn.execute(
+                    update(Tools)
+                    .where(Tools.function_name == function_name)
+                    .values(disabled=not Tools.disabled)
+                )
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        err = str(e)
+    finally:
+        return err
+
+
+async def delete_tool(function_name):
+    err = None
+    try:
+        with engine.begin() as conn:
+            # also cannot_delete check
+            rows = conn.execute(
+                select(Tools).where(Tools.function_name == function_name)
+            ).fetchone()
+            if rows is None:
+                raise ValueError(f"Tool {function_name} does not exist.")
+            elif rows.cannot_delete:
+                raise ValueError(
+                    f"Tool {function_name} cannot be deleted. Please contact admin."
+                )
+            else:
+                conn.execute(delete(Tools).where(Tools.function_name == function_name))
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        err = str(e)
+    finally:
+        return err

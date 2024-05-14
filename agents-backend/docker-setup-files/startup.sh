@@ -1,4 +1,5 @@
 python3 create_admin_user.py
+python3 add_tools_to_db.py
 
 # write OPENAI_API_KEY which is the first argument passed to this bash script
 # to /agents-python-server/.env.yaml

@@ -132,10 +132,6 @@ def get_db_type():
     return redis_client.get("integration:db_type")
 
 
-def get_all_tools():
-    return redis_client.get("integration:tools") or {}
-
-
 def get_metadata():
     table_metadata_csv = redis_client.get("integration:metadata")
     client_description = "In this assignment, assume that you are a medical data analyst who is working with lab sample data for T cells of cancer patients."
@@ -206,3 +202,28 @@ async def embed_qn(
     except Exception as e:
         print(e)
         return None
+
+
+simple_tool_types = {
+    "DBColumn": "Column name",
+    "DBColumnList": "List of column names",
+    "pandas.core.frame.DataFrame": "Dataframe",
+    "str": "String",
+    "int": "Integer",
+    "float": "Float",
+    "bool": "Boolean",
+    "list[str]": "List of strings",
+    "list": "List",
+    "DropdownSingleSelect": "String",
+}
+
+
+def create_simple_tool_types(_type):
+    # if type starts with DBColumnList...
+    if _type.startswith("DBColumnList"):
+        return "List of column names"
+    if _type.startswith("ListWithDefault"):
+        return "List"
+
+    else:
+        return simple_tool_types.get(_type, _type)

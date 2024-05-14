@@ -3,7 +3,7 @@ from agents.clarifier.clarifier_agent import Clarifier
 from db_utils import (
     get_parent_analyses,
     get_report_data,
-    get_similar_golden_plans,
+    get_similar_correct_plans,
     update_report_data,
 )
 from agents.main_agent import (
@@ -69,7 +69,7 @@ class ReportDataManager:
                 self.report_id, "user_question", self.user_question, True
             )
             # get similar plans for this report_id and api_key
-            err, similar_plans = await get_similar_golden_plans(
+            err, similar_plans = await get_similar_correct_plans(
                 self.report_id, self.api_key
             )
             if err is not None:
