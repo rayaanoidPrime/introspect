@@ -174,7 +174,7 @@ export default function AddTool({ toolbox, onAddTool }) {
       `\n${baseIndent.repeat(1)}"""`;
 
     let newReturnStr =
-      baseIndent.repeat(2) +
+      baseIndent.repeat(1) +
       "return {\n" +
       baseIndent.repeat(3) +
       '"outputs": [\n';
@@ -474,6 +474,7 @@ export default function AddTool({ toolbox, onAddTool }) {
                       {
                         name: "output_" + toolOutputs.length,
                         description: "",
+                        type: "pandas.core.frame.DataFrame",
                         chart_images: [],
                       },
                     ]);

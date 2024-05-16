@@ -1,27 +1,28 @@
-import asyncio
 from db_utils import get_all_tools
-from utils import create_simple_tool_types
+from utils import create_simple_tool_types, embed_string
 import yaml
 
-prompt_format = """
-- tool_name: tool.function_name
-  description: tool.description
-  inputs:
-    - input.name: input.type, input.description
-    ...
-  outputs:
-    - output.name: output.type, output.description
-    ..."""
 
-
-def get_tool_library_prompt(toolboxes=[]):
+async def get_tool_library_prompt(toolboxes=[], user_question=None):
     toolboxes += ["data_fetching", "stats", "plots", "cancer_survival"]
     toolboxes = list(set(toolboxes))
     prompt = []
-    err, tools = get_all_tools()
+
+    user_question_embedding = await embed_string(user_question)
+
+    # get pruned tools based on user question
+    err, tools = get_all_tools(
+        user_question_embedding,
+        mandatory_tools=[
+            "data_fetcher_and_aggregator",
+            "global_dict_data_fetcher_and_aggregator",
+        ],
+    )
 
     if err:
         return ""
+
+    print("Pruned tools:", [x["function_name"] for x in tools.values()])
 
     # now get the prompt for each
     for _, tool in tools.items():
@@ -41,7 +42,7 @@ def get_tool_library_prompt(toolboxes=[]):
             tool_outputs_prompt = {}
             for output in tool["output_metadata"]:
                 tool_outputs_prompt[output["name"]] = (
-                    f"{create_simple_tool_types(output['type'])}, {output['description']}"
+                    f"{create_simple_tool_types(output.get('type', 'pandas.core.frame.DataFrame'))}, {output['description']}"
                 )
 
             prompt.append(

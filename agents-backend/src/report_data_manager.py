@@ -72,12 +72,29 @@ class ReportDataManager:
             err, similar_plans = await get_similar_correct_plans(
                 self.report_id, self.api_key
             )
+
             if err is not None:
                 print(err)
+                similar_plans = []
                 return
 
+            # only get model_generate_inputs, description, done and outputs_storage_keys from the plans
+            for i, p in enumerate(similar_plans):
+                filtered_p = {}
+                filtered_p["user_question"] = p.get("user_question", "")
+                filtered_p["plan"] = p.get("plan", [])
+                for j, s in enumerate(filtered_p["plan"]):
+                    filtered_p["plan"][j] = {
+                        "description": s.get("description", ""),
+                        "tool_name": s.get("tool_name", ""),
+                        "inputs": s.get("model_generated_inputs", {}),
+                        "outputs_storage_keys": s.get("outputs_storage_keys", []),
+                        "done": s.get("done", False),
+                    }
+
+                similar_plans[i] = filtered_p
+
             self.similar_plans = similar_plans
-            print("Similar plans: ", self.similar_plans)
 
     async def update(
         self, request_type=None, new_data=None, replace=False, overwrite_key=None
@@ -146,7 +163,8 @@ class ReportDataManager:
             result, post_process = await self.agents[request_type](
                 **kwargs,
                 **post_processing_arguments,
-                parent_analyses=self.parent_analyses
+                parent_analyses=self.parent_analyses,
+                similar_plans=self.similar_plans
             )
 
             if result["success"] is not True:

@@ -110,6 +110,7 @@ async def analyse_data(question: str, data: pd.DataFrame) -> str:
 
 def create_plan(
     user_question,
+    similar_plans,
     table_metadata_csv,
     assignment_understanding,
     parent_questions,
@@ -160,10 +161,6 @@ If a user asks a simple question that can be adequately answered by just SQL, th
 Only generate the YAML markdown string that starts with ```yaml and ends with ```. Nothing else.
 """
 
-    print("\n\n\nSYSTEM PROMPT:")
-    print(system_prompt)
-    print("\n\n\nSYSTEM_PTOMPT_ENDT")
-
     assignment_understanding_prompt = (
         ""
         if assignment_understanding == ""
@@ -172,8 +169,23 @@ Only generate the YAML markdown string that starts with ```yaml and ends with ``
     )
 
     user_prompt = f"""This is the user's task: {user_question}. {parent_analyses_prompt}
-{assignment_understanding_prompt}
-"""
+{assignment_understanding_prompt}"""
+
+    if len(similar_plans) > 0:
+        similar_plans_yaml = yaml.dump(
+            similar_plans, sort_keys=False, default_flow_style=False
+        )
+        user_prompt += f"""\n\nIf relevant to the question asked, you can use the following FULL plans as references for answering the question:"""
+        user_prompt += (
+            f"""\n\n```yaml\n"""
+            + similar_plans_yaml
+            + f"""\n```"""
+            + "\n\nNote that those are full plans with all the steps. You still only need to generate one step at a time."
+        )
+
+    user_prompt = user_prompt.strip()
+
+    print(user_prompt)
 
     subsequent_prompts = []
     for idx, item in enumerate(previous_responses):
@@ -423,7 +435,7 @@ Give your response as just a markdown string with just the SQL query, and nothin
             "content": "Based on your instructions, I have generated this valid SQL query:\n```sql",
         },
     ]
-    print(messages)
+
     completion = openai.chat.completions.create(
         model="gpt-4-0613",
         messages=messages,
@@ -470,6 +482,7 @@ def main(request):
     elif request_type == "create_plan":
         resp = create_plan(
             data["question"],
+            data["similar_plans"],
             data["metadata"],
             data["assignment_understanding"],
             data["parent_questions"],
@@ -480,6 +493,7 @@ def main(request):
     elif request_type == "fix_error":
         resp = create_plan(
             data["question"],
+            data["similar_plans"],
             data["metadata"],
             data["assignment_understanding"],
             data["parent_questions"],

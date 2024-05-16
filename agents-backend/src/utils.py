@@ -189,16 +189,16 @@ def log_warn(msg=""):
     print(f"{Fore.YELLOW}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
 
 
-async def embed_qn(
-    question: str, model: str = "text-embedding-3-large"
+async def embed_string(
+    text: str, model: str = "text-embedding-3-large"
 ) -> Optional[np.array]:
     """
-    Use OpenAI to generate embeddings for the question
+    Use OpenAI to generate embeddings for the text
     """
     try:
-        question_embedding = await openai.embeddings.create(input=question, model=model)
-        question_embedding = question_embedding.data[0].embedding
-        return np.array(question_embedding)
+        text_embedding = await openai.embeddings.create(input=text, model=model)
+        text_embedding = text_embedding.data[0].embedding
+        return np.array(text_embedding)
     except Exception as e:
         print(e)
         return None

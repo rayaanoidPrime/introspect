@@ -42,15 +42,15 @@ tool_name_dict = tools = {
             {
                 "name": "question",
                 "default": None,
-                "description": "natural language description of the data required as a string",
+                "description": "Natural language description of the data required as a string",
                 "type": "str",
             },
             {
-                "name": "input_df",
+                "name": "input_dfs",
                 "default": None,
                 "meta_": "global_dict.<input_df_name>",
-                "description": "The dataframe to query",
-                "type": "pandas.core.frame.DataFrame",
+                "description": "A list of dataframes stored in global_dict. [global_dict.<input_df_name>, global_dict.<input_df_name> ...]",
+                "type": "list",
             },
         ],
         "toolbox": "data_fetching",
@@ -166,7 +166,7 @@ tool_name_dict = tools = {
             {
                 "name": "full_data",
                 "default": None,
-                "description": "input_df_name",
+                "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
             {
@@ -213,7 +213,7 @@ tool_name_dict = tools = {
             {
                 "name": "full_data",
                 "default": None,
-                "description": "input_df_name",
+                "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
             {
@@ -260,7 +260,7 @@ tool_name_dict = tools = {
             {
                 "name": "full_data",
                 "default": None,
-                "description": "input_df_name",
+                "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
             {
@@ -295,7 +295,7 @@ tool_name_dict = tools = {
             {
                 "name": "full_data",
                 "default": None,
-                "description": "input_df_name",
+                "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
             {
@@ -336,7 +336,7 @@ tool_name_dict = tools = {
             {
                 "name": "full_data",
                 "default": None,
-                "description": "input_df_name",
+                "description": "global_dict.<input_df_name>",
                 "type": "pandas.core.frame.DataFrame",
             },
             {
@@ -407,7 +407,7 @@ tool_name_dict = tools = {
             {
                 "name": "full_data",
                 "default": None,
-                "description": "input_df_name",
+                "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
             {
@@ -467,7 +467,7 @@ tool_name_dict = tools = {
             {
                 "name": "full_data",
                 "default": None,
-                "description": "input_df_name",
+                "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
             {

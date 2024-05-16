@@ -46,6 +46,7 @@ class Executor:
         dfg_api_key="",
         toolboxes=[],
         parent_analyses=[],
+        similar_plans=[],
     ):
         self.user_question = user_question
         self.api_key = api_key
@@ -58,10 +59,9 @@ class Executor:
         self.analysis_id = report_id
         self.parent_analyses = parent_analyses
         self.previous_responses = []
+        self.similar_plans = similar_plans
 
         self.dfg = dfg
-
-        self.tool_library_prompt = get_tool_library_prompt(toolboxes)
 
         self.global_dict = {
             "user_question": user_question,
@@ -87,6 +87,10 @@ class Executor:
         return post_process
 
     async def execute(self):
+        self.tool_library_prompt = await get_tool_library_prompt(
+            self.toolboxes, self.user_question
+        )
+
         async def generator():
             max_retries = 2
             retries = 0
@@ -109,6 +113,7 @@ class Executor:
 
             """
             next_step_data_description = ""
+
             while True:
                 url = llm_calls_url
 
@@ -126,6 +131,7 @@ class Executor:
                         "next_step_data_description": "",
                         "error": next_step_data_description,
                         "erroreous_response": ans,
+                        "similar_plans": self.similar_plans[:2],
                     }
                     ans = await asyncio.to_thread(requests.post, url, json=payload)
                 else:
@@ -140,6 +146,7 @@ class Executor:
                         ],
                         "previous_responses": self.previous_responses,
                         "next_step_data_description": next_step_data_description,
+                        "similar_plans": self.similar_plans[:2],
                     }
                     ans = await asyncio.to_thread(requests.post, url, json=payload)
                 ans = ans.json()["generated_step"]

@@ -102,7 +102,7 @@ export default function ManageTools() {
                     <h2 className="text-xs uppercase font-light mb-4">
                       Inputs
                     </h2>
-                    {tools[selectedTool].inputs.map((input) => (
+                    {tools[selectedTool].input_metadata.map((input) => (
                       <div className="tool-input mb-4 text-xs">
                         <span className="rounded-md border-gray-200 font-mono mr-3 text-gray-400 bg-gray-200 px-1 py-1">
                           {easyToolInputTypes[input["type"]] || input["type"]}

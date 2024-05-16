@@ -1,5 +1,6 @@
 from agents.planner_executor.tool_helpers.all_tools import tools
 from db_utils import add_tool
+from utils import embed_string
 
 import asyncio
 
@@ -11,11 +12,11 @@ async def main():
         function_name = tool["function_name"]
         description = tool["description"]
         code = tool["code"]
-        fn = tool["fn"]
         tool_name = tool["tool_name"]
         toolbox = tool["toolbox"]
         input_metadata = tool["input_metadata"]
         output_metadata = tool["output_metadata"]
+        # create embedding for the tool name + description
 
         err = await add_tool(
             tool_name,

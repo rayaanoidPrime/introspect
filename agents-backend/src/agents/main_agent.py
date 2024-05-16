@@ -68,6 +68,7 @@ async def execute(
     db_creds=None,
     toolboxes=[],
     parent_analyses=[],
+    similar_plans=[],
     **kwargs,
 ):
     """
@@ -90,6 +91,7 @@ async def execute(
         dfg_api_key=dfg_api_key,
         toolboxes=toolboxes,
         parent_analyses=parent_analyses,
+        similar_plans=similar_plans,
     )
     try:
         execute, post_process = await executor.execute()

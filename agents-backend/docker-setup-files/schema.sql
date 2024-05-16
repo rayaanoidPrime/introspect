@@ -164,6 +164,8 @@ CREATE TABLE public.defog_tools (
     code TEXT NOT NULL,
     input_metadata jsonb,
     output_metadata jsonb,
+    -- embedding for tool pruning later
+    embedding vector,
     toolbox TEXT,
     disabled BOOLEAN NOT NULL DEFAULT FALSE,
     cannot_delete BOOLEAN NOT NULL DEFAULT FALSE,
