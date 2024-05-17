@@ -1,7 +1,8 @@
 import { message } from "antd";
+import setupBaseUrl from "./setupBaseUrl";
 
 export function setupWebsocketManager(
-  url = `ws://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/editor`,
+  url = setupBaseUrl("ws", "editor"),
   onMessage = () => {}
 ) {
   let socket = null;
