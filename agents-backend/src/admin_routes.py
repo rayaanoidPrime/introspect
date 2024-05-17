@@ -1,46 +1,52 @@
 from fastapi import APIRouter, Request
-import redis
-from uuid import uuid4
 from db_utils import get_db_conn
 from auth_utils import validate_user
 import hashlib
 import pandas as pd
 from io import StringIO
-import yaml
+from auth_routes import validate_user
+import requests
+import asyncio
 
-env = None
-with open(".env.yaml", "r") as f:
-    env = yaml.safe_load(f)
-
-redis_host = env["redis_server_host"]
 router = APIRouter()
-redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 
 SALT = "TOMMARVOLORIDDLE"
-DEFOG_API_KEY = "genmab-survival-test"
+INTERNAL_API_KEY = "DUMMY_KEY"
 
 
 @router.post("/admin/add_users")
 async def add_user(request: Request):
     params = await request.json()
     token = params.get("token")
-    user_dets_csv = params.get("user_dets_csv", None)
+    gsheets_url = params.get("gsheets_url")
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
 
-    if not user_dets_csv:
-        return {"error": "no users information provided"}
+    if not gsheets_url:
+        return {"error": "no google sheets url provided"}
+
+    # get the users from the google sheet
+    user_dets_csv = None
+    try:
+        url_to_query = gsheets_url.split("/edit")[0] + "/gviz/tq?tqx=out:csv&sheet=v4"
+        user_dets_csv = await asyncio.to_thread(requests.get, url_to_query)
+        user_dets_csv = user_dets_csv.text
+    except:
+        return {"error": "could not get the google sheet"}
 
     # get the users from the csv
-    users = pd.read_csv(StringIO(user_dets_csv)).to_dict(orient="records")
+    try:
+        users = pd.read_csv(StringIO(user_dets_csv)).to_dict(orient="records")
+        print(users, flush=True)
+    except:
+        return {"error": "could not parse the google sheets csv"}
 
     # create a password for each user
     userdets = []
     for user in users:
         dets = {
-            "username": user.get("username", user.get("user_email")),
-            "password": user.get("password", user.get("user_password")),
-            "user_type": user.get("user_type", user.get("user_role")),
+            "username": user.get("username", user.get("user_email")).lower(),
+            "user_type": user.get("user_type", user.get("user_role")).lower(),
         }
         userdets.append(dets)
 
@@ -49,12 +55,31 @@ async def add_user(request: Request):
     cur = conn.cursor()
     for dets in userdets:
         hashed_password = hashlib.sha256(
-            (dets["username"] + SALT + dets["password"]).encode()
+            (dets["username"] + SALT + "defog_" + dets["username"]).encode()
         ).hexdigest()
+
+        # check if user already exists
         cur.execute(
-            "INSERT INTO defog_users (username, hashed_password, token, user_type, is_premium) VALUES (%s, %s, %s, %s, %s)",
-            (dets["username"], hashed_password, DEFOG_API_KEY, dets["user_type"], True),
+            "SELECT * FROM defog_users WHERE username = %s", (dets["username"],)
         )
+        user_exists = cur.fetchone()
+
+        if user_exists:
+            cur.execute(
+                "UPDATE defog_users SET hashed_password = %s, user_type = %s WHERE username = %s",
+                (hashed_password, dets["user_type"], dets["username"]),
+            )
+        else:
+            cur.execute(
+                "INSERT INTO defog_users (username, hashed_password, token, user_type, is_premium) VALUES (%s, %s, %s, %s, %s)",
+                (
+                    dets["username"],
+                    hashed_password,
+                    INTERNAL_API_KEY,
+                    dets["user_type"],
+                    True,
+                ),
+            )
     conn.commit()
     conn.close()
 

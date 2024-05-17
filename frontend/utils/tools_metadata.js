@@ -40,68 +40,6 @@ export const toolsMetadata = {
     toolbox: "data_fetching",
     outputs_desc: "output_df",
   },
-  kaplan_meier_curve: {
-    name: "kaplan_meier_curve",
-    function_name: "Kaplan Meier Curve",
-    description:
-      "Generates a kaplan meier survival function. You have to run data_fetcher before this.",
-    inputs: [
-      {
-        name: "full_data",
-        default: null,
-        description: "full_patient_data_df",
-        type: "pandas.core.frame.DataFrame",
-      },
-      {
-        name: "survival_time_col",
-        default: null,
-        description: "survival time column name",
-        type: "DBColumn",
-      },
-      {
-        name: "status_col",
-        default: null,
-        description: "status/event column name",
-        type: "DBColumn",
-      },
-      {
-        name: "stratification_vars",
-        default: [],
-        description: "array of stratification variables if any otherwise None",
-        type: "DBColumnList_0",
-      },
-    ],
-    toolbox: "cancer_survival",
-    outputs_desc:
-      "as many pandas dfs as there are stratification variables. Make sure the outputs length matches the number of stratification variables. only one pandas df is output if stratification variables is None",
-  },
-  hazard_ratio: {
-    name: "hazard_ratio",
-    function_name: "Hazard Ratio",
-    description: "",
-    inputs: [
-      {
-        name: "full_data",
-        default: null,
-        description: "full_patient_data_df",
-        type: "pandas.core.frame.DataFrame",
-      },
-      {
-        name: "survival_time_col",
-        default: null,
-        description: "survival time column name",
-        type: "DBColumn",
-      },
-      {
-        name: "status_col",
-        default: null,
-        description: "status/event column name",
-        type: "DBColumn",
-      },
-    ],
-    toolbox: "cancer_survival",
-    outputs_desc: "pandas df",
-  },
   dataset_metadata_describer: {
     name: "dataset_metadata_describer",
     function_name: "Dataset Metadata Describer",

@@ -25,7 +25,7 @@ export default function ManageTools() {
         if (!grouped[tool.toolbox]) {
           grouped[tool.toolbox] = {};
         }
-        grouped[tool.toolbox][tool.tool_name] = tool;
+        grouped[tool.toolbox][tool.function_name] = tool;
       });
       return grouped;
     }
@@ -72,7 +72,9 @@ export default function ManageTools() {
             >
               {selectedTool ? (
                 <>
-                  <h1 className="text-lg mb-2">{selectedTool}</h1>
+                  <h1 className="text-lg mb-2">
+                    {tools[selectedTool].tool_name}
+                  </h1>
                   <h1 className="text-xs mb-5 text-gray-400 font-mono">
                     {tools[selectedTool].description}
                   </h1>
@@ -222,7 +224,9 @@ export default function ManageTools() {
                                 key={tool}
                                 onClick={() => setSelectedTool(tool)}
                               >
-                                <div className="tool-name text-md">{tool}</div>
+                                <div className="tool-name text-md">
+                                  {tools[tool].tool_name}
+                                </div>
                               </div>
                             );
                           })}

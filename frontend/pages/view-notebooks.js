@@ -6,6 +6,7 @@ import Meta from "../components/common/Meta";
 import { Collapse, message } from "antd";
 import Scaffolding from "../components/common/Scaffolding";
 import { useRouter } from "next/router";
+import setupBaseUrl from "../utils/setupBaseUrl";
 
 const ViewNotebooks = () => {
   const [loading, setLoading] = useState(false);
@@ -55,19 +56,16 @@ const ViewNotebooks = () => {
     setOwnDocs(newOwnDocs);
 
     // send to backend to the toggle_archive_status/ endpoint with the archive_status key
-    let res = await fetch(
-      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/toggle_archive_status`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          doc_id: docId,
-          archive_status: !isArchived,
-        }),
-      }
-    );
+    let res = await fetch(setupBaseUrl("http", "toggle_archive_status"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        doc_id: docId,
+        archive_status: !isArchived,
+      }),
+    });
     res = await res.json();
     if (res.success) {
       message.success(`Successfully ${isArchived ? "un" : ""}archived doc`);
@@ -82,19 +80,16 @@ const ViewNotebooks = () => {
       return;
     }
 
-    let res = await fetch(
-      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/get_docs`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          api_key: context.token,
-          username: context.user,
-        }),
-      }
-    );
+    let res = await fetch(setupBaseUrl("http", "get_docs"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        api_key: context.token,
+        username: context.user,
+      }),
+    });
     res = await res.json();
     if (res.success) {
       // res.docs is user's own documents

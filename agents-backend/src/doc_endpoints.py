@@ -57,16 +57,13 @@ llm_calls_url = env["llm_calls_url"]
 report_assets_dir = env["report_assets_dir"]
 
 
-# this is an init endpoint that sends things like metadata, glossary, etc
-# (basically everything stored in the redis server)
-# to the front end
 @router.post("/get_user_metadata")
 async def get_user_metadata(request: Request):
     """
     Send the metadata, glossary, etc to the front end.
     """
     try:
-        metadata_dets = get_metadata()
+        metadata_dets = await get_metadata()
         glossary = metadata_dets["glossary"]
         client_description = metadata_dets["client_description"]
         table_metadata_csv = metadata_dets["table_metadata_csv"]
@@ -459,7 +456,7 @@ async def rerun_step(websocket: WebSocket):
                     "analysis_id": analysis_id,
                 }
 
-            metadata_dets = get_metadata()
+            metadata_dets = await get_metadata()
             glossary = metadata_dets["glossary"]
             client_description = metadata_dets["client_description"]
             table_metadata_csv = metadata_dets["table_metadata_csv"]
@@ -770,7 +767,7 @@ async def download_csv(request: Request):
             if err:
                 return {"success": False, "error_message": err}
 
-            metadata_dets = get_metadata()
+            metadata_dets = await get_metadata()
             glossary = metadata_dets["glossary"]
             client_description = metadata_dets["client_description"]
             table_metadata_csv = metadata_dets["table_metadata_csv"]
@@ -1033,7 +1030,7 @@ async def submit_feedback(request: Request):
         api_key = data.get("api_key")
 
         # get metadata
-        m = get_metadata()
+        m = await get_metadata()
         metadata = m["table_metadata_csv"]
         client_description = m["client_description"]
         glossary = m["glossary"]

@@ -3,7 +3,6 @@
 # and finally add all your tools in the tools array below in the given format
 from ..toolboxes.data_fetching.tools import *
 from ..toolboxes.stats.tools import *
-from ..toolboxes.cancer_survival.tools import *
 from ..toolboxes.plots.tools import *
 
 import inspect
@@ -58,83 +57,6 @@ tool_name_dict = tools = {
             {
                 "name": "output_df",
                 "description": "pandas dataframe",
-                "type": "pandas.core.frame.DataFrame",
-            }
-        ],
-    },
-    "kaplan_meier_curve": {
-        "function_name": "kaplan_meier_curve",
-        "function_name": "kaplan_meier_curve",
-        "fn": kaplan_meier_curve,
-        "code": inspect.getsource(kaplan_meier_curve),
-        "tool_name": "Kaplan Meier Curve",
-        "description": "Generates a kaplan meier survival function. You have to run data_fetcher before this.",
-        "input_metadata": [
-            {
-                "name": "full_data",
-                "default": None,
-                "description": "full_patient_data_df",
-                "type": "pandas.core.frame.DataFrame",
-            },
-            {
-                "name": "survival_time_col",
-                "default": None,
-                "description": "survival time column name",
-                "type": "DBColumn",
-            },
-            {
-                "name": "status_col",
-                "default": None,
-                "description": "status/event column name",
-                "type": "DBColumn",
-            },
-            {
-                "name": "stratification_vars",
-                "default": [],
-                "description": "array of stratification variables if any otherwise None",
-                "type": "DBColumnList_0",
-            },
-        ],
-        "toolbox": "cancer_survival",
-        "output_metadata": [
-            {
-                "name": "output_df",
-                "description": "as many pandas dfs as there are stratification variables. Make sure the outputs length matches the number of stratification variables. only one pandas df is output if stratification variables is None",
-                "type": "pandas.core.frame.DataFrame",
-            }
-        ],
-    },
-    "hazard_ratio": {
-        "function_name": "hazard_ratio",
-        "fn": hazard_ratio,
-        "code": inspect.getsource(hazard_ratio),
-        "tool_name": "Hazard Ratio",
-        "description": "Creates a hazard ratio (based on the Cox Index), given some inputs.",
-        "input_metadata": [
-            {
-                "name": "full_data",
-                "default": None,
-                "description": "full_patient_data_df",
-                "type": "pandas.core.frame.DataFrame",
-            },
-            {
-                "name": "survival_time_col",
-                "default": None,
-                "description": "survival time column name",
-                "type": "DBColumn",
-            },
-            {
-                "name": "status_col",
-                "default": None,
-                "description": "status/event column name",
-                "type": "DBColumn",
-            },
-        ],
-        "toolbox": "cancer_survival",
-        "output_metadata": [
-            {
-                "name": "output_df",
-                "description": "pandas df",
                 "type": "pandas.core.frame.DataFrame",
             }
         ],

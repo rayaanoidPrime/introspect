@@ -55,3 +55,19 @@ def reset_password(username, new_password):
     conn.commit()
     conn.close()
     return {"status": "success"}
+
+
+def get_hashed_password(username, password):
+    return hashlib.sha256((username + SALT + password).encode()).hexdigest()
+
+
+def validate_user_email(email):
+    conn = get_db_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT user_type FROM defog_users WHERE username = %s", (email,))
+    user = cur.fetchone()
+    conn.close()
+    if user:
+        return True
+    else:
+        return False
