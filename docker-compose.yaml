@@ -8,31 +8,6 @@ services:
     networks:
       - agents-network
 
-  agents-python-server:
-    environment:
-      - DEFOG_API_KEY=${DEFOG_API_KEY}
-      - DEFOG_BASE_URL=${DEFOG_BASE_URL:-https://api.defog.ai}
-      - DEFOG_GENERATE_URL=${DEFOG_GENERATE_URL:-https://api.defog.ai/generate_query_chat}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
-    build:
-      context: .
-      dockerfile: dockerfile.agents-python-server
-      args:
-        OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
-    restart: always
-    volumes:
-      - agents-assets:/agents-assets/
-
-    networks:
-      - agents-network
-
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: 34.133.235.56:443
-        tag: defog.local.python-server
-
   agents-partykit:
     build:
       context: .
@@ -59,6 +34,45 @@ services:
       POSTGRES_PASSWORD: postgres
     volumes:
       - agents-postgres:/var/lib/postgresql/data
+
+  agents-redis:
+    build:
+      context: .
+      dockerfile: dockerfile.agents-redis
+    networks:
+      - agents-network
+    volumes:
+      - agents-redis:/data
+  
+  agents-python-server:
+    environment:
+      - DEFOG_API_KEY=${DEFOG_API_KEY}
+      - DEFOG_BASE_URL=${DEFOG_BASE_URL:-https://api.defog.ai}
+      - DEFOG_GENERATE_URL=${DEFOG_GENERATE_URL:-https://api.defog.ai/generate_query_chat}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+    build:
+      context: .
+      dockerfile: dockerfile.agents-python-server
+      args:
+        OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+    restart: always
+    volumes:
+      - agents-assets:/agents-assets/
+    depends_on:
+      - agents-partykit
+      - agents-postgres
+      - agents-redis
+
+    networks:
+      - agents-network
+
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 34.133.235.56:443
+        tag: defog.local.python-server
+  
 
   agents-nginx:
     build:

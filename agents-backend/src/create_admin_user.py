@@ -2,20 +2,18 @@ import time
 
 from db_utils import get_db_conn
 import hashlib
+import time
 
 SALT = "TOMMARVOLORIDDLE"
 INTERNAL_API_KEY = "dummy_api_key"
 
+time.sleep(5)
 try:
     con = get_db_conn()
-    cur = con.cursor()
-    # create an admin user in the defog_users table
 except:
-    print("Error connecting to database.")
-    print("Sleeping for 10 seconds before retrying.")
-    time.sleep(10)
+    time.sleep(5)
     con = get_db_conn()
-    cur = con.cursor()
+cur = con.cursor()
 
 username = "admin"
 password = "admin"
