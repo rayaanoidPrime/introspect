@@ -1,7 +1,8 @@
 import { message } from "antd";
+import setupBaseUrl from "./setupBaseUrl";
 
 export function setupWebsocketManager(
-  url = `ws://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/editor`,
+  url = setupBaseUrl("ws", "editor"),
   onMessage = () => {}
 ) {
   let socket = null;
@@ -10,6 +11,7 @@ export function setupWebsocketManager(
   let lastPingTime = Date.now();
   // -1 so it goes to 0 on 1st connect
   let reconnectCount = -1;
+  let warnCount = 0;
   // cache when creating for reconnects
   let _onMessage = onMessage;
   let eventListeners = [];
@@ -78,11 +80,12 @@ export function setupWebsocketManager(
 
   function send(data, isPing = false) {
     if (socket && socket.readyState === WebSocket.OPEN) {
-      if (reconnectCount >= 1 && !isPing) {
+      if (reconnectCount >= 1 && !isPing && warnCount % 10 == 0) {
         // means we've reconnected once
         message.warning(
           "Connection was previously lost and there might be connectivity issues while running this. Please refresh the page for best performance."
         );
+        warnCount++;
       }
       socket.send(JSON.stringify(data));
     }

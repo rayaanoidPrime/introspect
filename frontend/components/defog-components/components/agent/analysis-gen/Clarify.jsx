@@ -1,16 +1,10 @@
 import { Button, Divider, Input, Select, Slider, Space } from "antd";
-import React, { useState, useRef, Fragment, useMemo, useEffect } from "react";
+import React, { useState, useRef, Fragment, useMemo } from "react";
 import styled from "styled-components";
 import Lottie from "lottie-react";
 import LoadingLottie from "../../svg/loader.json";
 import AgentLoader from "../../common/AgentLoader";
 import Writer from "../Writer";
-import {
-  ArrowRightOutlined,
-  BorderRightOutlined,
-  PlusOutlined,
-} from "@ant-design/icons";
-import Search from "antd/es/input/Search";
 
 export default function Clarify({
   data,
@@ -19,6 +13,7 @@ export default function Clarify({
   stageDone = true,
   isCurrentStage = false,
 }) {
+  const { Search } = Input;
   const [submitted, setSubmitted] = useState(false);
   const answers = useRef(data?.clarification_questions);
 
@@ -208,7 +203,13 @@ export default function Clarify({
             </ul>
           </>
         ) : (
-          !isCurrentStage && <>Your question is clear and we do not need additional refinements. Please click on the Run Analysis button to start running an analysis that answers this question.</>
+          !isCurrentStage && (
+            <>
+              Your question is clear and we do not need additional refinements.
+              Please click on the Run Analysis button to start running an
+              analysis that answers this question.
+            </>
+          )
         ))}
       {stageDone ? (
         <></>

@@ -13,8 +13,9 @@ export function CodeEditor({
   updateProp = null,
   className = "",
   handleEdit = () => {},
+  editable = true,
 }) {
-  const [toolCode, setToolCode] = useState(code);
+  const [toolCode, setToolCode] = useState(code || "");
 
   const updateCodeAndSql = (newVal) => {
     // update values of the code and the SQL
@@ -46,6 +47,7 @@ export function CodeEditor({
           onChange={(val) => {
             updateCodeAndSql(val);
           }}
+          editable={editable}
         />
       </>
     </ErrorBoundary>

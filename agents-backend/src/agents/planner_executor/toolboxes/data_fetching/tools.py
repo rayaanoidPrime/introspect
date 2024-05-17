@@ -1,7 +1,3 @@
-from agents.planner_executor.tool_helpers.core_functions import (
-    safe_sql,
-    fetch_query_into_df,
-)
 import pandas as pd
 import asyncio
 import requests
@@ -16,6 +12,11 @@ async def data_fetcher_and_aggregator(
     """
     This function generates a SQL query and runs it to get the answer.
     """
+    import requests
+    import asyncio
+    import pandas as pd
+    from tool_code_utilities import safe_sql, fetch_query_into_df
+
     if question == "" or question is None:
         raise ValueError("Question cannot be empty")
 
@@ -25,7 +26,7 @@ async def data_fetcher_and_aggregator(
     print(f"Global dict currently has keys: {list(global_dict.keys())}")
 
     # send the data to an API, and get a response from it
-    url = "https://defog-llm-calls-ktcmdcmg4q-uc.a.run.app"
+    url = global_dict["llm_calls_url"]
     payload = {
         "request_type": "generate_sql",
         "question": question,
@@ -64,25 +65,34 @@ async def data_fetcher_and_aggregator(
 
 async def global_dict_data_fetcher_and_aggregator(
     question: str,
-    input_df: pd.DataFrame,  # df from global dict
+    input_dfs: list,  # list of dfs from global dict
     global_dict: dict = {},
     **kwargs,
 ):
     """
-    This function generates a SQL query and runs it on df to get the answer.
+    This function generates a SQL query and runs it on a list of dfs to get the answer.
     """
+    import requests
+    import asyncio
+    import pandas as pd
+    from pandasql import sqldf
+    from tool_code_utilities import safe_sql
+
     if question == "" or question is None:
         raise ValueError("Question cannot be empty")
 
     glossary = global_dict.get("glossary", "")
-    df_name = input_df.name
 
     # create metadata using input_df's columns as a csv string with the format:
     # table_name,column_name,column_data_type
     metadata = "table_name,column_name,column_data_type\n"
-    metadata += "\n".join(
-        [f"{df_name},{col},{input_df[col].dtype}" for col in input_df.columns]
-    )
+    for input_df in input_dfs:
+        df_name = input_df.name
+        metadata += "\n".join(
+            [f"{df_name},{col},{input_df[col].dtype}" for col in input_df.columns]
+        )
+        # set in globals
+        globals()[df_name] = input_df
 
     # replace "object\n" with "string\n" because there is no object data type in SQL
     metadata = metadata.replace("object\n", "string\n")
@@ -95,7 +105,7 @@ async def global_dict_data_fetcher_and_aggregator(
     question += ". Give me SQLite SQL, not Postgres. Remember that SQLite does not support all the features of Postgres like stddev, variance, etc. You will have to calculate them yourself."
 
     # send the data to an API, and get a response from it
-    url = "https://defog-llm-calls-ktcmdcmg4q-uc.a.run.app"
+    url = global_dict["llm_calls_url"]
     payload = {
         "request_type": "generate_sql",
         "question": question,
@@ -122,9 +132,6 @@ async def global_dict_data_fetcher_and_aggregator(
         }
 
     print(f"Running query: {query}")
-
-    # set in globals
-    globals()[df_name] = input_df
 
     pysqldf = lambda q: sqldf(q, globals())
 

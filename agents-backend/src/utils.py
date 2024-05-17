@@ -8,17 +8,21 @@ from defog import Defog
 import yaml
 from colorama import Fore, Style
 
-# import pika
-import redis
+from openai import AsyncOpenAI
+
+import numpy as np
+from typing import Optional
+from generic_utils import make_request, convert_nested_dict_to_list
+import os
 
 env = None
 
 with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
 
-redis_host = env["redis_server_host"]
+openai_api_key = env["openai_api_key"]
 
-redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
+openai = AsyncOpenAI(api_key=openai_api_key)
 
 
 # custom list class with a overwrite_key attribute
@@ -121,28 +125,30 @@ def missing_param_error(param_name):
     )
 
 
-# clean yaml strings
-# change double quotes to single quotes inside strings
+def get_db_type():
+    return
 
 
-def get_metadata():
-    table_metadata_csv = redis_client.get("integration:metadata")
-    client_description = "In this assignment, assume that you are a medical data analyst who is working with lab sample data for T cells of cancer patients."
-    glossary = """- When generating SQL queries, return all the columns that have are relevant to the user's question. It's better to return more columns. For example, if the user asks about differences in cohort, return all the columns that are relevant, including the `cohort` column itself.
-- You must query the `variable_value` or the `calc_concentration` column in every single SQL query
-- If asked about how a gene expression changes over time, refer to the flow cytometry table. **Typically, genes are written as CD4+, memory T cells, KI67+, CD45RA+ etc***
-- If asked about how a cytokine (like IL6) changes, refer to the cytokines table. **Typically, cytokines are written as IL-6, IL-10, PD-L1 etc***
-- Match the terms used by users to the terms used in the database schema. For example, if a user asks for Regulatory T Cells, and the database had the term Tregs, then modify your response accordingly.
-- Recall that the term `reportable` refers to quantitative variables
-- When a user asks how something changes, they are typically looking to get a line chart or boxplot of a variable_value over time, using the visit_timepoint column
-- If a user asks how the expression of a gene changes over time, they are asking for a line chart of the variable_value over time, using the visit_timepoint column for data where the variable_name includes the gene name
-- If asked for proportion, refer to the flow_cytometry table. If asked for concentration, refer to the cytokines table
-- When filtering over the variable_name column, use the `LIKE` operator with the `%` wildcard. Remember that you can chain multiple `LIKE` operators with `AND` or `OR` to filter over multiple patterns. For example: `variable_name LIKE '%CD4%' AND variable_name LIKE '%SOME_GENE_NAME%'`
-- When asked how does X change upon treatment, the user is asking for a comparison of the variable_value over time, using the visit_timepoint column
-- If asked about terms that are in the population or parent_population column, it is preferable to use the `population` or `parent_population` columns in the flow_cytometry table. For example, for terms like `CD4+` or `central memory T cells`
-- Remember that the column `study_participant_id` only exists in the cytokines table, while the column `sample_list_study_participant_id` only exists in the flow_cytometry table
-- Note that the term "proliferating Tregs" is likely to refer to the `KI67+` gene
-"""
+async def get_metadata():
+    table_metadata_csv = ""
+    try:
+        # with open(os.path.join(defog_path, "metadata.json"), "r") as f:
+        #     table_metadata = json.load(f)
+        md = await make_request(
+            f"{os.environ.get('DEFOG_BASE_URL')}/get_metadata",
+            {"api_key": os.environ.get("DEFOG_API_KEY")},
+        )
+        table_metadata = md["table_metadata"]
+        metadata = convert_nested_dict_to_list(table_metadata)
+        table_metadata_csv = pd.DataFrame(metadata).to_csv(index=False)
+        glossary = md["glossary"]
+    except Exception as e:
+        print(e)
+        table_metadata_csv = ""
+        glossary = ""
+
+    client_description = "In this assignment, assume that you are a data analyst."
+
     return {
         "table_metadata_csv": table_metadata_csv,
         "client_description": client_description,
@@ -180,3 +186,43 @@ def log_msg(msg=""):
 
 def log_warn(msg=""):
     print(f"{Fore.YELLOW}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
+
+
+async def embed_string(
+    text: str, model: str = "text-embedding-3-large"
+) -> Optional[np.array]:
+    """
+    Use OpenAI to generate embeddings for the text
+    """
+    try:
+        text_embedding = await openai.embeddings.create(input=text, model=model)
+        text_embedding = text_embedding.data[0].embedding
+        return np.array(text_embedding)
+    except Exception as e:
+        print(e)
+        return None
+
+
+simple_tool_types = {
+    "DBColumn": "Column name",
+    "DBColumnList": "List of column names",
+    "pandas.core.frame.DataFrame": "Dataframe",
+    "str": "String",
+    "int": "Integer",
+    "float": "Float",
+    "bool": "Boolean",
+    "list[str]": "List of strings",
+    "list": "List",
+    "DropdownSingleSelect": "String",
+}
+
+
+def create_simple_tool_types(_type):
+    # if type starts with DBColumnList...
+    if _type.startswith("DBColumnList"):
+        return "List of column names"
+    if _type.startswith("ListWithDefault"):
+        return "List"
+
+    else:
+        return simple_tool_types.get(_type, _type)

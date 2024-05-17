@@ -1,6 +1,11 @@
 import traceback
 from agents.clarifier.clarifier_agent import Clarifier
-from db_utils import get_parent_analyses, get_report_data, update_report_data
+from db_utils import (
+    get_parent_analyses,
+    get_report_data,
+    get_similar_correct_plans,
+    update_report_data,
+)
 from agents.main_agent import (
     execute,
     get_clarification,
@@ -18,11 +23,14 @@ prop_names = {
 
 
 class ReportDataManager:
-    def __init__(self, user_question, report_id, db_creds=None):
+    def __init__(self, user_question, report_id, api_key, db_creds=None):
         self.report_id = report_id
         self.report_data = None
+        self.api_key = api_key
         self.user_question = user_question
         self.invalid = False
+        self.similar_plans = []
+        self.was_async_init_called = False
         # check if this report exists in the main db
         # if so, load the report details from there
         err1, report_data = get_report_data(report_id)
@@ -50,13 +58,45 @@ class ReportDataManager:
                 "clarify": Clarifier.clarifier_post_process,
             }
 
-            if not self.invalid:
-                # update with latest user question
-                update_report_data(
-                    self.report_id, "user_question", self.user_question, True
-                )
+    # have to call this separately because update_report_data is an async function
+    # sorry :/
+    async def async_init(self):
+        self.was_async_init_called = True
+        if not self.invalid:
+            # update with latest user question
+            # we also update the embedding in this function
+            err = await update_report_data(
+                self.report_id, "user_question", self.user_question, True
+            )
+            # get similar plans for this report_id and api_key
+            err, similar_plans = await get_similar_correct_plans(
+                self.report_id, self.api_key
+            )
 
-    def update(
+            if err is not None:
+                print(err)
+                similar_plans = []
+                return
+
+            # only get model_generate_inputs, description, done and outputs_storage_keys from the plans
+            for i, p in enumerate(similar_plans):
+                filtered_p = {}
+                filtered_p["user_question"] = p.get("user_question", "")
+                filtered_p["plan"] = p.get("plan", [])
+                for j, s in enumerate(filtered_p["plan"]):
+                    filtered_p["plan"][j] = {
+                        "description": s.get("description", ""),
+                        "tool_name": s.get("tool_name", ""),
+                        "inputs": s.get("model_generated_inputs", {}),
+                        "outputs_storage_keys": s.get("outputs_storage_keys", []),
+                        "done": s.get("done", False),
+                    }
+
+                similar_plans[i] = filtered_p
+
+            self.similar_plans = similar_plans
+
+    async def update(
         self, request_type=None, new_data=None, replace=False, overwrite_key=None
     ):
         if (
@@ -66,7 +106,7 @@ class ReportDataManager:
         ):
             return
 
-        err = update_report_data(
+        err = await update_report_data(
             self.report_id, request_type, new_data, replace, overwrite_key
         )
         if err is not None:
@@ -79,6 +119,9 @@ class ReportDataManager:
         err = None
         result = None
 
+        if not self.was_async_init_called:
+            await self.async_init()
+
         try:
             if request_type is None or request_type not in self.agents:
                 raise ValueError("Incorrect request type")
@@ -88,7 +131,7 @@ class ReportDataManager:
             idx = request_types.index(request_type)
             print("Cleaning existing data")
             for i in range(idx, len(request_types)):
-                err = self.update(request_types[i], [], True)
+                err = await self.update(request_types[i], [], True)
 
             # find the last request type in the request_types array if this is not "clarify"
             # for post processing
@@ -96,7 +139,7 @@ class ReportDataManager:
             if request_type != "clarify":
                 last_request_type = request_types[request_types.index(request_type) - 1]
                 # update the report data manager with the latest data with user inputs from the last stage
-                self.update(
+                err = await self.update(
                     last_request_type,
                     post_process_data[prop_names[last_request_type]],
                     replace=True,
@@ -120,7 +163,8 @@ class ReportDataManager:
             result, post_process = await self.agents[request_type](
                 **kwargs,
                 **post_processing_arguments,
-                parent_analyses=self.parent_analyses
+                parent_analyses=self.parent_analyses,
+                similar_plans=self.similar_plans
             )
 
             if result["success"] is not True:

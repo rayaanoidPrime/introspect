@@ -1,7 +1,7 @@
 import { useState, Fragment } from "react";
 import {
   BasicTextStyleButton,
-  BlockTypeDropdown,
+  // BlockTypeDropdown,
   ColorStyleButton,
   CreateLinkButton,
   FormattingToolbar,
@@ -27,7 +27,7 @@ export const CustomFormattingToolbar = () => {
 
   return showToolBar ? (
     <FormattingToolbar>
-      <BlockTypeDropdown editor={editor} />
+      {/* <BlockTypeDropdown editor={editor} /> */}
       {/*Default button to toggle bold.*/}
       <BasicTextStyleButton editor={editor} toggledStyle={"bold"} />
       {/*Default button to toggle italic.*/}

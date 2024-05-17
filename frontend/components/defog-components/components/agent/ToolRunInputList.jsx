@@ -1,7 +1,7 @@
 import { Input, Select, message } from "antd";
 import React, { useCallback, useEffect, useState } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
-import { easyColumnTypes } from "../../../../utils/utils";
+import { easyToolInputTypes } from "../../../../utils/utils";
 
 const inputTypeToUI = {
   list: (toolRunId, inputName, initialValue, onEdit) => {
@@ -329,8 +329,9 @@ const inputTypeToUI = {
     }
   ) => {
     const options =
-      config?.functionSignature?.find((sig) => sig.name === inputName)
-        ?.default || [];
+      Object.values(config?.functionSignature || [])?.find(
+        (sig) => sig.name === inputName
+      )?.default || [];
 
     return (
       <Select
@@ -413,11 +414,12 @@ export function ToolRunInputList({
     [toolRunId]
   );
 
-  // index is index in the step["inputs"] array
+  // prop is input name, newVal is the new value
   function onEdit(index, prop, newVal) {
-    const newInputs = [...inputs];
-    newInputs[index] = newVal;
+    const newInputs = { ...inputs };
+    newInputs[prop] = newVal;
     setInputs(newInputs);
+
     handleEdit({
       analysis_id: analysisId,
       tool_run_id: toolRunId,
@@ -437,20 +439,25 @@ export function ToolRunInputList({
 
   return (
     <div className="tool-input-list" key={toolRunId} ref={ctr}>
-      {inputs.map((input, i) => {
-        const sanitizedType = sanitizeInputType(functionSignature[i].type);
+      {Object.keys(inputs).map((input_name, i) => {
+        const sanitizedType = sanitizeInputType(
+          functionSignature[input_name].type
+        );
+        const input = inputs[input_name];
 
         return (
           <div key={i + "_" + toolRunId} className="tool-input">
             <span className="tool-input-type">
-              {easyColumnTypes[sanitizedType] || sanitizedType}
+              {easyToolInputTypes[sanitizedType] || sanitizedType}
             </span>
-            <span className="tool-input-name">{functionSignature[i].name}</span>
+            <span className="tool-input-name">
+              {functionSignature[input_name].name}
+            </span>
 
             {inputTypeToUI[sanitizedType] ? (
               inputTypeToUI[sanitizedType](
                 toolRunId,
-                functionSignature[i].name,
+                functionSignature[input_name].name,
                 input,
                 function (prop, newVal) {
                   onEdit(i, prop, newVal);
@@ -460,13 +467,13 @@ export function ToolRunInputList({
                   setActiveNode,
                   availableParentColumns,
                   functionSignature,
-                  type: functionSignature[i].type,
+                  type: functionSignature[input_name].type,
                 }
               )
             ) : (
               <span className="tool-input-value" contentEditable>
                 {step.inputs.length - 1 < i
-                  ? String(functionSignature[i].default)
+                  ? String(functionSignature[input_name].default)
                   : String(input)}
               </span>
             )}

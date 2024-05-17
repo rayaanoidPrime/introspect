@@ -42,9 +42,8 @@ async def rerun_step_and_dependents(analysis_id, tool_run_id, steps, global_dict
             break
 
     for step in steps:
-        inputs = step["inputs"]
         for output_nm in current_step["outputs_storage_keys"]:
-            for inp in inputs:
+            for _, inp in step["inputs"].items():
                 if type(inp) == str and inp.startswith("global_dict."):
                     var = inp.replace("global_dict.", "")
                     if var == output_nm:
@@ -92,7 +91,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
 
     print("Resolving inputs now")
 
-    for input in target_step["inputs"]:
+    for _, input in target_step["inputs"].items():
         # if there's a global_dict.variable_name reference in step["inputs"], replace it with the value from global_dict, if found
         if type(input) == str and input.startswith("global_dict"):
             var = input.replace("global_dict.", "")
@@ -172,17 +171,19 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
     print(f"Global dict currently has keys: {log_str(list(global_dict.keys()))}")
 
     f_nm = target_step["tool_name"]
-    print("Inputs resolved. Running tool: ", f_nm)
-    resolved_inputs = resolve_input(target_step["inputs"], global_dict)
+    resolved_inputs = {}
+    for input_name, val in target_step["inputs"].items():
+        resolved_inputs[input_name] = resolve_input(val, global_dict)
 
+    print("Inputs resolved. Running tool: ", f_nm)
     inputs_to_log = []
-    for i in resolved_inputs:
-        if isinstance(i, pd.DataFrame):
+    for _, inp in resolved_inputs.items():
+        if isinstance(inp, pd.DataFrame):
             inputs_to_log.append(
-                f"Pandas dataframe with shape {i.shape} and columns {i.columns}"
+                f"Pandas dataframe with shape {inp.shape} and columns {inp.columns}"
             )
         else:
-            inputs_to_log.append(i)
+            inputs_to_log.append(inp)
 
     log_msg(f"Running tool {f_nm} with inputs {inputs_to_log}")
 
@@ -200,8 +201,10 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
             initial_inputs = target_step["inputs"]
         # data_fetcher only gives one output so can just save directly
         output_nm = target_step["outputs_storage_keys"][0]
-        # there's only one string to compare really
-        if initial_inputs[0] == resolved_inputs[0] and tool_run_details.get("sql"):
+        # there's only one string to compare
+        if initial_inputs["question"] == resolved_inputs[
+            "question"
+        ] and tool_run_details.get("sql"):
             print(f"Data fetcher inputs are the same. Running the SQL instead.")
             print(f"SQL: {tool_run_details.get('sql')}")
 
@@ -308,10 +311,9 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
     # else run the code from code_str
     # with the resolved inputs
     else:
+        # we will use the code_str that is saved instead of using tool code stored in the db
+        # as it might have been edited by the user
         code_str = tool_run_details["code_str"]
-        # if there's no code_str, get its code_str
-        if not code_str:
-            code_str = inspect.getsource(tool_name_dict[f_nm]["fn"])
 
         # add a line calling the function and spread the inputs
         # define the function
@@ -319,9 +321,10 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
         result = tool_run_details
         new_data = None
         try:
-            exec(code_str)
-            exec_result = await locals()[f_nm](
-                *resolved_inputs, global_dict=global_dict
+            exec(code_str, globals())
+            print(resolved_inputs)
+            exec_result = await globals()[f_nm](
+                **resolved_inputs, global_dict=global_dict
             )
             err = exec_result.get("error_message")
             result.update(exec_result)

@@ -16,15 +16,23 @@ const nodeCssSize = 15;
 export default function StepsDag({
   steps,
   horizontal = false,
-  nodeRadius = 5,
+  nodeSize = [5, 5],
+  nodeGap = null,
   activeNode = null,
   stageDone = true,
   reRunningSteps = [],
-  dag,
-  setDag,
-  dagLinks,
-  setDagLinks,
-  setActiveNode,
+  dag = null,
+  setDag = () => {},
+  dagLinks = [],
+  setDagLinks = () => {},
+  setActiveNode = () => {},
+  skipAddStepNode = false,
+  setLastOutputNodeAsActive = true,
+  disablePopovers = false,
+  onPopoverOpenChange = () => {},
+  alwaysShowPopover = false,
+  toolIcon = () => <HiWrenchScrewdriver />,
+  extraNodeClasses = () => "",
 }) {
   const [graph, setGraph] = useState({ nodes: {}, links: [] });
   const [nodes, setNodes] = useState([]);
@@ -49,12 +57,12 @@ export default function StepsDag({
         isTool: true,
         parents: new Set(),
         children: [],
-        meta: step,
+        step: step,
       };
-      // to find if this step could have parents, we will regex search for all matches for "global.*" in the inputs
 
-      //  and  get unique parents
-      let parents = step["inputs"].reduce((acc, input, i) => {
+      // to find if this step could have parents, we will regex search for all matches for "global.*" in the inputs
+      // and get unique parents
+      let parents = Object.values(step["inputs"]).reduce((acc, input, i) => {
         let inp = input;
         // if input is a string, convert to array and do
         if (!Array.isArray(input)) {
@@ -110,6 +118,7 @@ export default function StepsDag({
               step: step,
               title: child,
               isTool: false,
+              isOutput: true,
               isError: step.error_message,
               key: child,
               parents: [step_id],
@@ -124,7 +133,7 @@ export default function StepsDag({
           // add this child to the list of children for this step
           g["nodes"][step_id]["children"].push(g["nodes"][child]);
 
-          if (!step.error_message) {
+          if (!step.error_message && !skipAddStepNode) {
             // "add step" as a child of this child
             const addStepNodeId = child + "-add";
 
@@ -138,7 +147,7 @@ export default function StepsDag({
               isError: step.error_message,
               parents: [child],
               children: [],
-              meta: {
+              step: {
                 inputs: [],
                 tool_name: null,
                 parent_step: step,
@@ -179,46 +188,13 @@ export default function StepsDag({
         ...d,
         parentIds: d.parents,
       })),
-      nodeRadius
+      nodeSize,
+      nodeGap
     );
 
     dag.width = horizontal ? height : width;
     dag.height = horizontal ? width : height;
 
-    // new links can be in any order
-    // if the order changes, the animation for drawing a link resets and re runs
-    // so only get the new links
-
-    // const linksToAdd = [...dag.links()].filter((d) => {
-    //   return !dagLinks.find((l) => {
-    //     return (
-    //       l.source.data.id === d.source.data.id &&
-    //       l.target.data.id === d.target.data.id
-    //     );
-    //   });
-    // });
-
-    // // find links to remove
-    // const linksToRemove = dagLinks.filter((d) => {
-    //   return ![...dag.links()].find((l) => {
-    //     return (
-    //       l.source.data.id === d.source.data.id &&
-    //       l.target.data.id === d.target.data.id
-    //     );
-    //   });
-    // });
-
-    // const newDagLinks = [...dagLinks, ...linksToAdd].filter((d) => {
-    //   return !linksToRemove.find((l) => {
-    //     return (
-    //       l.source.data.id === d.source.data.id &&
-    //       l.target.data.id === d.target.data.id
-    //     );
-    //   });
-    // });
-
-    // // update these with the latest values from [...dag.links()]
-    // newDagLinks.forEach((d) => {
     const n = [...dag.nodes()];
 
     setGraph(g);
@@ -229,11 +205,20 @@ export default function StepsDag({
     try {
       // last step node as active
       const lastStep = steps?.[steps.length - 1];
-      // get the first output of this step
-      const lastStepOutput = lastStep?.["outputs_storage_keys"]?.[0];
-      const lastStepOutputNode = n?.find((d) => d.data.id === lastStepOutput);
-      if (lastStepOutputNode) {
-        setActiveNode(lastStepOutputNode);
+      if (setLastOutputNodeAsActive) {
+        // get the first output of this step
+        const lastStepOutput = lastStep?.["outputs_storage_keys"]?.[0];
+        const lastStepOutputNode = n?.find((d) => d.data.id === lastStepOutput);
+        if (lastStepOutputNode) {
+          setActiveNode(lastStepOutputNode);
+        }
+      } else {
+        // set the first step as active
+        const firstStep = steps?.[0];
+        const firstStepNode = n?.find((d) => d.data.id === firstStep.id);
+        if (firstStepNode) {
+          setActiveNode(firstStepNode);
+        }
       }
     } catch (e) {
       console.log("Error setting active node: ", e);
@@ -247,22 +232,34 @@ export default function StepsDag({
           {dag &&
             dag.nodes &&
             nodes.map((d) => {
+              const extraProps = {};
+              if (alwaysShowPopover) {
+                extraProps.open = activeNode?.data?.id === d.data.id;
+              }
               return (
                 <Popover
+                  {...extraProps}
+                  onOpenChange={(visible) => onPopoverOpenChange(d, visible)}
                   rootClassName={
                     "graph-node-popover " +
                     (d.data.isError ? "popover-error " : "")
                   }
                   placement="left"
                   title={
-                    d?.data?.isAddStepNode
+                    !disablePopovers &&
+                    (d?.data?.isAddStepNode
                       ? ""
-                      : toolDisplayNames[d?.data?.meta?.tool_name] || null
+                      : d?.data?.isTool
+                        ? toolDisplayNames[d?.data?.step?.tool_name] || null
+                        : `Output`)
                   }
                   content={
-                    d?.data?.isAddStepNode
+                    !disablePopovers &&
+                    (d?.data?.isAddStepNode
                       ? "Create new step"
-                      : d?.data?.meta?.description || d.data.id
+                      : d?.data?.isTool
+                        ? d?.data?.step?.description || d.data.id
+                        : null)
                   }
                   key={d.data.id}
                 >
@@ -271,6 +268,8 @@ export default function StepsDag({
                       "graph-node" +
                       " " +
                       (d.data.isTool ? "tool" : "var") +
+                      " " +
+                      (d.data.isOutput ? " output" : "") +
                       " " +
                       (activeNode?.data?.id === d.data.id
                         ? "graph-node-active "
@@ -283,24 +282,27 @@ export default function StepsDag({
                       " " +
                       (reRunningSteps.some((s) => s.tool_run_id === d.data.id)
                         ? "graph-node-re-running"
-                        : "")
+                        : "") +
+                      " " +
+                      extraNodeClasses(d)
                     }
                     style={{
                       top: horizontal ? d.x : d.y,
-                      left: horizontal ? d.y : d.x,
+                      left: horizontal
+                        ? d.y
+                        : d.x - (!d.data.isTool ? 0 : nodeSize[0] / 2),
                     }}
                     key={d.data.id}
                     onClick={() => {
-                      console.log(d.data);
                       setActiveNode(d);
                     }}
                   >
                     {d.data.isTool ? (
-                      <HiWrenchScrewdriver />
+                      toolIcon(d)
                     ) : d.data.isAddStepNode ? (
                       <PlusSquareOutlined />
                     ) : (
-                      <></>
+                      <div className="graph-node-circle rounded-full w-4 h-4"></div>
                     )}
                   </div>
                 </Popover>

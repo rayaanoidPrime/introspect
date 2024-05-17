@@ -4,7 +4,6 @@
 
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { DocContext } from "./DocContext";
-import Search from "antd/es/input/Search";
 import { Input } from "antd";
 import ErrorBoundary from "../defog-components/components/common/ErrorBoundary";
 

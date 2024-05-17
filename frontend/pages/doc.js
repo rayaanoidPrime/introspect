@@ -17,7 +17,7 @@ export default function DocPage() {
 
   const [user, setUser] = useState(context.user);
 
-  const apiToken = process.env.NEXT_PUBLIC_API_KEY;
+  const apiToken = process.env.NEXT_PUBLIC_DEFOG_API_KEY;
   const docId = useRef(null);
 
   useEffect(() => {

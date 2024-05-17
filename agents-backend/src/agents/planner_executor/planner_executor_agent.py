@@ -1,12 +1,15 @@
 # the executor converts the user's task to steps and maps those steps to tools.
 # also runs those steps
+from copy import deepcopy
 from uuid import uuid4
+
+from colorama import Fore, Style
 
 from agents.planner_executor.execute_tool import execute_tool
 from agents.planner_executor.tool_helpers.core_functions import resolve_input
 from db_utils import store_tool_run
 from utils import warn_str, YieldList
-from .tool_helpers.toolbox_manager import get_tool_library
+from .tool_helpers.toolbox_manager import get_tool_library_prompt
 from .tool_helpers.tool_param_types import ListWithDefault
 import asyncio
 import requests
@@ -20,6 +23,8 @@ with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
 
 dfg_api_key = env["api_key"]
+llm_calls_url = env["llm_calls_url"]
+report_assets_dir = env["report_assets_dir"]
 
 
 class Executor:
@@ -31,6 +36,7 @@ class Executor:
     def __init__(
         self,
         report_id,
+        api_key,
         user_question,
         client_description,
         glossary,
@@ -40,8 +46,10 @@ class Executor:
         dfg_api_key="",
         toolboxes=[],
         parent_analyses=[],
+        similar_plans=[],
     ):
         self.user_question = user_question
+        self.api_key = api_key
         self.client_description = client_description
         self.glossary = glossary
         self.table_metadata_csv = table_metadata_csv
@@ -51,9 +59,9 @@ class Executor:
         self.analysis_id = report_id
         self.parent_analyses = parent_analyses
         self.previous_responses = []
+        self.similar_plans = similar_plans
 
         self.dfg = dfg
-        self.tool_library = get_tool_library(toolboxes)
 
         self.global_dict = {
             "user_question": user_question,
@@ -64,6 +72,8 @@ class Executor:
             "toolboxes": toolboxes,
             "assignment_understanding": assignment_understanding,
             "dfg": None,
+            "llm_calls_url": llm_calls_url,
+            "report_assets_dir": report_assets_dir,
         }
 
         # keep storing store column names of each step's generated data
@@ -77,6 +87,10 @@ class Executor:
         return post_process
 
     async def execute(self):
+        self.tool_library_prompt = await get_tool_library_prompt(
+            self.toolboxes, self.user_question
+        )
+
         async def generator():
             max_retries = 2
             retries = 0
@@ -99,15 +113,16 @@ class Executor:
 
             """
             next_step_data_description = ""
+
             while True:
-                url = "https://defog-llm-calls-ktcmdcmg4q-uc.a.run.app"
+                url = llm_calls_url
 
                 if next_step_data_description.startswith("There was an error"):
                     payload = {
                         "request_type": "fix_error",
                         "question": self.user_question,
                         "metadata": self.table_metadata_csv,
-                        "toolbox": self.tool_library,
+                        "tool_library_prompt": self.tool_library_prompt,
                         "assignment_understanding": self.assignment_understanding,
                         "parent_questions": [
                             p["user_question"] for p in self.parent_analyses
@@ -116,6 +131,7 @@ class Executor:
                         "next_step_data_description": "",
                         "error": next_step_data_description,
                         "erroreous_response": ans,
+                        "similar_plans": self.similar_plans[:2],
                     }
                     ans = await asyncio.to_thread(requests.post, url, json=payload)
                 else:
@@ -123,13 +139,14 @@ class Executor:
                         "request_type": "create_plan",
                         "question": self.user_question,
                         "metadata": self.table_metadata_csv,
-                        "toolbox": self.tool_library,
+                        "tool_library_prompt": self.tool_library_prompt,
                         "assignment_understanding": self.assignment_understanding,
                         "parent_questions": [
                             p["user_question"] for p in self.parent_analyses
                         ],
                         "previous_responses": self.previous_responses,
                         "next_step_data_description": next_step_data_description,
+                        "similar_plans": self.similar_plans[:2],
                     }
                     ans = await asyncio.to_thread(requests.post, url, json=payload)
                 ans = ans.json()["generated_step"]
@@ -149,7 +166,9 @@ class Executor:
 
                 # prepare to execute this step, by resolving the inputs
                 # if there's a global_dict.variable_name reference in step["inputs"], replace it with the value from global_dict
-                resolved_inputs = resolve_input(step["inputs"], self.global_dict)
+                resolved_inputs = {}
+                for input_name, val in step["inputs"].items():
+                    resolved_inputs[input_name] = resolve_input(val, self.global_dict)
 
                 # execute this step
                 result, tool_function_parameters = await execute_tool(
@@ -164,24 +183,7 @@ class Executor:
                 # when we're re running, we will need to reconstruct the model messages
                 # store these for later
                 # later we'll have to replace these with the user's edited inputs perhaps.
-                step["model_generated_inputs"] = step["inputs"].copy()
-
-                # use function signature to fill in all the remaining inputs
-                # both are arrays, so fill in the remaining inputs with default values from function parameters
-                if len(step["function_signature"]) > len(step["inputs"]):
-                    for i in range(
-                        len(step["inputs"]), len(step["function_signature"])
-                    ):
-                        default = step["function_signature"][i].get("default")
-                        if isinstance(default, ListWithDefault):
-                            # get the default value of this list
-                            step["inputs"].append(default.default_value)
-
-                        # if this is a normal list, then just use the first value
-                        elif isinstance(default, list):
-                            step["inputs"].append(default[0])
-                        else:
-                            step["inputs"].append(default)
+                step["model_generated_inputs"] = deepcopy(step["inputs"])
 
                 # if there's no error, check if zip is possible
                 # this should never really happen
@@ -189,7 +191,12 @@ class Executor:
                     len(step.get("outputs_storage_keys")) != len(result.get("outputs"))
                 ):
                     # TODO: REDO THIS STEP
-                    print("Length of outputs_storage_keys and outputs don't match")
+                    print(
+                        Fore.RED
+                        + "Length of outputs_storage_keys and outputs don't match. Force matching the length."
+                        + Style.RESET_ALL
+                    )
+
                     pass
 
                 # if we're here, means this step ran successfully.

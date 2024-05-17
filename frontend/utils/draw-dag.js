@@ -1,9 +1,13 @@
 import * as d3dag from "d3-dag";
 
-export function createDag(data, nodeRadius = 5) {
+export function createDag(data, nodeSize, nodeGap) {
   // create our builder and turn the raw data into a graph
   const builder = d3dag.graphStratify();
   const graph = builder(data);
+
+  if (!nodeGap) {
+    nodeGap = [nodeSize[0] * 4, nodeSize[1] * 10];
+  }
 
   // -------------- //
   // Compute Layout //
@@ -11,7 +15,7 @@ export function createDag(data, nodeRadius = 5) {
 
   // set the layout functions
   // [y size, x size]
-  const nodeSize = [nodeRadius, nodeRadius];
+  // const nodeSize = [nodeRadius, nodeRadius];
 
   // here's the layout operator, uncomment some of the settings
   const layout = d3dag
@@ -22,7 +26,7 @@ export function createDag(data, nodeRadius = 5) {
     .coord(d3dag.coordGreedy())
     .nodeSize(nodeSize)
     // [y gap, x gap]
-    .gap([nodeRadius * 4, nodeRadius * 10]);
+    .gap(nodeGap);
   // .tweaks([shape]);
 
   // actually perform the layout and get the final size

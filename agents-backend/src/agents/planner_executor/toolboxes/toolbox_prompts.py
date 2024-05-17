@@ -59,11 +59,11 @@ toolbox_prompts = {
     "cancer-survival": """
 - tool_name: kaplan_meier_curve
     description: Generates a kaplan meier survival function. You have to run data_fetcher before this.
-    inputs: ["global_dict.<full_patient_data_df_name>", survival time column name, status/event column name, [array of stratification variables if any otherwise None]]
+    inputs: ["global_dict.<full_patient_data_df>", survival time column name, status/event column name, [array of stratification variables if any otherwise None]]
     outputs: [as many pandas dfs as there are stratification variables. Make sure the outputs length matches the number of stratification variables. only one pandas df is output if stratification variables is None]
     
 - tool_name: hazard_ratio
     description: Creates a hazard ratio (based on the Cox Index), given some inputs.
-    inputs: ["global_dict.<full_patient_data_df_name>", survival time column name, status/event column name]
+    inputs: ["global_dict.<full_patient_data_df>", survival time column name, status/event column name]
     outputs: pandas df""",
 }

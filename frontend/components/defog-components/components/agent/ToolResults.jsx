@@ -101,7 +101,7 @@ export function ToolResults({
 
       const deleteToolRunIds = [...activeNode.descendants()]
         .filter((d) => d?.data?.isTool)
-        .map((d) => d?.data?.meta?.tool_run_id);
+        .map((d) => d?.data?.step?.tool_run_id);
 
       const res = await fetch(deleteStepsEndpoint, {
         method: "POST",
@@ -228,7 +228,7 @@ export function ToolResults({
         const inputs = newData?.step?.inputs || [];
 
         let parentDfs = Array.from(
-          inputs.reduce((acc, input, i) => {
+          Object.values(inputs).reduce((acc, input, i) => {
             let inp = input;
             // if input is a string, convert to array and do
             if (!Array.isArray(input)) {
@@ -357,7 +357,7 @@ export function ToolResults({
         const toolRun = activeNode.data.isTool
           ? activeNode
           : [...activeNode?.parents()][0];
-        const newId = toolRun?.data?.meta?.tool_run_id;
+        const newId = toolRun?.data?.step?.tool_run_id;
 
         if (!toolRun?.data?.isTool) {
           console.error(

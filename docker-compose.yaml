@@ -1,24 +1,12 @@
 version: "3"
 services:
-  agents-python-server:
+  # run the cloud function in the docker for easier testing
+  agents-llm-calls:
     build:
       context: .
-      dockerfile: dockerfile.agents-python-server
-      args:
-        OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
-    restart: always
-    volumes:
-      # persist assets so they are not lost when the container is rebuilt
-      - agents-assets:/agents-assets/
-
+      dockerfile: dockerfile.agents-llm-calls
     networks:
       - agents-network
-    
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: 34.133.235.56:443
-        tag: defog.local.python-server
 
   agents-partykit:
     build:
@@ -47,29 +35,54 @@ services:
     volumes:
       - agents-postgres:/var/lib/postgresql/data
 
-  agents-redis:
+  agents-python-server:
+    environment:
+      - DEFOG_API_KEY=${DEFOG_API_KEY}
+      - DEFOG_BASE_URL=${DEFOG_BASE_URL:-https://api.defog.ai}
+      - DEFOG_GENERATE_URL=${DEFOG_GENERATE_URL:-https://api.defog.ai/generate_query_chat}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
     build:
       context: .
-      dockerfile: dockerfile.agents-redis
+      dockerfile: dockerfile.agents-python-server
+      args:
+        OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+    restart: always
+    volumes:
+      - agents-assets:/agents-assets/
+    depends_on:
+      - agents-partykit
+      - agents-postgres
+
     networks:
       - agents-network
-    volumes:
-      - agents-redis:/data
-  
+
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 34.133.235.56:443
+        tag: defog.local.python-server
+
   agents-nginx:
     build:
       context: .
       dockerfile: dockerfile.agents-nginx
       args:
         ENDPOINT: "${ENDPOINT}"
+        DEFOG_API_KEY: "${DEFOG_API_KEY}"
+        GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
+        PORT: "${PORT:-80}"
+        BUTTON_TEXT: "${BUTTON_TEXT}"
+        ALLOW_UPDATES: "${ALLOW_UPDATES:-YES}"
+        ALLOW_CACHING: "${ALLOW_CACHING:-YES}"
     ports:
-      - "80:80"
+      - "${PORT:-80}:80"
       - "443:443"
     depends_on:
       - agents-python-server
     networks:
       - agents-network
-    
+
     logging:
       driver: fluentd
       options:
@@ -78,8 +91,8 @@ services:
 
 volumes:
   agents-postgres:
-  agents-redis:
   agents-assets:
 
 networks:
   agents-network:
+# curl --header "Content-Type: application/json"  --data '{"request_type": "ping"}' http://localhost:80/llm-calls/

@@ -1,45 +1,16 @@
-from fastapi import APIRouter, Request
-from auth_utils import login_user, reset_password, validate_user
-import jwt
-import asyncio
-import hashlib
+from fastapi import APIRouter, Request, HTTPException
+from auth_utils import login_user, reset_password, validate_user, get_hashed_password
+from google.oauth2 import id_token
+from google.auth.transport import requests
 from db_utils import get_db_conn
+import asyncio
+import os
 
-SALT = "TOMMARVOLORIDDLE"
-DEFOG_API_KEY = "genmab-survival-test"
+INTERNAL_API_KEY = "DUMMY_KEY"
+GOOGLE_CLIENT_ID = os.environ["GOOGLE_CLIENT_ID"]
 
 router = APIRouter()
 
-@router.post("/validate_ms_sso")
-async def validate_ms_sso(request: Request):
-    params = await request.json()
-    token = params.get("token", None)
-    if not token:
-        return {"error": "no token provided"}
-    
-    try:
-        decoded = await asyncio.to_thread(jwt.decode, token, options={"verify_signature": False})
-        username = decoded.get("preferred_username", None)
-        if not username:
-            return {"error": "invalid token"}
-        oid = decoded.get("oid", None)
-        hashed_password = hashlib.sha256((username + SALT + oid).encode()).hexdigest()
-        if not validate_user(hashed_password):
-            # if user does not exist, create the user
-            conn = get_db_conn()
-            cur = conn.cursor()
-            cur.execute(
-                "INSERT INTO defog_users (username, hashed_password, token, user_type, is_premium) VALUES (%s, %s, %s, %s, %s)",
-                (username, hashed_password, DEFOG_API_KEY, "user", True),
-            )
-            cur.close()
-            conn.commit()
-            conn.close()
-        
-        return {"status": "success", "user_type": "user", "token": hashed_password, "user": username}
-    except jwt.PyJWTError as e:
-        print(e)
-        return {"error": "invalid token"}
 
 @router.post("/login")
 async def login(request: Request):
@@ -53,6 +24,45 @@ async def login(request: Request):
 
     dets = login_user(username, password)
     return dets
+
+
+async def validate_google_token(token: str):
+    try:
+        # Specify the CLIENT_ID of the app that accesses the backend:
+        idinfo = await asyncio.to_thread(
+            id_token.verify_oauth2_token, token, requests.Request(), GOOGLE_CLIENT_ID
+        )
+
+        # ID token is valid. Get the user's Google Account ID from the decoded token.
+        user_id = idinfo["sub"]
+        # You can also get other information from the token, like the user's email:
+        user_email = idinfo.get("email")
+        hashed_password = get_hashed_password(user_email, "defog_" + user_email)
+
+        # Check if user exists
+        if validate_user(hashed_password):
+            print("User exists", flush=True)
+            dets = login_user(user_email, "defog_" + user_email)
+            dets["user_email"] = user_email
+            return dets
+        else:
+            return {
+                "error": "user is not registered with the system. Please contact the administrator."
+            }
+    except ValueError:
+        # Invalid token
+        return {
+            "status": "unauthorized",
+        }
+
+
+@router.post("/login_google")
+async def login_google(request: Request):
+    body = await request.json()
+    token = body.get("credential")
+    if not token:
+        raise HTTPException(status_code=400, detail="Missing Google ID token.")
+    return await validate_google_token(token)
 
 
 @router.post("/reset_password")

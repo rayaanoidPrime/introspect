@@ -10,16 +10,9 @@ import asyncio
 
 # these are needed for the exec_code function
 from uuid import uuid4
-from sksurv.preprocessing import OneHotEncoder
-from sksurv.nonparametric import kaplan_meier_estimator
-from sksurv.datasets import get_x_y
-from sksurv.compare import compare_survival
-from sksurv.linear_model import CoxPHSurvivalAnalysis
-from sklearn.model_selection import GridSearchCV, KFold
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import redis
 import json
 import yaml
 
@@ -31,9 +24,6 @@ openai = None
 
 with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
-
-redis_host = env["redis_server_host"]
-redis_client = redis.Redis(host=redis_host, port=6379, db=0, decode_responses=True)
 
 if (
     env.get("OPENAI_API_KEY") is None
@@ -76,10 +66,9 @@ async def fetch_query_into_df(sql_query: str) -> pd.DataFrame:
 
     # important note: this is currently a blocking call
     # TODO: add an option to the defog library to make this async
-    db_type = redis_client.get("integration:db_type")
-    db_creds = redis_client.get("integration:db_creds")
-    if db_creds is not None:
-        db_creds = json.loads(db_creds)
+    defog = Defog()
+    db_type = defog.db_type
+    db_creds = defog.db_creds
 
     colnames, data, new_sql_query = await asyncio.to_thread(
         execute_query, sql_query, DEFOG_API_KEY, db_type, db_creds, retries=0
@@ -104,8 +93,8 @@ async def execute_code(codestr):
     full_data = None
     try:
         # add some imports to the codestr
-        exec(codestr)
-        analysis, full_data = await locals()["exec_code"]()
+        exec(codestr, globals())
+        analysis, full_data = await globals()["exec_code"]()
         full_data.code_str = codestr
     except Exception as e:
         traceback.print_exc()
@@ -136,32 +125,32 @@ def estimate_tokens_left(messages: List[Dict], model: str) -> int:
 
 # resolves an input to a tool
 # by replacing global_dict references to the actual variable values
-def resolve_input(input, global_dict):
-    # if input is list, replace each element in the list with call to resolve_input
-    if isinstance(input, list):
+def resolve_input(inp, global_dict):
+    # if inp is list, replace each element in the list with call to resolve_input
+    if isinstance(inp, list):
         resolved_inputs = []
-        for inp in input:
+        for inp in inp:
             resolved_inputs.append(resolve_input(inp, global_dict))
 
         return resolved_inputs
 
-    elif isinstance(input, str) and input.startswith("global_dict."):
-        variable_name = input.split(".")[1]
-        print(input)
+    elif isinstance(inp, str) and inp.startswith("global_dict."):
+        variable_name = inp.split(".")[1]
+        print(inp)
         return global_dict.get(variable_name)
 
     else:
-        if isinstance(input, str):
+        if isinstance(inp, str):
             # if only numbers, return float
-            if input.isnumeric():
-                return float(input)
+            if inp.isnumeric():
+                return float(inp)
 
             # if None as a string after stripping, return None
-            if input.strip() == "None":
+            if inp.strip() == "None":
                 return None
-            return input
+            return inp
 
-        return input
+        return inp
 
 
 async def analyse_data(question: str, data: pd.DataFrame) -> str:

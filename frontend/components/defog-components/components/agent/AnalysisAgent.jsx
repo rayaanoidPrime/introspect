@@ -32,8 +32,11 @@ import {
   createAnalysis,
   getAnalysis,
   getToolRunData,
+  toolDisplayNames,
+  toolShortNames,
 } from "../../../../utils/utils";
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
+import { AnalysisFeedback } from "./feedback/AnalysisFeedback";
 
 // the name of the prop where the data is stored for each stage
 const propNames = {
@@ -525,6 +528,7 @@ export const AnalysisAgent = ({
         skip_text_gen: true,
         user_email: user,
         db_creds: null,
+        api_key: apiToken,
       };
 
       if (docContext.val.dbCreds.hasCreds) {
@@ -615,6 +619,7 @@ export const AnalysisAgent = ({
         reRunManager.send({
           tool_run_id: toolRunId,
           analysis_id: analysisId,
+          api_key: apiToken,
         });
       }
     },
@@ -627,18 +632,26 @@ export const AnalysisAgent = ({
         {/* {analysisTitle.length ? ( */}
         <>
           {currentStage === "gen_steps" ? (
-            <div
-              className="analysis-title"
-              onClick={() => {
-                setRecipeShowing(!recipeShowing);
-              }}
-            >
-              <div className="remake-analysis">
-                <Popover content={<span>Remake analysis</span>}>
-                  <SettingOutlined />
-                </Popover>
+            <div className="flex flex-row justify-between	">
+              <div
+                className="analysis-title"
+                onClick={() => {
+                  setRecipeShowing(!recipeShowing);
+                }}
+              >
+                <div className="remake-analysis">
+                  <Popover content={<span>Remake analysis</span>}>
+                    <SettingOutlined />
+                  </Popover>
+                </div>
+                {analysisTitle}
               </div>
-              {analysisTitle}
+              <AnalysisFeedback
+                analysisSteps={analysisSteps}
+                analysisId={analysisId}
+                user_question={analysisData?.user_question}
+                username={username}
+              />
             </div>
           ) : (
             <></>
@@ -722,7 +735,8 @@ export const AnalysisAgent = ({
                       <div className="analysis-steps">
                         <StepsDag
                           steps={analysisSteps}
-                          nodeRadius={5}
+                          nodeSize={[40, 10]}
+                          nodeGap={[30, 50]}
                           setActiveNode={setActiveNode}
                           reRunningSteps={reRunningSteps}
                           activeNode={activeNode}
@@ -733,6 +747,18 @@ export const AnalysisAgent = ({
                           setDag={setDag}
                           dagLinks={dagLinks}
                           setDagLinks={setDagLinks}
+                          // alwaysShowPopover={activeSection === "step"}
+                          extraNodeClasses={(node) => {
+                            return node.data.isTool
+                              ? `rounded-md px-1 text-center`
+                              : "";
+                          }}
+                          toolIcon={(node) => (
+                            <p className="text-sm truncate m-0">
+                              {toolShortNames[node?.data?.step?.tool_name] ||
+                                "Unknown tool"}
+                            </p>
+                          )}
                         />
                       </div>
                     </div>

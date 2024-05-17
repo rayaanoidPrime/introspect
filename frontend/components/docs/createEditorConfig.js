@@ -2,7 +2,6 @@
 
 import { getCursorColor } from "../../utils/utils";
 import { customBlockSchema } from "./createCustomBlockSchema";
-import { customSlashMenuItemList } from "./createCustomSlashMenuItems";
 
 export const createEditorConfig = (
   initialBlocks = null,
@@ -12,7 +11,6 @@ export const createEditorConfig = (
 ) => {
   return {
     blockSpecs: customBlockSchema,
-    slashMenuItems: customSlashMenuItemList,
     defaultStyles: true,
     collaboration: {
       provider: yjsProvider,

@@ -1,5 +1,4 @@
 import os
-import sys
 import traceback
 from fastapi import FastAPI, WebSocket, Request
 from fastapi.responses import FileResponse
@@ -17,14 +16,18 @@ from db_utils import (
     update_report_data,
 )
 from utils import get_metadata
-import integration_routes, admin_routes, auth_routes
+import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes
 
 manager = ConnectionManager()
 
 app = FastAPI()
 app.include_router(integration_routes.router)
+app.include_router(query_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(auth_routes.router)
+app.include_router(readiness_routes.router)
+app.include_router(doc_endpoints.router)
+
 
 origins = ["*"]
 app.add_middleware(
@@ -44,9 +47,6 @@ with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
 
 report_assets_dir = env["report_assets_dir"]
-
-
-app.include_router(doc_endpoints.router)
 
 
 @app.get("/ping")
@@ -80,11 +80,15 @@ async def edit_report(request: Request):
 
         new_data = params[prop_name]
         report_id = params["report_id"]
-        update_report_data(report_id, table_column, new_data, replace=True)
+        err = await update_report_data(report_id, table_column, new_data, replace=True)
+        if err is not None:
+            raise Exception(err)
+
         return {"success": True}
     except Exception as e:
         print(e)
         traceback.print_exc()
+        err = str(e)
         return {"success": False, "error_message": "An error occurred"}
 
 
@@ -183,14 +187,18 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 report_id = data.get("report_id")
+                api_key = data.get("api_key")
 
                 # start a report data manager
                 # this fetches currently existing report data for this report
                 report_data_manager = ReportDataManager(
                     data["user_question"],
                     report_id,
+                    api_key,
                     data.get("db_creds"),
                 )
+
+                await report_data_manager.async_init()
 
                 # if this report is invalid
                 if report_data_manager.invalid:
@@ -208,13 +216,14 @@ async def websocket_endpoint(websocket: WebSocket):
                     if data.get("toolboxes") and type(data.get("toolboxes")) == list
                     else []
                 )
-                metadata_dets = get_metadata()
+                metadata_dets = await get_metadata()
                 glossary = metadata_dets["glossary"]
                 client_description = metadata_dets["client_description"]
                 table_metadata_csv = metadata_dets["table_metadata_csv"]
                 # run the agent as per the request_type
                 err, agent_output = await report_data_manager.run_agent(
                     report_id=report_id,
+                    api_key=api_key,
                     request_type=request_type,
                     user_question=data["user_question"],
                     client_description=client_description,
@@ -244,7 +253,7 @@ async def websocket_endpoint(websocket: WebSocket):
                                     overwrite_key = getattr(out, "overwrite_key", None)
                                     # if the out has an overwrite_key
                                     # update report data in db
-                                    report_data_manager.update(
+                                    await report_data_manager.update(
                                         request_type,
                                         out,
                                         False,
@@ -269,7 +278,7 @@ async def websocket_endpoint(websocket: WebSocket):
                             resp["output"] = agent_output
                             resp["done"] = True
                             await websocket.send_json(resp)
-                            report_data_manager.update(
+                            await report_data_manager.update(
                                 request_type,
                                 agent_output,
                                 replace=request_type == "gen_report",
@@ -321,3 +330,13 @@ async def get_assets(path: str):
         print(e)
         traceback.print_exc()
         return {"success": False, "error_message": "Error getting assets"}
+
+
+@app.get("/")
+def read_root():
+    return {"status": "ok"}
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}

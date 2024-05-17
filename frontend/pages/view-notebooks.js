@@ -6,6 +6,7 @@ import Meta from "../components/common/Meta";
 import { Collapse, message } from "antd";
 import Scaffolding from "../components/common/Scaffolding";
 import { useRouter } from "next/router";
+import setupBaseUrl from "../utils/setupBaseUrl";
 
 const ViewNotebooks = () => {
   const [loading, setLoading] = useState(false);
@@ -55,19 +56,16 @@ const ViewNotebooks = () => {
     setOwnDocs(newOwnDocs);
 
     // send to backend to the toggle_archive_status/ endpoint with the archive_status key
-    let res = await fetch(
-      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/toggle_archive_status`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          doc_id: docId,
-          archive_status: !isArchived,
-        }),
-      }
-    );
+    let res = await fetch(setupBaseUrl("http", "toggle_archive_status"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        doc_id: docId,
+        archive_status: !isArchived,
+      }),
+    });
     res = await res.json();
     if (res.success) {
       message.success(`Successfully ${isArchived ? "un" : ""}archived doc`);
@@ -82,19 +80,16 @@ const ViewNotebooks = () => {
       return;
     }
 
-    let res = await fetch(
-      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/get_docs`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          api_key: context.token,
-          username: context.user,
-        }),
-      }
-    );
+    let res = await fetch(setupBaseUrl("http", "get_docs"), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        api_key: context.token,
+        username: context.user,
+      }),
+    });
     res = await res.json();
     if (res.success) {
       // res.docs is user's own documents
@@ -170,10 +165,10 @@ const ViewNotebooks = () => {
     <Wrap>
       <Meta />
       <Scaffolding id={"view-notebooks"} userType={context.userType}>
-        <h1>Notebooks</h1>
+        <h1 className="text-2xl font-bold mb-4">Notebooks</h1>
 
-        <h2 className="header">Your notebooks</h2>
-        <div className="doc-icons-container">
+        <h2 className="text-lg mb-4">Your notebooks</h2>
+        <div className="flex flex-wrap justify-start">
           {ownDocs && !loading ? (
             <>
               <DocIcon addDocIcon={true} />
@@ -187,9 +182,9 @@ const ViewNotebooks = () => {
         </div>
 
         {recentlyViewed.length ? (
-          <h2 className="header">Recently viewed</h2>
+          <h2 className="text-lg mb-4">Recently viewed</h2>
         ) : null}
-        <div className="doc-icons-container">
+        <div className="flex flex-wrap justify-start">
           {recentlyViewed && !loading ? (
             <>
               {recentlyViewed.map((doc) => (
@@ -247,19 +242,6 @@ const Wrap = styled.div`
         padding: 0;
       }
     }
-  }
-  .doc-icons-container {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: left;
-    margin: 0 auto;
-    padding: 20px;
-    a {
-      position: relative;
-    }
-  }
-  .header {
-    margin: 20px;
   }
 `;
 

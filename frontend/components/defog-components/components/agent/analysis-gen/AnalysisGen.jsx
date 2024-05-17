@@ -8,8 +8,7 @@ import React, {
 import Clarify from "./Clarify";
 import { ThemeContext } from "../../../context/ThemeContext";
 import styled from "styled-components";
-import Search from "antd/lib/input/Search";
-import { Select, Tabs } from "antd";
+import { Select, Tabs, Input } from "antd";
 import { DocContext } from "../../../../docs/DocContext";
 import { InfoCircleFilled, InfoCircleOutlined } from "@ant-design/icons";
 
@@ -34,6 +33,7 @@ export default function AnalysisGen({
   searchRef = null,
   handleEdit = () => {},
 }) {
+  const { Search } = Input;
   const { theme } = useContext(ThemeContext);
   const docContext = useContext(DocContext);
   const [toolboxSelection, setToolboxSelection] = useState(null);
@@ -167,7 +167,9 @@ export default function AnalysisGen({
           ></Search>
           <span className="search-info-on-question-change">
             <InfoCircleOutlined style={{ marginRight: 5, marginLeft: 2 }} />
-            If you want to get an exact match for a variable name instead of a LIKE query, please put double quotes around the variable that you want the exact match for.
+            If you want to get an exact match for a variable name instead of a
+            LIKE query, please put double quotes around the variable that you
+            want the exact match for.
           </span>
         </div>
         {currentStage !== null ? (

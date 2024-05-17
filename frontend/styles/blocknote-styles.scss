@@ -329,17 +329,15 @@ $grid: repeating-linear-gradient(
 
   .graph-node {
     background-color: $light-gray;
-    border: 1px solid $text-medium;
+
     position: absolute;
     // padding: 5px 6px;
     transition: all 0.2s ease-in-out;
-    height: 15px;
-    width: 15px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    box-sizing: border-box;
+    // display: flex;
+    // justify-content: center;
+    // align-items: center;
     cursor: pointer;
-    border-radius: 50%;
     color: $text-medium;
     z-index: 2;
 
@@ -374,13 +372,20 @@ $grid: repeating-linear-gradient(
       }
     }
 
+    &.output {
+      height: 15px;
+      width: 15px;
+      border: 1px solid $text-medium;
+      border-radius: 50%;
+    }
+
     &.tool {
-      // height: 50px;
+      border-width: 2px !important;
       background-color: white;
-      border: none;
       &.graph-node-error {
-        border: none;
         background-color: $white;
+        border-width: 2px !important;
+
         svg path {
           fill: $dark-red;
         }
@@ -390,6 +395,7 @@ $grid: repeating-linear-gradient(
           }
         }
       }
+
       &:not(.graph-node-error) {
         svg {
           width: 15px;
@@ -424,8 +430,6 @@ $grid: repeating-linear-gradient(
       background-color: $light-gray;
 
       &.tool {
-        border: none;
-        background-color: $white;
         svg path {
           fill: $text-dark;
         }
@@ -454,8 +458,6 @@ $grid: repeating-linear-gradient(
       border: 3px solid $medium-red;
       background-color: $light-red;
       &.tool {
-        border: none;
-        background-color: $white;
         svg path {
           fill: $medium-red;
         }
@@ -1464,16 +1466,21 @@ $grid: repeating-linear-gradient(
   border-radius: 4px;
   --antd-arrow-background-color: #949494;
   overflow-wrap: anywhere;
+  pointer-events: none;
 
   .ant-popover-inner {
     box-shadow: none;
     cursor: pointer;
+    .ant-popover-title {
+      margin-bottom: 0;
+    }
   }
   font-family: $code;
   .ant-popover-inner-content {
     color: $text-medium;
     box-shadow: 0px 0px 2px white;
     font-size: 0.9em;
+    margin-top: 8px;
   }
   &.popover-error {
     border-left: 8px solid $medium-red;
@@ -1594,6 +1601,57 @@ $grid: repeating-linear-gradient(
   .ant-popover-content {
     .ant-popover-inner {
       padding: 0px;
+    }
+  }
+}
+
+.step-wise-feedback {
+  .graph {
+    .graph-node {
+      &.tool {
+        text-align: center;
+      }
+      &:not(.graph-node-active):not(.tool) {
+        &:not(.graph-node-error) {
+          background-color: #fafafa;
+          border: 3px solid #eaeaea;
+          cursor: not-allowed;
+          &:hover {
+            background-color: #fafafa;
+          }
+        }
+        &.graph-node-active {
+          svg path {
+            fill: $dark-orange;
+          }
+        }
+
+        &.graph-node-error {
+          cursor: not-allowed;
+          background-color: #fafafa;
+          border: 3px solid #eaeaea;
+        }
+      }
+    }
+  }
+}
+
+.feedback-modal {
+  .ant-select-selection-item,
+  input {
+    color: theme("colors.gray.600");
+  }
+
+  .ant-modal {
+    height: 90%;
+  }
+
+  .cm-editor {
+    .def-line,
+    .return-line {
+      background-color: $light-gray;
+      opacity: 0.6;
+      caret-color: transparent;
     }
   }
 }

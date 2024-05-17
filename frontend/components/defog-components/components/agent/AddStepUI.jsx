@@ -7,7 +7,7 @@ import setupBaseUrl from "../../../../utils/setupBaseUrl";
 import { v4 } from "uuid";
 
 const toolOptions = Object.keys(toolsMetadata).map((tool) => {
-  return { value: tool, label: toolsMetadata[tool]?.display_name };
+  return { value: tool, label: toolsMetadata[tool]?.tool_name };
 });
 
 const createNewStepEndpoint = setupBaseUrl("http", "create_new_step");
@@ -20,7 +20,7 @@ export function AddStepUI({
   parentNodeData = {},
 }) {
   const [selectedTool, setSelectedTool] = useState(
-    activeNode?.data?.meta?.tool_name
+    activeNode?.data?.step?.tool_name
   );
 
   // all the default inputs are null, except for pandas dataframes, which are the parent's output
@@ -43,15 +43,15 @@ export function AddStepUI({
   };
 
   const [inputs, setInputs] = useState(
-    sanitizeInputs(activeNode?.data?.meta?.inputs || [])
+    sanitizeInputs(activeNode?.data?.step?.inputs || [])
   );
   const [outputs, setOutputs] = useState(["output_" + v4().split("-")[0]]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setSelectedTool(activeNode?.data?.meta?.tool_name);
-    setInputs(sanitizeInputs(activeNode?.data?.meta?.inputs || []));
-    setLoading(activeNode?.data?.meta?.loading || false);
+    setSelectedTool(activeNode?.data?.step?.tool_name);
+    setInputs(sanitizeInputs(activeNode?.data?.step?.inputs || []));
+    setLoading(activeNode?.data?.step?.loading || false);
   }, [activeNode?.data?.id]);
 
   return !activeNode ? (
@@ -74,7 +74,7 @@ export function AddStepUI({
                   "Content-Type": "application/json",
                 },
                 body: JSON.stringify({
-                  parent_step: activeNode.data.meta.parent_step,
+                  parent_step: activeNode.data?.step?.parent_step,
                   tool_name: selectedTool,
                   inputs: inputs,
                   analysis_id: analysisId,
@@ -82,7 +82,7 @@ export function AddStepUI({
                 }),
               }).then((r) => r.json());
 
-              activeNode.data.meta.loading = true;
+              activeNode.data.step.loading = true;
 
               if (!newStepSuccess.success) {
                 message.error(
@@ -119,9 +119,9 @@ export function AddStepUI({
         allowClear
         showSearch
         onChange={(value) => {
-          if (!activeNode.data.meta.inputs) return;
+          if (!activeNode.data?.step?.inputs) return;
 
-          activeNode.data.meta.inputs = Array(
+          activeNode.data.step.inputs = Array(
             toolsMetadata[value].function_signature.length
           ).fill(null);
 
@@ -129,7 +129,7 @@ export function AddStepUI({
           toolsMetadata[value].function_signature.forEach((sig, idx) => {
             if (sig.type === "pandas.core.frame.DataFrame") {
               try {
-                activeNode.data.meta.inputs[idx] =
+                activeNode.data.step.inputs[idx] =
                   "global_dict." + activeNode?.data?.parentIds?.[0];
               } catch (e) {
                 console.log(e);
@@ -137,11 +137,11 @@ export function AddStepUI({
             }
           });
 
-          setInputs(activeNode.data.meta.inputs.slice());
+          setInputs(activeNode.data?.step?.inputs.slice());
 
           setSelectedTool(value);
 
-          activeNode.data.meta.tool_name = value;
+          activeNode.data.step.tool_name = value;
         }}
         placeholder="Select a tool"
       />
@@ -156,8 +156,8 @@ export function AddStepUI({
             analysisId={analysisId}
             inputs={inputs}
             onEdit={(idx, prop, newVal) => {
-              activeNode.data.meta.inputs[idx] = newVal;
-              setInputs(activeNode.data.meta.inputs.slice());
+              activeNode.data.step.inputs[idx] = newVal;
+              setInputs(activeNode.data?.step?.inputs.slice());
             }}
             parentNodeData={parentNodeData}
           />

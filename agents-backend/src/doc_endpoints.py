@@ -1,29 +1,35 @@
 import datetime
 import inspect
+import json
 import os
 from uuid import uuid4
 from colorama import Fore, Style
 import traceback
+
+import requests
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
 from agents.planner_executor.tool_helpers.rerun_step import rerun_step_and_dependents
 from agents.planner_executor.tool_helpers.core_functions import analyse_data
 from agents.planner_executor.tool_helpers.all_tools import tool_name_dict
-from agents.planner_executor.execute_tool import parse_function_signature
 import pandas as pd
 from io import StringIO
-from utils import log_msg
+from utils import get_db_type, log_msg
 
 DEFOG_API_KEY = "genmab-survival-test"
 
 from connection_manager import ConnectionManager
 from db_utils import (
     add_to_recently_viewed_docs,
+    add_tool,
+    delete_tool,
     get_all_docs,
     get_doc_data,
     get_report_data,
     get_tool_run,
     get_toolboxes,
+    store_feedback,
     store_tool_run,
+    toggle_disable_tool,
     update_doc_data,
     update_report_data,
     update_table_chart_data,
@@ -31,6 +37,7 @@ from db_utils import (
     get_all_analyses,
     update_tool_run_data,
     delete_doc,
+    get_all_tools,
 )
 
 from utils import get_metadata
@@ -45,20 +52,18 @@ with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
 
 dfg_api_key = env["api_key"]
+llm_calls_url = env["llm_calls_url"]
 
 report_assets_dir = env["report_assets_dir"]
 
 
-# this is an init endpoint that sends things like metadata, glossary, etc
-# (basically everything stored in the redis server)
-# to the front end
 @router.post("/get_user_metadata")
 async def get_user_metadata(request: Request):
     """
     Send the metadata, glossary, etc to the front end.
     """
     try:
-        metadata_dets = get_metadata()
+        metadata_dets = await get_metadata()
         glossary = metadata_dets["glossary"]
         client_description = metadata_dets["client_description"]
         table_metadata_csv = metadata_dets["table_metadata_csv"]
@@ -451,7 +456,7 @@ async def rerun_step(websocket: WebSocket):
                     "analysis_id": analysis_id,
                 }
 
-            metadata_dets = get_metadata()
+            metadata_dets = await get_metadata()
             glossary = metadata_dets["glossary"]
             client_description = metadata_dets["client_description"]
             table_metadata_csv = metadata_dets["table_metadata_csv"]
@@ -461,6 +466,8 @@ async def rerun_step(websocket: WebSocket):
                 "table_metadata_csv": table_metadata_csv,
                 "client_description": client_description,
                 "glossary": glossary,
+                "llm_calls_url": llm_calls_url,
+                "report_assets_dir": report_assets_dir,
             }
 
             if err:
@@ -647,9 +654,11 @@ async def create_new_step(request: Request):
                 ),
             }
 
-        tool = tool_name_dict[tool_name]
+        err, tools = get_all_tools()
+        if err:
+            return {"success": False, "error_message": err}
 
-        fn = tool["fn"]
+        tool = tools[tool_name]
 
         new_tool_run_id = str(uuid4())
 
@@ -658,9 +667,7 @@ async def create_new_step(request: Request):
             "tool_name": tool_name,
             "model_generated_inputs": inputs,
             "inputs": inputs,
-            "function_signature": parse_function_signature(
-                inspect.signature(fn).parameters, tool_name
-            ),
+            "function_signature": tool["input_metadata"],
             "tool_run_id": new_tool_run_id,
             "outputs_storage_keys": outputs_storage_keys,
         }
@@ -674,7 +681,7 @@ async def create_new_step(request: Request):
             new_step,
             {
                 "success": True,
-                "code_str": inspect.getsource(fn) if not tool.get("no_code") else None,
+                "code_str": tool["code"],
             },
             skip_step_update=True,
         )
@@ -683,7 +690,7 @@ async def create_new_step(request: Request):
             return store_result
 
         # update report data
-        update_err = update_report_data(analysis_id, "gen_steps", [new_step])
+        update_err = await update_report_data(analysis_id, "gen_steps", [new_step])
 
         if update_err:
             return {"success": False, "error_message": update_err}
@@ -760,7 +767,7 @@ async def download_csv(request: Request):
             if err:
                 return {"success": False, "error_message": err}
 
-            metadata_dets = get_metadata()
+            metadata_dets = await get_metadata()
             glossary = metadata_dets["glossary"]
             client_description = metadata_dets["client_description"]
             table_metadata_csv = metadata_dets["table_metadata_csv"]
@@ -770,6 +777,8 @@ async def download_csv(request: Request):
                 "table_metadata_csv": table_metadata_csv,
                 "client_description": client_description,
                 "glossary": glossary,
+                "llm_calls_url": llm_calls_url,
+                "report_assets_dir": report_assets_dir,
             }
 
             if err:
@@ -854,7 +863,7 @@ async def delete_steps(request: Request):
         new_steps = [s for s in steps if s["tool_run_id"] not in tool_run_ids]
 
         # # # update report data
-        update_err = update_report_data(
+        update_err = await update_report_data(
             analysis_id, "gen_steps", new_steps, replace=True
         )
 
@@ -867,4 +876,203 @@ async def delete_steps(request: Request):
         print("Error deleting steps: ", e)
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
-    return
+
+
+@router.post("/get_user_tools")
+async def get_user_tools(request: Request):
+    """
+    Get all tools available to the user.
+    """
+    err, tools = get_all_tools()
+    if err:
+        return {"success": False, "error_message": err}
+    return {"success": True, "tools": tools}
+
+
+@router.post("/delete_tool")
+async def delete_tool_endpoint(request: Request):
+    """
+    Delete a tool using the tool name.
+    """
+    try:
+        data = await request.json()
+        function_name = data.get("function_name")
+
+        if function_name is None or type(function_name) != str:
+            return {"success": False, "error_message": "Invalid tool name."}
+
+        err = await delete_tool(function_name)
+
+        if err:
+            return {"success": False, "error_message": err}
+
+        return {"success": True}
+    except Exception as e:
+        print("Error disabling tool: ", e)
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}
+
+
+@router.post("/toggle_disable_tool")
+async def toggle_disable_tool_endpoint(request: Request):
+    """
+    Toggle the disabled property of a tool using the tool name.
+    """
+    try:
+        data = await request.json()
+        function_name = data.get("function_name")
+
+        if function_name is None or type(function_name) != str:
+            return {"success": False, "error_message": "Invalid tool name."}
+
+        err = await toggle_disable_tool(function_name)
+
+        if err:
+            raise Exception(err)
+
+        print("Toggled tool: ", function_name)
+
+        return {"success": True}
+    except Exception as e:
+        print("Error disabling tool: ", e)
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}
+
+
+@router.post("/add_tool")
+async def add_tool_endpoint(request: Request):
+    """
+    Add a tool to the defog_tools table.
+    """
+    try:
+        data = await request.json()
+        tool_name = data.get("tool_name")
+        function_name = data.get("function_name")
+        description = data.get("description")
+        code = data.get("code")
+        input_metadata = data.get("input_metadata")
+        output_metadata = data.get("output_metadata")
+        toolbox = data.get("toolbox")
+        no_code = data.get("no_code", False)
+
+        if (
+            function_name is None
+            or type(function_name) != str
+            or len(function_name) == 0
+        ):
+            return {"success": False, "error_message": "Invalid tool name."}
+
+        if description is None or type(description) != str or len(description) == 0:
+            return {"success": False, "error_message": "Invalid description."}
+
+        if code is None or type(code) != str or len(code) == 0:
+            return {"success": False, "error_message": "Invalid code."}
+
+        if input_metadata is None or type(input_metadata) != list:
+            return {"success": False, "error_message": "Invalid input_metadata."}
+
+        if (
+            output_metadata is None
+            or type(output_metadata) != list
+            or len(output_metadata) == 0
+        ):
+            return {
+                "success": False,
+                "error_message": "Invalid or empty output_metadata.",
+            }
+
+        if tool_name is None or type(tool_name) != str or len(tool_name) == 0:
+            return {"success": False, "error_message": "Invalid display name."}
+
+        if toolbox is None or type(toolbox) != str or len(toolbox) == 0:
+            return {"success": False, "error_message": "Invalid toolbox."}
+
+        if no_code is None or type(no_code) != bool:
+            return {"success": False, "error_message": "Invalid no code."}
+
+        err = await add_tool(
+            tool_name,
+            function_name,
+            description,
+            code,
+            input_metadata,
+            output_metadata,
+            toolbox,
+            no_code,
+        )
+
+        if err:
+            raise Exception(err)
+
+        print("Added tool: ", function_name)
+
+        return {"success": True}
+    except Exception as e:
+        print("Error adding tool: ", e)
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}
+
+
+@router.post("/submit_feedback")
+async def submit_feedback(request: Request):
+    """
+    Submit feedback to the backend.
+    """
+    error = None
+    try:
+        data = await request.json()
+        analysis_id = data.get("analysis_id")
+        comments = data.get("comments", {})
+        is_correct = data.get("is_correct", False)
+        user_question = data.get("user_question")
+        analysis_id = data.get("analysis_id")
+        username = data.get("username")
+        api_key = data.get("api_key")
+
+        # get metadata
+        m = await get_metadata()
+        metadata = m["table_metadata_csv"]
+        client_description = m["client_description"]
+        glossary = m["glossary"]
+
+        db_type = get_db_type()
+
+        if analysis_id is None or type(analysis_id) != str:
+            raise Exception("Invalid analysis id.")
+
+        if api_key is None or type(api_key) != str:
+            raise Exception("Invalid api key.")
+
+        if user_question is None or type(user_question) != str:
+            raise Exception("Invalid user question.")
+
+        err, analysis_data = get_report_data(analysis_id)
+        if err:
+            raise Exception(err)
+
+        print(type(comments))
+        # store in the defog_plans_feedback table
+        err, did_overwrite = await store_feedback(
+            api_key,
+            username,
+            user_question,
+            analysis_id,
+            is_correct,
+            comments,
+            metadata,
+            client_description,
+            glossary,
+            db_type,
+        )
+
+        if err is not None:
+            raise Exception(err)
+
+        return {"success": True, "did_overwrite": did_overwrite}
+
+    except Exception as e:
+        print(str(e))
+        error = str(e)[:300]
+        print(error)
+        traceback.print_exc()
+        return {"success": False, "error_message": error}
