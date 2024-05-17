@@ -35,15 +35,6 @@ services:
     volumes:
       - agents-postgres:/var/lib/postgresql/data
 
-  agents-redis:
-    build:
-      context: .
-      dockerfile: dockerfile.agents-redis
-    networks:
-      - agents-network
-    volumes:
-      - agents-redis:/data
-  
   agents-python-server:
     environment:
       - DEFOG_API_KEY=${DEFOG_API_KEY}
@@ -62,7 +53,6 @@ services:
     depends_on:
       - agents-partykit
       - agents-postgres
-      - agents-redis
 
     networks:
       - agents-network
