@@ -50,12 +50,6 @@ RUN touch /agent-logs-out
 
 RUN crontab /etc/cron.d/delete-cron
 
-# copy main supervisor conf
-COPY ./agents-backend/docker-setup-files/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-
-# copy supervisor startup conf
-COPY ./agents-backend/docker-setup-files/start-python-server.conf /etc/supervisor/conf.d/start-python-server.conf
-
 ENV PYTHONUNBUFFERED=true
 
 # start startup script

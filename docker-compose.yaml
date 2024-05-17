@@ -8,25 +8,6 @@ services:
     networks:
       - agents-network
 
-  agents-python-server:
-    build:
-      context: .
-      dockerfile: dockerfile.agents-python-server
-      args:
-        OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
-    restart: always
-    volumes:
-      - agents-assets:/agents-assets/
-
-    networks:
-      - agents-network
-
-    logging:
-      driver: fluentd
-      options:
-        fluentd-address: 34.133.235.56:443
-        tag: defog.local.python-server
-
   agents-partykit:
     build:
       context: .
@@ -62,7 +43,30 @@ services:
       - agents-network
     volumes:
       - agents-redis:/data
+  
+  agents-python-server:
+    build:
+      context: .
+      dockerfile: dockerfile.agents-python-server
+      args:
+        OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+    restart: always
+    volumes:
+      - agents-assets:/agents-assets/
+    depends_on:
+      - agents-partykit
+      - agents-postgres
+      - agents-redis
 
+    networks:
+      - agents-network
+
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 34.133.235.56:443
+        tag: defog.local.python-server
+  
   agents-nginx:
     build:
       context: .

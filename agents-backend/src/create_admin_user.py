@@ -1,10 +1,16 @@
 from db_utils import get_db_conn
 import hashlib
+import time
 
 SALT = "TOMMARVOLORIDDLE"
 DEFOG_API_KEY = "genmab-survival-test"
 
-con = get_db_conn()
+time.sleep(5)
+try:
+    con = get_db_conn()
+except:
+    time.sleep(5)
+    con = get_db_conn()
 cur = con.cursor()
 # create an admin user in the defog_users table
 
