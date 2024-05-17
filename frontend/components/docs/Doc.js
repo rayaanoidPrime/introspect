@@ -1,7 +1,6 @@
 "use client";
 import {
   BlockNoteView,
-  BlockTypeDropdown,
   FormattingToolbar,
   FormattingToolbarController,
   HyperlinkToolbarController,
