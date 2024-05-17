@@ -62,7 +62,6 @@ services:
       options:
         fluentd-address: 34.133.235.56:443
         tag: defog.local.python-server
-  
 
   agents-nginx:
     build:

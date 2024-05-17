@@ -53,7 +53,7 @@ async def get_tables_db_creds(request: Request):
         with open(os.path.join(defog_path, "selected_tables.json"), "r") as f:
             selected_table_names = json.load(f)
     except:
-        selected_table_names = [table_names]
+        selected_table_names = table_names
 
     # only keep selected table names that are in table_names
     selected_table_names = [t for t in selected_table_names if t in table_names]

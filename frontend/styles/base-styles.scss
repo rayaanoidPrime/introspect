@@ -116,3 +116,41 @@ p {
     box-shadow: none;
   }
 }
+
+.manage-database-tabs {
+  .ant-tabs-nav {
+    margin-bottom: 0;
+    .ant-tabs-nav-wrap {
+      padding: 0 10px !important;
+      border-bottom: 1px solid #eaeaea;
+    }
+  }
+  .ant-tabs-content {
+    padding: 1rem 10px !important;
+  }
+}
+
+.update-metadata-float {
+  width: 250px !important;
+  .ant-float-btn-body {
+    display: block;
+    background-color: transparent;
+    .ant-float-btn-content {
+      height: 40px;
+      width: 100%;
+      display: block;
+      padding: 0;
+      .ant-float-btn-description {
+        display: block;
+        height: 100%;
+        width: 100%;
+        background-color: $dark-orange;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        border-radius: 8px;
+      }
+    }
+  }
+}
