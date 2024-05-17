@@ -5,7 +5,6 @@ import Lottie from "lottie-react";
 import LoadingLottie from "../../svg/loader.json";
 import AgentLoader from "../../common/AgentLoader";
 import Writer from "../Writer";
-import Search from "antd/es/input/Search";
 
 export default function Clarify({
   data,
@@ -14,6 +13,7 @@ export default function Clarify({
   stageDone = true,
   isCurrentStage = false,
 }) {
+  const { Search } = Input;
   const [submitted, setSubmitted] = useState(false);
   const answers = useRef(data?.clarification_questions);
 
