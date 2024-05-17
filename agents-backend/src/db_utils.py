@@ -1434,8 +1434,22 @@ def get_all_tools(user_question_embedding=None, max_n=10, mandatory_tools=[]):
         with engine.connect() as conn:
             register_vector(conn.connection)
             all_tools = conn.execute(select(Tools)).fetchall()
-            # convert this to a dictionary
-            all_tools = {tool.function_name: tool._mapping for tool in all_tools}
+            # convert this to a dictionary without embedding
+            all_tools = {
+                tool.function_name: {
+                    "tool_name": tool.tool_name,
+                    "function_name": tool.function_name,
+                    "description": tool.description,
+                    "code": tool.code,
+                    "toolbox": tool.toolbox,
+                    "input_metadata": tool.input_metadata,
+                    "output_metadata": tool.output_metadata,
+                    "cannot_delete": tool.cannot_delete,
+                    "cannot_disable": tool.cannot_disable,
+                    "disabled": tool.disabled,
+                }
+                for tool in all_tools
+            }
 
             if user_question_embedding is None:
                 # if user_question_embedding is None, return all tools

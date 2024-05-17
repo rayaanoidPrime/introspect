@@ -1,39 +1,19 @@
-// create a simple login page with React, Ant Design, and Next.js
-
-import React, { useContext, useState, useEffect } from "react";
+import React, { useContext } from "react";
 import { useRouter } from "next/router";
 import Meta from "../components/common/Meta";
 import Scaffolding from "../components/common/Scaffolding";
 import { Context } from "../components/common/Context";
-import { Input, Form, Button } from "antd";
-import setupBaseUrl from "../utils/setupBaseUrl";
-import SSOButton from "../components/common/SSOButton";
-import { PublicClientApplication } from "@azure/msal-browser";
+import { Input, Form, Button, message } from "antd";
+import GoogleLoginButton from "../components/common/GoogleLogin";
 
 const LogIn = () => {
   const [context, setContext] = useContext(Context);
-  const [instance, setInstance] = useState(null);
   const router = useRouter();
-
-  useEffect(() => {
-    async function init() {
-      const msalConfig = {
-        auth: {
-          clientId: `${process.env.NEXT_PUBLIC_MSAL_CLIENT_ID}`,
-          authority: `https://login.microsoftonline.com/${process.env.NEXT_PUBLIC_MSAL_TENANT_ID}`,
-          redirectUri: `${process.env.NEXT_PUBLIC_MSAL_REDIRECT_URI}`,
-        },
-      };
-
-      const msalInstance =
-        await PublicClientApplication.createPublicClientApplication(msalConfig);
-      setInstance(msalInstance);
-    }
-    init();
-  }, []);
+  console.log("test");
 
   const handleLogin = async (values) => {
-    const urlToUse = setupBaseUrl("http", "login");
+    console.log("test");
+    const urlToUse = (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/login";
     const response = await fetch(urlToUse, {
       method: "POST",
       body: JSON.stringify(values),
@@ -54,6 +34,8 @@ const LogIn = () => {
 
       // redirect to home page
       router.push("/");
+    } else {
+      message.error("Login failed. Please contact your administrator.");
     }
   };
 
@@ -82,8 +64,7 @@ const LogIn = () => {
           </Form.Item>
         </Form>
 
-        {/* Login with MSAL */}
-        {instance ? <SSOButton msalInstance={instance} /> : null}
+        <GoogleLoginButton />
       </Scaffolding>
     </>
   );

@@ -1,5 +1,4 @@
 import os
-import sys
 import traceback
 from fastapi import FastAPI, WebSocket, Request
 from fastapi.responses import FileResponse
@@ -17,14 +16,18 @@ from db_utils import (
     update_report_data,
 )
 from utils import get_metadata
-import integration_routes, admin_routes, auth_routes
+import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes
 
 manager = ConnectionManager()
 
 app = FastAPI()
 app.include_router(integration_routes.router)
+app.include_router(query_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(auth_routes.router)
+app.include_router(readiness_routes.router)
+app.include_router(doc_endpoints.router)
+
 
 origins = ["*"]
 app.add_middleware(
@@ -44,9 +47,6 @@ with open(".env.yaml", "r") as f:
     env = yaml.safe_load(f)
 
 report_assets_dir = env["report_assets_dir"]
-
-
-app.include_router(doc_endpoints.router)
 
 
 @app.get("/ping")
@@ -216,7 +216,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     if data.get("toolboxes") and type(data.get("toolboxes")) == list
                     else []
                 )
-                metadata_dets = get_metadata()
+                metadata_dets = await get_metadata()
                 glossary = metadata_dets["glossary"]
                 client_description = metadata_dets["client_description"]
                 table_metadata_csv = metadata_dets["table_metadata_csv"]
@@ -330,3 +330,13 @@ async def get_assets(path: str):
         print(e)
         traceback.print_exc()
         return {"success": False, "error_message": "Error getting assets"}
+
+
+@app.get("/")
+def read_root():
+    return {"status": "ok"}
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}

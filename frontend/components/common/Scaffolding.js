@@ -3,6 +3,7 @@ import { Context } from "./Context";
 import { Layout, Menu } from "antd/lib";
 import { useRouter } from "next/router";
 import { HiWrenchScrewdriver } from "react-icons/hi2";
+import Link from "next/link";
 
 const Scaffolding = ({ id, userType, children }) => {
   const { Content, Sider } = Layout;
@@ -72,6 +73,21 @@ const Scaffolding = ({ id, userType, children }) => {
           ),
         },
         {
+          key: "check-readiness",
+          title: "Check Readiness",
+          icon: <Link href="/check-readiness">✅ Check Readiness</Link>,
+        },
+        {
+          key: "align-model",
+          title: "Align Model",
+          icon: <Link href="/align-model">⚙️ Align Model</Link>,
+        },
+        {
+          key: "query-data",
+          title: "Query Data",
+          icon: <Link href="/query-data">🔍 Query Data</Link>,
+        },
+        {
           key: "logout",
           title: "Logout",
           icon: (
@@ -96,6 +112,11 @@ const Scaffolding = ({ id, userType, children }) => {
           key: "manage-tools",
           title: "Manage tools",
           icon: <a onClick={() => redirect("/manage-tools")}>Manage tools</a>,
+        },
+        {
+          key: "query-data",
+          title: "Query Data",
+          icon: <Link href="/query-data">🔍 Query Data</Link>,
         },
         {
           key: "logout",

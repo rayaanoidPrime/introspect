@@ -9,6 +9,12 @@ services:
       - agents-network
 
   agents-python-server:
+    environment:
+      - DEFOG_API_KEY=${DEFOG_API_KEY}
+      - DEFOG_BASE_URL=${DEFOG_BASE_URL:-https://api.defog.ai}
+      - DEFOG_GENERATE_URL=${DEFOG_GENERATE_URL:-https://api.defog.ai/generate_query_chat}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
     build:
       context: .
       dockerfile: dockerfile.agents-python-server
@@ -54,23 +60,20 @@ services:
     volumes:
       - agents-postgres:/var/lib/postgresql/data
 
-  agents-redis:
-    build:
-      context: .
-      dockerfile: dockerfile.agents-redis
-    networks:
-      - agents-network
-    volumes:
-      - agents-redis:/data
-
   agents-nginx:
     build:
       context: .
       dockerfile: dockerfile.agents-nginx
       args:
         ENDPOINT: "${ENDPOINT}"
+        DEFOG_API_KEY: "${DEFOG_API_KEY}"
+        GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
+        PORT: "${PORT:-80}"
+        BUTTON_TEXT: "${BUTTON_TEXT}"
+        ALLOW_UPDATES: "${ALLOW_UPDATES:-YES}"
+        ALLOW_CACHING: "${ALLOW_CACHING:-YES}"
     ports:
-      - "80:80"
+      - "${PORT:-80}:80"
       - "443:443"
     depends_on:
       - agents-python-server
@@ -85,7 +88,6 @@ services:
 
 volumes:
   agents-postgres:
-  agents-redis:
   agents-assets:
 
 networks:

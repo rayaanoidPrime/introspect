@@ -4,6 +4,7 @@ import { Context } from "../components/common/Context";
 import Meta from "../components/common/Meta";
 import Scaffolding from "../components/common/Scaffolding";
 import { Row, Col, Form, Input, Table, Button, Space, message } from "antd";
+import setupBaseUrl from "../utils/setupBaseUrl";
 
 const ManageUsers = () => {
   const [loading, setLoading] = useState(false);
@@ -16,18 +17,16 @@ const ManageUsers = () => {
     if (!context.token) {
       return;
     }
-    const res = await fetch(
-      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/admin/get_users`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          token: context.token,
-        }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+
+    const res = await fetch(setupBaseUrl("http", "admin/get_users"), {
+      method: "POST",
+      body: JSON.stringify({
+        token: context.token,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
     const data = await res.json();
     if (data.users) {
       setUserDets(data.users);
@@ -69,7 +68,7 @@ const ManageUsers = () => {
     <>
       <Meta />
       <Scaffolding id={"manage-users"} userType={"admin"}>
-        <h1 className="text-2xl font-bold mb-4">Add New Users</h1>
+        <h1>Add New Users</h1>
         <Row
           gutter={{
             xs: 8,
@@ -79,7 +78,7 @@ const ManageUsers = () => {
           }}
         >
           <Col span={{ xs: 24, md: 12 }}>
-            <h2 className="text-lg mb-4">Add Users</h2>
+            <h2>Add Users</h2>
             <p>
               Paste in user details as a CSV file with the headers:
               `username,password,user_type`
@@ -90,7 +89,7 @@ const ManageUsers = () => {
               onFinish={async (values) => {
                 setLoading(true);
                 const res = await fetch(
-                  `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/admin/add_users`,
+                  setupBaseUrl("http", `admin/add_users`),
                   {
                     method: "POST",
                     body: JSON.stringify({
@@ -116,8 +115,8 @@ const ManageUsers = () => {
                 setLoading(false);
               }}
             >
-              <Form.Item label="CSV String" name="user_dets_csv">
-                <Input.TextArea />
+              <Form.Item label="Google Sheets URL" name="gsheets_url">
+                <Input />
               </Form.Item>
               <Form.Item>
                 <Button type="primary" htmlType="submit">
@@ -127,7 +126,7 @@ const ManageUsers = () => {
             </Form>
           </Col>
           <Col span={{ xs: 24, md: 12 }}>
-            <h2 className="text-lg mb-4">Current users</h2>
+            <h2>Users</h2>
             {/* display a table of all users with the headers: `username`, `user_type`, `delete_user` */}
             <Table
               dataSource={userDets}
@@ -151,7 +150,7 @@ const ManageUsers = () => {
                         onClick={async () => {
                           setLoading(true);
                           const res = await fetch(
-                            `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/admin/delete_user`,
+                            setupBaseUrl("http", `admin/delete_user`),
                             {
                               method: "POST",
                               body: JSON.stringify({

@@ -1,73 +1,74 @@
-import React, { useState, useContext, useEffect } from "react";
-import { useRouter } from "next/router";
-import { Context } from "../components/common/Context";
+import React, { useState, useEffect } from "react";
 import Meta from "../components/common/Meta";
 import Scaffolding from "../components/common/Scaffolding";
 import {
   Input,
   Select,
   Form,
-  Tooltip,
   Button,
   Row,
   Col,
+  Switch,
   message,
 } from "antd/lib";
-import { Popover, Tag } from "antd";
+import setupBaseUrl from "../utils/setupBaseUrl";
 
 const ExtractMetadata = () => {
   const { Option } = Select;
-  const [dbType, setDbType] = useState(null);
+  // const [apiKey, setApiKey] = useState("");
+  // const [inference, setInference] = useState("api"); // either api or self-hosted
+  const [dbType, setDbType] = useState("postgres");
   const [dbCreds, setDbCreds] = useState({});
+  const [devMode, setDevMode] = useState(false);
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [tablesLoading, setTablesLoading] = useState(false);
   const [metadata, setMetadata] = useState([]);
-  const [context, setContext] = useContext(Context);
   const [selectedTables, setSelectedTables] = useState([]);
-  const router = useRouter();
-  const [userType, setUserType] = useState("admin");
+  const [token, setToken] = useState("");
+  const [form] = Form.useForm();
+  const [allowUpdates, setAllowUpdates] = useState("NO");
 
   const getTables = async () => {
-    const token = context.token;
-    if (!token) {
+    // load from local storage and
+    const user = localStorage.getItem("defogUser");
+    const token = localStorage.getItem("defogToken");
+    setToken(token);
+    const userType = localStorage.getItem("defogUserType");
+
+    if (!user || !token || !userType) {
+      // redirect to login page
+      router.push("/log-in");
       return;
     }
     const res = await fetch(
-      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/get_tables_db_creds`,
+      setupBaseUrl("http", `integration/get_tables_db_creds`),
       {
         method: "POST",
-        body: JSON.stringify({
-          token,
-        }),
+        body: JSON.stringify({ token }),
       }
     );
     const data = await res.json();
     if (!data.error) {
       // reset the current values in the db_creds form
-      console.log(data);
-
       setDbType(data["db_type"]);
       setDbCreds(data["db_creds"]);
       setTables(data["tables"]);
       setSelectedTables(data["selected_tables"]);
+      form.setFieldsValue({
+        db_type: data["db_type"],
+        ...data["db_creds"],
+        db_tables: data["selected_tables"],
+      });
     }
   };
 
   const getMetadata = async () => {
-    const token = context.token;
-    if (!token) {
-      return;
-    }
-    const res = await fetch(
-      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/get_metadata`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          token,
-        }),
-      }
-    );
+    const token = localStorage.getItem("defogToken");
+    setToken(token);
+    const res = await fetch(setupBaseUrl("http", `integration/get_metadata`), {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    });
     const data = await res.json();
     if (!data.error) {
       setMetadata(data?.metadata || []);
@@ -76,32 +77,9 @@ const ExtractMetadata = () => {
 
   useEffect(() => {
     setLoading(true);
-    let userType = context.userType;
-    let token = context.token;
-    if (!userType) {
-      // load from local storage and set context
-      const user = localStorage.getItem("defogUser");
-      token = localStorage.getItem("defogToken");
-      userType = localStorage.getItem("defogUserType");
-
-      if (!user || !token || !userType) {
-        // redirect to login page
-        router.push("/log-in");
-        return;
-      }
-      setContext({
-        user: user,
-        token: token,
-        userType: userType,
-      });
-    }
-    setUserType(userType);
-    if (userType === undefined) {
-      router.push("/log-in");
-    } else if (userType !== "admin") {
-      router.push("/");
-    }
-
+    setAllowUpdates(
+      process.env.NEXT_PUBLIC_ALLOW_UPDATES || "REPLACE_WITH_ALLOW_UPDATES"
+    );
     // get the db creds and preloaded tables
     getTables().then(() => {
       getMetadata().then(() => {
@@ -110,81 +88,94 @@ const ExtractMetadata = () => {
     });
 
     // get the current status
-  }, [context, context.token]);
+  }, []);
 
   const dbCredOptions = {
     postgres: ["host", "port", "user", "password", "database"],
-    mysql: ["host", "port", "user", "password", "database"],
-    redshift: ["host", "port", "user", "password", "database"],
+    redshift: ["host", "port", "user", "password", "database", "schema"],
     snowflake: ["account", "warehouse", "user", "password"],
     databricks: ["server_hostname", "access_token", "http_path", "schema"],
+    bigquery: [],
   };
 
   return (
     <>
       <Meta />
       <Scaffolding id={"manage-database"} userType={"admin"}>
-        <h1 className="text-2xl font-bold" style={{ paddingBottom: "1em" }}>
-          Extract Metadata
-        </h1>
-        {/* select database type */}
-        <Row type={"flex"} height={"100vh"} gutter={20}>
-          <Col md={{ span: 12 }} xs={{ span: 24 }}>
+        <h1 style={{ paddingBottom: "1em" }}>Extract Metadata</h1>
+
+        {/* select database type and enter API key */}
+        <Row type={"flex"} height={"100vh"}>
+          <Col span={24} style={{ paddingBottom: "1em" }}>
+            <Switch
+              checkedChildren="Production"
+              unCheckedChildren="Development"
+              checked={!devMode}
+              onChange={(e) => {
+                console.log(e);
+                setDevMode(!e);
+                setMetadata([]);
+              }}
+            />
+          </Col>
+          <Col md={{ span: 8 }} xs={{ span: 24 }}>
             <div>
               <Form
                 name="db_creds"
-                labelCol={{ span: 4 }}
-                wrapperCol={{ span: 20 }}
-                style={{ maxWidth: 800 }}
-                disabled={tablesLoading}
+                form={form}
+                labelCol={{ span: 6 }}
+                wrapperCol={{ span: 18 }}
+                style={{ maxWidth: 400 }}
+                disabled={loading}
                 onFinish={async (values) => {
+                  setLoading(true);
                   values = {
                     db_creds: values,
                     db_type: values["db_type"] || dbType,
-                    token: context.token,
+                    token: token,
                   };
-
-                  setTablesLoading(true);
                   try {
                     const res = await fetch(
-                      `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_tables`,
+                      setupBaseUrl("http", `integration/update_db_creds`),
                       {
                         method: "POST",
                         body: JSON.stringify(values),
                       }
                     );
                     const data = await res.json();
+                    setLoading(false);
+                    message.success(
+                      "Database Credentials updated successfully!"
+                    );
 
-                    if (data.error) {
-                      message.error(data.error);
-                    } else {
-                      setTables(data["tables"]);
-                    }
+                    // also get the new list of tables
+                    await getTables();
                   } catch (e) {
                     console.log(e);
+                    setLoading(false);
+                    message.error(
+                      "Error fetching tables. Please check your docker logs for more informati)on."
+                    );
                   }
-                  setTablesLoading(false);
                 }}
               >
-                <Form.Item
-                  name="db_type"
-                  label="Database Type"
-                  rootClassName="db_type"
-                >
+                <Form.Item name="db_type" label="DB Type">
                   <Select
                     style={{ width: "100%" }}
                     onChange={(e) => {
                       setDbType(e);
+                      if (e === "bigquery") {
+                        // click the submit button
+                        document.getElementById("update-db-creds-btn").click();
+                      }
                     }}
-                    // we need this key for default value to reflect when we update dbType from the useEffect
-                    key={"db-type-" + dbType}
-                    defaultValue={dbType}
                     options={[
                       "databricks",
-                      "mysql",
+                      // "mysql",
                       "postgres",
                       "redshift",
                       "snowflake",
+                      "bigquery",
                     ].map((item) => {
                       return { value: item, key: item, label: item };
                     })}
@@ -193,313 +184,241 @@ const ExtractMetadata = () => {
                 {/* create form inputs based on the value selected above */}
                 {dbCredOptions[dbType] !== undefined &&
                   dbCredOptions[dbType].map((item) => {
-                    return (
-                      <Form.Item
-                        label={item}
-                        name={item}
-                        key={dbType + "_" + item + "_" + dbCreds[item]}
-                        initialValue={dbCreds[item]}
-                      >
-                        <Input style={{ width: "100%" }} />
-                      </Form.Item>
-                    );
+                    let toReturn;
+                    if (item !== "password") {
+                      toReturn = (
+                        <Form.Item
+                          label={item}
+                          name={item}
+                          key={dbType + "_" + item}
+                        >
+                          <Input style={{ width: "100%" }} />
+                        </Form.Item>
+                      );
+                    } else {
+                      toReturn = (
+                        <Form.Item
+                          label={item}
+                          name={item}
+                          key={dbType + "_" + item}
+                        >
+                          <Input.Password style={{ width: "100%" }} />
+                        </Form.Item>
+                      );
+                    }
+                    return toReturn;
                   })}
                 <Form.Item wrapperCol={{ span: 24 }}>
                   <Button
                     type={"primary"}
                     style={{ width: "100%" }}
                     htmlType="submit"
-                    loading={loading}
+                    id="update-db-creds-btn"
                   >
-                    Get Tables
+                    Update DB Credentials
                   </Button>
                 </Form.Item>
               </Form>
 
-              {tables.length > 0 && (
-                <Form
-                  name="db_tables"
-                  labelCol={{ span: 4 }}
-                  wrapperCol={{ span: 20 }}
-                  style={{ maxWidth: 800 }}
-                  disabled={loading}
-                  onFinish={async (values) => {
-                    setLoading(true);
-
-                    const existingTables = values["tables"].filter((item) => {
-                      // only send tables that actually exist in the db
-                      return tables.indexOf(item) !== -1;
-                    });
-
-                    if (existingTables.length === 0) {
-                      message.error(
-                        values["tables"].length === 0
-                          ? "No tables selected"
-                          : "None of the tables selected exist in the database"
-                      );
-                      setLoading(false);
-                      return;
-                    }
-
-                    try {
-                      const res = await fetch(
-                        `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/generate_metadata`,
-                        {
-                          method: "POST",
-                          body: JSON.stringify({
-                            tables: values["tables"].filter((item) => {
-                              // only send tables that actually exist in the db
-                              return tables.indexOf(item) !== -1;
-                            }),
-                            token: context.token,
-                          }),
-                        }
-                      );
-                      const data = await res.json();
-
-                      if (data.error) {
-                        message.error(data.error);
-                      } else {
-                        setMetadata(data?.metadata || []);
+              <Form
+                name="db_tables"
+                labelCol={{ span: 8 }}
+                wrapperCol={{ span: 16 }}
+                style={{
+                  maxWidth: 400,
+                  visibility: allowUpdates === "YES" ? "visible" : "hidden",
+                }}
+                disabled={loading}
+                onFinish={async (values) => {
+                  setLoading(true);
+                  try {
+                    message.info(
+                      "Extracting metadata from selected tables. This can take up to 5 minutes. Please be patient."
+                    );
+                    const res = await fetch(
+                      setupBaseUrl("http", `integration/generate_metadata`),
+                      {
+                        method: "POST",
+                        body: JSON.stringify({
+                          tables: values["tables"],
+                          token: token,
+                          dev: devMode,
+                        }),
                       }
-                    } catch (e) {
-                      console.log(e);
-                    }
-
+                    );
+                    const data = await res.json();
                     setLoading(false);
-                  }}
+                    setMetadata(data?.metadata || []);
+                  } catch (e) {
+                    console.log(e);
+                    setLoading(false);
+                    message.error(
+                      "Error fetching metadata - please look at your docker logs fo)r more information."
+                    );
+                  }
+                }}
+              >
+                <Form.Item
+                  name="tables"
+                  label="Tables to index"
+                  value={selectedTables}
                 >
-                  <Form.Item
-                    name="tables"
-                    label="Tables"
-                    initialValue={selectedTables}
-                  >
-                    <Select
-                      mode="multiple"
-                      style={{ width: "100%", maxWidth: 400 }}
-                      placeholder="Select tables to index"
-                      defaultValue={selectedTables}
-                      tagRender={({ label, closable, onClose, value }) => {
-                        const onPreventMouseDown = (event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                        };
-                        return (
-                          <Popover
-                            rootClassName="table-missing-popover"
-                            content={
-                              tables.indexOf(label) === -1
-                                ? "Table doesn't exist in this db"
-                                : null
-                            }
-                            trigger="hover"
-                          >
-                            <Tag
-                              closable={closable}
-                              onMouseDown={onPreventMouseDown}
-                              onClose={onClose}
-                              rootClassName={
-                                "table-tag" +
-                                " " +
-                                (tables.indexOf(label) === -1
-                                  ? "table-missing"
-                                  : "")
-                              }
-                            >
-                              {label}
-                            </Tag>
-                          </Popover>
-                        );
-                      }}
-                      onChange={(e) => {
-                        console.log(e);
-                        setSelectedTables(e);
-                      }}
-                    >
-                      {tables.map((table) => (
-                        <Option value={table} key={table}>
-                          {table}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                  <Form.Item wrapperCol={{ span: 24 }}>
-                    <Button
-                      type="primary"
-                      style={{ width: "50%", paddingRight: "1em" }}
-                      htmlType="submit"
-                    >
-                      Extract Metadata
-                    </Button>
-
-                    {metadata.length > 0 && (
-                      <Button
-                        type="dashed"
-                        style={{ width: "50%" }}
-                        disabled={loading}
-                        loading={loading}
-                        onClick={async () => {
-                          setLoading(true);
-                          const res = await fetch(
-                            `http://${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/update_metadata`,
-                            {
-                              method: "POST",
-                              body: JSON.stringify({
-                                token: context.token,
-                                metadata: metadata,
-                              }),
-                            }
-                          );
-                          const data = await res.json();
-                          console.log(data);
-                          setLoading(false);
-                          if (
-                            data["suggested_joins"] !== undefined &&
-                            data["suggested_joins"] !== null &&
-                            data["suggested_joins"] !== ""
-                          ) {
-                            // also update the value of the text area
-                            document.getElementById("allowed-joins").value =
-                              data["suggested_joins"];
-                          }
-
-                          message.success("Metadata updated successfully!");
-                        }}
-                      >
-                        Update metadata on server
-                      </Button>
-                    )}
-                  </Form.Item>
-                </Form>
-              )}
-            </div>
-          </Col>
-          {/* add an inset box shadow at the bottom edge */}
-
-          <div
-            style={{
-              padding: "1em 0",
-              margin: "2em 0",
-              // boxShadow: "0px 0px 10px 0px rgba(0, 0, 0, 0.1);",
-              // backgroundColor: "white",
-            }}
-          >
-            <Col
-              md={{ span: 23 }}
-              xs={{ span: 23 }}
-              style={{
-                height: 600,
-                overflowY: "scroll",
-
-                // border: "1px solid black",
-              }}
-            >
-              {metadata.length > 0 ? (
-                <Row
-                  style={{
-                    // marginTop: "1em",
-                    position: "sticky",
-                    top: 0,
-                    paddingBottom: "1em",
-                    paddingTop: "1em",
-                    backgroundColor: "gray",
-                    color: "white",
-                    zIndex: 100,
-                  }}
-                >
-                  <Col
-                    xs={{ span: 24 }}
-                    md={{ span: 4 }}
-                    style={{
-                      overflowWrap: "break-word",
-                      padding: "0 1em",
+                  <Select
+                    mode="tags"
+                    style={{ width: "100%", maxWidth: 400 }}
+                    placeholder="Add tables to index"
+                    onChange={(e) => {
+                      console.log(e);
+                      setSelectedTables(e);
                     }}
                   >
-                    <b>Table Name</b>
-                  </Col>
-                  <Col
-                    xs={{ span: 24 }}
-                    md={{ span: 4 }}
-                    style={{ overflowWrap: "break-word", padding: "0 1em" }}
+                    {tables.map((table) => (
+                      <Option value={table} key={table}>
+                        {table}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item wrapperCol={{ span: 24 }}>
+                  <Button
+                    type="primary"
+                    style={{ width: "100%", maxWidth: 535 }}
+                    htmlType="submit"
                   >
-                    <b>Column Name</b>
-                  </Col>
-                  <Col
-                    xs={{ span: 24 }}
-                    md={{ span: 4 }}
-                    style={{ overflowWrap: "break-word", padding: "0 1em" }}
-                  >
-                    <b>Data Type</b>
-                  </Col>
-                  <Col xs={{ span: 24 }} md={{ span: 12 }}>
-                    <b>Description (Optional)</b>
-                  </Col>
-                </Row>
-              ) : null}
-              {metadata.length > 0 &&
-                metadata.map((item, index) => {
-                  return (
-                    <Row
-                      key={index + "_" + item}
-                      // gutter={10}
-                      style={{ borderBottom: "1px solid #e6e6e6" }}
-                    >
-                      <Col
-                        xs={{ span: 24 }}
-                        md={{ span: 4 }}
-                        style={{
-                          overflowWrap: "break-word",
-                          backgroundColor: "#eee",
-                          padding: "1em 1em",
-                        }}
-                      >
-                        {item.table_name}
-                      </Col>
-                      <Col
-                        xs={{ span: 24 }}
-                        md={{ span: 4 }}
-                        style={{
-                          overflowWrap: "break-word",
-                          padding: "1em 1em",
-                        }}
-                      >
-                        {item.column_name}
-                      </Col>
-                      <Col
-                        xs={{ span: 24 }}
-                        md={{ span: 4 }}
-                        style={{
-                          overflowWrap: "break-word",
-                          padding: "1em 1em",
-                          backgroundColor: "#eee",
-                        }}
-                      >
-                        {item.data_type}
-                      </Col>
-                      <Col
-                        xs={{ span: 24 }}
-                        md={{ span: 12 }}
-                        style={{
-                          padding: "1em 1em",
-                        }}
-                      >
-                        <Input.TextArea
-                          placeholder="Description of what this column does"
-                          value={item.column_description}
-                          autoSize={{ minRows: 2 }}
-                          onChange={(e) => {
-                            const newMetadata = [...metadata];
-                            newMetadata[index]["column_description"] =
-                              e.target.value;
-                            setMetadata(newMetadata);
-                          }}
-                        />
-                      </Col>
-                    </Row>
+                    Extract Metadata
+                  </Button>
+                </Form.Item>
+              </Form>
+            </div>
+          </Col>
+
+          <Col
+            md={{ span: 16 }}
+            xs={{ span: 24 }}
+            style={{ paddingRight: "2em", height: 600, overflowY: "scroll" }}
+          >
+            {metadata.length > 0 && (
+              <Button
+                type="primary"
+                style={{ width: "100%", maxWidth: 535 }}
+                disabled={loading}
+                loading={loading}
+                onClick={async () => {
+                  setLoading(true);
+                  const res = await fetch(
+                    setupBaseUrl("http", `integration/update_metadata`),
+                    {
+                      method: "POST",
+                      body: JSON.stringify({
+                        metadata: metadata,
+                        token: token,
+                        dev: devMode,
+                      }),
+                    }
                   );
-                })}
-            </Col>
-          </div>
+                  const data = await res.json();
+                  setLoading(false);
+                  if (
+                    data["suggested_joins"] !== undefined &&
+                    data["suggested_joins"] !== null &&
+                    data["suggested_joins"] !== ""
+                  ) {
+                    // also update the value of the text area
+                    document.getElementById("allowed-joins").value =
+                      data["suggested_joins"];
+                  }
+
+                  message.success("Metadata updated successfully!");
+                }}
+              >
+                Update metadata on server
+              </Button>
+            )}
+            {metadata.length > 0 ? (
+              <Row
+                style={{
+                  marginTop: "1em",
+                  position: "sticky",
+                  top: 0,
+                  paddingBottom: "1em",
+                  paddingTop: "1em",
+                  backgroundColor: "white",
+                  zIndex: 100,
+                }}
+              >
+                <Col
+                  xs={{ span: 24 }}
+                  md={{ span: 4 }}
+                  style={{ overflowWrap: "break-word" }}
+                >
+                  <b>Table Name</b>
+                </Col>
+                <Col
+                  xs={{ span: 24 }}
+                  md={{ span: 4 }}
+                  style={{ overflowWrap: "break-word" }}
+                >
+                  <b>Column Name</b>
+                </Col>
+                <Col
+                  xs={{ span: 24 }}
+                  md={{ span: 4 }}
+                  style={{ overflowWrap: "break-word" }}
+                >
+                  <b>Data Type</b>
+                </Col>
+                <Col xs={{ span: 24 }} md={{ span: 12 }}>
+                  <b>Description (Optional)</b>
+                </Col>
+              </Row>
+            ) : null}
+            {metadata.length > 0 &&
+              metadata.map((item, index) => {
+                return (
+                  <Row
+                    key={item.table_name + "_" + item.column_name}
+                    style={{ marginTop: "1em" }}
+                    gutter={16}
+                  >
+                    <Col
+                      xs={{ span: 24 }}
+                      md={{ span: 4 }}
+                      style={{ overflowWrap: "break-word" }}
+                    >
+                      {item.table_name}
+                    </Col>
+                    <Col
+                      xs={{ span: 24 }}
+                      md={{ span: 4 }}
+                      style={{ overflowWrap: "break-word" }}
+                    >
+                      {item.column_name}
+                    </Col>
+                    <Col
+                      xs={{ span: 24 }}
+                      md={{ span: 4 }}
+                      style={{ overflowWrap: "break-word" }}
+                    >
+                      {item.data_type}
+                    </Col>
+                    <Col xs={{ span: 24 }} md={{ span: 12 }}>
+                      <Input.TextArea
+                        key={index}
+                        placeholder="Description of what this column does"
+                        defaultValue={item.column_description || ""}
+                        autoSize={{ minRows: 2 }}
+                        onChange={(e) => {
+                          const newMetadata = [...metadata];
+                          newMetadata[index]["column_description"] =
+                            e.target.value;
+                          setMetadata(newMetadata);
+                        }}
+                      />
+                    </Col>
+                  </Row>
+                );
+              })}
+          </Col>
         </Row>
       </Scaffolding>
     </>

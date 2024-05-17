@@ -169,7 +169,7 @@ CREATE TABLE public.defog_tools (
     toolbox TEXT,
     disabled BOOLEAN NOT NULL DEFAULT FALSE,
     cannot_delete BOOLEAN NOT NULL DEFAULT FALSE,
-    cannot_disable BOOLEAN NOT NULL DEFAULT FALSE,
+    cannot_disable BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 

@@ -1,12 +1,21 @@
+import time
+
 from db_utils import get_db_conn
 import hashlib
 
 SALT = "TOMMARVOLORIDDLE"
-DEFOG_API_KEY = "genmab-survival-test"
+INTERNAL_API_KEY = "dummy_api_key"
 
-con = get_db_conn()
-cur = con.cursor()
-# create an admin user in the defog_users table
+try:
+    con = get_db_conn()
+    cur = con.cursor()
+    # create an admin user in the defog_users table
+except:
+    print("Error connecting to database.")
+    print("Sleeping for 10 seconds before retrying.")
+    time.sleep(10)
+    con = get_db_conn()
+    cur = con.cursor()
 
 username = "admin"
 password = "admin"
@@ -22,7 +31,7 @@ if cur.fetchone():
 if not admin_exists:
     cur.execute(
         "INSERT INTO defog_users (username, hashed_password, token, user_type, is_premium) VALUES (%s, %s, %s, %s, %s)",
-        (username, hashed_password, DEFOG_API_KEY, "admin", True),
+        (username, hashed_password, INTERNAL_API_KEY, "admin", True),
     )
     con.commit()
     con.close()
