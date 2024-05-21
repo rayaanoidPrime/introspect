@@ -82,8 +82,11 @@ export function setupWebsocketManager(
     if (socket && socket.readyState === WebSocket.OPEN) {
       if (reconnectCount >= 1 && !isPing && warnCount % 10 == 0) {
         // means we've reconnected once
-        message.warning(
-          "Connection was previously lost and there might be connectivity issues while running this. Please refresh the page for best performance."
+        // message.warning(
+        //   "Connection was previously lost and there might be connectivity issues while running this. Please refresh the page for best performance."
+        // );
+        console.log(
+          "Connection was previously lost and there might be connectivity issues while running this. Consider refreshing the page for best performance."
         );
         warnCount++;
       }
