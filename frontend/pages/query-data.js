@@ -7,18 +7,21 @@ import { DocContext } from "../components/docs/DocContext";
 import setupBaseUrl from "../utils/setupBaseUrl";
 import { setupWebsocketManager } from "../utils/websocket-manager";
 
-const AskDefogChat = dynamic(
-  () => import("defog-components").then((module) => module.AskDefogChat),
+const DefogAnalysisAgent = dynamic(
+  () =>
+    import("../components/defog-analysis-agent-rc/index").then((module) => {
+      return module.default;
+    }),
   {
     ssr: false,
   }
 );
 
-const AnalysisAgent = dynamic(
+const AskDefogChat = dynamic(
   () =>
-    import(
-      "../components/defog-components/components/agent/AnalysisAgent"
-    ).then((module) => module.AnalysisAgent),
+    import("defog-components").then((module) => {
+      return module.AskDefogChat;
+    }),
   {
     ssr: false,
   }
