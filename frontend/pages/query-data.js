@@ -36,6 +36,7 @@ const QueryDatabase = () => {
   const [ignoreCache, setIgnoreCache] = useState(false);
   const [allowCaching, setAllowCaching] = useState("YES");
   const [docContext, setDocContext] = useState(useContext(DocContext));
+  const [queryMode, setQueryMode] = useState("sql");
 
   useEffect(() => {
     // check if exists
@@ -126,43 +127,53 @@ const QueryDatabase = () => {
             }}
           />
         ) : null}
+        <Switch
+          checkedChildren="SQL"
+          unCheckedChildren="Agents"
+          checked={queryMode === "sql"}
+          onChange={(e) => {
+            console.log(e);
+            setQueryMode(e ? "sql" : "agents");
+          }}
+        />
         {token ? (
-          <AskDefogChat
-            maxWidth={"100%"}
-            height={"80vh"}
-            apiEndpoint={setupBaseUrl("http", "query")}
-            apiKey={
-              process.env.NEXT_PUBLIC_DEFOG_API_KEY ||
-              "REPLACE_WITH_DEFOG_API_KEY"
-            }
-            buttonText={
-              process.env.NEXT_PUBLIC_BUTTON_TEXT || "REPLACE_WITH_BUTTON_TEXT"
-            }
-            placeholderText={"Ask your data questions here"}
-            darkMode={false}
-            debugMode={userType === "admin" ? true : false}
-            additionalParams={{
-              token: token,
-              dev: devMode,
-              ignore_cache: ignoreCache,
-            }}
-            clearOnAnswer={true}
-            guidedTeaching={userType === "admin" ? true : false}
-            dev={devMode}
-            chartTypeEndpoint="/get_chart_types"
-          />
+          queryMode === "sql" ? (
+            <AskDefogChat
+              maxWidth={"100%"}
+              height={"80vh"}
+              apiEndpoint={setupBaseUrl("http", "query")}
+              apiKey={
+                process.env.NEXT_PUBLIC_DEFOG_API_KEY ||
+                "REPLACE_WITH_DEFOG_API_KEY"
+              }
+              buttonText={
+                process.env.NEXT_PUBLIC_BUTTON_TEXT ||
+                "REPLACE_WITH_BUTTON_TEXT"
+              }
+              placeholderText={"Ask your data questions here"}
+              darkMode={false}
+              debugMode={userType === "admin" ? true : false}
+              additionalParams={{
+                token: token,
+                dev: devMode,
+                ignore_cache: ignoreCache,
+              }}
+              clearOnAnswer={true}
+              guidedTeaching={userType === "admin" ? true : false}
+              dev={devMode}
+              chartTypeEndpoint="/get_chart_types"
+            />
+          ) : (
+            <DefogAnalysisAgent
+              analysisId={null}
+              username={user}
+              apiToken={
+                process.env.NEXT_PUBLIC_DEFOG_API_KEY ||
+                "REPLACE_WITH_DEFOG_API_KEY"
+              }
+            />
+          )
         ) : null}
-
-        <DocContext.Provider value={{ val: docContext, update: setDocContext }}>
-          <AnalysisAgent
-            analysisId={"temporary"}
-            username={user}
-            apiToken={
-              process.env.NEXT_PUBLIC_DEFOG_API_KEY ||
-              "REPLACE_WITH_DEFOG_API_KEY"
-            }
-          />
-        </DocContext.Provider>
       </Scaffolding>
     </>
   );
