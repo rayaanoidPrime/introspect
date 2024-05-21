@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import Meta from "../components/common/Meta";
 import Scaffolding from "../components/common/Scaffolding";
 import dynamic from "next/dynamic";
 import { Switch } from "antd/lib";
 import setupBaseUrl from "../utils/setupBaseUrl";
+import { DocContext } from "../components/docs/DocContext";
 
 const AskDefogChat = dynamic(
   () => import("defog-components").then((module) => module.AskDefogChat),
@@ -12,17 +13,25 @@ const AskDefogChat = dynamic(
   }
 );
 
-const DefogAnalysisAgent = dynamic(() => import("defog-analysis-agent-rc"), {
-  ssr: false,
-});
+const AnalysisAgent = dynamic(
+  () =>
+    import(
+      "../components/defog-components/components/agent/AnalysisAgent"
+    ).then((module) => module.AnalysisAgent),
+  {
+    ssr: false,
+  }
+);
 
 const QueryDatabase = () => {
   const [selectedTables, setSelectedTables] = useState([]);
   const [token, setToken] = useState();
+  const [user, setUser] = useState();
   const [userType, setUserType] = useState();
   const [devMode, setDevMode] = useState(false);
   const [ignoreCache, setIgnoreCache] = useState(false);
   const [allowCaching, setAllowCaching] = useState("YES");
+  const [docContext, setDocContext] = useState(useContext(DocContext));
 
   useEffect(() => {
     // check if exists
@@ -32,6 +41,8 @@ const QueryDatabase = () => {
 
     const token = localStorage.getItem("defogToken");
     const userType = localStorage.getItem("defogUserType");
+    const user = localStorage.getItem("defogUser");
+    setUser(user);
     setUserType(userType);
     setToken(token);
     const res = fetch(setupBaseUrl("http", "integration/get_tables_db_creds"), {
@@ -113,7 +124,16 @@ const QueryDatabase = () => {
           />
         ) : null}
 
-        <DefogAnalysisAgent apiEndpoint={setupBaseUrl("http", "/")} />
+        <DocContext.Provider value={{ val: docContext, update: setDocContext }}>
+          <AnalysisAgent
+            analysisId={null}
+            username={user}
+            apiToken={
+              process.env.NEXT_PUBLIC_DEFOG_API_KEY ||
+              "REPLACE_WITH_DEFOG_API_KEY"
+            }
+          />
+        </DocContext.Provider>
       </Scaffolding>
     </>
   );
