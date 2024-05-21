@@ -433,7 +433,7 @@ export const AnalysisAgent = ({
           if (!analysisData.success || !analysisData.report_data) {
             // stop loading, and delete this block
             message.error(analysisData?.error_message);
-            editor.removeBlocks([block]);
+            if (editor) editor.removeBlocks([block]);
           } else {
             analysisData = analysisData.report_data;
           }
@@ -696,127 +696,69 @@ export const AnalysisAgent = ({
                       searchRef={searchRef}
                     />
                   </div>
-                  <>
-                    <div className="analysis-content">
-                      <div className="analysis-results">
-                        <ErrorBoundary>
-                          {analysisSteps.length ? (
-                            <ToolResults
-                              analysisId={analysisId}
-                              activeNode={activeNode}
-                              analysisData={analysisData}
-                              toolSocketManager={toolSocketManager}
-                              dag={dag}
-                              setActiveNode={setActiveNode}
-                              handleReRun={handleReRun}
-                              reRunningSteps={reRunningSteps}
-                              setPendingToolRunUpdates={
-                                setPendingToolRunUpdates
+                  <div className="analysis-content">
+                    <div className="analysis-results">
+                      <ErrorBoundary>
+                        {analysisSteps.length ? (
+                          <ToolResults
+                            analysisId={analysisId}
+                            activeNode={activeNode}
+                            analysisData={analysisData}
+                            toolSocketManager={toolSocketManager}
+                            dag={dag}
+                            setActiveNode={setActiveNode}
+                            handleReRun={handleReRun}
+                            reRunningSteps={reRunningSteps}
+                            setPendingToolRunUpdates={setPendingToolRunUpdates}
+                            toolRunDataCache={toolRunDataCache}
+                            setToolRunDataCache={setToolRunDataCache}
+                            setAnalysisData={setAnalysisData}
+                          ></ToolResults>
+                        ) : (
+                          analysisBusy && (
+                            <AgentLoader
+                              message={"Running analysis..."}
+                              lottie={
+                                <Lottie
+                                  animationData={LoadingLottie}
+                                  loop={true}
+                                />
                               }
-                              toolRunDataCache={toolRunDataCache}
-                              setToolRunDataCache={setToolRunDataCache}
-                              setAnalysisData={setAnalysisData}
-                            ></ToolResults>
-                          ) : (
-                            analysisBusy && (
-                              <AgentLoader
-                                message={"Running analysis..."}
-                                lottie={
-                                  <Lottie
-                                    animationData={LoadingLottie}
-                                    loop={true}
-                                  />
-                                }
-                              />
-                            )
-                          )}
-                        </ErrorBoundary>
-                      </div>
-                      <div className="analysis-steps">
-                        <StepsDag
-                          steps={analysisSteps}
-                          nodeSize={[40, 10]}
-                          nodeGap={[30, 50]}
-                          setActiveNode={setActiveNode}
-                          reRunningSteps={reRunningSteps}
-                          activeNode={activeNode}
-                          stageDone={
-                            currentStage === "gen_steps" ? stageDone : true
-                          }
-                          dag={dag}
-                          setDag={setDag}
-                          dagLinks={dagLinks}
-                          setDagLinks={setDagLinks}
-                          // alwaysShowPopover={activeSection === "step"}
-                          extraNodeClasses={(node) => {
-                            return node.data.isTool
-                              ? `rounded-md px-1 text-center`
-                              : "";
-                          }}
-                          toolIcon={(node) => (
-                            <p className="text-sm truncate m-0">
-                              {toolShortNames[node?.data?.step?.tool_name] ||
-                                "Unknown tool"}
-                            </p>
-                          )}
-                        />
-                      </div>
+                            />
+                          )
+                        )}
+                      </ErrorBoundary>
                     </div>
-                    {/* <div
-                      className="start-follow-up"
-                      onClick={async () => {
-                        const newAnalysisId = "analysis-" + v4();
-
-                        // if the current analysis has any parent analyses, add the current analysis id to the parent analyses
-                        // else, create a new analysis with the current analysis id as the parent analysis
-                        let parents = [];
-                        if (analysisData?.parent_analyses?.length) {
-                          parents = analysisData.parent_analyses.slice();
+                    <div className="analysis-steps">
+                      <StepsDag
+                        steps={analysisSteps}
+                        nodeSize={[40, 10]}
+                        nodeGap={[30, 50]}
+                        setActiveNode={setActiveNode}
+                        reRunningSteps={reRunningSteps}
+                        activeNode={activeNode}
+                        stageDone={
+                          currentStage === "gen_steps" ? stageDone : true
                         }
-
-                        // I thought of pushing the analysisTitle as well, but it might change later so keep as is.
-                        parents.push(analysisId);
-
-                        const res = await createAnalysis(
-                          apiToken,
-                          username,
-                          newAnalysisId,
-                          {
-                            other_data: {
-                              parent_analyses: parents,
-                            },
-                          }
-                        );
-                        if (!res.success) return;
-
-                        // create a new analysis block with the id from res.report_data.report_id
-                        const currentBlock =
-                          editor.getTextCursorPosition().block;
-                        editor.insertBlocks(
-                          [
-                            {
-                              type: "analysis",
-                              props: {
-                                analysisId: res.report_data.report_id,
-                              },
-                            },
-                          ],
-                          currentBlock,
-                          "after"
-                        );
-                        setRelatedAnalyses({
-                          ...relatedAnalyses,
-                          follow_up_analyses: [
-                            ...relatedAnalyses.follow_up_analyses,
-                            res.report_data.report_id,
-                          ],
-                        });
-                      }}
-                    >
-                      <PlusCircleOutlined />
-                      Start a new follow-up analysis
-                    </div> */}
-                  </>
+                        dag={dag}
+                        setDag={setDag}
+                        dagLinks={dagLinks}
+                        setDagLinks={setDagLinks}
+                        // alwaysShowPopover={activeSection === "step"}
+                        extraNodeClasses={(node) => {
+                          return node.data.isTool
+                            ? `rounded-md px-1 text-center`
+                            : "";
+                        }}
+                        toolIcon={(node) => (
+                          <p className="text-sm truncate m-0">
+                            {toolShortNames[node?.data?.step?.tool_name] ||
+                              "Unknown tool"}
+                          </p>
+                        )}
+                      />
+                    </div>
+                  </div>
                 </>
               ) : (
                 <>

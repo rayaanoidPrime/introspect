@@ -6,18 +6,21 @@ import { Switch } from "antd/lib";
 import setupBaseUrl from "../utils/setupBaseUrl";
 import { DocContext } from "../components/docs/DocContext";
 
-const AskDefogChat = dynamic(
-  () => import("defog-components").then((module) => module.AskDefogChat),
+const DefogAnalysisAgent = dynamic(
+  () =>
+    import("../components/defog-analysis-agent-rc/index").then((module) => {
+      return module.default;
+    }),
   {
     ssr: false,
   }
 );
 
-const AnalysisAgent = dynamic(
+const AskDefogChat = dynamic(
   () =>
-    import(
-      "../components/defog-components/components/agent/AnalysisAgent"
-    ).then((module) => module.AnalysisAgent),
+    import("defog-components").then((module) => {
+      return module.AskDefogChat;
+    }),
   {
     ssr: false,
   }
@@ -124,16 +127,14 @@ const QueryDatabase = () => {
           />
         ) : null}
 
-        <DocContext.Provider value={{ val: docContext, update: setDocContext }}>
-          <AnalysisAgent
-            analysisId={null}
-            username={user}
-            apiToken={
-              process.env.NEXT_PUBLIC_DEFOG_API_KEY ||
-              "REPLACE_WITH_DEFOG_API_KEY"
-            }
-          />
-        </DocContext.Provider>
+        <DefogAnalysisAgent
+          analysisId={null}
+          username={user}
+          apiToken={
+            process.env.NEXT_PUBLIC_DEFOG_API_KEY ||
+            "REPLACE_WITH_DEFOG_API_KEY"
+          }
+        />
       </Scaffolding>
     </>
   );

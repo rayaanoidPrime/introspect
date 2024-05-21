@@ -28,6 +28,7 @@
     "@tiptap/react": "^2.1.16",
     "@tiptap/suggestion": "^2.1.16",
     "@uiw/codemirror-extensions-classname": "^4.22.0",
+    "defog-analysis-agent-rc": "file:./components/defog-analysis-agent-rc/",
     "@uiw/react-codemirror": "^4.21.24",
     "antd": "^5.12.8",
     "chroma-js": "^2.4.2",
