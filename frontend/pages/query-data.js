@@ -12,6 +12,10 @@ const AskDefogChat = dynamic(
   }
 );
 
+const DefogAnalysisAgent = dynamic(() => import("defog-analysis-agent-rc"), {
+  ssr: false,
+});
+
 const QueryDatabase = () => {
   const [selectedTables, setSelectedTables] = useState([]);
   const [token, setToken] = useState();
@@ -108,6 +112,8 @@ const QueryDatabase = () => {
             chartTypeEndpoint="/get_chart_types"
           />
         ) : null}
+
+        <DefogAnalysisAgent apiEndpoint={setupBaseUrl("http", "/")} />
       </Scaffolding>
     </>
   );
