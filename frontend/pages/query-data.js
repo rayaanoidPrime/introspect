@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { Switch } from "antd/lib";
 import { DocContext } from "../components/docs/DocContext";
 import setupBaseUrl from "../utils/setupBaseUrl";
-import { setupWebsocketManager } from "../utils/websocket-manager";
 
 const DefogAnalysisAgent = dynamic(
   () =>
@@ -43,31 +42,6 @@ const QueryDatabase = () => {
     setAllowCaching(
       process.env.NEXT_PUBLIC_ALLOW_CACHING || "REPLACE_WITH_ALLOW_CACHING"
     );
-
-    async function setupConnections() {
-      const urlToConnect = setupBaseUrl("ws", "ws");
-      const mgr = await setupWebsocketManager(urlToConnect);
-
-      const rerunMgr = await setupWebsocketManager(
-        urlToConnect.replace("/ws", "/step_rerun")
-      );
-
-      const toolSocketManager = await setupWebsocketManager(
-        urlToConnect.replace("/ws", "/edit_tool_run"),
-        (d) => console.log(d)
-      );
-
-      setDocContext({
-        ...docContext,
-        socketManagers: {
-          mainManager: mgr,
-          reRunManager: rerunMgr,
-          toolSocketManager: toolSocketManager,
-        },
-      });
-    }
-
-    setupConnections();
 
     const token = localStorage.getItem("defogToken");
     const userType = localStorage.getItem("defogUserType");
