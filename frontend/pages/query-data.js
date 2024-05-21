@@ -1,12 +1,26 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import Meta from "../components/common/Meta";
 import Scaffolding from "../components/common/Scaffolding";
 import dynamic from "next/dynamic";
 import { Switch } from "antd/lib";
+import { DocContext } from "../components/docs/DocContext";
 import setupBaseUrl from "../utils/setupBaseUrl";
 
+const DefogAnalysisAgent = dynamic(
+  () =>
+    import("../components/defog-analysis-agent-rc/index").then((module) => {
+      return module.default;
+    }),
+  {
+    ssr: false,
+  }
+);
+
 const AskDefogChat = dynamic(
-  () => import("defog-components").then((module) => module.AskDefogChat),
+  () =>
+    import("defog-components").then((module) => {
+      return module.AskDefogChat;
+    }),
   {
     ssr: false,
   }
@@ -15,10 +29,13 @@ const AskDefogChat = dynamic(
 const QueryDatabase = () => {
   const [selectedTables, setSelectedTables] = useState([]);
   const [token, setToken] = useState();
+  const [user, setUser] = useState();
   const [userType, setUserType] = useState();
   const [devMode, setDevMode] = useState(false);
   const [ignoreCache, setIgnoreCache] = useState(false);
   const [allowCaching, setAllowCaching] = useState("YES");
+  const [docContext, setDocContext] = useState(useContext(DocContext));
+  const [queryMode, setQueryMode] = useState("sql");
 
   useEffect(() => {
     // check if exists
@@ -28,6 +45,8 @@ const QueryDatabase = () => {
 
     const token = localStorage.getItem("defogToken");
     const userType = localStorage.getItem("defogUserType");
+    const user = localStorage.getItem("defogUser");
+    setUser(user);
     setUserType(userType);
     setToken(token);
     const res = fetch(setupBaseUrl("http", "integration/get_tables_db_creds"), {
@@ -82,31 +101,52 @@ const QueryDatabase = () => {
             }}
           />
         ) : null}
+        <Switch
+          checkedChildren="SQL"
+          unCheckedChildren="Agents"
+          checked={queryMode === "sql"}
+          onChange={(e) => {
+            console.log(e);
+            setQueryMode(e ? "sql" : "agents");
+          }}
+        />
         {token ? (
-          <AskDefogChat
-            maxWidth={"100%"}
-            height={"80vh"}
-            apiEndpoint={setupBaseUrl("http", "query")}
-            apiKey={
-              process.env.NEXT_PUBLIC_DEFOG_API_KEY ||
-              "REPLACE_WITH_DEFOG_API_KEY"
-            }
-            buttonText={
-              process.env.NEXT_PUBLIC_BUTTON_TEXT || "REPLACE_WITH_BUTTON_TEXT"
-            }
-            placeholderText={"Ask your data questions here"}
-            darkMode={false}
-            debugMode={userType === "admin" ? true : false}
-            additionalParams={{
-              token: token,
-              dev: devMode,
-              ignore_cache: ignoreCache,
-            }}
-            clearOnAnswer={true}
-            guidedTeaching={userType === "admin" ? true : false}
-            dev={devMode}
-            chartTypeEndpoint="/get_chart_types"
-          />
+          queryMode === "sql" ? (
+            <AskDefogChat
+              maxWidth={"100%"}
+              height={"80vh"}
+              apiEndpoint={setupBaseUrl("http", "query")}
+              apiKey={
+                process.env.NEXT_PUBLIC_DEFOG_API_KEY ||
+                "REPLACE_WITH_DEFOG_API_KEY"
+              }
+              buttonText={
+                process.env.NEXT_PUBLIC_BUTTON_TEXT ||
+                "REPLACE_WITH_BUTTON_TEXT"
+              }
+              placeholderText={"Ask your data questions here"}
+              darkMode={false}
+              debugMode={userType === "admin" ? true : false}
+              additionalParams={{
+                token: token,
+                dev: devMode,
+                ignore_cache: ignoreCache,
+              }}
+              clearOnAnswer={true}
+              guidedTeaching={userType === "admin" ? true : false}
+              dev={devMode}
+              chartTypeEndpoint="/get_chart_types"
+            />
+          ) : (
+            <DefogAnalysisAgent
+              analysisId={null}
+              username={user}
+              apiToken={
+                process.env.NEXT_PUBLIC_DEFOG_API_KEY ||
+                "REPLACE_WITH_DEFOG_API_KEY"
+              }
+            />
+          )
         ) : null}
       </Scaffolding>
     </>
