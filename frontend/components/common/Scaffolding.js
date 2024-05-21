@@ -109,11 +109,6 @@ const Scaffolding = ({ id, userType, children }) => {
           ),
         },
         {
-          key: "manage-tools",
-          title: "Manage tools",
-          icon: <a onClick={() => redirect("/manage-tools")}>Manage tools</a>,
-        },
-        {
           key: "query-data",
           title: "Query Data",
           icon: <Link href="/query-data">🔍 Query Data</Link>,
