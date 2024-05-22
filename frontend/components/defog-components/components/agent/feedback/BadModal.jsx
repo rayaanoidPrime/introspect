@@ -193,7 +193,8 @@ export default function BadModal({
                   </div>
                 )}
 
-                {activeNode ? (
+                {activeNode &&
+                comments?.["step_wise"]?.[activeNode.data.step.tool_run_id] ? (
                   activeNode.data.isTool ? (
                     <div>
                       <p className="text-sm font-bold text-gray-900 ">

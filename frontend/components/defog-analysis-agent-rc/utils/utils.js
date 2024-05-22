@@ -1,6 +1,33 @@
 import { contrast, random } from "chroma-js";
 import setupBaseUrl from "../utils/setupBaseUrl";
 
+export const getApiToken = async (
+  username,
+  hashed_pw,
+  router,
+  errorRoute = "/log-in"
+) => {
+  const url = "https://api.defog.ai/get_token";
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-hashed-password": hashed_pw,
+      },
+      body: JSON.stringify({
+        username: username,
+      }),
+    });
+  } catch (e) {
+    router.push(errorRoute);
+    return { success: false, error_message: e };
+  }
+  const json = await response.json();
+  return json;
+};
+
 export const getAnalysis = async (reportId) => {
   const urlToConnect = setupBaseUrl("http", "get_report");
   let response;
@@ -24,6 +51,7 @@ export const getAnalysis = async (reportId) => {
 export const getReport = getAnalysis;
 
 export const createAnalysis = async (
+  apiToken,
   username,
   customId = null,
   bodyData = {}
@@ -37,6 +65,7 @@ export const createAnalysis = async (
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        api_key: apiToken,
         custom_id: customId,
         username: username,
         ...bodyData,
@@ -51,7 +80,7 @@ export const createAnalysis = async (
 
 export const createReport = createAnalysis;
 
-export const getAllDocs = async (username) => {
+export const getAllDocs = async (apiToken, username) => {
   const urlToConnect = setupBaseUrl("http", "get_docs");
   let response;
   try {
@@ -61,6 +90,7 @@ export const getAllDocs = async (username) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        api_key: apiToken,
         username: username,
       }),
     });
@@ -89,7 +119,7 @@ export const getTableData = async (tableId) => {
   }
 };
 
-export const getAllAnalyses = async () => {
+export const getAllAnalyses = async (apiToken) => {
   const urlToConnect = setupBaseUrl("http", "get_analyses");
   let response;
   try {
@@ -98,6 +128,9 @@ export const getAllAnalyses = async () => {
       headers: {
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        api_key: apiToken,
+      }),
     });
     return response.json();
   } catch (e) {
