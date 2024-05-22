@@ -140,7 +140,7 @@ const QueryDatabase = () => {
               chartTypeEndpoint="/get_chart_types"
             />
           ) : (
-            <DefogAnalysisAgent analysisId={null} username={user} />
+            <DefogAnalysisAgentStandalone analysisId={null} username={user} />
           )
         ) : null}
       </Scaffolding>

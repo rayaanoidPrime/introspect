@@ -18,6 +18,7 @@ frontend/build
 frontend/out
 
 # misc
+.env
 .DS_Store
 *.pem
 
