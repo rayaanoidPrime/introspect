@@ -94,7 +94,7 @@
 }
 
 $sidebar-width: 170px;
-#doc-sidebars {
+.doc-sidebars {
   position: sticky;
   display: inline-flex;
   top: 0;
@@ -196,10 +196,10 @@ $sidebar-width: 170px;
   }
 }
 
-#content {
+.content {
   display: flex;
   flex-direction: row;
-  #editor-container {
+  .editor-container {
     flex-grow: 2;
   }
 }
