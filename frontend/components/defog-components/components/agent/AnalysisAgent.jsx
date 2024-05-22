@@ -53,7 +53,6 @@ export const AnalysisAgent = ({
   // allow analysis agent to also take in analysisData
   // this will skip fetching the analysis data from the backend
   _analysisData = null,
-  apiToken,
   username,
   updateHook = () => {},
   editor,
@@ -429,11 +428,7 @@ export const AnalysisAgent = ({
           const res = await getAnalysis(analysisId);
           if (!res.success) {
             // create a new analysis
-            fetchedAnalysisData = await createAnalysis(
-              apiToken,
-              username,
-              analysisId
-            );
+            fetchedAnalysisData = await createAnalysis(username, analysisId);
 
             if (
               !fetchedAnalysisData.success ||
@@ -540,7 +535,6 @@ export const AnalysisAgent = ({
         skip_text_gen: true,
         user_email: user,
         db_creds: null,
-        api_key: apiToken,
       };
 
       if (docContext.val.dbCreds.hasCreds) {
@@ -631,7 +625,6 @@ export const AnalysisAgent = ({
         reRunManager.send({
           tool_run_id: toolRunId,
           analysis_id: analysisId,
-          api_key: apiToken,
         });
       }
     },

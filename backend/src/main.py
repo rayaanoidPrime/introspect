@@ -45,6 +45,8 @@ request_types = ["clarify", "understand", "gen_approaches", "gen_steps", "gen_re
 
 report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 
+DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]
+
 
 @app.get("/ping")
 async def root():
@@ -92,9 +94,7 @@ async def edit_report(request: Request):
 @app.post("/get_reports")
 async def all_reports(request: Request):
     try:
-        params = await request.json()
-        api_key = params.get("api_key")
-        err, reports = get_all_reports(api_key)
+        err, reports = get_all_reports()
         if err is not None:
             return {"success": False, "error_message": err}
 
@@ -131,13 +131,12 @@ async def one_report(request: Request):
 async def create_report(request: Request):
     try:
         params = await request.json()
-        api_key = params.get("api_key")
         username = params.get("username")
 
         print("create_report", params)
 
-        err, report_data = await initialise_report(
-            "", api_key, username, params.get("custom_id"), params.get("other_data")
+        err, report_data = initialise_report(
+            "", username, params.get("custom_id"), params.get("other_data")
         )
 
         if err is not None:
@@ -184,14 +183,13 @@ async def websocket_endpoint(websocket: WebSocket):
                     continue
 
                 report_id = data.get("report_id")
-                api_key = data.get("api_key")
 
                 # start a report data manager
                 # this fetches currently existing report data for this report
                 report_data_manager = ReportDataManager(
                     data["user_question"],
                     report_id,
-                    api_key,
+                    DEFOG_API_KEY,
                     data.get("db_creds"),
                 )
 
@@ -220,7 +218,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 # run the agent as per the request_type
                 err, agent_output = await report_data_manager.run_agent(
                     report_id=report_id,
-                    api_key=api_key,
+                    api_key=DEFOG_API_KEY,
                     request_type=request_type,
                     user_question=data["user_question"],
                     client_description=client_description,

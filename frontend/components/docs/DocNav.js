@@ -8,7 +8,7 @@ import { useRouter } from "next/router";
 
 const sidebarWidth = 170;
 
-export default function DocNav({ apiToken, username, currentDocId }) {
+export default function DocNav({ username, currentDocId }) {
   const [sidebarsOpen, setSidebarsOpen] = useState({
     "analysis-list-sidebar": false,
     "db-creds-sidebar": false,
@@ -105,7 +105,6 @@ export default function DocNav({ apiToken, username, currentDocId }) {
         {/* other docs */}
         <div id="nav-other-docs" title="List of other docs of this user">
           <OtherDocs
-            apiToken={apiToken}
             username={username}
             currentDocId={currentDocId}
           ></OtherDocs>

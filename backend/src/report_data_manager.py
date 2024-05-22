@@ -69,9 +69,7 @@ class ReportDataManager:
                 self.report_id, "user_question", self.user_question, True
             )
             # get similar plans for this report_id and api_key
-            err, similar_plans = await get_similar_correct_plans(
-                self.report_id, self.api_key
-            )
+            err, similar_plans = await get_similar_correct_plans(self.report_id)
 
             if err is not None:
                 print(err)

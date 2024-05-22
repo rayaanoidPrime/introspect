@@ -10,11 +10,8 @@ import ErrorBoundary from "./common/ErrorBoundary";
 import setupBaseUrl from "../../../utils/setupBaseUrl";
 import { setupWebsocketManager } from "../../../utils/websocket-manager";
 
-export default function DefogAnalysisAgent({ analysisId, username, apiToken }) {
-  const [context, setContext] = useState({
-    apiToken,
-    username,
-  });
+export default function DefogAnalysisAgent({ analysisId, username }) {
+  const [context, setContext] = useState({});
   const [id, setId] = useState(analysisId || "analysis-" + v4());
   const [docContext, setDocContext] = useState(useContext(DocContext));
   const [reactiveContext, setReactiveContext] = useState(
@@ -35,7 +32,7 @@ export default function DefogAnalysisAgent({ analysisId, username, apiToken }) {
     async function setup() {
       // setup user items
       const items = docContext.userItems;
-      const analyses = await getAllAnalyses(apiToken);
+      const analyses = await getAllAnalyses();
 
       if (analyses && analyses.success) {
         items.analyses = analyses.analyses;
@@ -143,7 +140,6 @@ export default function DefogAnalysisAgent({ analysisId, username, apiToken }) {
                               <AnalysisAgent
                                 key={analysisId}
                                 analysisId={id}
-                                apiToken={apiToken}
                                 username={username}
                               />
                             </div>
