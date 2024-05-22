@@ -50,13 +50,16 @@ const agentRequestTypes = ["clarify", "gen_steps"];
 
 export const AnalysisAgent = ({
   analysisId,
+  // allow analysis agent to also take in analysisData
+  // this will skip fetching the analysis data from the backend
+  _analysisData = null,
   apiToken,
   username,
   updateHook = () => {},
   editor,
   block,
 }) => {
-  const [analysisData, setAnalysisData] = useState(null);
+  const [analysisData, setAnalysisData] = useState(_analysisData);
   const [analysisBusy, setAnalysisBusy] = useState(false);
   const [analysisSteps, setAnalysisSteps] = useState([]);
   const [relatedAnalyses, setRelatedAnalyses] = useState([]);
@@ -81,6 +84,8 @@ export const AnalysisAgent = ({
   const [stageDone, setStageDone] = useState(true);
   const searchRef = useRef(null);
   const docContext = useContext(DocContext);
+
+  console.log(analysisData);
 
   const { mainManager, reRunManager, toolSocketManager } =
     docContext.val.socketManagers;
@@ -125,12 +130,7 @@ export const AnalysisAgent = ({
 
   useEffect(() => {
     if (analysisData?.gen_steps?.success && analysisData?.gen_steps?.steps) {
-      setAnalysisSteps(
-        analysisData.gen_steps.steps.slice().map((d) => {
-          d.id = d["tool_name"] + "-" + v4().slice(0, 8);
-          return d;
-        })
-      );
+      setAnalysisSteps(analysisData.gen_steps.steps.slice());
     }
 
     if (!analysisData?.gen_steps?.success) {
@@ -423,33 +423,45 @@ export const AnalysisAgent = ({
   useEffect(() => {
     async function initialiseAnalysis() {
       try {
-        // get report data
-        let analysisData = null;
-        const res = await getAnalysis(analysisId);
-        if (!res.success) {
-          // create a new analysis
-          analysisData = await createAnalysis(apiToken, username, analysisId);
+        if (!analysisData) {
+          // get report data
+          let fetchedAnalysisData = null;
+          const res = await getAnalysis(analysisId);
+          if (!res.success) {
+            // create a new analysis
+            fetchedAnalysisData = await createAnalysis(
+              apiToken,
+              username,
+              analysisId
+            );
 
-          if (!analysisData.success || !analysisData.report_data) {
-            // stop loading, and delete this block
-            message.error(analysisData?.error_message);
-            if (editor) editor.removeBlocks([block]);
+            if (
+              !fetchedAnalysisData.success ||
+              !fetchedAnalysisData.report_data
+            ) {
+              // stop loading, and delete this block
+              message.error(fetchedAnalysisData?.error_message);
+              if (editor) editor.removeBlocks([block]);
+            } else {
+              fetchedAnalysisData = fetchedAnalysisData.report_data;
+            }
+
+            // also have to set docContext in this case
+            docContext.update({
+              ...docContext.val,
+              userItems: {
+                ...docContext.val.userItems,
+                analyses: [
+                  ...docContext.val.userItems.analyses,
+                  fetchedAnalysisData,
+                ],
+              },
+            });
           } else {
-            analysisData = analysisData.report_data;
+            fetchedAnalysisData = res.report_data;
           }
-
-          // also have to set docContext in this case
-          docContext.update({
-            ...docContext.val,
-            userItems: {
-              ...docContext.val.userItems,
-              analyses: [...docContext.val.userItems.analyses, analysisData],
-            },
-          });
-        } else {
-          analysisData = res.report_data;
+          setAnalysisData(fetchedAnalysisData);
         }
-        setAnalysisData(analysisData);
         setAnalysisTitle(analysisData?.user_question?.toUpperCase());
         setRelatedAnalyses({
           follow_up_analyses: analysisData?.follow_up_analyses || [],

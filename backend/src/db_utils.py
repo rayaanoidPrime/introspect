@@ -65,7 +65,7 @@ Feedback = Base.classes.defog_plans_feedback
 free_tier_quota = 100
 
 
-def initialise_report(user_question, api_key, username, custom_id=None, other_data={}):
+async def initialise_report(user_question, api_key, username, custom_id=None, other_data={}):
     err = None
     timestamp = str(datetime.datetime.now())
     new_report_data = None

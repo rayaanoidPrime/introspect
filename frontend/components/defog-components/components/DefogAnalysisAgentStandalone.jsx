@@ -11,7 +11,10 @@ import setupBaseUrl from "../../../utils/setupBaseUrl";
 import { setupWebsocketManager } from "../../../utils/websocket-manager";
 
 export default function DefogAnalysisAgent({ analysisId, username, apiToken }) {
-  const [context, setContext] = useState({});
+  const [context, setContext] = useState({
+    apiToken,
+    username,
+  });
   const [id, setId] = useState(analysisId || "analysis-" + v4());
   const [docContext, setDocContext] = useState(useContext(DocContext));
   const [reactiveContext, setReactiveContext] = useState(

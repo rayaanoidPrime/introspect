@@ -136,7 +136,7 @@ async def create_report(request: Request):
 
         print("create_report", params)
 
-        err, report_data = initialise_report(
+        err, report_data = await initialise_report(
             "", api_key, username, params.get("custom_id"), params.get("other_data")
         )
 

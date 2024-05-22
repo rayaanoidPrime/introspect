@@ -44,10 +44,7 @@ export default function StepsDag({
       // each resulting variable is a node
       // each input from global dictionaries is also node
       // if exists in nodes, don't do anything
-
-      // short random id
-      // const step_id = v4().slice(0, 8) + "-" + step["tool_name"];
-      const step_id = step.id;
+      const step_id = step.tool_run_id;
       // create node for this step
       g["nodes"][step_id] = {
         id: step_id,

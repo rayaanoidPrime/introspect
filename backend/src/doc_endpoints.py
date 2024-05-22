@@ -2,6 +2,7 @@ import datetime
 import inspect
 import json
 import os
+import trace
 from uuid import uuid4
 from colorama import Fore, Style
 import traceback
@@ -27,6 +28,7 @@ from db_utils import (
     get_report_data,
     get_tool_run,
     get_toolboxes,
+    initialise_report,
     store_feedback,
     store_tool_run,
     toggle_disable_tool,
@@ -1118,10 +1120,31 @@ async def submit_feedback(request: Request):
             # extract yaml from metadata
             recommended_plan = raw_response.split("```yaml")[-1].split("```")[0].strip()
             print(recommended_plan, flush=True)
+            new_analysis_id = str(uuid4())
+            new_analysis_data = None
             try:
                 recommended_plan = yaml.safe_load(recommended_plan)
-            except:
+                # give each tool a tool_run_id
+                # duplicate model_generated_inputs to inputs
+                for i, item in enumerate(recommended_plan):
+                    item["tool_run_id"] = str(uuid4())
+                    item["inputs"] = item["model_generated_inputs"].copy()
+
+                # create a new analysis with these as steps
+                err, new_analysis_data = await initialise_report(
+                    user_question,
+                    api_key,
+                    username,
+                    new_analysis_id,
+                    {"gen_steps": recommended_plan, "clarify": []},
+                )
+                if err:
+                    raise Exception(err)
+            except Exception as e:
+                print(e)
+                traceback.print_exc()
                 recommended_plan = None
+                new_analysis_data = None
 
             if err is not None:
                 raise Exception(err)
@@ -1131,6 +1154,8 @@ async def submit_feedback(request: Request):
                 "did_overwrite": did_overwrite,
                 "suggested_improvements": raw_response,
                 "recommended_plan": recommended_plan,
+                "new_analysis_id": new_analysis_id,
+                "new_analysis_data": new_analysis_data,
             }
         else:
             return {"success": True, "did_overwrite": did_overwrite}
