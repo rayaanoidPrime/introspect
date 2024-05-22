@@ -2,6 +2,7 @@ import pandas as pd
 import asyncio
 import requests
 from pandasql import sqldf
+from defog import Defog
 
 
 async def data_fetcher_and_aggregator(
@@ -25,19 +26,17 @@ async def data_fetcher_and_aggregator(
 
     print(f"Global dict currently has keys: {list(global_dict.keys())}")
 
-    # send the data to an API, and get a response from it
-    url = global_dict["llm_calls_url"]
-    payload = {
-        "request_type": "generate_sql",
-        "question": question,
-        "glossary": glossary,
-        "metadata": metadata,
-    }
+    # send the data to the Defog, and get a response from it
+    defog = Defog()
+    res = await asyncio.to_thread(defog.get_query, question)
 
     # make async request to the url, using the appropriate library
-    r = await asyncio.to_thread(requests.post, url, json=payload)
-    res = r.json()
-    query = res["query"]
+    try:
+        query = res["query_generated"]
+    except:
+        return {
+            "error": "There was an error in generating the query. Please try again."
+        }
 
     if not safe_sql(query):
         success = False
