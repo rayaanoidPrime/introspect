@@ -19,7 +19,6 @@ export default function DocPage() {
 
   const [user, setUser] = useState(context.user);
 
-  const apiToken = process.env.NEXT_PUBLIC_DEFOG_API_KEY;
   const docId = useRef(null);
 
   useEffect(() => {
@@ -84,7 +83,7 @@ export default function DocPage() {
       <Meta />
       <Scaffolding id={"view-notebooks"} userType={"admin"}>
         <ErrorBoundary>
-          <Doc docId={docId.current} username={user} apiToken={apiToken}></Doc>
+          <Doc docId={docId.current} username={user}></Doc>
         </ErrorBoundary>
       </Scaffolding>
     </>

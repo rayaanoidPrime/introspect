@@ -50,7 +50,6 @@ const agentRequestTypes = ["clarify", "gen_steps"];
 
 export const AnalysisAgent = ({
   analysisId,
-  apiToken,
   username,
   updateHook = () => {},
   editor,
@@ -428,7 +427,7 @@ export const AnalysisAgent = ({
         const res = await getAnalysis(analysisId);
         if (!res.success) {
           // create a new analysis
-          analysisData = await createAnalysis(apiToken, username, analysisId);
+          analysisData = await createAnalysis(username, analysisId);
 
           if (!analysisData.success || !analysisData.report_data) {
             // stop loading, and delete this block
@@ -528,7 +527,6 @@ export const AnalysisAgent = ({
         skip_text_gen: true,
         user_email: user,
         db_creds: null,
-        api_key: apiToken,
       };
 
       if (docContext.val.dbCreds.hasCreds) {
@@ -619,7 +617,6 @@ export const AnalysisAgent = ({
         reRunManager.send({
           tool_run_id: toolRunId,
           analysis_id: analysisId,
-          api_key: apiToken,
         });
       }
     },

@@ -138,14 +138,7 @@ const QueryDatabase = () => {
               chartTypeEndpoint="/get_chart_types"
             />
           ) : (
-            <DefogAnalysisAgent
-              analysisId={null}
-              username={user}
-              apiToken={
-                process.env.NEXT_PUBLIC_DEFOG_API_KEY ||
-                "REPLACE_WITH_DEFOG_API_KEY"
-              }
-            />
+            <DefogAnalysisAgent analysisId={null} username={user} />
           )
         ) : null}
       </Scaffolding>
