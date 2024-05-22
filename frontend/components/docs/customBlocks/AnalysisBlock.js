@@ -29,7 +29,6 @@ const AnalysisBlock = createReactBlockSpec(
           <GlobalStyle />
           <AnalysisAgent
             analysisId={block.props.analysisId}
-            apiToken={editor.apiToken}
             username={editor.username}
             editor={editor}
             block={block}

@@ -1,6 +1,32 @@
 import { contrast, random } from "chroma-js";
 import setupBaseUrl from "../utils/setupBaseUrl";
-import { Annotation, EditorState, Transaction } from "@codemirror/state";
+
+export const getApiToken = async (
+  username,
+  hashed_pw,
+  router,
+  errorRoute = "/log-in"
+) => {
+  const url = "https://api.defog.ai/get_token";
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-hashed-password": hashed_pw,
+      },
+      body: JSON.stringify({
+        username: username,
+      }),
+    });
+  } catch (e) {
+    router.push(errorRoute);
+    return { success: false, error_message: e };
+  }
+  const json = await response.json();
+  return json;
+};
 
 export const getAnalysis = async (reportId) => {
   const urlToConnect = setupBaseUrl("http", "get_report");
@@ -25,6 +51,7 @@ export const getAnalysis = async (reportId) => {
 export const getReport = getAnalysis;
 
 export const createAnalysis = async (
+  apiToken,
   username,
   customId = null,
   bodyData = {}
@@ -38,6 +65,7 @@ export const createAnalysis = async (
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        api_key: apiToken,
         custom_id: customId,
         username: username,
         ...bodyData,
@@ -52,7 +80,7 @@ export const createAnalysis = async (
 
 export const createReport = createAnalysis;
 
-export const getAllDocs = async (username) => {
+export const getAllDocs = async (apiToken, username) => {
   const urlToConnect = setupBaseUrl("http", "get_docs");
   let response;
   try {
@@ -62,6 +90,7 @@ export const getAllDocs = async (username) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        api_key: apiToken,
         username: username,
       }),
     });
@@ -90,7 +119,7 @@ export const getTableData = async (tableId) => {
   }
 };
 
-export const getAllAnalyses = async () => {
+export const getAllAnalyses = async (apiToken) => {
   const urlToConnect = setupBaseUrl("http", "get_analyses");
   let response;
   try {
@@ -99,6 +128,9 @@ export const getAllAnalyses = async () => {
       headers: {
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        api_key: apiToken,
+      }),
     });
     return response.json();
   } catch (e) {
@@ -228,25 +260,9 @@ export const toolDisplayNames = {
   wilcoxon_test: "Wilcoxon Test",
   boxplot: "Boxplot",
   heatmap: "Heatmap",
-  fold_change: "Fold Change",
 };
 
-export const toolShortNames = {
-  data_fetcher_and_aggregator: "Fetch ",
-  global_dict_data_fetcher_and_aggregator: "Query ",
-  dataset_metadata_describer: "Describer",
-  line_plot: "Line",
-  kaplan_meier_curve: "KM Curve",
-  hazard_ratio: "Hazard Ratio",
-  t_test: "T Test",
-  anova_test: "ANOVA Test",
-  wilcoxon_test: "Wilcoxon Test",
-  boxplot: "Boxplot",
-  heatmap: "Heatmap",
-  fold_change: "Fold Change",
-};
-
-export const easyToolInputTypes = {
+export const easyColumnTypes = {
   DBColumn: "Column name",
   DBColumnList: "List of column names",
   "pandas.core.frame.DataFrame": "Dataframe",
@@ -258,113 +274,3 @@ export const easyToolInputTypes = {
   list: "List",
   DropdownSingleSelect: "String",
 };
-
-export const toolboxDisplayNames = {
-  cancer_survival: "Cancer Survival",
-  data_fetching: "Data Fetching",
-  plots: "Plots",
-  stats: "Stats",
-};
-
-export const kebabCase = (str) => {
-  return str
-    .replace(/([a-z])([A-Z])/g, "$1-$2")
-    .replace(/[\s_]+/g, "-")
-    .toLowerCase();
-};
-
-export const snakeCase = (str) => {
-  return str
-    .replace(/([a-z])([A-Z])/g, "$1_$2")
-    .replace(/[\s-]+/g, "_")
-    .toLowerCase();
-};
-
-// https://discuss.codemirror.net/t/how-to-make-certain-ranges-readonly-in-codemirror6/3400/5
-export function createReadOnlyTransactionFilter(readonlyRangeSet) {
-  return () => {
-    return EditorState.transactionFilter.of((tr) => {
-      if (
-        readonlyRangeSet &&
-        tr.docChanged &&
-        !tr.annotation(Transaction.remote)
-      ) {
-        let block = false;
-        tr.changes.iterChangedRanges((chFrom, chTo) => {
-          readonlyRangeSet.between(chFrom, chTo, (roFrom, roTo) => {
-            if (chTo > roFrom && chFrom < roTo) block = true;
-          });
-        });
-        if (block) return [];
-      }
-      return tr;
-    });
-  };
-}
-
-export const forcedAnnotation = Annotation.define();
-
-// from: https://github.com/andrebnassis/codemirror-readonly-ranges/blob/master/src/lib/index.ts
-export const preventModifyTargetRanges = (getReadOnlyRanges) =>
-  // code mirror extension that
-  // takes a function that returns read only ranges
-  // and prevents modification on them
-  EditorState.transactionFilter.of((tr) => {
-    let readonlyRangeSet = getReadOnlyRanges(tr.startState);
-
-    if (
-      readonlyRangeSet &&
-      tr.docChanged &&
-      !tr.annotation(forcedAnnotation) &&
-      !tr.annotation(Transaction.remote)
-    ) {
-      let block = false;
-      tr.changes.iterChangedRanges((chFrom, chTo) => {
-        readonlyRangeSet.between(chFrom, chTo, (roFrom, roTo) => {
-          if (
-            (chTo > roFrom && chFrom < roTo) ||
-            // also prevent adding at the start or end of a readonly range
-            chFrom === roTo ||
-            chTo === roFrom
-          )
-            block = true;
-        });
-      });
-      if (block) return [];
-    }
-    return tr;
-  });
-
-// breaks new lines, and split to max of maxLength characters
-// first split on newlines
-// then split on spaces
-export function breakLinesPretty(str, maxLength = 60, indent = 1) {
-  return str
-    .split("\n")
-    .map((line) => {
-      return line
-        .split(" ")
-        .reduce((acc, word) => {
-          if (
-            acc.length &&
-            acc[acc.length - 1].length + word.length < maxLength
-          ) {
-            acc[acc.length - 1] += " " + word;
-          } else {
-            acc.push(word);
-          }
-          return acc;
-        }, [])
-        .join("\n" + "  ".repeat(indent));
-    })
-    .join("\n" + "  ".repeat(indent));
-}
-
-export function createPythonFunctionInputString(inputDict, indent = 2) {
-  return (
-    "  ".repeat(indent) +
-    inputDict.name +
-    (inputDict.type ? ": " + inputDict.type : "") +
-    (inputDict.description ? " # " + inputDict.description : "")
-  );
-}

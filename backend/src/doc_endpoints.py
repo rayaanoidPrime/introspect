@@ -135,7 +135,7 @@ async def add_to_recently_viewed_docs_endpoint(request: Request):
     try:
         data = await request.json()
         username = data.get("username")
-        api_key = data.get("api_key")
+        api_key = DEFOG_API_KEY
         doc_id = data.get("doc_id")
 
         if username is None or type(username) != str:
@@ -185,7 +185,7 @@ async def get_document(request: Request):
     If it doesn't exist, create one and return empty data.
     """
     data = await request.json()
-    api_key = data.get("api_key")
+    api_key = DEFOG_API_KEY
     doc_id = data.get("doc_id")
     username = data.get("username")
     col_name = data.get("col_name") or "doc_blocks"
@@ -196,7 +196,7 @@ async def get_document(request: Request):
     if doc_id is None or type(doc_id) != str:
         return {"success": False, "error_message": "Invalid document id."}
 
-    err, doc_data = await get_doc_data(doc_id, api_key, username, col_name)
+    err, doc_data = await get_doc_data(doc_id, username, col_name)
 
     if err:
         return {"success": False, "error_message": err}
@@ -261,7 +261,7 @@ async def get_analyses(request: Request):
     """
     try:
         data = await request.json()
-        api_key = data.get("api_key")
+        api_key = DEFOG_API_KEY
 
         if api_key is None or type(api_key) != str:
             return {"success": False, "error_message": "Invalid api key."}
@@ -1023,7 +1023,7 @@ async def submit_feedback(request: Request):
         user_question = data.get("user_question")
         analysis_id = data.get("analysis_id")
         username = data.get("username")
-        api_key = data.get("api_key")
+        api_key = DEFOG_API_KEY
 
         # get metadata
         m = await get_metadata()
@@ -1065,7 +1065,6 @@ async def submit_feedback(request: Request):
 
         # store in the defog_plans_feedback table
         err, did_overwrite = await store_feedback(
-            api_key,
             username,
             user_question,
             analysis_id,

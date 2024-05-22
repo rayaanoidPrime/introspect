@@ -40,7 +40,7 @@ const recentlyViewedEndpoint = setupBaseUrl(
   "add_to_recently_viewed_docs"
 );
 
-export function Editor({ docId = null, username = null, apiToken = null }) {
+export function Editor({ docId = null, username = null }) {
   const [loading, setLoading] = useState(true);
   const [docContext, setDocContext] = useState(useContext(DocContext));
 
@@ -63,7 +63,7 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
     async function setup() {
       // setup user items
       const items = docContext.userItems;
-      const analyses = await getAllAnalyses(apiToken);
+      const analyses = await getAllAnalyses();
 
       if (analyses && analyses.success) {
         items.analyses = analyses.analyses;
@@ -110,7 +110,6 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
       await fetch(recentlyViewedEndpoint, {
         method: "POST",
         body: JSON.stringify({
-          api_key: apiToken,
           doc_id: docId,
           username: username,
         }),
@@ -140,7 +139,6 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
 
   const yjsProvider = new YPartyKitProvider(partyEndpoint, docId, yjsDoc, {
     params: {
-      api_token: apiToken,
       doc_id: docId,
       username: username,
     },
@@ -159,7 +157,6 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
   });
 
   window.editor = editor;
-  editor.apiToken = apiToken;
   editor.username = username;
   window.reactiveContext = reactiveContext;
 
@@ -198,13 +195,9 @@ export function Editor({ docId = null, username = null, apiToken = null }) {
         value={{ val: reactiveContext, update: setReactiveContext }}
       >
         <DocContext.Provider value={{ val: docContext, update: setDocContext }}>
-          <DocNav
-            apiToken={apiToken}
-            username={username}
-            currentDocId={docId}
-          ></DocNav>
-          <div className="content">
-            <div className="editor-container">
+          <DocNav username={username} currentDocId={docId}></DocNav>
+          <div id="content">
+            <div id="editor-container">
               <BlockNoteView
                 editor={editor}
                 theme={"light"}
