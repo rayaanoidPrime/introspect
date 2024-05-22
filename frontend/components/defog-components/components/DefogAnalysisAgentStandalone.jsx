@@ -1,17 +1,14 @@
-import { AnalysisAgent } from "../defog-components/components/agent/AnalysisAgent";
-// import css from "./styles/main.scss";
+import { AnalysisAgent } from "./agent/AnalysisAgent";
 import React, { useContext, useEffect, useState, Fragment } from "react";
-import { Context } from "./components/common/Context";
+import Context from "./common/Context";
 import { v4 } from "uuid";
-import { DocContext, RelatedAnalysesContext } from "../docs/DocContext";
-import { ReactiveVariablesContext } from "./components/docs/ReactiveVariablesContext";
-import { getAllAnalyses, getUserMetadata } from "./utils/utils";
-import DocNav from "./components/docs/DocNav";
-import { DocSidebars } from "./components/docs/DocSidebars";
+import { DocContext, RelatedAnalysesContext } from "../../docs/DocContext";
+import { ReactiveVariablesContext } from "../../docs/ReactiveVariablesContext";
+import { getAllAnalyses, getUserMetadata } from "../../../utils/utils";
 import styled, { createGlobalStyle } from "styled-components";
-import ErrorBoundary from "../defog-components/components/common/ErrorBoundary";
-import setupBaseUrl from "./utils/setupBaseUrl";
-import { setupWebsocketManager } from "./utils/websocket-manager";
+import ErrorBoundary from "./common/ErrorBoundary";
+import setupBaseUrl from "../../../utils/setupBaseUrl";
+import { setupWebsocketManager } from "../../../utils/websocket-manager";
 
 export default function DefogAnalysisAgent({ analysisId, username, apiToken }) {
   const [context, setContext] = useState({});
@@ -127,14 +124,14 @@ export default function DefogAnalysisAgent({ analysisId, username, apiToken }) {
             <Context.Provider value={[context, setContext]}>
               <GlobalStyle />
               <FontLoadCss>
-                <div className="defog-analysis-root defog-analysis-agent-rc">
+                <div className="defog-analysis-root defog-analysis-agent-rc md:w-11/12  ">
                   {
                     // if there's an analysis id, it's fine
                     // but if there's no analysis id, then the api token and username
 
                     <>
                       <div className="content">
-                        <div className="editor-container">
+                        <div className="editor-container py-2 px-4 mt-4 bg-white rounded-md mb-8">
                           <div className="defog-analysis-container">
                             <div
                               data-content-type="analysis"
@@ -149,9 +146,7 @@ export default function DefogAnalysisAgent({ analysisId, username, apiToken }) {
                             </div>
                           </div>
                         </div>
-                        <DocSidebars setId={setId} />
                       </div>
-                      <DocNav />
                     </>
                   }
                 </div>

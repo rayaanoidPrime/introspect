@@ -6,9 +6,11 @@ import { Switch } from "antd/lib";
 import { DocContext } from "../components/docs/DocContext";
 import setupBaseUrl from "../utils/setupBaseUrl";
 
-const DefogAnalysisAgent = dynamic(
+const DefogAnalysisAgentStandalone = dynamic(
   () =>
-    import("../components/defog-analysis-agent-rc/index").then((module) => {
+    import(
+      "../components/defog-components/components/DefogAnalysisAgentStandalone"
+    ).then((module) => {
       return module.default;
     }),
   {
@@ -138,7 +140,7 @@ const QueryDatabase = () => {
               chartTypeEndpoint="/get_chart_types"
             />
           ) : (
-            <DefogAnalysisAgent
+            <DefogAnalysisAgentStandalone
               analysisId={null}
               username={user}
               apiToken={

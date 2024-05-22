@@ -4,7 +4,7 @@ import { DBCredsSidebar } from "./DBCredsSidebar";
 
 export function DocSidebars() {
   return (
-    <div id="doc-sidebars">
+    <div className="doc-sidebars">
       {/* <DBCredsSidebar /> */}
       <AnalysisList />
     </div>
