@@ -6,7 +6,7 @@
 // Any edits after that will be stored in blocknote's editor state.
 // of course, all of the content will be emptied out if the text of this "block/section/sections" is regenerated.
 
-import { Popover, message } from "antd";
+import { message } from "antd";
 import React, {
   useEffect,
   useRef,
@@ -21,11 +21,9 @@ import AgentLoader from "../common/AgentLoader";
 import Lottie from "lottie-react";
 import LoadingLottie from "../svg/loader.json";
 import { DocContext, RelatedAnalysesContext } from "../../../docs/DocContext";
-import { PlusCircleOutlined, SettingOutlined } from "@ant-design/icons";
 import { ToolResults } from "./ToolResults";
 import StepsDag from "../common/StepsDag";
 import ErrorBoundary from "../common/ErrorBoundary";
-import { v4 } from "uuid";
 import { Context } from "../../../../components/common/Context";
 import {
   createAnalysis,
@@ -34,7 +32,10 @@ import {
   toolShortNames,
 } from "../../../../utils/utils";
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
-import { AnalysisFeedback } from "./feedback/AnalysisFeedback";
+import Input from "antd/es/input";
+import TextArea from "antd/es/input/TextArea";
+
+const { Search } = Input;
 
 // the name of the prop where the data is stored for each stage
 const propNames = {
@@ -274,19 +275,6 @@ export const AnalysisAgent = ({
     if (response.done) {
       setStageDone(true);
       setAnalysisBusy(false);
-
-      //   setAnalysisData((prev) => {
-      //     // hacky. I don't want to change state, just want to do some cleanup here
-      //     // if this is clarify, and the length is 0, autosubmit for next stage
-      //     if (
-      //       rType === "clarify" &&
-      //       prev?.clarify?.clarification_questions?.length === 0
-      //     ) {
-      //       handleSubmit(null, { clarification_questions: [] }, "clarify");
-      //     }
-
-      //     return prev;
-      //   });
     }
   }
 
@@ -626,39 +614,6 @@ export const AnalysisAgent = ({
   return (
     <ErrorBoundary>
       <div className="analysis-agent-container">
-        {/* {analysisTitle.length ? ( */}
-        <>
-          {currentStage === "gen_steps" ? (
-            <div className="flex flex-row justify-between	">
-              <div
-                className="analysis-title"
-                onClick={() => {
-                  setRecipeShowing(!recipeShowing);
-                }}
-              >
-                <div className="remake-analysis">
-                  <Popover content={<span>Remake analysis</span>}>
-                    <SettingOutlined />
-                  </Popover>
-                </div>
-                {analysisTitle}
-              </div>
-              {!disableFeedback && (
-                <AnalysisFeedback
-                  analysisSteps={analysisSteps}
-                  analysisId={analysisId}
-                  user_question={analysisData?.user_question}
-                  username={username}
-                />
-              )}
-            </div>
-          ) : (
-            <></>
-          )}
-        </>
-        {/* ) : (
-        <></>
-      )} */}
         <ThemeContext.Provider
           value={{ theme: { type: "light", config: lightThemeColor } }}
           key="1"
@@ -672,108 +627,85 @@ export const AnalysisAgent = ({
             </div>
           ) : (
             <div className="analysis-ctr">
-              {currentStage === "gen_steps" ? (
-                <>
-                  <div
-                    className={
-                      "analysis-recipe has-data " +
-                      (recipeShowing ? "show" : "")
-                    }
-                  >
-                    <div
-                      className="analysis-recipe-background"
-                      onClick={() => {
-                        setRecipeShowing(false);
+              {currentStage === "gen_steps" && (
+                <div className="analysis-content">
+                  <div className="analysis-results">
+                    <ErrorBoundary>
+                      {analysisSteps.length ? (
+                        <ToolResults
+                          analysisId={analysisId}
+                          activeNode={activeNode}
+                          analysisData={analysisData}
+                          toolSocketManager={toolSocketManager}
+                          dag={dag}
+                          setActiveNode={setActiveNode}
+                          handleReRun={handleReRun}
+                          reRunningSteps={reRunningSteps}
+                          setPendingToolRunUpdates={setPendingToolRunUpdates}
+                          toolRunDataCache={toolRunDataCache}
+                          setToolRunDataCache={setToolRunDataCache}
+                          setAnalysisData={setAnalysisData}
+                        ></ToolResults>
+                      ) : (
+                        analysisBusy && (
+                          <AgentLoader
+                            message={"Running analysis..."}
+                            lottie={
+                              <Lottie
+                                animationData={LoadingLottie}
+                                loop={true}
+                              />
+                            }
+                          />
+                        )
+                      )}
+                    </ErrorBoundary>
+                  </div>
+                  <div className="analysis-steps">
+                    <StepsDag
+                      steps={analysisSteps}
+                      nodeSize={[40, 10]}
+                      nodeGap={[30, 50]}
+                      setActiveNode={setActiveNode}
+                      reRunningSteps={reRunningSteps}
+                      activeNode={activeNode}
+                      stageDone={
+                        currentStage === "gen_steps" ? stageDone : true
+                      }
+                      dag={dag}
+                      setDag={setDag}
+                      dagLinks={dagLinks}
+                      setDagLinks={setDagLinks}
+                      // alwaysShowPopover={activeSection === "step"}
+                      extraNodeClasses={(node) => {
+                        return node.data.isTool
+                          ? `rounded-md px-1 text-center`
+                          : "";
                       }}
-                    ></div>
-                    <AnalysisGen
-                      analysisData={analysisData}
-                      stageDone={stageDone}
-                      globalLoading={analysisBusy}
-                      currentStage={currentStage}
-                      handleSubmit={handleSubmit}
-                      searchRef={searchRef}
+                      toolIcon={(node) => (
+                        <p className="text-sm truncate m-0">
+                          {toolShortNames[node?.data?.step?.tool_name] ||
+                            "Unknown tool"}
+                        </p>
+                      )}
                     />
                   </div>
-                  <div className="analysis-content">
-                    <div className="analysis-results">
-                      <ErrorBoundary>
-                        {analysisSteps.length ? (
-                          <ToolResults
-                            analysisId={analysisId}
-                            activeNode={activeNode}
-                            analysisData={analysisData}
-                            toolSocketManager={toolSocketManager}
-                            dag={dag}
-                            setActiveNode={setActiveNode}
-                            handleReRun={handleReRun}
-                            reRunningSteps={reRunningSteps}
-                            setPendingToolRunUpdates={setPendingToolRunUpdates}
-                            toolRunDataCache={toolRunDataCache}
-                            setToolRunDataCache={setToolRunDataCache}
-                            setAnalysisData={setAnalysisData}
-                          ></ToolResults>
-                        ) : (
-                          analysisBusy && (
-                            <AgentLoader
-                              message={"Running analysis..."}
-                              lottie={
-                                <Lottie
-                                  animationData={LoadingLottie}
-                                  loop={true}
-                                />
-                              }
-                            />
-                          )
-                        )}
-                      </ErrorBoundary>
-                    </div>
-                    <div className="analysis-steps">
-                      <StepsDag
-                        steps={analysisSteps}
-                        nodeSize={[40, 10]}
-                        nodeGap={[30, 50]}
-                        setActiveNode={setActiveNode}
-                        reRunningSteps={reRunningSteps}
-                        activeNode={activeNode}
-                        stageDone={
-                          currentStage === "gen_steps" ? stageDone : true
-                        }
-                        dag={dag}
-                        setDag={setDag}
-                        dagLinks={dagLinks}
-                        setDagLinks={setDagLinks}
-                        // alwaysShowPopover={activeSection === "step"}
-                        extraNodeClasses={(node) => {
-                          return node.data.isTool
-                            ? `rounded-md px-1 text-center`
-                            : "";
-                        }}
-                        toolIcon={(node) => (
-                          <p className="text-sm truncate m-0">
-                            {toolShortNames[node?.data?.step?.tool_name] ||
-                              "Unknown tool"}
-                          </p>
-                        )}
-                      />
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="analysis-recipe show">
-                    <AnalysisGen
-                      analysisData={analysisData}
-                      user_question={analysisData?.user_question}
-                      stageDone={stageDone}
-                      globalLoading={analysisBusy}
-                      currentStage={currentStage}
-                      handleSubmit={handleSubmit}
-                      searchRef={searchRef}
-                    />
-                  </div>
-                </>
+                </div>
               )}
+              <div className="mt-4 mb-8 sticky bottom-20 mx-auto w-full">
+                <Input
+                  type="text"
+                  ref={searchRef}
+                  onPressEnter={(ev) => {
+                    handleSubmit();
+                  }}
+                  defaultValue={analysisTitle}
+                  placeholder="Ask a question"
+                  disabled={analysisBusy}
+                  enterButton={null}
+                  rootClassName="p-2 border-2 border-blue-500 rounded-md drop-shadow-md mx-auto"
+                />
+              </div>
             </div>
           )}
         </ThemeContext.Provider>
