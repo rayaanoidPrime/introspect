@@ -14,6 +14,7 @@ from agents.planner_executor.tool_helpers.core_functions import analyse_data
 from agents.planner_executor.tool_helpers.all_tools import tool_name_dict
 import pandas as pd
 from io import StringIO
+from agents.main_agent import execute
 from utils import get_db_type, log_msg
 
 DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]
@@ -262,13 +263,7 @@ async def get_analyses(request: Request):
     Get all analysis of a user using the api key.
     """
     try:
-        data = await request.json()
-        api_key = DEFOG_API_KEY
-
-        if api_key is None or type(api_key) != str:
-            return {"success": False, "error_message": "Invalid api key."}
-
-        err, analyses = await get_all_analyses(api_key)
+        err, analyses = await get_all_analyses()
         if err:
             return {"success": False, "error_message": err}
 
@@ -489,7 +484,6 @@ async def rerun_step(websocket: WebSocket):
             async for err, reran_id, new_data in rerun_step_and_dependents(
                 analysis_id, tool_run_id, steps, global_dict=global_dict
             ):
-                # print("New data: ", new_data)
                 if new_data and type(new_data) == dict:
                     if reran_id:
                         print("Reran step: ", reran_id)
@@ -1117,28 +1111,66 @@ async def submit_feedback(request: Request):
             raw_response = r.json()["diagnosis"]
 
             # extract yaml from metadata
-            recommended_plan = raw_response.split("```yaml")[-1].split("```")[0].strip()
-            print(recommended_plan, flush=True)
+            initial_recommended_plan = (
+                raw_response.split("```yaml")[-1].split("```")[0].strip()
+            )
+            print(initial_recommended_plan, flush=True)
             new_analysis_id = str(uuid4())
             new_analysis_data = None
             try:
-                recommended_plan = yaml.safe_load(recommended_plan)
+                initial_recommended_plan = yaml.safe_load(initial_recommended_plan)
                 # give each tool a tool_run_id
                 # duplicate model_generated_inputs to inputs
-                for i, item in enumerate(recommended_plan):
+                for i, item in enumerate(initial_recommended_plan):
                     item["tool_run_id"] = str(uuid4())
                     item["inputs"] = item["model_generated_inputs"].copy()
 
                 # create a new analysis with these as steps
                 err, new_analysis_data = await initialise_report(
                     user_question,
-                    api_key,
                     username,
                     new_analysis_id,
-                    {"gen_steps": recommended_plan, "clarify": []},
+                    {"gen_steps": [], "clarify": []},
                 )
                 if err:
                     raise Exception(err)
+
+                # run the steps
+                metadata_dets = await get_metadata()
+                glossary = metadata_dets["glossary"]
+                client_description = metadata_dets["client_description"]
+                table_metadata_csv = metadata_dets["table_metadata_csv"]
+
+                setup, post_process = await execute(
+                    report_id=new_analysis_id,
+                    user_question=user_question,
+                    client_description=client_description,
+                    table_metadata_csv=table_metadata_csv,
+                    assignment_understanding="",
+                    glossary=glossary,
+                    toolboxes=[],
+                    parent_analyses=[],
+                    similar_plans=[],
+                    predefined_steps=initial_recommended_plan,
+                )
+
+                if not setup.get("success"):
+                    raise Exception(setup.get("error_message", ""))
+
+                final_executed_plan = []
+                # run the generator
+                if "generator" in setup:
+                    g = setup["generator"]
+                    async for step in g():
+                        # step comes in as a list of 1 step
+                        final_executed_plan += step
+                        err = await update_report_data(
+                            new_analysis_id, "gen_steps", step
+                        )
+                        if err:
+                            raise Exception(err)
+
+                recommended_plan = final_executed_plan
             except Exception as e:
                 print(e)
                 traceback.print_exc()

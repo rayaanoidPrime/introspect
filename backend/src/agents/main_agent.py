@@ -1,20 +1,12 @@
-import sys
 from agents.clarifier.clarifier_agent import Clarifier
 from agents.planner_executor.planner_executor_agent import Executor
 import traceback
-import yaml
-import os
-
-# from db_utils import add_report_markdown
-
-dfg_api_key = os.environ["DEFOG_API_KEY"]
 
 
 # each of the agents can return a "postprocess" function
 # that will be run before the next stage and will process the incoming user input if any for the next stage
 async def get_clarification(
     user_question="",
-    api_key="",
     client_description="",
     table_metadata_csv="",
     glossary="",
@@ -29,7 +21,6 @@ async def get_clarification(
     try:
         clarifier = Clarifier(
             user_question,
-            api_key,
             client_description,
             glossary,
             table_metadata_csv,
@@ -57,16 +48,15 @@ async def get_clarification(
 
 async def execute(
     report_id="",
-    api_key="",
     user_question="",
     client_description="",
     table_metadata_csv="",
     assignment_understanding="",
     glossary="",
-    db_creds=None,
     toolboxes=[],
     parent_analyses=[],
     similar_plans=[],
+    predefined_steps=None,
     **kwargs,
 ):
     """
@@ -79,17 +69,15 @@ async def execute(
 
     executor = Executor(
         report_id,
-        api_key,
         user_question,
         client_description,
         glossary,
         table_metadata_csv,
         assignment_understanding,
-        None,
-        dfg_api_key=dfg_api_key,
         toolboxes=toolboxes,
         parent_analyses=parent_analyses,
         similar_plans=similar_plans,
+        predefined_steps=predefined_steps,
     )
     try:
         execute, post_process = await executor.execute()

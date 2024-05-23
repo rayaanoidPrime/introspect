@@ -3,7 +3,6 @@ import Meta from "../components/common/Meta";
 import Scaffolding from "../components/common/Scaffolding";
 import dynamic from "next/dynamic";
 import { Switch } from "antd/lib";
-import { DocContext } from "../components/docs/DocContext";
 import setupBaseUrl from "../utils/setupBaseUrl";
 
 const DefogAnalysisAgentStandalone = dynamic(
@@ -36,7 +35,6 @@ const QueryDatabase = () => {
   const [devMode, setDevMode] = useState(false);
   const [ignoreCache, setIgnoreCache] = useState(false);
   const [allowCaching, setAllowCaching] = useState("YES");
-  const [docContext, setDocContext] = useState(useContext(DocContext));
   const [queryMode, setQueryMode] = useState("sql");
 
   useEffect(() => {

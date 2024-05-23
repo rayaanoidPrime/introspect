@@ -3,8 +3,8 @@ import StepsDag from "../../common/StepsDag";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { toolDisplayNames, toolShortNames } from "../../../../../utils/utils";
 import { tempSuggestion } from "./temp";
-import { AnalysisAgent } from "../AnalysisAgent";
 import Context from "../../common/Context";
+import { AnalysisAgent } from "../AnalysisAgent";
 
 export default function BadModal({
   open,
@@ -46,6 +46,7 @@ export default function BadModal({
     });
 
     setLoading(false);
+    console.log(Date.now().toLocaleString(), "feedback response");
     console.log(feedbackResponse);
     // setRawFeedback(tempSuggestion);
 
@@ -298,21 +299,31 @@ export default function BadModal({
         Submit
       </Button>
 
-      <div className="flex flex-row">
-        <div className={`raw-suggestions py-5 px-5 w-12/12`}>
-          {rawFeedback?.new_analysis_id && (
-            <>
-              <p className="text-lg  text-gray-900 font-bold">
-                Based on your feedback, here is the new plan from the model
-              </p>
-              <AnalysisAgent
-                analysisId={rawFeedback.new_analysis_id}
-                apiToken={context.apiToken}
-                username={context.username}
-              />
-            </>
-          )}
-        </div>
+      <div className={`raw-suggestions py-5 px-5 w-12/12`}>
+        {rawFeedback?.new_analysis_id && (
+          <>
+            <p className="text-lg  text-gray-900 font-bold">
+              Based on your feedback, here is the new plan from the model
+            </p>
+            <div className="content">
+              <div className="editor-container py-2 px-4 mt-4 bg-white rounded-md mb-8">
+                <div className="defog-analysis-container">
+                  <div
+                    data-content-type="analysis"
+                    data-analysis-id={analysisId}
+                  >
+                    <AnalysisAgent
+                      key={rawFeedback.new_analysis_id}
+                      analysisId={rawFeedback.new_analysis_id}
+                      username={context.username}
+                      disableFeedback={true}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </Modal>
   );

@@ -21,7 +21,6 @@ import AgentLoader from "../common/AgentLoader";
 import Lottie from "lottie-react";
 import LoadingLottie from "../svg/loader.json";
 import { DocContext, RelatedAnalysesContext } from "../../../docs/DocContext";
-// import { customMarkdownToBlocks } from "../../../docs/customBlocks/customMarkdownParse"
 import { PlusCircleOutlined, SettingOutlined } from "@ant-design/icons";
 import { ToolResults } from "./ToolResults";
 import StepsDag from "../common/StepsDag";
@@ -32,7 +31,6 @@ import {
   createAnalysis,
   getAnalysis,
   getToolRunData,
-  toolDisplayNames,
   toolShortNames,
 } from "../../../../utils/utils";
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
@@ -50,15 +48,13 @@ const agentRequestTypes = ["clarify", "gen_steps"];
 
 export const AnalysisAgent = ({
   analysisId,
-  // allow analysis agent to also take in analysisData
-  // this will skip fetching the analysis data from the backend
-  _analysisData = null,
   username,
   updateHook = () => {},
   editor,
   block,
+  disableFeedback = false,
 }) => {
-  const [analysisData, setAnalysisData] = useState(_analysisData);
+  const [analysisData, setAnalysisData] = useState(null);
   const [analysisBusy, setAnalysisBusy] = useState(false);
   const [analysisSteps, setAnalysisSteps] = useState([]);
   const [relatedAnalyses, setRelatedAnalyses] = useState([]);
@@ -68,9 +64,7 @@ export const AnalysisAgent = ({
   const relatedAnalysesContext = useContext(RelatedAnalysesContext);
   const reactiveContext = useContext(ReactiveVariablesContext);
 
-  const [analysisTitle, setAnalysisTitle] = useState(
-    analysisData?.user_question?.toUpperCase()
-  );
+  const [analysisTitle, setAnalysisTitle] = useState();
   const [context, setContext] = useContext(Context);
   const { user } = context;
   const [activeNode, setActiveNodePrivate] = useState(null);
@@ -422,41 +416,39 @@ export const AnalysisAgent = ({
   useEffect(() => {
     async function initialiseAnalysis() {
       try {
-        if (!analysisData) {
-          // get report data
-          let fetchedAnalysisData = null;
-          const res = await getAnalysis(analysisId);
-          if (!res.success) {
-            // create a new analysis
-            fetchedAnalysisData = await createAnalysis(username, analysisId);
+        // get report data
+        let fetchedAnalysisData = null;
+        const res = await getAnalysis(analysisId);
+        if (!res.success) {
+          // create a new analysis
+          fetchedAnalysisData = await createAnalysis(username, analysisId);
 
-            if (
-              !fetchedAnalysisData.success ||
-              !fetchedAnalysisData.report_data
-            ) {
-              // stop loading, and delete this block
-              message.error(fetchedAnalysisData?.error_message);
-              if (editor) editor.removeBlocks([block]);
-            } else {
-              fetchedAnalysisData = fetchedAnalysisData.report_data;
-            }
-
-            // also have to set docContext in this case
-            docContext.update({
-              ...docContext.val,
-              userItems: {
-                ...docContext.val.userItems,
-                analyses: [
-                  ...docContext.val.userItems.analyses,
-                  fetchedAnalysisData,
-                ],
-              },
-            });
+          if (
+            !fetchedAnalysisData.success ||
+            !fetchedAnalysisData.report_data
+          ) {
+            // stop loading, and delete this block
+            message.error(fetchedAnalysisData?.error_message);
+            if (editor) editor.removeBlocks([block]);
           } else {
-            fetchedAnalysisData = res.report_data;
+            fetchedAnalysisData = fetchedAnalysisData.report_data;
           }
-          setAnalysisData(fetchedAnalysisData);
+
+          // also have to set docContext in this case
+          docContext.update({
+            ...docContext.val,
+            userItems: {
+              ...docContext.val.userItems,
+              analyses: [
+                ...docContext.val.userItems.analyses,
+                fetchedAnalysisData,
+              ],
+            },
+          });
+        } else {
+          fetchedAnalysisData = res.report_data;
         }
+        setAnalysisData(fetchedAnalysisData);
         setAnalysisTitle(analysisData?.user_question?.toUpperCase());
         setRelatedAnalyses({
           follow_up_analyses: analysisData?.follow_up_analyses || [],
@@ -651,12 +643,14 @@ export const AnalysisAgent = ({
                 </div>
                 {analysisTitle}
               </div>
-              <AnalysisFeedback
-                analysisSteps={analysisSteps}
-                analysisId={analysisId}
-                user_question={analysisData?.user_question}
-                username={username}
-              />
+              {!disableFeedback && (
+                <AnalysisFeedback
+                  analysisSteps={analysisSteps}
+                  analysisId={analysisId}
+                  user_question={analysisData?.user_question}
+                  username={username}
+                />
+              )}
             </div>
           ) : (
             <></>

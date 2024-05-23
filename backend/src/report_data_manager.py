@@ -21,12 +21,16 @@ prop_names = {
     "gen_steps": "steps",
 }
 
+import os
+
+dfg_api_key = os.environ["DEFOG_API_KEY"]
+
 
 class ReportDataManager:
-    def __init__(self, user_question, report_id, api_key, db_creds=None):
+    def __init__(self, user_question, report_id):
         self.report_id = report_id
         self.report_data = None
-        self.api_key = api_key
+        self.api_key = dfg_api_key
         self.user_question = user_question
         self.invalid = False
         self.similar_plans = []
@@ -34,8 +38,6 @@ class ReportDataManager:
         # check if this report exists in the main db
         # if so, load the report details from there
         err1, report_data = get_report_data(report_id)
-
-        self.db_creds = db_creds
 
         # if there are parent_analyses, get the user_question from each of them
         err2, parent_analyses = get_parent_analyses(

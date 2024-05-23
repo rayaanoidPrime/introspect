@@ -10,7 +10,12 @@ import ErrorBoundary from "./common/ErrorBoundary";
 import setupBaseUrl from "../../../utils/setupBaseUrl";
 import { setupWebsocketManager } from "../../../utils/websocket-manager";
 
-export default function DefogAnalysisAgent({ analysisId, username }) {
+export default function DefogAnalysisAgentStandalone({
+  analysisId,
+  username,
+  disableFeedback = false,
+  initialRunningSteps = [],
+}) {
   const [context, setContext] = useState({});
   const [id, setId] = useState(analysisId || "analysis-" + v4());
   const [docContext, setDocContext] = useState(useContext(DocContext));
@@ -124,30 +129,23 @@ export default function DefogAnalysisAgent({ analysisId, username }) {
             <Context.Provider value={[context, setContext]}>
               <GlobalStyle />
               <FontLoadCss>
-                <div className="defog-analysis-root defog-analysis-agent-rc md:w-11/12  ">
-                  {
-                    // if there's an analysis id, it's fine
-                    // but if there's no analysis id, then the api token and username
-
-                    <>
-                      <div className="content">
-                        <div className="editor-container py-2 px-4 mt-4 bg-white rounded-md mb-8">
-                          <div className="defog-analysis-container">
-                            <div
-                              data-content-type="analysis"
-                              data-analysis-id={analysisId}
-                            >
-                              <AnalysisAgent
-                                key={analysisId}
-                                analysisId={id}
-                                username={username}
-                              />
-                            </div>
-                          </div>
-                        </div>
+                <div className="content md:w-11/12">
+                  <div className="editor-container py-2 px-4 mt-4 bg-white rounded-md mb-8">
+                    <div className="defog-analysis-container">
+                      <div
+                        data-content-type="analysis"
+                        data-analysis-id={analysisId}
+                      >
+                        <AnalysisAgent
+                          key={analysisId}
+                          analysisId={id}
+                          username={username}
+                          disableFeedback={disableFeedback}
+                          initialRunningSteps={initialRunningSteps}
+                        />
                       </div>
-                    </>
-                  }
+                    </div>
+                  </div>
                 </div>
               </FontLoadCss>
             </Context.Provider>
