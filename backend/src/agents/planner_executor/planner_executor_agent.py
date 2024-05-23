@@ -43,6 +43,7 @@ class Executor:
         parent_analyses=[],
         similar_plans=[],
         predefined_steps=None,
+        direct_parent_analysis=None,
     ):
         self.user_question = user_question
         self.client_description = client_description
@@ -56,6 +57,7 @@ class Executor:
         self.previous_responses = []
         self.similar_plans = similar_plans
         self.predefined_steps = predefined_steps
+        self.direct_parent_analysis = direct_parent_analysis
 
         self.global_dict = {
             "user_question": user_question,
@@ -127,6 +129,7 @@ class Executor:
                             "error": next_step_data_description,
                             "erroreous_response": ans,
                             "similar_plans": self.similar_plans[:2],
+                            "direct_parent_analysis": self.direct_parent_analysis,
                         }
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
                     else:
@@ -142,6 +145,7 @@ class Executor:
                             "previous_responses": self.previous_responses,
                             "next_step_data_description": next_step_data_description,
                             "similar_plans": self.similar_plans[:2],
+                            "direct_parent_analysis": self.direct_parent_analysis,
                         }
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
                     ans = ans.json()["generated_step"]

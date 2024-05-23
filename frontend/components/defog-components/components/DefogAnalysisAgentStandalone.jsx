@@ -9,6 +9,7 @@ import styled, { createGlobalStyle } from "styled-components";
 import ErrorBoundary from "./common/ErrorBoundary";
 import setupBaseUrl from "../../../utils/setupBaseUrl";
 import { setupWebsocketManager } from "../../../utils/websocket-manager";
+import AnalysisVersionViewer from "./agent/AnalysisVersionViewer";
 
 export default function DefogAnalysisAgentStandalone({
   analysisId,
@@ -130,19 +131,13 @@ export default function DefogAnalysisAgentStandalone({
               <GlobalStyle />
               <FontLoadCss>
                 <div className="content md:w-11/12">
-                  <div className="editor-container py-2 px-4 mt-4 bg-white rounded-md mb-8">
+                  <div className="editor-container mt-4 mb-8">
                     <div className="defog-analysis-container">
                       <div
                         data-content-type="analysis"
                         data-analysis-id={analysisId}
                       >
-                        <AnalysisAgent
-                          key={analysisId}
-                          analysisId={id}
-                          username={username}
-                          disableFeedback={disableFeedback}
-                          initialRunningSteps={initialRunningSteps}
-                        />
+                        <AnalysisVersionViewer username={username} />
                       </div>
                     </div>
                   </div>

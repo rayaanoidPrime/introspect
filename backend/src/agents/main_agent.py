@@ -11,6 +11,7 @@ async def get_clarification(
     table_metadata_csv="",
     glossary="",
     parent_analyses=[],
+    direct_parent_analysis=None,
     **kwargs,
 ):
     """
@@ -25,6 +26,7 @@ async def get_clarification(
             glossary,
             table_metadata_csv,
             parent_analyses,
+            direct_parent_analysis,
         )
 
         (
@@ -55,6 +57,7 @@ async def execute(
     glossary="",
     toolboxes=[],
     parent_analyses=[],
+    direct_parent_analysis=None,
     similar_plans=[],
     predefined_steps=None,
     **kwargs,
@@ -78,6 +81,7 @@ async def execute(
         parent_analyses=parent_analyses,
         similar_plans=similar_plans,
         predefined_steps=predefined_steps,
+        direct_parent_analysis=direct_parent_analysis,
     )
     try:
         execute, post_process = await executor.execute()

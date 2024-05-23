@@ -341,6 +341,7 @@ def report_data_from_row(row):
         report_markdown = row.report_markdown or ""
         parent_analyses = row.parent_analyses or []
         follow_up_analyses = row.follow_up_analyses or []
+        direct_parent_id = row.direct_parent_id or None
 
         # send only the ones that are not none.
         # we should have a better solution to this.
@@ -351,6 +352,7 @@ def report_data_from_row(row):
             "report_markdown": report_markdown,
             "parent_analyses": parent_analyses,
             "follow_up_analyses": follow_up_analyses,
+            "direct_parent_id": direct_parent_id,
         }
 
         if clarify is not None:
@@ -1169,7 +1171,7 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
         return {"success": False, "error_message": str(e)}
 
 
-def get_parent_analyses(parent_analyses=[]):
+def get_reports(report_ids=[], columns=["report_id", "user_question"]):
     err = None
     analyses = []
     try:
@@ -1178,10 +1180,11 @@ def get_parent_analyses(parent_analyses=[]):
             rows = conn.execute(
                 select(
                     *[
-                        Reports.__table__.columns["report_id"],
-                        Reports.__table__.columns["user_question"],
+                        Reports.__table__.columns[c]
+                        for c in columns
+                        if c in Reports.__table__.columns
                     ]
-                ).where(Reports.report_id.in_(parent_analyses))
+                ).where(Reports.report_id.in_(report_ids))
             )
 
             if rows.rowcount != 0:
@@ -1607,3 +1610,30 @@ async def delete_tool(function_name):
         err = str(e)
     finally:
         return err
+
+
+async def get_analysis_versions(root_analysis_id):
+    # get all versions of an analysis
+    # get ids that end with -v1, -v2, -v3..
+    err = None
+    versions = []
+    try:
+        with engine.connect() as conn:
+            cursor = conn.connection.cursor()
+            cursor.execute(
+                """
+                SELECT report_id, user_question, gen_steps
+                FROM defog_reports
+                WHERE root_analysis_id = %s
+                ORDER BY timestamp ASC
+                """,
+                (root_analysis_id,),
+            )
+            rows = cursor.fetchall()
+            versions = [{"analysis_id": x[0], "user_question": x[1]} for x in rows]
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        err = str(e)
+    finally:
+        return err, versions

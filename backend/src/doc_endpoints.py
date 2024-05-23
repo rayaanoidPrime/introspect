@@ -15,7 +15,7 @@ from agents.planner_executor.tool_helpers.all_tools import tool_name_dict
 import pandas as pd
 from io import StringIO
 from agents.main_agent import execute
-from utils import get_db_type, log_msg
+from utils import get_clean_plan, get_db_type, log_msg
 
 DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]
 
@@ -25,6 +25,7 @@ from db_utils import (
     add_tool,
     delete_tool,
     get_all_docs,
+    get_analysis_versions,
     get_doc_data,
     get_report_data,
     get_tool_run,
@@ -1041,21 +1042,8 @@ async def submit_feedback(request: Request):
         err, analysis_data = get_report_data(analysis_id)
         if err:
             raise Exception(err)
-
-        generated_plan = analysis_data.get("gen_steps", {}).get("steps", [])
-        cleaned_plan = []
-        for item in generated_plan:
-            cleaned_item = {}
-            for key, value in item.items():
-                if key in [
-                    "tool_name",
-                    "model_generated_inputs",
-                    "outputs_storage_keys",
-                    "done",
-                    "error_message",
-                ]:
-                    cleaned_item[key] = value
-            cleaned_plan.append(cleaned_item)
+        
+        cleaned_plan = get_clean_plan(analysis_data)
 
         generated_plan_yaml = yaml.dump(cleaned_plan)
 
@@ -1197,3 +1185,24 @@ async def submit_feedback(request: Request):
         print(error)
         traceback.print_exc()
         return {"success": False, "error_message": error}
+
+
+@router.post("/get_analysis_versions")
+async def get_analysis_versions_endpoint(request: Request):
+    # get all analysis ids that have teh suffix -v1, -v2, -v3 etc
+    try:
+        params = await request.json()
+        root_analysis_id = params.get("root_analysis_id", None)
+
+        if not root_analysis_id:
+            raise Exception("No root analysis provided.")
+
+        await get_analysis_versions(root_analysis_id)
+        pass
+    except Exception as e:
+        print("Error getting analysis versions: ", e)
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error_message": "Unable to get versions: " + str(e[:300]),
+        }

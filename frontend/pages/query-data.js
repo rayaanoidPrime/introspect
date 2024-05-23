@@ -85,7 +85,6 @@ const QueryDatabase = () => {
             unCheckedChildren="Development"
             checked={!devMode}
             onChange={(e) => {
-              console.log(e);
               setDevMode(!e);
             }}
           />
@@ -96,7 +95,6 @@ const QueryDatabase = () => {
             unCheckedChildren="Ignore Cache"
             checked={!ignoreCache}
             onChange={(e) => {
-              console.log(e);
               setIgnoreCache(!e);
             }}
           />
@@ -106,7 +104,6 @@ const QueryDatabase = () => {
           unCheckedChildren="Agents"
           checked={queryMode === "sql"}
           onChange={(e) => {
-            console.log(e);
             setQueryMode(e ? "sql" : "agents");
           }}
         />

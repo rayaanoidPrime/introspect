@@ -59,12 +59,14 @@ class Clarifier:
         glossary,
         table_metadata_csv,
         parent_analyses=[],
+        direct_parent_analysis=None,
     ):
         self.user_question = user_question
         self.client_description = client_description
         self.glossary = glossary
         self.table_metadata_csv = table_metadata_csv
         self.parent_analyses = parent_analyses
+        self.direct_parent_analysis = direct_parent_analysis
 
     @staticmethod
     async def clarifier_post_process(self={}):
@@ -111,6 +113,7 @@ class Clarifier:
                     for i in self.parent_analyses
                     if i["user_question"] is not None and i["user_question"] != ""
                 ],
+                "direct_parent_analysis": self.direct_parent_analysis,
             }
             r = await asyncio.to_thread(requests.post, url, json=payload)
             res = r.json()

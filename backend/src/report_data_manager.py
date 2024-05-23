@@ -1,7 +1,10 @@
 import traceback
+
+import yaml
 from agents.clarifier.clarifier_agent import Clarifier
+from backend.src.utils import get_clean_plan
 from db_utils import (
-    get_parent_analyses,
+    get_reports,
     get_report_data,
     get_similar_correct_plans,
     update_report_data,
@@ -40,12 +43,25 @@ class ReportDataManager:
         err1, report_data = get_report_data(report_id)
 
         # if there are parent_analyses, get the user_question from each of them
-        err2, parent_analyses = get_parent_analyses(
-            report_data.get("parent_analyses") or []
-        )
+        err2, parent_analyses = get_reports(report_data.get("parent_analyses") or [])
         self.parent_analyses = parent_analyses
 
-        self.invalid = err1 or err2
+        self.direct_parent_id = report_data.get("direct_parent_id")
+        self.direct_parent_analysis = None
+
+        if self.direct_parent_id:
+            err3, self.direct_parent_analysis = get_report_data(self.direct_parent_id)
+            # if we get something valid, we only need two things:
+            # the user question, and the generated steps in yaml format
+            if err3 is None:
+                clean_plan = get_clean_plan(self.direct_parent_analysis)
+                self.direct_parent_analysis = {
+                    "user_question": self.direct_parent_analysis.get("user_question"),
+                    "plan": clean_plan,
+                    "plan_yaml": yaml.dump(clean_plan),
+                }
+
+        self.invalid = err1 or err2 or err3
 
         if self.invalid is None and report_data is not None:
             self.report_data = report_data

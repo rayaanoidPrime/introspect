@@ -196,8 +196,8 @@ export function Editor({ docId = null, username = null }) {
       >
         <DocContext.Provider value={{ val: docContext, update: setDocContext }}>
           <DocNav username={username} currentDocId={docId}></DocNav>
-          <div id="content">
-            <div id="editor-container">
+          <div className="content">
+            <div className="editor-container">
               <BlockNoteView
                 editor={editor}
                 theme={"light"}

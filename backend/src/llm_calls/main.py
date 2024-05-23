@@ -13,52 +13,6 @@ openai = OpenAI(api_key=openai_api_key)
 
 model = "gpt-4o"
 
-# tool_library_prompt = """- tool_name: data_fetcher_and_aggregator
-#   description: Converting a natural language question into a SQL query, that then runs on an external database. Fetches, joins, filters, aggregates, and performs arithmetic computations on data. Remember that this tool does not have access to the data returned by the previous steps. It only has access to the data in the database. We should attempt to give this tool very specific questions that pertain to the user question, instead of overly broad or generic ones. However, do not make any mention of which table to query when you give it your question. You can use this exactly once among all steps.
-#   inputs: [natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string]
-#   outputs: pandas df
-
-# - tool_name: global_dict_data_fetcher_and_aggregator
-#   description: Converting a natural language question into a SQL query, that then runs on a database that is stored in global_dict. Fetches, filters, aggregates, and performs arithmetic computations on data. This tool has access to all of global_dict. This will only run on the data that is stored in global_dict. For external databases, use the data_fetcher_and_aggregator tool.
-#   inputs: [natural language description of the data required as a string, "global_dict.<input_df_name>"]
-#   outputs: pandas df
-
-# - tool_name: line_plot
-#   description: This function generates a line plot using python's seaborn library. It should be used when the user wants to see how a variable changes over time, and should be used immediately after the data_fetcher tool.
-#   inputs: ["global_dict.<input_df_name>", xaxis column (exactly a single column - often a datetime or string), yaxis column (exactly a single column - always a numerical value), hue column or None, facet column or None (try as much as possible for this now to be None, though), estimator ("mean" if data must be aggregated, "None" if it is not aggregated), individual_id_column or None (try as much as possible for this not to be None)]
-#   outputs: pandas df
-
-# - tool_name: t_test
-#   description: This function gets two groups and runs a t-test to check if there is a significant difference between their means. There are two ways to run the test: paired and unpaired. Paired test has one group column, unpaired has one group column.
-#   inputs: ["global_dict.<input_df_name>", group column, score column, name column or None, type of t test as a string (paired or unpaired)]
-#   outputs: pandas df
-
-# - tool_name: wilcoxon_test
-#   description: This function gets two groups and runs a wilcoxon test to check if there is a significant difference between their means.
-#   inputs: ["global_dict.<input_df_name>", group column, score column, name column]
-#   outputs: pandas df
-
-# - tool_name: anova_test
-#   description: This function gets more than two groups and runs an anova test to check if there is a significant difference between their means.
-#   inputs: ["global_dict.<input_df_name>", group column, score column]
-#   outputs: pandas df
-
-# - tool_name: fold_change
-#   description: This function calculates the fold change over time for different groups. Fold change is the ratio of the final value to the initial value. Should only be used if the user explicitly mentions the words "fold change" in their request.
-#   inputs: ["global_dict.<input_df_name>", value column (the numerical value), group column (the column that represents the group), time column (the column that represents the time point)]
-#   outputs: pandas
-
-# - tool_name: boxplot
-#   description: Generates a boxplot using python's seaborn library. Also accepts a faceting column. This usually required the full dataset and not summary statistics. Use the facet feature only when specifically asked for it.
-#   inputs: ["global_dict.<input_df_name>", [boxplot_x column, boxplot_y column], facet = True/False, facet column]
-#   outputs: pandas df
-
-# - tool_name: heatmap
-#   description: Generates a heatmap using python's seaborn library. This accepts the full dataset as the first parameter, and not summary statistics or aggregates.
-#   inputs: ["global_dict.<input_df_name>", heatmap_x_column, heatmap_y_column, heatmap_value_column, aggregation_type as a string (can be mean, median, max, min or sum), color_scale (only if specified by the user. defaults to YlGnBu)]
-#   outputs: pandas df
-# """
-
 
 def clean_response(res):
     if type(res) is tuple or type(res) is list and len(res) != 0:

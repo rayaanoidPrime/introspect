@@ -34,6 +34,7 @@ import {
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
 import Input from "antd/es/input";
 import TextArea from "antd/es/input/TextArea";
+import Clarify from "./analysis-gen/Clarify";
 
 const { Search } = Input;
 
@@ -53,13 +54,15 @@ export const AnalysisAgent = ({
   updateHook = () => {},
   editor,
   block,
-  disableFeedback = false,
+  createAnalysisRequestBody = {},
+  initiateAutoSubmit = false,
+  searchRef,
+  analysisBusy,
+  setAnalysisBusy,
 }) => {
   const [analysisData, setAnalysisData] = useState(null);
-  const [analysisBusy, setAnalysisBusy] = useState(false);
   const [analysisSteps, setAnalysisSteps] = useState([]);
   const [relatedAnalyses, setRelatedAnalyses] = useState([]);
-  const [recipeShowing, setRecipeShowing] = useState(false);
   const [pendingToolRunUpdates, setPendingToolRunUpdates] = useState({});
   const [reRunningSteps, setRerunningSteps] = useState([]);
   const relatedAnalysesContext = useContext(RelatedAnalysesContext);
@@ -76,7 +79,6 @@ export const AnalysisAgent = ({
 
   const [currentStage, setCurrentStage] = useState(null);
   const [stageDone, setStageDone] = useState(true);
-  const searchRef = useRef(null);
   const docContext = useContext(DocContext);
 
   console.log(analysisData);
@@ -160,6 +162,11 @@ export const AnalysisAgent = ({
             handleSubmit(null, { clarification_questions: [] }, "clarify");
           }
         }
+      }
+
+      // if auto submit is on, and the last existing stage is null, submit for the first stage
+      if (initiateAutoSubmit && !lastExistingStage) {
+        handleSubmit();
       }
     }
   }, [analysisData, analysisBusy, stageDone]);
@@ -384,32 +391,19 @@ export const AnalysisAgent = ({
   }
 
   useEffect(() => {
-    function closeAnalysisOnClickOutside(e) {
-      // only close if this wasn't the analysis title or the recipe/ analysis dropdown itself
-      if (
-        !e.target.closest(".analysis-title") &&
-        !e.target.closest(".analysis-recipe") &&
-        !e.target.closest(".analysis-dropdown")
-      )
-        recipeShowing && setRecipeShowing(false);
-    }
-
-    document.addEventListener("click", closeAnalysisOnClickOutside);
-
-    return () => {
-      document.removeEventListener("click", closeAnalysisOnClickOutside);
-    };
-  }, [recipeShowing]);
-
-  useEffect(() => {
     async function initialiseAnalysis() {
       try {
         // get report data
         let fetchedAnalysisData = null;
+        let newAnalysisCreated = false;
         const res = await getAnalysis(analysisId);
         if (!res.success) {
           // create a new analysis
-          fetchedAnalysisData = await createAnalysis(username, analysisId);
+          fetchedAnalysisData = await createAnalysis(
+            username,
+            analysisId,
+            createAnalysisRequestBody
+          );
 
           if (
             !fetchedAnalysisData.success ||
@@ -418,9 +412,12 @@ export const AnalysisAgent = ({
             // stop loading, and delete this block
             message.error(fetchedAnalysisData?.error_message);
             if (editor) editor.removeBlocks([block]);
+            return;
           } else {
             fetchedAnalysisData = fetchedAnalysisData.report_data;
           }
+
+          newAnalysisCreated = true;
 
           // also have to set docContext in this case
           docContext.update({
@@ -484,11 +481,6 @@ export const AnalysisAgent = ({
       // indexOf returns -1 and -1 + 1 is 0 so we get "clarify" from the agentRequestTypes array
       const nextStage =
         agentRequestTypes[agentRequestTypes.indexOf(submitSourceStage) + 1];
-
-      // if current stage is gen_steps, hide the recipe
-      if (nextStage === "gen_steps") {
-        setRecipeShowing(false);
-      }
 
       // if submitSourceStage is null, we're submitting the question for the first time
       // so set the user_question property in analysisData.report_data
@@ -627,6 +619,16 @@ export const AnalysisAgent = ({
             </div>
           ) : (
             <div className="analysis-ctr">
+              {currentStage === "clarify" && (
+                <Clarify
+                  data={analysisData.clarify}
+                  handleSubmit={handleSubmit}
+                  globalLoading={analysisBusy}
+                  stageDone={currentStage === "clarify" ? stageDone : true}
+                  isCurrentStage={currentStage === "clarify"}
+                />
+              )}
+
               {currentStage === "gen_steps" && (
                 <div className="analysis-content">
                   <div className="analysis-results">
@@ -676,7 +678,6 @@ export const AnalysisAgent = ({
                       setDag={setDag}
                       dagLinks={dagLinks}
                       setDagLinks={setDagLinks}
-                      // alwaysShowPopover={activeSection === "step"}
                       extraNodeClasses={(node) => {
                         return node.data.isTool
                           ? `rounded-md px-1 text-center`
@@ -692,20 +693,6 @@ export const AnalysisAgent = ({
                   </div>
                 </div>
               )}
-              <div className="mt-4 mb-8 sticky bottom-20 mx-auto w-full">
-                <Input
-                  type="text"
-                  ref={searchRef}
-                  onPressEnter={(ev) => {
-                    handleSubmit();
-                  }}
-                  defaultValue={analysisTitle}
-                  placeholder="Ask a question"
-                  disabled={analysisBusy}
-                  enterButton={null}
-                  rootClassName="p-2 border-2 border-blue-500 rounded-md drop-shadow-md mx-auto"
-                />
-              </div>
             </div>
           )}
         </ThemeContext.Provider>
