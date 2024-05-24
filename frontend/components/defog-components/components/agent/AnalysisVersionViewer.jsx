@@ -124,8 +124,6 @@ function AnalysisVersionViewer(props) {
       setLoading(false);
     }
   };
-  console.log(props.analysisVersionList.length, selectedAnalysisIndex);
-  console.log(analysisVersionList);
 
   // w-0
   return (
@@ -187,7 +185,6 @@ function AnalysisVersionViewer(props) {
           }}
           placeholder="Ask a question"
           disabled={loading}
-          enterButton={null}
           rootClassName="bg-white absolute mx-auto left-0 right-0 border-2 border-gray-400 -bottom-8 p-2 rounded-lg w-full lg:w-6/12 mx-auto h-16 shadow-custom hover:border-blue-500 focus:border-blue-500"
         />
       </div>

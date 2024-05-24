@@ -14,27 +14,23 @@ import React, {
   Fragment,
   useContext,
   useCallback,
+  useMemo,
 } from "react";
-import AnalysisGen from "./analysis-gen/AnalysisGen";
 import { ThemeContext, lightThemeColor } from "../../context/ThemeContext";
 import AgentLoader from "../common/AgentLoader";
 import Lottie from "lottie-react";
 import LoadingLottie from "../svg/loader.json";
-import { DocContext, RelatedAnalysesContext } from "../../../docs/DocContext";
+import { DocContext } from "../../../docs/DocContext";
 import { ToolResults } from "./ToolResults";
 import StepsDag from "../common/StepsDag";
 import ErrorBoundary from "../common/ErrorBoundary";
 import { Context } from "../../../../components/common/Context";
-import {
-  createAnalysis,
-  getAnalysis,
-  getToolRunData,
-  toolShortNames,
-} from "../../../../utils/utils";
+import { toolShortNames } from "../../../../utils/utils";
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
 import Input from "antd/es/input";
 import TextArea from "antd/es/input/TextArea";
 import Clarify from "./analysis-gen/Clarify";
+import AnalysisManager from "./analysisManager";
 
 const { Search } = Input;
 
@@ -61,10 +57,8 @@ export const AnalysisAgent = ({
 }) => {
   const [analysisData, setAnalysisData] = useState(null);
   const [analysisSteps, setAnalysisSteps] = useState([]);
-  const [relatedAnalyses, setRelatedAnalyses] = useState([]);
   const [pendingToolRunUpdates, setPendingToolRunUpdates] = useState({});
   const [reRunningSteps, setRerunningSteps] = useState([]);
-  const relatedAnalysesContext = useContext(RelatedAnalysesContext);
   const reactiveContext = useContext(ReactiveVariablesContext);
 
   const [analysisTitle, setAnalysisTitle] = useState();
@@ -137,149 +131,41 @@ export const AnalysisAgent = ({
 
     if (analysisData) {
       // set last existing stage
-      const lastExistingStage = Object.keys(analysisData)
-        .filter((d) => agentRequestTypes.includes(d))
-        .sort(
-          (a, b) => agentRequestTypes.indexOf(a) - agentRequestTypes.indexOf(b)
-        )
-        .pop();
-
       if (!analysisBusy && stageDone) {
-        // if lastExistingStage comes out to be "gen_steps", but there are 0 steps
-        // then the last existing stage is "clarify"
+        setCurrentStage(analysisManager.currentStage);
+
         if (
-          lastExistingStage === "gen_steps" &&
-          !analysisData?.gen_steps?.steps?.length
+          analysisManager.currentStage === "clarify" &&
+          stageDone &&
+          analysisData?.clarify?.clarification_questions?.length === 0
         ) {
-          setCurrentStage("clarify");
-        } else {
-          setCurrentStage(lastExistingStage);
-          // if last existing stage is clarify, and it's done, check if clarification questions are empty
-          // if so, submit for the next stage
-          if (
-            lastExistingStage === "clarify" &&
-            stageDone &&
-            analysisData?.clarify?.clarification_questions?.length === 0
-          ) {
-            handleSubmit(null, { clarification_questions: [] }, "clarify");
-          }
+          handleSubmit(null, { clarification_questions: [] }, "clarify");
         }
       }
 
-      // if auto submit is on, and the last existing stage is null, submit for the first stage
-      if (initiateAutoSubmit && !lastExistingStage) {
+      // if auto submit is on, and the current stage is null, submit for the first stage (aka clarify)
+      if (initiateAutoSubmit && !analysisManager.currentStage) {
         handleSubmit();
       }
     }
   }, [analysisData, analysisBusy, stageDone]);
 
-  useEffect(() => {
-    if (!analysisData || !analysisId) return;
-
-    relatedAnalysesContext.update({
-      ...relatedAnalysesContext.val,
-      [analysisId]: relatedAnalyses,
-    });
-  }, [relatedAnalyses, analysisData]);
-
-  function onMessage(event) {
-    if (!event.data) {
-      setStageDone(true);
-      setAnalysisBusy(false);
-      message.error(
-        "Something went wrong. Please try again or contact us if this persists."
-      );
-    }
-
-    const response = JSON.parse(event.data);
-    // if the response's analysis_id isn't this analysisId, ignore
-    if (response?.analysis_id !== analysisId) return;
-
-    if (response?.error_message) {
-      setStageDone(true);
-      setAnalysisBusy(false);
-      message.error(response?.error_message);
-
-      // revert the next stage to the previous one
-      setCurrentStage((prev) => {
-        const idx = agentRequestTypes.indexOf(prev);
-        if (idx > 0) {
-          return agentRequestTypes[idx - 1];
-        } else {
-          return null;
-        }
-      });
-      return;
-    }
-
+  function onMainSocketMessage(response) {
     const rType = response.request_type;
     const prop = propNames[rType];
 
-    if (response.output && response.output.success && response.output[prop]) {
-      if (rType === "gen_report") {
-        // run the hook
-        // a use case for this hook:
-        // if current stage is gen_report, we're expecting report sections
-        // keep inserting as we receive them
-        updateHook(
-          response.output?.report_sections?.length &&
-            response.output?.report_sections
-        );
-      }
+    setAnalysisData(analysisManager.analysisData);
+    setToolRunDataCache(analysisManager.toolRunDataCache);
 
-      setAnalysisData((prev) => {
-        // if the stage doesn't exist, just set
-        if (!prev[rType]) {
-          return { ...prev, [rType]: response.output };
-        }
-
-        let newAnalysisData = { ...prev };
-
-        // check if the response has an "overwrite_key"
-        // if there's an overwrite_key provided,
-        // then go through old data, and the new_data
-        // if the overwrite_key is found in the old data, replace it with the elements that exist new_data with the same overwrite_key
-        // if it's not found, just append the item to the end
-
-        const overwrite_key = response.overwrite_key;
-        if (overwrite_key) {
-          const newToolRunDataCache = { ...toolRunDataCache };
-          response.output[prop].forEach(async (res) => {
-            const idx = newAnalysisData[rType][prop].findIndex(
-              (d) => d[overwrite_key] === res[overwrite_key]
-            );
-
-            if (idx > -1) {
-              newAnalysisData[rType][prop][idx] = res;
-              if (rType === "gen_steps" && res.tool_run_id) {
-                // if this is gen_steps, we also need to update the latest tool run data
-                // update it in the cache
-                const updatedData = await getToolRunData(res.tool_run_id);
-                if (updatedData.success) {
-                  newToolRunDataCache[updatedData.tool_run_id] = updatedData;
-                }
-              }
-            } else {
-              newAnalysisData[rType][prop].push(res);
-            }
-          });
-
-          setToolRunDataCache(newToolRunDataCache);
-        } else {
-          newAnalysisData[rType][prop] = newAnalysisData[rType][prop].concat(
-            response.output[prop]
-          );
-        }
-
-        return newAnalysisData;
-      });
-    } else {
-      // if the response doesn't have any output (note that this does NOT include 0 length output), set the stage to done
+    console.log(response);
+    if (
+      !response?.output ||
+      !response?.output?.success ||
+      !response?.output?.[prop]
+    ) {
       setStageDone(true);
       setAnalysisBusy(false);
     }
-
-    console.log(response);
 
     if (response.done) {
       setStageDone(true);
@@ -287,140 +173,67 @@ export const AnalysisAgent = ({
     }
   }
 
-  async function onReRunMessage(event) {
-    const res = JSON.parse(event.data);
+  async function onReRunMessage(response) {
+    setRerunningSteps(analysisManager.reRunningSteps);
+    // remove all pending updates for this tool_run_id
+    // because all new data is already there in the received response
+    setPendingToolRunUpdates((prev) => {
+      const newUpdates = { ...prev };
+      delete newUpdates[response.tool_run_id];
+      return newUpdates;
+    });
 
-    if (res?.analysis_id !== analysisId) return;
-    // re run messages can be of two types:
-    // 1. which step is GOING TO BE RUN. this won't just be the step that was asked to be re run by the user.
-    // this can also be the step's parents and it's children.
-    // 2. the result of a re run of a step
-    if (res.pre_tool_run_message) {
-      // means this is just a notification that this step is going to be re run
-      // so add this step to rerunning steps
-      // this has better UX: lets us move and click around the dag on
-      // any node but the currently rerunning step
-      console.log("step re running started: ", res.pre_tool_run_message);
-      setRerunningSteps((prev) => {
-        const n = prev.slice();
+    setToolRunDataCache(analysisManager.toolRunDataCache);
 
-        n.push({
-          tool_run_id: res.pre_tool_run_message,
-          timeout: setTimeout(() => {
-            message.error(`Rerun took longer than expected and was aborted.`);
-            setRerunningSteps((prev) =>
-              prev.filter((d) => d.tool_run_id !== res.pre_tool_run_message)
-            );
-          }, 40000),
-          clearTimeout: function () {
-            // function to clear the above timeout.
-            clearTimeout(this.timeout);
-          },
-        });
-
-        return n;
-      });
-
-      return;
-    }
-
-    console.log("re run result");
-    console.log(res);
-
-    // remove the tool run id from rerunning steps and clear it's timeout
-    setRerunningSteps((prev) =>
-      prev.filter((d) => {
-        if (d.tool_run_id === res.tool_run_id) {
-          d.clearTimeout();
-          return false;
-        }
-        return true;
-      })
-    );
-
-    if (!res.success) {
-      message.error(
-        `Something went wrong while re running ${res.tool_run_id}. Please try again.`
-      );
-      message.error(res?.error_message);
-      return;
-    }
-
-    if (res.success) {
-      setToolRunDataCache((prev) => {
+    // update reactive context
+    Object.keys(response?.tool_run_data?.outputs || {}).forEach((k, i) => {
+      if (!response?.tool_run_data?.outputs?.[k]?.reactive_vars) return;
+      const runId = response.tool_run_id;
+      reactiveContext.update((prev) => {
         return {
           ...prev,
-          [res.tool_run_id]: Object.assign({}, res),
+          [runId]: {
+            ...prev[runId],
+            [k]: response?.tool_run_data?.outputs?.[k]?.reactive_vars,
+          },
         };
       });
-
-      // remove all pending updates for this tool_run_id
-      // because all new data is already there in the received response
-      setPendingToolRunUpdates((prev) => {
-        const newUpdates = { ...prev };
-        delete newUpdates[res.tool_run_id];
-        return newUpdates;
-      });
-
-      // update reactive context
-      Object.keys(res?.tool_run_data?.outputs || {}).forEach((k, i) => {
-        if (!res?.tool_run_data?.outputs?.[k]?.reactive_vars) return;
-        const runId = res.tool_run_id;
-        reactiveContext.update((prev) => {
-          return {
-            ...prev,
-            [runId]: {
-              ...prev[runId],
-              [k]: res?.tool_run_data?.outputs?.[k]?.reactive_vars,
-            },
-          };
-        });
-      });
-    }
-
-    // if this re run has an error_message (or if it doesn't), update the analysisSteps
-    setAnalysisSteps((prev) => {
-      const newSteps = prev.slice();
-      const idx = newSteps.findIndex((d) => d.tool_run_id === res.tool_run_id);
-      if (idx > -1) {
-        newSteps[idx] = {
-          ...newSteps[idx],
-          error_message: res?.tool_run_data?.error_message,
-        };
-      }
-      return newSteps;
     });
+
+    setAnalysisSteps(analysisManager?.gen_steps?.steps || []);
   }
+
+  const analysisManager = useMemo(() => {
+    console.log("creating analysis manager");
+    return AnalysisManager({
+      analysisId,
+      mainSocket: mainManager,
+      rerunSocket: reRunManager,
+      onNewData: onMainSocketMessage,
+      onReRunData: onReRunMessage,
+      username,
+      userEmail: user,
+      createAnalysisRequestBody,
+    });
+  }, [
+    analysisId,
+    mainManager,
+    reRunManager,
+    username,
+    createAnalysisRequestBody,
+  ]);
 
   useEffect(() => {
     async function initialiseAnalysis() {
       try {
-        // get report data
-        let fetchedAnalysisData = null;
-        let newAnalysisCreated = false;
-        const res = await getAnalysis(analysisId);
-        if (!res.success) {
-          // create a new analysis
-          fetchedAnalysisData = await createAnalysis(
-            username,
-            analysisId,
-            createAnalysisRequestBody
-          );
+        await analysisManager.init();
 
-          if (
-            !fetchedAnalysisData.success ||
-            !fetchedAnalysisData.report_data
-          ) {
-            // stop loading, and delete this block
-            message.error(fetchedAnalysisData?.error_message);
-            if (editor) editor.removeBlocks([block]);
-            return;
-          } else {
-            fetchedAnalysisData = fetchedAnalysisData.report_data;
-          }
+        setAnalysisData(analysisManager.analysisData);
+        setAnalysisTitle(
+          analysisManager?.analysisData?.user_question?.toUpperCase()
+        );
 
-          newAnalysisCreated = true;
-
+        if (analysisManager.wasNewAnalysisCreated) {
           // also have to set docContext in this case
           docContext.update({
             ...docContext.val,
@@ -428,19 +241,11 @@ export const AnalysisAgent = ({
               ...docContext.val.userItems,
               analyses: [
                 ...docContext.val.userItems.analyses,
-                fetchedAnalysisData,
+                analysisManager.analysisData,
               ],
             },
           });
-        } else {
-          fetchedAnalysisData = res.report_data;
         }
-        setAnalysisData(fetchedAnalysisData);
-        setAnalysisTitle(analysisData?.user_question?.toUpperCase());
-        setRelatedAnalyses({
-          follow_up_analyses: analysisData?.follow_up_analyses || [],
-          parent_analyses: analysisData?.parent_analyses || [],
-        });
       } catch (e) {
         console.log(e);
       }
@@ -449,103 +254,29 @@ export const AnalysisAgent = ({
   }, []);
 
   useEffect(() => {
-    let mainIdx = -1;
-    let reRunIdx = -1;
-    // add handlers to socket managers using addevent listener
-    if (mainManager && mainManager.addEventListener) {
-      mainIdx = mainManager.addEventListener("message", onMessage);
-    }
-    if (reRunManager && reRunManager.addEventListener) {
-      reRunIdx = reRunManager.addEventListener("message", onReRunMessage);
-    }
+    if (!analysisManager) return;
+
+    analysisManager.setMainSocket(mainManager);
+    analysisManager.setReRunSocket(reRunManager);
+
+    analysisManager.addEventListeners();
 
     return () => {
-      // remove handlers from socket managers using remove event listener
-      mainManager?.removeEventListener("message", onMessage, mainIdx);
-      reRunManager?.removeEventListener("message", onReRunMessage, reRunIdx);
+      analysisManager.removeEventListeners();
     };
-  }, [mainManager, reRunManager]);
+  }, [analysisManager, mainManager, reRunManager]);
 
-  async function handleSubmit(ev, stageInput = {}, submitSourceStage = null) {
+  function handleSubmit(ev, stageInput = {}, submitSourceStage = null) {
     try {
-      if (!mainManager || !mainManager?.isConnected()) {
-        message.error("Not connected to servers. Trying to reconnect.");
-        message.error("Please contact us if this persists");
-        return;
-      }
       const query = searchRef.current.input.value;
-      // if the submitSourceStage is "clarify", we're getting the user input for the clarification questions, so the next thing the agent
-      // has to do is "understand". so send the "understand" request_type to the agent.
-      // if this is null, which is the first stage on the front end
-      // then just submit the question to the agent. question string + "clarify" request_type
-      // if we're just entering the question for the first time,
-      // we need to send a "clarify" request. so let submitSOurceStage be null
-      // indexOf returns -1 and -1 + 1 is 0 so we get "clarify" from the agentRequestTypes array
-      const nextStage =
-        agentRequestTypes[agentRequestTypes.indexOf(submitSourceStage) + 1];
+      analysisManager.submit(ev, query, stageInput, submitSourceStage);
 
-      // if submitSourceStage is null, we're submitting the question for the first time
-      // so set the user_question property in analysisData.report_data
-      if (!submitSourceStage) {
-        setAnalysisData((prev) => {
-          return {
-            ...prev,
-            user_question: query,
-          };
-        });
-      }
-
-      console.log("nextStage", nextStage);
-
-      const body = {
-        ...stageInput,
-        request_type: nextStage,
-        report_id: analysisId,
-        user_question: query,
-        skip_intro: true,
-        skip_conclusion: true,
-        max_approaches: 1,
-        skip_extra_approaches: true,
-        skip_text_gen: true,
-        user_email: user,
-        db_creds: null,
-      };
-
-      if (docContext.val.dbCreds.hasCreds) {
-        body.db_creds = {
-          ...docContext.val.dbCreds,
-          db_type: docContext.val.dbCreds.dbType,
-        };
-      }
-
-      mainManager.send(body);
-
-      setCurrentStage(nextStage);
+      // if everything went well above, prepare for receiving data for next stage
+      setCurrentStage(analysisManager.nextStage);
       setStageDone(false);
       setAnalysisBusy(true);
 
-      setAnalysisData((prev) => {
-        let newAnalysisData = { ...prev, user_question: query };
-        newAnalysisData[nextStage] = {
-          [propNames[nextStage]]: [],
-          success: true,
-        };
-
-        // if any of the stages includeing and after nextStage exists
-        // remove all data from those stages (to mimic what happens on the backend)
-        let idx = agentRequestTypes.indexOf(nextStage) + 1;
-        if (idx < agentRequestTypes.length) {
-          while (idx < agentRequestTypes.length) {
-            delete newAnalysisData[agentRequestTypes[idx]];
-            idx++;
-          }
-        }
-        // empty the next stage data
-        // deleting a prop removes a tab
-        newAnalysisData[nextStage][propNames[nextStage]] = [];
-
-        return newAnalysisData;
-      });
+      setAnalysisData(analysisManager.analysisData);
 
       setAnalysisTitle(query?.toUpperCase());
 
@@ -554,10 +285,10 @@ export const AnalysisAgent = ({
       console.log(err);
       setStageDone(false);
       setAnalysisBusy(false);
-      message.error(
-        "Something went wrong. Please try again or contact us if this persists."
-      );
-      console.log(err);
+      // revert the next stage to the previous one
+      setCurrentStage(analysisManager.currentStage);
+
+      message.error(err);
       return false;
     }
   }
@@ -576,33 +307,15 @@ export const AnalysisAgent = ({
         return;
       }
 
-      if (!reRunManager.isConnected()) {
-        message.error("Not connected to servers. Trying to reconnect.");
-        message.error("Please contact us if this persists");
-        return;
-      }
-
-      if (
-        preRunActions &&
-        preRunActions?.action === "add_step" &&
-        preRunActions?.new_step
-      ) {
-        // add the new step to analysisData
-        setAnalysisData((prev) => {
-          const newAnalysisData = { ...prev };
-          newAnalysisData.gen_steps.steps.push(preRunActions.new_step);
-          return newAnalysisData;
-        });
-      }
-
-      if (reRunManager && reRunManager.send) {
-        reRunManager.send({
-          tool_run_id: toolRunId,
-          analysis_id: analysisId,
-        });
+      try {
+        analysisManager.initiateReRun(toolRunId, preRunActions);
+        setAnalysisData(analysisManager.analysisData);
+      } catch (e) {
+        console.log(e);
+        message.error(err);
       }
     },
-    [analysisId, activeNode, setRerunningSteps, reRunManager]
+    [analysisId, activeNode, reRunManager, dag, analysisManager]
   );
 
   console.log(analysisData, currentStage);
