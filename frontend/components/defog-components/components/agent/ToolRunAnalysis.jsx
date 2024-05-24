@@ -31,7 +31,7 @@ export default function ToolRunAnalysis({ question, data_csv, image = null }) {
   useEffect(() => {
     async function setup() {
       const urlToConnect = setupBaseUrl("ws", "analyse_data");
-      console.log(image);
+      if (image) console.log(image);
       try {
         const mgr = await setupWebsocketManager(urlToConnect, onMessage);
         setSocketManager(mgr);

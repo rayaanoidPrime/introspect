@@ -1171,7 +1171,7 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
         return {"success": False, "error_message": str(e)}
 
 
-def get_reports(report_ids=[], columns=["report_id", "user_question"]):
+def get_multiple_reports(report_ids=[], columns=["report_id", "user_question"]):
     err = None
     analyses = []
     try:

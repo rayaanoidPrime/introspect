@@ -57,8 +57,7 @@ export const AnalysisAgent = ({
   createAnalysisRequestBody = {},
   initiateAutoSubmit = false,
   searchRef,
-  analysisBusy,
-  setAnalysisBusy,
+  setGlobalLoading,
 }) => {
   const [analysisData, setAnalysisData] = useState(null);
   const [analysisSteps, setAnalysisSteps] = useState([]);
@@ -76,12 +75,15 @@ export const AnalysisAgent = ({
   const [dagLinks, setDagLinks] = useState([]);
 
   const [toolRunDataCache, setToolRunDataCache] = useState({});
+  const [analysisBusy, _setAnalysisBusy] = useState(false);
+  const setAnalysisBusy = (v) => {
+    _setAnalysisBusy(v);
+    setGlobalLoading(v);
+  };
 
   const [currentStage, setCurrentStage] = useState(null);
   const [stageDone, setStageDone] = useState(true);
   const docContext = useContext(DocContext);
-
-  console.log(analysisData);
 
   const { mainManager, reRunManager, toolSocketManager } =
     docContext.val.socketManagers;
@@ -520,7 +522,7 @@ export const AnalysisAgent = ({
 
       setCurrentStage(nextStage);
       setStageDone(false);
-      setAnalysisBusy(nextStage);
+      setAnalysisBusy(true);
 
       setAnalysisData((prev) => {
         let newAnalysisData = { ...prev, user_question: query };
@@ -603,6 +605,8 @@ export const AnalysisAgent = ({
     [analysisId, activeNode, setRerunningSteps, reRunManager]
   );
 
+  console.log(analysisData, currentStage);
+
   return (
     <ErrorBoundary>
       <div className="analysis-agent-container">
@@ -620,13 +624,15 @@ export const AnalysisAgent = ({
           ) : (
             <div className="analysis-ctr">
               {currentStage === "clarify" && (
-                <Clarify
-                  data={analysisData.clarify}
-                  handleSubmit={handleSubmit}
-                  globalLoading={analysisBusy}
-                  stageDone={currentStage === "clarify" ? stageDone : true}
-                  isCurrentStage={currentStage === "clarify"}
-                />
+                <div className="analysis-recipe">
+                  <Clarify
+                    data={analysisData.clarify}
+                    handleSubmit={handleSubmit}
+                    globalLoading={analysisBusy}
+                    stageDone={currentStage === "clarify" ? stageDone : true}
+                    isCurrentStage={currentStage === "clarify"}
+                  />
+                </div>
               )}
 
               {currentStage === "gen_steps" && (

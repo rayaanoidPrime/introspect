@@ -3,7 +3,19 @@ import { useRef, useState } from "react";
 import { v4 } from "uuid";
 import { AnalysisAgent } from "./AnalysisAgent";
 
+const defaultProps = {
+  rootAnalysisId: null,
+  username: null,
+  analysisVersionList: [
+    {
+      user_question: "New analysis",
+      analysis_id: "dummy",
+    },
+  ],
+};
+
 function AnalysisVersionViewer(props) {
+  props = { ...defaultProps, ...props };
   const [selectedAnalysisIndex, setSelectedAnalysisIndex] = useState(
     props?.analysisVersionList?.length - 1 >= 0
       ? props?.analysisVersionList?.length - 1
@@ -13,6 +25,8 @@ function AnalysisVersionViewer(props) {
   const [analysisVersionList, setAnalysisVersionList] = useState(
     props?.analysisVersionList
   );
+
+  const [renderedTabs, setRenderedTabs] = useState([]); // store the rendered tabs so we don't keep re rendering them
 
   const [rootAnalysis, setRootAnalysis] = useState(props?.rootAnalysisId); // this is the root analysis
 
@@ -91,6 +105,19 @@ function AnalysisVersionViewer(props) {
       setAnalysisVersionList(newAnalysisVersionList);
 
       setSelectedAnalysisIndex(newAnalysisVersionList.length - 1);
+
+      setRenderedTabs([
+        ...renderedTabs,
+        <AnalysisAgent
+          key={newAnalysisId}
+          analysisId={newAnalysisId}
+          createAnalysisRequestBody={newAnalysis.createAnalysisRequestBody}
+          username={props.username}
+          initiateAutoSubmit={true}
+          searchRef={searchRef}
+          setGlobalLoading={setLoading}
+        />,
+      ]);
     } catch (e) {
       message.error("Failed to create analysis: " + e);
     } finally {
@@ -103,7 +130,7 @@ function AnalysisVersionViewer(props) {
   // w-0
   return (
     <div className="flex flex-col bg-gray-50 min-h-96 rounded-md text-gray-600 border border-gray-300">
-      <div className="flex">
+      <div className="flex grow">
         {selectedAnalysisIndex > -1 && (
           <div className="flex flex-col basis-1/4 mr-4 px-2 pt-5 pb-14 bg-gray-100 rounded-tl-lg relative">
             <h2 className="px-2 mb-3">History</h2>
@@ -135,6 +162,7 @@ function AnalysisVersionViewer(props) {
             analysisVersionList[selectedAnalysisIndex].analysis_id !==
               "dummy" && (
               <AnalysisAgent
+                key={analysisVersionList[selectedAnalysisIndex].analysis_id}
                 analysisId={
                   analysisVersionList[selectedAnalysisIndex]?.analysis_id
                 }
@@ -145,8 +173,7 @@ function AnalysisVersionViewer(props) {
                 username={props.username}
                 initiateAutoSubmit={true}
                 searchRef={searchRef}
-                analysisBusy={loading}
-                setAnalysisBusy={setLoading}
+                setGlobalLoading={setLoading}
               />
             )}
         </div>

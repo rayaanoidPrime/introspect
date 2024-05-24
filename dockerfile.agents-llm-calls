@@ -6,14 +6,17 @@ FROM python
 # Set a working directory
 WORKDIR /agents-llm-calls
 
-# Copy all the files from the local directory into the container
-COPY ./backend/src/llm_calls/ .
+COPY ./backend/src/llm_calls/requirements.txt ./requirements.txt
+
+# Install any dependencies of the function
+RUN pip install -r requirements.txt
 
 # Install the Functions Framework
 RUN pip install functions-framework
 
-# Install any dependencies of the function
-RUN pip install -r requirements.txt
+
+# Copy all the files from the local directory into the container
+COPY ./backend/src/llm_calls/ .
 
 # Run the function
 CMD ["functions-framework", "--target=main", "--debug"]

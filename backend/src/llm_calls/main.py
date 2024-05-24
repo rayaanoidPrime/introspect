@@ -6,6 +6,12 @@ import pandas as pd
 import json
 from io import StringIO
 import yaml
+from prompts import (
+    basic_plan_system_prompt,
+    basic_user_prompt,
+    tweak_parent_analysis_system_prompt,
+    tweak_parent_analysis_user_prompt,
+)
 
 openai_api_key = os.environ["OPENAI_API_KEY"]
 
@@ -72,6 +78,7 @@ def create_plan(
     tool_library_prompt,
     error=None,
     erroreous_response=None,
+    direct_parent_analysis=None,
 ):
     parent_analyses_prompt = (
         ""
@@ -83,37 +90,6 @@ def create_plan(
     print(user_question)
     print(assignment_understanding)
 
-    system_prompt = f"""You are a task planner. Your job is to plan out a series of steps in order to complete a task given by the user. The user will give you a description of the task, and you will need to figure out what tools to use to complete the task. Each tool has inputs, use cases and outputs.
-
-You have access to a global dictionary, where you will save the outputs of running each tool. You can reuse the variables in this dictionary as inputs to other tools by providing the name as "global_dict.variable_name".
-
-You will also be given the metadata for the user's database. You can reference the columns in this metadata in the inputs for the tools.
-
-You can use the following tools:
-{tool_library_prompt}
-
-Here is the user's database metadata in CSV format:
-{table_metadata_csv}
-
-You will give your plan one step at a time. Each step is an object with the following format:
-```yaml
-- description: what you're doing in this step
-  tool_name: tool_name
-  inputs: inputs for this tool. Empty array if no inputs. Map the inputs as closely to column names in the metadata as possible
-  outputs_storage_keys: [list of variable names to store outputs in the global dictionary, in the same order as the outputs of the tool]
-  done: true if this is the last step in the plan, false otherwise
-```
-
-The user will review each step. Then will ask you for the next step if nothing is wrong. If something is wrong, they will tell you what is wrong and you will need to fix it. You can fix it by changing the tool, the inputs, or the output name. Make sure to not have any placeholders for user inputs in your generated steps. It will be run directly with the tool, without any user intervention in between.
-
-Remember that if a user asks for a variable changes or is affected, they are asking for a line chart of a numerical value over time, using the visit_timepoint column as the x axis. The only exception to this is if they explicitly ask for a fold change.
-If a user is asking for something *at* baseline, they are most likely asking for a boxplot of the variable_value.
-
-If a user asks a simple question that can be adequately answered by just SQL, the no additional steps are needed and we can be done.
-
-Only generate the YAML markdown string that starts with ```yaml and ends with ```. Nothing else.
-"""
-
     assignment_understanding_prompt = (
         ""
         if assignment_understanding == ""
@@ -121,8 +97,34 @@ Only generate the YAML markdown string that starts with ```yaml and ends with ``
 {assignment_understanding}"""
     )
 
-    user_prompt = f"""This is the user's task: {user_question}. {parent_analyses_prompt}
-{assignment_understanding_prompt}"""
+    system_prompt = None
+    user_prompt = None
+
+    if not direct_parent_analysis:
+        system_prompt = basic_plan_system_prompt.format(
+            tool_library_prompt=tool_library_prompt,
+            table_metadata_csv=table_metadata_csv,
+        )
+        user_prompt = basic_user_prompt.format(
+            user_question=user_question,
+            parent_analyses_prompt=parent_analyses_prompt,
+            assignment_understanding_prompt=assignment_understanding_prompt,
+        )
+    else:
+        system_prompt = tweak_parent_analysis_system_prompt.format(
+            tool_library_prompt=tool_library_prompt,
+            table_metadata_csv=table_metadata_csv,
+            original_user_question=direct_parent_analysis["user_question"],
+            original_plan=direct_parent_analysis["plan_yaml"],
+        )
+        user_prompt = tweak_parent_analysis_user_prompt.format(
+            user_question=user_question,
+            parent_analyses_prompt=parent_analyses_prompt,
+            assignment_understanding_prompt=assignment_understanding_prompt,
+        )
+
+    print(system_prompt)
+    print(user_prompt)
 
     if len(similar_plans) > 0:
         similar_plans_yaml = yaml.dump(
@@ -185,7 +187,11 @@ Only generate the YAML markdown string that starts with ```yaml and ends with ``
 
 
 def get_clarification(
-    user_question, client_description, table_metadata_csv, parent_questions
+    user_question,
+    client_description,
+    table_metadata_csv,
+    parent_questions=None,
+    direct_parent_analysis=None,
 ):
     system_prompt = f"""You are a data analyst who has been asked a question about a dataset that contains data about biological assays.
 
@@ -431,30 +437,33 @@ def main(request):
             data["client_description"],
             data["metadata"],
             data.get("parent_questions", []),
+            data.get("direct_parent_analysis", None),
         )
     elif request_type == "create_plan":
         resp = create_plan(
-            data["question"],
-            data["similar_plans"],
-            data["metadata"],
-            data["assignment_understanding"],
-            data["parent_questions"],
-            data["previous_responses"],
-            data["next_step_data_description"],
-            data["tool_library_prompt"],
+            user_question=data["question"],
+            similar_plans=data["similar_plans"],
+            table_metadata_csv=data["metadata"],
+            assignment_understanding=data["assignment_understanding"],
+            parent_questions=data["parent_questions"],
+            previous_responses=data["previous_responses"],
+            next_step_data_description=data["next_step_data_description"],
+            tool_library_prompt=data["tool_library_prompt"],
+            direct_parent_analysis=data.get("direct_parent_analysis", None),
         )
     elif request_type == "fix_error":
         resp = create_plan(
-            data["question"],
-            data["similar_plans"],
-            data["metadata"],
-            data["assignment_understanding"],
-            data["parent_questions"],
-            data["previous_responses"],
-            data["next_step_data_description"],
-            data["tool_library_prompt"],
-            data["error"],
-            data["erroreous_response"],
+            user_question=data["question"],
+            similar_plans=data["similar_plans"],
+            table_metadata_csv=data["metadata"],
+            assignment_understanding=data["assignment_understanding"],
+            parent_questions=data["parent_questions"],
+            previous_responses=data["previous_responses"],
+            next_step_data_description=data["next_step_data_description"],
+            tool_library_prompt=data["tool_library_prompt"],
+            error=data["error"],
+            erroreous_response=data["erroreous_response"],
+            direct_parent_analysis=data.get("direct_parent_analysis", None),
         )
 
     elif request_type == "ping":
