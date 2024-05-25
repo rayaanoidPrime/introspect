@@ -192,15 +192,4 @@ function AnalysisVersionViewer(props) {
   );
 }
 
-AnalysisVersionViewer.defaultProps = {
-  rootAnalysisId: null,
-  username: null,
-  analysisVersionList: [
-    {
-      user_question: "New analysis",
-      analysis_id: "dummy",
-    },
-  ],
-};
-
 export default AnalysisVersionViewer;

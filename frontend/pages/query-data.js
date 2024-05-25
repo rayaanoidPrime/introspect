@@ -35,7 +35,7 @@ const QueryDatabase = () => {
   const [devMode, setDevMode] = useState(false);
   const [ignoreCache, setIgnoreCache] = useState(false);
   const [allowCaching, setAllowCaching] = useState("YES");
-  const [queryMode, setQueryMode] = useState("sql");
+  const [queryMode, setQueryMode] = useState("agents");
 
   useEffect(() => {
     // check if exists

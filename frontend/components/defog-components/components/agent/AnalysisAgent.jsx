@@ -15,6 +15,7 @@ import React, {
   useContext,
   useCallback,
   useMemo,
+  useSyncExternalStore,
 } from "react";
 import { ThemeContext, lightThemeColor } from "../../context/ThemeContext";
 import AgentLoader from "../common/AgentLoader";
@@ -55,13 +56,9 @@ export const AnalysisAgent = ({
   searchRef,
   setGlobalLoading,
 }) => {
-  const [analysisData, setAnalysisData] = useState(null);
-  const [analysisSteps, setAnalysisSteps] = useState([]);
   const [pendingToolRunUpdates, setPendingToolRunUpdates] = useState({});
   const [reRunningSteps, setRerunningSteps] = useState([]);
   const reactiveContext = useContext(ReactiveVariablesContext);
-
-  const [analysisTitle, setAnalysisTitle] = useState();
   const [context, setContext] = useContext(Context);
   const { user } = context;
   const [activeNode, setActiveNodePrivate] = useState(null);
@@ -69,18 +66,99 @@ export const AnalysisAgent = ({
   const [dagLinks, setDagLinks] = useState([]);
 
   const [toolRunDataCache, setToolRunDataCache] = useState({});
-  const [analysisBusy, _setAnalysisBusy] = useState(false);
-  const setAnalysisBusy = (v) => {
-    _setAnalysisBusy(v);
-    setGlobalLoading(v);
-  };
 
-  const [currentStage, setCurrentStage] = useState(null);
-  const [stageDone, setStageDone] = useState(true);
   const docContext = useContext(DocContext);
 
   const { mainManager, reRunManager, toolSocketManager } =
     docContext.val.socketManagers;
+
+  function onMainSocketMessage(response, newAnalysisData) {
+    try {
+      setToolRunDataCache(analysisManager.toolRunDataCache);
+
+      console.log("onMainSocketMessage", response);
+
+      if (response && response?.done) {
+        setAnalysisBusy(false);
+      }
+
+      if (!newAnalysisData) return;
+      // if current stage is clarify
+      // but clarification steps length is 0
+      // submit again
+      if (
+        newAnalysisData.currentStage === "clarify" &&
+        !newAnalysisData?.clarify?.clarification_questions?.length
+      ) {
+        handleSubmit(null, { clarification_questions: [] }, null);
+      }
+    } catch (e) {
+      message.error(e);
+      setAnalysisBusy(false);
+    }
+  }
+
+  async function onReRunMessage(response, newAnalysisData) {
+    try {
+      setRerunningSteps(analysisManager.reRunningSteps);
+      // remove all pending updates for this tool_run_id
+      // because all new data is already there in the received response
+      setPendingToolRunUpdates((prev) => {
+        const newUpdates = { ...prev };
+        delete newUpdates[response.tool_run_id];
+        return newUpdates;
+      });
+
+      setToolRunDataCache(analysisManager.toolRunDataCache);
+
+      // update reactive context
+      Object.keys(response?.tool_run_data?.outputs || {}).forEach((k, i) => {
+        if (!response?.tool_run_data?.outputs?.[k]?.reactive_vars) return;
+        const runId = response.tool_run_id;
+        reactiveContext.update((prev) => {
+          return {
+            ...prev,
+            [runId]: {
+              ...prev[runId],
+              [k]: response?.tool_run_data?.outputs?.[k]?.reactive_vars,
+            },
+          };
+        });
+      });
+    } catch (e) {
+      message.error(e);
+    } finally {
+      setAnalysisBusy(false);
+    }
+  }
+
+  const analysisManager = useMemo(() => {
+    const mgr = AnalysisManager({
+      analysisId,
+      mainSocket: mainManager,
+      rerunSocket: reRunManager,
+      onNewData: onMainSocketMessage,
+      onReRunData: onReRunMessage,
+      username,
+      userEmail: user,
+      createAnalysisRequestBody,
+      initiateAutoSubmit,
+    });
+    return mgr;
+  }, [
+    analysisId,
+    mainManager,
+    reRunManager,
+    username,
+    createAnalysisRequestBody,
+  ]);
+
+  const [analysisBusy, setAnalysisBusy] = useState(initiateAutoSubmit);
+
+  const analysisData = useSyncExternalStore(
+    analysisManager.subscribeToDataChanges,
+    analysisManager.getAnalysisData
+  );
 
   function setActiveNode(node) {
     setActiveNodePrivate(node);
@@ -121,117 +199,9 @@ export const AnalysisAgent = ({
   }
 
   useEffect(() => {
-    if (analysisData?.gen_steps?.success && analysisData?.gen_steps?.steps) {
-      setAnalysisSteps(analysisData.gen_steps.steps.slice());
-    }
-
-    if (!analysisData?.gen_steps?.success) {
-      setAnalysisSteps([]);
-    }
-
-    if (analysisData) {
-      // set last existing stage
-      if (!analysisBusy && stageDone) {
-        setCurrentStage(analysisManager.currentStage);
-
-        if (
-          analysisManager.currentStage === "clarify" &&
-          stageDone &&
-          analysisData?.clarify?.clarification_questions?.length === 0
-        ) {
-          handleSubmit(null, { clarification_questions: [] }, "clarify");
-        }
-      }
-
-      // if auto submit is on, and the current stage is null, submit for the first stage (aka clarify)
-      if (initiateAutoSubmit && !analysisManager.currentStage) {
-        handleSubmit();
-      }
-    }
-  }, [analysisData, analysisBusy, stageDone]);
-
-  function onMainSocketMessage(response) {
-    const rType = response.request_type;
-    const prop = propNames[rType];
-
-    setAnalysisData(analysisManager.analysisData);
-    setToolRunDataCache(analysisManager.toolRunDataCache);
-
-    console.log(response);
-    if (
-      !response?.output ||
-      !response?.output?.success ||
-      !response?.output?.[prop]
-    ) {
-      setStageDone(true);
-      setAnalysisBusy(false);
-    }
-
-    if (response.done) {
-      setStageDone(true);
-      setAnalysisBusy(false);
-    }
-  }
-
-  async function onReRunMessage(response) {
-    setRerunningSteps(analysisManager.reRunningSteps);
-    // remove all pending updates for this tool_run_id
-    // because all new data is already there in the received response
-    setPendingToolRunUpdates((prev) => {
-      const newUpdates = { ...prev };
-      delete newUpdates[response.tool_run_id];
-      return newUpdates;
-    });
-
-    setToolRunDataCache(analysisManager.toolRunDataCache);
-
-    // update reactive context
-    Object.keys(response?.tool_run_data?.outputs || {}).forEach((k, i) => {
-      if (!response?.tool_run_data?.outputs?.[k]?.reactive_vars) return;
-      const runId = response.tool_run_id;
-      reactiveContext.update((prev) => {
-        return {
-          ...prev,
-          [runId]: {
-            ...prev[runId],
-            [k]: response?.tool_run_data?.outputs?.[k]?.reactive_vars,
-          },
-        };
-      });
-    });
-
-    setAnalysisSteps(analysisManager?.gen_steps?.steps || []);
-  }
-
-  const analysisManager = useMemo(() => {
-    console.log("creating analysis manager");
-    return AnalysisManager({
-      analysisId,
-      mainSocket: mainManager,
-      rerunSocket: reRunManager,
-      onNewData: onMainSocketMessage,
-      onReRunData: onReRunMessage,
-      username,
-      userEmail: user,
-      createAnalysisRequestBody,
-    });
-  }, [
-    analysisId,
-    mainManager,
-    reRunManager,
-    username,
-    createAnalysisRequestBody,
-  ]);
-
-  useEffect(() => {
     async function initialiseAnalysis() {
       try {
         await analysisManager.init();
-
-        setAnalysisData(analysisManager.analysisData);
-        setAnalysisTitle(
-          analysisManager?.analysisData?.user_question?.toUpperCase()
-        );
 
         if (analysisManager.wasNewAnalysisCreated) {
           // also have to set docContext in this case
@@ -239,12 +209,16 @@ export const AnalysisAgent = ({
             ...docContext.val,
             userItems: {
               ...docContext.val.userItems,
-              analyses: [
-                ...docContext.val.userItems.analyses,
-                analysisManager.analysisData,
-              ],
+              analyses: [...docContext.val.userItems.analyses, analysisId],
             },
           });
+        }
+
+        if (
+          initiateAutoSubmit &&
+          !analysisManager?.analysisData?.currentStage
+        ) {
+          handleSubmit(null, {}, null);
         }
       } catch (e) {
         console.log(e);
@@ -266,32 +240,19 @@ export const AnalysisAgent = ({
     };
   }, [analysisManager, mainManager, reRunManager]);
 
-  function handleSubmit(ev, stageInput = {}, submitSourceStage = null) {
-    try {
-      const query = searchRef.current.input.value;
-      analysisManager.submit(ev, query, stageInput, submitSourceStage);
-
-      // if everything went well above, prepare for receiving data for next stage
-      setCurrentStage(analysisManager.nextStage);
-      setStageDone(false);
-      setAnalysisBusy(true);
-
-      setAnalysisData(analysisManager.analysisData);
-
-      setAnalysisTitle(query?.toUpperCase());
-
-      return true;
-    } catch (err) {
-      console.log(err);
-      setStageDone(false);
-      setAnalysisBusy(false);
-      // revert the next stage to the previous one
-      setCurrentStage(analysisManager.currentStage);
-
-      message.error(err);
-      return false;
-    }
-  }
+  const handleSubmit = useCallback(
+    (ev, stageInput = {}, submitSourceStage = null) => {
+      try {
+        const query = searchRef.current.input.value;
+        analysisManager.submit(ev, query, stageInput, submitSourceStage);
+        setAnalysisBusy(true);
+      } catch (err) {
+        message.error(err);
+        setAnalysisBusy(false);
+      }
+    },
+    [analysisManager, searchRef]
+  );
 
   const handleReRun = useCallback(
     (toolRunId, preRunActions = {}) => {
@@ -309,7 +270,6 @@ export const AnalysisAgent = ({
 
       try {
         analysisManager.initiateReRun(toolRunId, preRunActions);
-        setAnalysisData(analysisManager.analysisData);
       } catch (e) {
         console.log(e);
         message.error(err);
@@ -317,8 +277,6 @@ export const AnalysisAgent = ({
     },
     [analysisId, activeNode, reRunManager, dag, analysisManager]
   );
-
-  console.log(analysisData, currentStage);
 
   return (
     <ErrorBoundary>
@@ -336,23 +294,27 @@ export const AnalysisAgent = ({
             </div>
           ) : (
             <div className="analysis-ctr">
-              {currentStage === "clarify" && (
+              {analysisData.currentStage === "clarify" && (
                 <div className="analysis-recipe">
                   <Clarify
                     data={analysisData.clarify}
                     handleSubmit={handleSubmit}
                     globalLoading={analysisBusy}
-                    stageDone={currentStage === "clarify" ? stageDone : true}
-                    isCurrentStage={currentStage === "clarify"}
+                    stageDone={
+                      analysisData.currentStage === "clarify"
+                        ? !analysisBusy
+                        : true
+                    }
+                    isCurrentStage={analysisData.currentStage === "clarify"}
                   />
                 </div>
               )}
 
-              {currentStage === "gen_steps" && (
+              {analysisData.currentStage === "gen_steps" && (
                 <div className="analysis-content">
                   <div className="analysis-results">
                     <ErrorBoundary>
-                      {analysisSteps.length ? (
+                      {analysisData?.gen_steps?.steps.length ? (
                         <ToolResults
                           analysisId={analysisId}
                           activeNode={activeNode}
@@ -365,7 +327,6 @@ export const AnalysisAgent = ({
                           setPendingToolRunUpdates={setPendingToolRunUpdates}
                           toolRunDataCache={toolRunDataCache}
                           setToolRunDataCache={setToolRunDataCache}
-                          setAnalysisData={setAnalysisData}
                         ></ToolResults>
                       ) : (
                         analysisBusy && (
@@ -384,14 +345,16 @@ export const AnalysisAgent = ({
                   </div>
                   <div className="analysis-steps">
                     <StepsDag
-                      steps={analysisSteps}
+                      steps={analysisData?.gen_steps?.steps || []}
                       nodeSize={[40, 10]}
                       nodeGap={[30, 50]}
                       setActiveNode={setActiveNode}
                       reRunningSteps={reRunningSteps}
                       activeNode={activeNode}
                       stageDone={
-                        currentStage === "gen_steps" ? stageDone : true
+                        analysisData.currentStage === "gen_steps"
+                          ? !analysisBusy
+                          : true
                       }
                       dag={dag}
                       setDag={setDag}

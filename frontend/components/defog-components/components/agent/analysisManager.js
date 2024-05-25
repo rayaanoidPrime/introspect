@@ -24,11 +24,24 @@ function AnalysisManager({
   username,
   userEmail,
   createAnalysisRequestBody = {},
+  initiateAutoSubmit = false,
 }) {
   let analysisData = null;
   let toolRunDataCache = {};
   let reRunningSteps = [];
   let wasNewAnalysisCreated = false;
+  let listeners = [];
+
+  function getAnalysisData() {
+    return analysisData;
+  }
+
+  function setAnalysisData(newVal) {
+    analysisData = newVal;
+    analysisData["currentStage"] = getCurrentStage();
+    analysisData["nextStage"] = getNextStage();
+    emitDataChange();
+  }
 
   async function init() {
     if (analysisData) return;
@@ -57,9 +70,9 @@ function AnalysisManager({
       fetchedAnalysisData = res.report_data;
     }
 
-    // update the analysis data
-    analysisData = fetchedAnalysisData;
     wasNewAnalysisCreated = newAnalysisCreated;
+    // update the analysis data
+    setAnalysisData(fetchedAnalysisData);
   }
 
   function getCurrentStage() {
@@ -70,51 +83,23 @@ function AnalysisManager({
       )
       .pop();
 
-    if (
-      lastExistingStage === "gen_steps" &&
-      !analysisData?.gen_steps?.steps?.length
-    ) {
-      return "clarify";
-    } else {
-      return lastExistingStage;
-    }
+    return lastExistingStage;
   }
 
   function getNextStage() {
     const currentStage = getCurrentStage();
-    const nextStageIndex =
-      (agentRequestTypes.indexOf(currentStage) + 1) % agentRequestTypes.length;
+    const nextStageIndex = agentRequestTypes.indexOf(currentStage) + 1;
 
     return agentRequestTypes[nextStageIndex];
   }
 
   function submit(event, query, stageInput = {}, submitSourceStage = null) {
-    // submits and updates the analysis data
-    let newAnalysisData = {
-      ...analysisData,
-    };
-
     if (!mainSocket || !mainSocket?.isConnected()) {
       throw new Error("Not connected to servers. Trying to reconnect.");
     }
 
-    // if the submitSourceStage is "clarify", we're getting the user input for the clarification questions, so the next thing the agent
-    // has to do is "understand". so send the "understand" request_type to the agent.
-    // if this is null, which is the first stage on the front end
-    // then just submit the question to the agent. question string + "clarify" request_type
-    // if we're just entering the question for the first time,
-    // we need to send a "clarify" request. so let submitSOurceStage be null
-    // indexOf returns -1 and -1 + 1 is 0 so we get "clarify" from the agentRequestTypes array
-    const nextStage =
-      agentRequestTypes[agentRequestTypes.indexOf(submitSourceStage) + 1];
-
-    // if submitSourceStage is null, we're submitting the question for the first time
-    // so set the user_question property in analysisData.report_data
-    if (!submitSourceStage) {
-      newAnalysisData["user_question"] = query;
-    }
-
-    console.log("nextStage", nextStage);
+    const nextStage = getNextStage();
+    const prop = propNames[nextStage];
 
     const body = {
       ...stageInput,
@@ -132,26 +117,14 @@ function AnalysisManager({
 
     mainSocket.send(body);
 
-    newAnalysisData[nextStage] = {
-      [propNames[nextStage]]: [],
-      success: true,
-    };
-
-    // if any of the stages includeing and after nextStage exists
-    // remove all data from those stages (to mimic what happens on the backend)
-    let idx = agentRequestTypes.indexOf(nextStage) + 1;
-    if (idx < agentRequestTypes.length) {
-      while (idx < agentRequestTypes.length) {
-        delete newAnalysisData[agentRequestTypes[idx]];
-        idx++;
-      }
+    const newAnalysisData = { ...analysisData };
+    newAnalysisData["user_question"] = query;
+    // create empty array if doesn't exist
+    if (!newAnalysisData?.[nextStage]) {
+      newAnalysisData[nextStage] = { success: true, [prop]: [] };
     }
-    // empty the next stage data
-    // deleting a prop removes a tab
-    newAnalysisData[nextStage][propNames[nextStage]] = [];
 
-    // update the analysis data
-    analysisData = newAnalysisData;
+    setAnalysisData(newAnalysisData);
   }
 
   function setMainSocket(newSocket) {
@@ -163,70 +136,88 @@ function AnalysisManager({
   }
 
   function onMainSocketMessage(event) {
-    let newAnalysisData = { ...analysisData };
-
-    if (!event.data) {
-      throw new Error(
-        "Something went wrong. Please try again or contact us if this persists."
-      );
-    }
-
-    const response = JSON.parse(event.data);
-
-    // if the response's analysis_id isn't this analysisId, ignore
-    if (response?.analysis_id !== analysisId) return;
-
-    if (response?.error_message) {
-      throw new Error(response.error_message);
-    }
-
-    const rType = response.request_type;
-    const prop = propNames[rType];
-    if (response.output && response.output.success && response.output[prop]) {
-      if (!newAnalysisData[rType]) {
-        analysisData = { ...newAnalysisData, [rType]: response.output };
-        return;
-      }
-
-      // check if the response has an "overwrite_key"
-      // if there's an overwrite_key provided,
-      // then go through old data, and the new_data
-      // if the overwrite_key is found in the old data, replace it with the elements that exist new_data with the same overwrite_key
-      // if it's not found, just append the item to the end
-      const overwrite_key = response.overwrite_key;
-      const newToolRunDataCache = { ...toolRunDataCache };
-      if (overwrite_key) {
-        response.output[prop].forEach(async (res) => {
-          const idx = newAnalysisData[rType][prop].findIndex(
-            (d) => d[overwrite_key] === res[overwrite_key]
-          );
-
-          if (idx > -1) {
-            newAnalysisData[rType][prop][idx] = res;
-            if (rType === "gen_steps" && res.tool_run_id) {
-              // if this is gen_steps, we also need to update the latest tool run data
-              // update it in the cache
-              const updatedData = await getToolRunData(res.tool_run_id);
-              if (updatedData.success) {
-                newToolRunDataCache[updatedData.tool_run_id] = updatedData;
-              }
-            }
-          } else {
-            newAnalysisData[rType][prop].push(res);
-          }
-        });
-      } else {
-        newAnalysisData[rType][prop] = newAnalysisData[rType][prop].concat(
-          response.output[prop]
+    try {
+      if (!event.data) {
+        throw new Error(
+          "Something went wrong. Please try again or contact us if this persists."
         );
       }
 
-      analysisData = newAnalysisData;
-      toolRunDataCache = newToolRunDataCache;
-    }
+      const response = JSON.parse(event.data);
 
-    if (onNewData && typeof onNewData === "function") {
-      onNewData(response);
+      // if the response's analysis_id isn't this analysisId, ignore
+      if (response?.analysis_id !== analysisId) return;
+
+      if (response?.error_message) {
+        throw new Error(response.error_message);
+      }
+
+      const rType = response.request_type;
+      const prop = propNames[rType];
+
+      const nextStage = agentRequestTypes[agentRequestTypes.indexOf(rType) + 1];
+
+      let newAnalysisData = { ...analysisData };
+
+      if (nextStage) {
+        // if any of the stages including and after nextStage exists
+        // remove all data from those stages (to mimic what happens on the backend)
+        let idx = agentRequestTypes.indexOf(nextStage) + 1;
+        if (idx < agentRequestTypes.length) {
+          while (idx < agentRequestTypes.length) {
+            delete newAnalysisData[agentRequestTypes[idx]];
+            idx++;
+          }
+        }
+      }
+
+      if (response.output && response.output.success && response.output[prop]) {
+        if (!newAnalysisData[rType]) {
+          newAnalysisData = { ...newAnalysisData, [rType]: response.output };
+        } else {
+          // check if the response has an "overwrite_key"
+          // if there's an overwrite_key provided,
+          // then go through old data, and the new_data
+          // if the overwrite_key is found in the old data, replace it with the elements that exist new_data with the same overwrite_key
+          // if it's not found, just append the item to the end
+          const overwrite_key = response.overwrite_key;
+          if (overwrite_key) {
+            const newToolRunDataCache = { ...toolRunDataCache };
+            response.output[prop].forEach(async (res) => {
+              const idx = newAnalysisData[rType][prop].findIndex(
+                (d) => d[overwrite_key] === res[overwrite_key]
+              );
+
+              if (idx > -1) {
+                newAnalysisData[rType][prop][idx] = res;
+                if (rType === "gen_steps" && res.tool_run_id) {
+                  // if this is gen_steps, we also need to update the latest tool run data
+                  // update it in the cache
+                  const updatedData = await getToolRunData(res.tool_run_id);
+                  if (updatedData.success) {
+                    newToolRunDataCache[updatedData.tool_run_id] = updatedData;
+                  }
+                }
+              } else {
+                newAnalysisData[rType][prop].push(res);
+              }
+            });
+            toolRunDataCache = newToolRunDataCache;
+          } else {
+            newAnalysisData[rType][prop] = newAnalysisData[rType][prop].concat(
+              response.output[prop]
+            );
+          }
+        }
+      }
+
+      setAnalysisData(newAnalysisData);
+
+      if (onNewData && typeof onNewData === "function") {
+        onNewData(response, newAnalysisData);
+      }
+    } catch (e) {
+      throw new Error(e);
     }
   }
 
@@ -325,13 +316,11 @@ function AnalysisManager({
     }
 
     newAnalysisData.gen_steps.steps = newSteps;
-
-    analysisData = newAnalysisData;
-
     toolRunDataCache = newToolRunDataCache;
 
     if (onReRunData && typeof onReRunData === "function") {
-      onReRunData(response);
+      setAnalysisData(newAnalysisData);
+      onReRunData(response, newAnalysisData);
     }
   }
 
@@ -362,6 +351,18 @@ function AnalysisManager({
     );
   }
 
+  function subscribeToDataChanges(listener) {
+    listeners = [...listeners, listener];
+
+    return function unsubscribe() {
+      listeners = listeners.filter((l) => l !== listener);
+    };
+  }
+
+  function emitDataChange() {
+    listeners.forEach((l) => l());
+  }
+
   return {
     init,
     get wasNewAnalysisCreated() {
@@ -376,12 +377,6 @@ function AnalysisManager({
     set analysisData(val) {
       analysisData = val;
     },
-    get currentStage() {
-      return getCurrentStage();
-    },
-    get nextStage() {
-      return getNextStage();
-    },
     get toolRunDataCache() {
       return Object.assign({}, toolRunDataCache);
     },
@@ -394,6 +389,8 @@ function AnalysisManager({
     set reRunningSteps(val) {
       reRunningSteps = val;
     },
+    getAnalysisData,
+    subscribeToDataChanges,
     addEventListeners,
     removeEventListeners,
     submit,
