@@ -303,6 +303,7 @@ async def update_report_data(
                     # insert back into reports table
                     # if the request type is user_question, we will also update the embedding
                     if request_type == "user_question":
+                        print(new_data)
                         cursor = conn.connection.cursor()
                         new_embedding = await embed_string(new_data)
                         cursor.execute(
@@ -723,6 +724,7 @@ async def get_all_docs(username):
                 select(
                     Docs.__table__.columns["doc_id"],
                     Docs.__table__.columns["doc_title"],
+                    Docs.__table__.columns["doc_uint8"],
                     Docs.__table__.columns["timestamp"],
                     Docs.__table__.columns["archived"],
                 ).where(Docs.username == username)

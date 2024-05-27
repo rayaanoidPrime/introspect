@@ -1,4 +1,3 @@
-import { message } from "antd";
 import {
   createAnalysis,
   getAnalysis,
@@ -24,7 +23,6 @@ function AnalysisManager({
   username,
   userEmail,
   createAnalysisRequestBody = {},
-  initiateAutoSubmit = false,
 }) {
   let analysisData = null;
   let toolRunDataCache = {};
@@ -93,7 +91,7 @@ function AnalysisManager({
     return agentRequestTypes[nextStageIndex];
   }
 
-  function submit(event, query, stageInput = {}, submitSourceStage = null) {
+  function submit(query, stageInput = {}, submitSourceStage = null) {
     if (!mainSocket || !mainSocket?.isConnected()) {
       throw new Error("Not connected to servers. Trying to reconnect.");
     }
@@ -114,6 +112,10 @@ function AnalysisManager({
       user_email: userEmail,
       db_creds: null,
     };
+
+    console.groupCollapsed("Analysis Manager");
+    console.log("Submitting", analysisData);
+    console.groupEnd();
 
     mainSocket.send(body);
 
@@ -266,8 +268,6 @@ function AnalysisManager({
       newReRunningSteps.push({
         tool_run_id: response.pre_tool_run_message,
         timeout: setTimeout(() => {
-          message.error(`Rerun took longer than expected and was aborted.`);
-
           reRunningSteps = reRunningSteps.filter(
             (d) => d.tool_run_id !== response.pre_tool_run_message
           );

@@ -1,22 +1,26 @@
-import { AnalysisAgent } from "./agent/AnalysisAgent";
-import React, { useContext, useEffect, useState, Fragment } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useState,
+  Fragment,
+  useMemo,
+} from "react";
 import Context from "./common/Context";
 import { v4 } from "uuid";
 import { DocContext, RelatedAnalysesContext } from "../../docs/DocContext";
 import { ReactiveVariablesContext } from "../../docs/ReactiveVariablesContext";
-import { getAllAnalyses, getUserMetadata } from "../../../utils/utils";
+import {
+  getAllAnalyses,
+  getAllDashboards,
+  getUserMetadata,
+} from "../../../utils/utils";
 import styled, { createGlobalStyle } from "styled-components";
 import ErrorBoundary from "./common/ErrorBoundary";
 import setupBaseUrl from "../../../utils/setupBaseUrl";
 import { setupWebsocketManager } from "../../../utils/websocket-manager";
 import AnalysisVersionViewer from "./agent/AnalysisVersionViewer";
 
-export default function DefogAnalysisAgentStandalone({
-  analysisId,
-  username,
-  disableFeedback = false,
-  initialRunningSteps = [],
-}) {
+export default function DefogAnalysisAgentStandalone({ analysisId, username }) {
   const [context, setContext] = useState({});
   const [id, setId] = useState(analysisId || "analysis-" + v4());
   const [docContext, setDocContext] = useState(useContext(DocContext));
@@ -34,11 +38,17 @@ export default function DefogAnalysisAgentStandalone({
   // this is for handling re runs of tools
   const [reRunManager, setReRunManager] = useState(null);
 
+  const [dashboards, setDashboards] = useState([]);
+
   useEffect(() => {
     async function setup() {
       // setup user items
       const items = docContext.userItems;
       const analyses = await getAllAnalyses();
+      const dashboards = await getAllDashboards(username);
+      if (dashboards?.success) {
+        setDashboards(dashboards.docs);
+      }
 
       if (analyses && analyses.success) {
         items.analyses = analyses.analyses;
@@ -80,16 +90,6 @@ export default function DefogAnalysisAgentStandalone({
           toolSocketManager: toolSocketManager,
         },
       });
-
-      // add to recently viewed docs for this user
-      // await fetch(recentlyViewedEndpoint, {
-      //   method: "POST",
-      //   body: JSON.stringify({
-      //     api_key: apiToken,
-      //     doc_id: docId,
-      //     username: username,
-      //   }),
-      // });
     }
 
     setup();
@@ -137,7 +137,10 @@ export default function DefogAnalysisAgentStandalone({
                         data-content-type="analysis"
                         data-analysis-id={analysisId}
                       >
-                        <AnalysisVersionViewer username={username} />
+                        <AnalysisVersionViewer
+                          username={username}
+                          dashboards={dashboards}
+                        />
                       </div>
                     </div>
                   </div>

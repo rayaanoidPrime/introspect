@@ -1,10 +1,7 @@
 "use client";
 import {
   BlockNoteView,
-  FormattingToolbar,
   FormattingToolbarController,
-  HyperlinkToolbarController,
-  SideMenuController,
   SuggestionMenuController,
   useCreateBlockNote,
 } from "@blocknote/react";
@@ -25,8 +22,6 @@ import { DocSidebars } from "./DocSidebars";
 import { ReactiveVariablesContext } from "./ReactiveVariablesContext";
 import { ReactiveVariableNode } from "./customTiptap/ReactiveVariableNode";
 import { ReactiveVariableMention } from "./customTiptap/ReactiveVariableMention";
-import { RelatedAnalysesMiniMap } from "../defog-components/components/agent/RelatedAnalysesMiniMap";
-import ErrorBoundary from "../common/ErrorBoundary";
 import setupBaseUrl from "../../utils/setupBaseUrl";
 import { setupWebsocketManager } from "../../utils/websocket-manager";
 import { customBlockSchema } from "./createCustomBlockSchema";
@@ -219,9 +214,6 @@ export function Editor({ docId = null, username = null }) {
                   }
                 />
               </BlockNoteView>
-              <ErrorBoundary>
-                <RelatedAnalysesMiniMap editor={editor} />
-              </ErrorBoundary>
             </div>
             <DocSidebars />
           </div>

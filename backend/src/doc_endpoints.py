@@ -145,15 +145,11 @@ async def add_to_recently_viewed_docs_endpoint(request: Request):
         if username is None or type(username) != str:
             return {"success": False, "error_message": "Invalid username."}
 
-        if api_key is None or type(api_key) != str:
-            return {"success": False, "error_message": "Invalid api key."}
-
         if doc_id is None or type(doc_id) != str:
             return {"success": False, "error_message": "Invalid document id."}
 
         await add_to_recently_viewed_docs(
             username=username,
-            api_key=api_key,
             doc_id=doc_id,
             timestamp=str(datetime.datetime.now()),
         )
@@ -1042,7 +1038,7 @@ async def submit_feedback(request: Request):
         err, analysis_data = get_report_data(analysis_id)
         if err:
             raise Exception(err)
-        
+
         cleaned_plan = get_clean_plan(analysis_data)
 
         generated_plan_yaml = yaml.dump(cleaned_plan)
@@ -1205,4 +1201,33 @@ async def get_analysis_versions_endpoint(request: Request):
         return {
             "success": False,
             "error_message": "Unable to get versions: " + str(e[:300]),
+        }
+
+
+@router.post("/update_dashboard_data")
+async def update_dashboard_data_endpoint(request: Request):
+    try:
+        data = await request.json()
+        if data.get("doc_uint8") is None:
+            return {"success": False, "error_message": "No document data provided."}
+
+        if data.get("doc_id") is None:
+            return {"success": False, "error_message": "No document id provided."}
+
+        col_name = "doc_blocks" if data.get("doc_blocks") else "doc_uint8"
+        err = await update_doc_data(
+            data.get("doc_id"),
+            [col_name, "doc_title"],
+            {col_name: data.get(col_name), "doc_title": data.get("doc_title")},
+        )
+        if err:
+            return {"success": False, "error_message": err}
+
+        return {"success": True}
+    except Exception as e:
+        print("Error adding analysis to dashboard: ", e)
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error_message": "Unable to add analysis to dashboard: " + str(e)[:300],
         }
