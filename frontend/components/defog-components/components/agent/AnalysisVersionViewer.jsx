@@ -1,5 +1,5 @@
 import { Input, Modal, message } from "antd";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { v4 } from "uuid";
 import { AnalysisAgent } from "./AnalysisAgent";
 import { PlusOutlined } from "@ant-design/icons";
@@ -55,6 +55,44 @@ function AnalysisVersionViewer(props) {
 
     setAnalysisVersionList(newAnalysisVersionList);
   };
+
+  useEffect(() => {
+    if (!searchRef.current) return;
+    const placeholderQuestions = [
+      "Show me 5 rows",
+      "A boxplot of ...",
+      "Show me the average of ...",
+      "A chart showing ...",
+    ];
+
+    let idx = 0;
+    let interval = null;
+    let timeout = null;
+    const showNextQuestion = () => {
+      // show one character at a time
+      let c = 0;
+      interval = setInterval(() => {
+        if (!searchRef.current) return;
+        searchRef.current.input.placeholder = placeholderQuestions[idx].slice(
+          0,
+          c
+        );
+        c++;
+        if (c > placeholderQuestions[idx].length) {
+          clearInterval(interval);
+          idx = (idx + 1) % placeholderQuestions.length;
+          timeout = setTimeout(showNextQuestion, 2000);
+        }
+      }, 80);
+    };
+
+    showNextQuestion();
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  });
 
   // raise error if:
   // 1. we don't have analysisVersionList, but have a rootAnalysisId
@@ -217,8 +255,8 @@ function AnalysisVersionViewer(props) {
               </div>
             </div>
           )}
-          <div className="basis-3/4 rounded-tr-lg pb-14 pt-5 h-full flex flex-col">
-            {rootAnalysis &&
+          <div className="basis-3/4 rounded-tr-lg pb-14 pt-5">
+            {rootAnalysis ? (
               analysisVersionList[selectedAnalysisIndex].analysis_id !==
                 "dummy" && (
                 <AnalysisAgent
@@ -236,7 +274,14 @@ function AnalysisVersionViewer(props) {
                   setGlobalLoading={setLoading}
                   managerCreatedHook={managerCreatedHook}
                 />
-              )}
+              )
+            ) : (
+              <div className="w-full h-full place-content-center m-auto">
+                <p className="w-1/4 m-auto text-gray-400 text-center">
+                  Ask and press Enter
+                </p>
+              </div>
+            )}
           </div>
         </div>
         <div className="sticky bottom-14 z-10">
@@ -246,7 +291,7 @@ function AnalysisVersionViewer(props) {
             onPressEnter={(ev) => {
               handleSubmit();
             }}
-            placeholder="Ask a question"
+            placeholder="Show me 5 rows"
             disabled={loading}
             rootClassName="bg-white absolute mx-auto left-0 right-0 border-2 border-gray-400 -bottom-8 p-2 rounded-lg w-full lg:w-6/12 mx-auto h-16 shadow-custom hover:border-blue-500 focus:border-blue-500"
           />
