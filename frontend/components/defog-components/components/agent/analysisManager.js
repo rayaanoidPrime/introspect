@@ -44,6 +44,9 @@ function AnalysisManager({
   async function init() {
     if (analysisData) return;
 
+    let retries = 0;
+
+    console.log("Analysis Manager init");
     // get report data
     let fetchedAnalysisData = null;
     let newAnalysisCreated = false;
@@ -57,6 +60,24 @@ function AnalysisManager({
       );
 
       if (!fetchedAnalysisData.success || !fetchedAnalysisData.report_data) {
+        // this is a hacky fix for collaboration on documents.
+        // this might be an analysis that has been create already
+        // when a user creates an analysis on one doc, the yjs updates before
+        // the analysis can be added to the db. so another person on the same doc will get an error if
+        // they try to query the db too quickly.
+        // So we retry a few times
+        // retry after 1 second
+        if (retries < 2) {
+          retries++;
+          console.log("Analysis Manager retrying");
+          await new Promise((resolve) => setTimeout(resolve, 1000)).then(
+            async () => {
+              await init();
+            }
+          );
+        }
+
+        // if more than 2 retries
         // stop loading, throw error
         throw new Error(fetchedAnalysisData?.error_message);
       } else {
