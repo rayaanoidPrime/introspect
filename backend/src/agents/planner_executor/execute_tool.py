@@ -147,6 +147,6 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
             finally:
                 result["code_str"] = tool["code"]
 
-                return result, {inp["name"]: inp for inp in tool["input_metadata"]}
+                return result, tool["input_metadata"]
     # if no tool matches
     return {"error_message": "No tool matches this name"}, {}

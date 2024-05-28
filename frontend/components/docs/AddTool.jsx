@@ -85,16 +85,16 @@ export default function AddTool({ toolbox, onAddTool }) {
   const [toolDocString, setToolDocString] = useState("This tool does XX");
   const editor = useRef();
 
-  const mandatoryInputs = [
-    {
+  const mandatoryInputs = {
+    global_dict: {
       name: "global_dict",
       description: "Stores all previous outputs from the plan",
       type: "dict",
     },
-    {
+    "**kwargs": {
       name: "**kwargs",
     },
-  ];
+  };
 
   const handleSubmit = useCallback(async () => {
     // function_name = data.get("function_name")
@@ -257,7 +257,7 @@ export default function AddTool({ toolbox, onAddTool }) {
               </div>
               <div className="tool-inputs mb-8">
                 <h2 className="text-sm uppercase font-light mb-2">Inputs</h2>
-                {!toolInputs.length ? (
+                {!Object.keys(toolInputs).length ? (
                   <></>
                 ) : (
                   <div className="tool-inputs-headings flex flex-row text-xs text-gray-400 mb-2 font-light">
@@ -266,7 +266,7 @@ export default function AddTool({ toolbox, onAddTool }) {
                     <div className="w-6/12">Description</div>
                   </div>
                 )}
-                {toolInputs.map((input, idx) => {
+                {Object.values(toolInputs).map((input, idx) => {
                   return (
                     <div
                       className="tool-input mb-4 text-xs flex flex-row relative items-start border-b pb-2 border-b-gray-100"
@@ -277,8 +277,8 @@ export default function AddTool({ toolbox, onAddTool }) {
                         rootClassName="mr-3 w-3/12 font-mono text-gray-600"
                         popupClassName="text-gray-600"
                         onChange={(val, option) => {
-                          const newToolInputs = [...toolInputs];
-                          newToolInputs[idx].type = option.value;
+                          const newToolInputs = { ...toolInputs };
+                          newToolInputs[input.name].type = option.value;
                           setToolInputs(newToolInputs);
                         }}
                         options={Object.keys(easyToolInputTypes).map((type) => {
@@ -291,19 +291,20 @@ export default function AddTool({ toolbox, onAddTool }) {
 
                       <Input
                         status={
-                          (
-                            input.name &&
+                          (input.name &&
                             // make sure not duplicated
-                            toolInputs.filter((inp) => inp.name === input.name)
-                          ).length === 1 || "error"
+                            Object.values(toolInputs).filter(
+                              (inp) => inp.name === input.name
+                            ).length === 1) ||
+                          "error"
                         }
                         type="text"
                         className="w-3/12 mr-3 font-mono text-gray-600"
                         placeholder="Input name can't be empty"
                         value={input.name}
                         onChange={(ev) => {
-                          const newToolInputs = [...toolInputs];
-                          newToolInputs[idx].name = ev.target.value;
+                          const newToolInputs = { ...toolInputs };
+                          newToolInputs[input.name].name = ev.target.value;
                           setToolInputs(newToolInputs);
                         }}
                       />
@@ -314,8 +315,9 @@ export default function AddTool({ toolbox, onAddTool }) {
                         placeholder="A good input description ensures good performance"
                         value={input.description}
                         onChange={(ev) => {
-                          const newToolInputs = [...toolInputs];
-                          newToolInputs[idx].description = ev.target.value;
+                          const newToolInputs = { ...toolInputs };
+                          newToolInputs[input.name].description =
+                            ev.target.value;
                           setToolInputs(newToolInputs);
                         }}
                       />
@@ -323,8 +325,9 @@ export default function AddTool({ toolbox, onAddTool }) {
                       <p
                         className=" mr-1  flex justify-center items-center rounded-full cursor-pointer w-4 h-4 top-0 -left-5"
                         onClick={() => {
-                          const newToolInputs = [...toolInputs];
-                          newToolInputs.splice(idx, 1);
+                          const newToolInputs = { ...toolInputs };
+
+                          delete newToolInputs[input.name];
                           setToolInputs(newToolInputs);
                         }}
                       >
@@ -342,14 +345,15 @@ export default function AddTool({ toolbox, onAddTool }) {
                   type="primary"
                   className="bg-gray-100 text-gray-500 hover:bg-blue-400 hover:text-white font-mono"
                   onClick={() => {
-                    setToolInputs([
+                    const nm = "input_" + Object.keys(toolInputs).length;
+                    setToolInputs({
                       ...toolInputs,
-                      {
-                        name: "input_" + toolInputs.length,
+                      nm: {
+                        name: nm,
                         type: "str",
                         description: "",
                       },
-                    ]);
+                    });
                   }}
                 >
                   Add input

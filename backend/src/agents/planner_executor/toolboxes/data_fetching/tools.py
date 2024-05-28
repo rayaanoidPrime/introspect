@@ -17,6 +17,7 @@ async def data_fetcher_and_aggregator(
     import asyncio
     import pandas as pd
     from tool_code_utilities import safe_sql, fetch_query_into_df
+    from defog import Defog
 
     if question == "" or question is None:
         raise ValueError("Question cannot be empty")
@@ -76,6 +77,7 @@ async def global_dict_data_fetcher_and_aggregator(
     import pandas as pd
     from pandasql import sqldf
     from tool_code_utilities import safe_sql
+    from defog import Defog
 
     if question == "" or question is None:
         raise ValueError("Question cannot be empty")

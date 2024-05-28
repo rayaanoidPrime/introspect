@@ -14,14 +14,14 @@ tool_name_dict = tools = {
         "description": "Converting a natural language question into a SQL query, that then runs on an external database. Fetches, joins, filters, aggregates, and performs arithmetic computations on data. Remember that this tool does not have access to the data returned by the previous steps. It only has access to the data in the database. We should attempt to give this tool very specific questions that pertain to the user question, instead of overly broad or generic ones. However, do not make any mention of which table to query when you give it your question. You can use this exactly once among all steps.",
         "fn": data_fetcher_and_aggregator,
         "code": inspect.getsource(data_fetcher_and_aggregator),
-        "input_metadata": [
-            {
+        "input_metadata": {
+            "question": {
                 "name": "question",
                 "default": None,
                 "description": "natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string",
                 "type": "str",
             },
-        ],
+        },
         "toolbox": "data_fetching",
         "output_metadata": [
             {
@@ -37,21 +37,21 @@ tool_name_dict = tools = {
         "fn": global_dict_data_fetcher_and_aggregator,
         "code": inspect.getsource(global_dict_data_fetcher_and_aggregator),
         "description": "Converting a natural language question into a SQL query, that then runs on a database that is stored in global_dict. Fetches, filters, aggregates, and performs arithmetic computations on data. This tool has access to all of global_dict. This will only run on the data that is stored in global_dict. For external databases, use the data_fetcher_and_aggregator tool.",
-        "input_metadata": [
-            {
+        "input_metadata": {
+            "question": {
                 "name": "question",
                 "default": None,
                 "description": "Natural language description of the data required as a string",
                 "type": "str",
             },
-            {
+            "input_dfs": {
                 "name": "input_dfs",
                 "default": None,
                 "meta_": "global_dict.<input_df_name>",
                 "description": "A list of dataframes stored in global_dict. [global_dict.<input_df_name>, global_dict.<input_df_name> ...]",
                 "type": "list",
             },
-        ],
+        },
         "toolbox": "data_fetching",
         "output_metadata": [
             {
@@ -68,7 +68,7 @@ tool_name_dict = tools = {
         "toolbox": "stats",
         "tool_name": "Dataset Metadata Describer",
         "description": "Describes the columns available inside a dataset",
-        "input_metadata": [],
+        "input_metadata": {},
         "toolbox": "stats",
         "output_metadata": [
             {
@@ -84,38 +84,38 @@ tool_name_dict = tools = {
         "code": inspect.getsource(t_test),
         "tool_name": "T Test",
         "description": "This function gets two groups and runs a t-test to check if there is a significant difference between their means. There are two ways to run the test: paired and unpaired. Paired test has one group column, unpaired has one group column.",
-        "input_metadata": [
-            {
+        "input_metadata": {
+            "full_data": {
                 "name": "full_data",
                 "default": None,
                 "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
-            {
+            "group_column": {
                 "name": "group_column",
                 "default": None,
                 "description": "group column",
                 "type": "DBColumn",
             },
-            {
+            "score_column": {
                 "name": "score_column",
                 "default": None,
                 "description": "score column",
                 "type": "DBColumn",
             },
-            {
+            "name_column": {
                 "name": "name_column",
                 "default": None,
                 "description": "name column or None",
                 "type": "DBColumn",
             },
-            {
+            "t_test_type": {
                 "name": "t_test_type",
                 "default": ["unpaired", "paired"],
                 "description": "type of t test as a string (paired or unpaired)",
                 "type": "DropdownSingleSelect",
             },
-        ],
+        },
         "toolbox": "stats",
         "output_metadata": [
             {
@@ -131,38 +131,38 @@ tool_name_dict = tools = {
         "code": inspect.getsource(fold_change),
         "tool_name": "Fold Change",
         "description": 'This function calculates the fold change over time for different groups. Fold change is the ratio of the final value to the initial value. Should only be used if the user explicitly mentions the words "fold change" in their request.',
-        "input_metadata": [
-            {
+        "input_metadata": {
+            "full_data": {
                 "name": "full_data",
                 "default": None,
                 "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
-            {
+            "value_column": {
                 "name": "value_column",
                 "default": None,
                 "description": "value column (the numerical value)",
                 "type": "DBColumn",
             },
-            {
+            "individual_id_column": {
                 "name": "individual_id_column",
                 "default": None,
                 "description": "individual id column (the column that represents individual ids to calculate fold change for)",
                 "type": "DBColumn",
             },
-            {
+            "time_column": {
                 "name": "time_column",
                 "default": None,
                 "description": "time column (the column that represents the time point)",
                 "type": "DBColumn",
             },
-            {
+            "group_column": {
                 "name": "group_column",
                 "default": None,
                 "description": "group column or None (the column that represents the groups that individuals belong to, like cohort or study)",
                 "type": "DBColumn",
             },
-        ],
+        },
         "toolbox": "stats",
         "output_metadata": [
             {
@@ -178,26 +178,26 @@ tool_name_dict = tools = {
         "code": inspect.getsource(anova_test),
         "tool_name": "ANOVA Test",
         "description": "This function gets more than two groups and runs an anova test to check if there is a significant difference between their means.",
-        "input_metadata": [
-            {
+        "input_metadata": {
+            "full_data": {
                 "name": "full_data",
                 "default": None,
                 "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
-            {
+            "group_column": {
                 "name": "group_column",
                 "default": None,
                 "description": "group column",
                 "type": "DBColumn",
             },
-            {
+            "score_column": {
                 "name": "score_column",
                 "default": None,
                 "description": "score column",
                 "type": "DBColumn",
             },
-        ],
+        },
         "toolbox": "stats",
         "output_metadata": [
             {
@@ -213,32 +213,32 @@ tool_name_dict = tools = {
         "code": inspect.getsource(wilcoxon_test),
         "tool_name": "Wilcoxon Test",
         "description": "This function gets two groups and runs a wilcoxon test to check if there is a significant difference between their means.",
-        "input_metadata": [
-            {
+        "input_metadata": {
+            "full_data": {
                 "name": "full_data",
                 "default": None,
                 "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
-            {
+            "group_column": {
                 "name": "group_column",
                 "default": None,
                 "description": "group column",
                 "type": "DBColumn",
             },
-            {
+            "score_column": {
                 "name": "score_column",
                 "default": None,
                 "description": "score column",
                 "type": "DBColumn",
             },
-            {
+            "name_column": {
                 "name": "name_column",
                 "default": None,
                 "description": " name column",
                 "type": "DBColumn",
             },
-        ],
+        },
         "toolbox": "stats",
         "output_metadata": [
             {
@@ -254,62 +254,62 @@ tool_name_dict = tools = {
         "code": inspect.getsource(line_plot),
         "tool_name": "Line Plot",
         "description": "This function generates a line plot using python's seaborn library. It should be used when the user wants to see how a variable changes over time, and should be used immediately after the data_fetcher tool.",
-        "input_metadata": [
-            {
+        "input_metadata": {
+            "full_data": {
                 "name": "full_data",
                 "default": None,
                 "description": "global_dict.<input_df_name>",
                 "type": "pandas.core.frame.DataFrame",
             },
-            {
+            "x_column": {
                 "name": "x_column",
                 "default": None,
                 "description": "(exactly a single column - often a datetime or string)",
                 "type": "DBColumn",
             },
-            {
+            "y_column": {
                 "name": "y_column",
                 "default": None,
                 "description": "(exactly a single column - always a numerical value)",
                 "type": "DBColumn",
             },
-            {
+            "hue_column": {
                 "name": "hue_column",
                 "default": None,
                 "description": "column name to use for hue or None",
                 "type": "DBColumn",
             },
-            {
+            "facet_col": {
                 "name": "facet_col",
                 "default": None,
                 "description": "column name to use for faceting or None",
                 "type": "DBColumn",
             },
-            {
+            "estimator": {
                 "name": "estimator",
                 "default": ["mean", "median", "max", "min", "sum", "None"],
                 "description": '"mean" if data must be aggregated, "None" if it is not aggregated',
                 "type": "DropdownSingleSelect",
             },
-            {
+            "units": {
                 "name": "units",
                 "default": None,
                 "description": "column name or None - refers to the column that contains individual data points, often some kind of id",
                 "type": "DBColumn",
             },
-            {
+            "plot_average_line": {
                 "name": "plot_average_line",
                 "default": ["False", "True"],
                 "description": "True if the user wants to plot an average or median line",
                 "type": "DropdownSingleSelect",
             },
-            {
+            "average_type": {
                 "name": "average_type",
                 "default": ["mean", "median", "max", "min", "mode"],
                 "description": "the kind of value for the average line to have. Can be mean, median, max, min, or mode. None if no average line required",
                 "type": "DropdownSingleSelect",
             },
-        ],
+        },
         "toolbox": "plots",
         "output_metadata": [
             {
@@ -325,32 +325,32 @@ tool_name_dict = tools = {
         "code": inspect.getsource(boxplot),
         "tool_name": "Boxplot",
         "description": "Generates a boxplot using python's seaborn library. Also accepts a faceting column. This usually required the full dataset and not summary statistics. Use the facet feature only when specifically asked for it.",
-        "input_metadata": [
-            {
+        "input_metadata": {
+            "full_data": {
                 "name": "full_data",
                 "default": None,
                 "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
-            {
+            "boxplot_cols": {
                 "name": "boxplot_cols",
                 "default": None,
                 "description": "Array of boxplot x column and boxplot y column",
                 "type": "DBColumnList_1_2",
             },
-            {
+            "facet": {
                 "name": "facet",
                 "default": False,
                 "description": "True if the user wants to facet the boxplot else False",
                 "type": "bool",
             },
-            {
+            "facet_col": {
                 "name": "facet_col",
                 "default": None,
                 "description": "column name to use for faceting or None",
                 "type": "DBColumn",
             },
-            {
+            "color": {
                 "name": "color",
                 "description": "color to use for the boxplot",
                 "default": [
@@ -363,13 +363,13 @@ tool_name_dict = tools = {
                 ],
                 "type": "DropdownSingleSelect",
             },
-            {
+            "opacity": {
                 "name": "opacity",
                 "default": [0.1, 0.2, 0.3, 0.4, 0.5],
                 "description": "numerical value between 0 and 1",
                 "type": "DropdownSingleSelect",
             },
-        ],
+        },
         "toolbox": "plots",
         "output_metadata": [
             {
@@ -385,38 +385,38 @@ tool_name_dict = tools = {
         "fn": heatmap,
         "code": inspect.getsource(heatmap),
         "description": "Generates a heatmap using python's seaborn library. This accepts the full dataset as the first parameter, and not summary statistics or aggregates.",
-        "input_metadata": [
-            {
+        "input_metadata": {
+            "full_data": {
                 "name": "full_data",
                 "default": None,
                 "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
-            {
+            "x_position_column": {
                 "name": "x_position_column",
                 "default": None,
                 "description": "heatmap_x_column",
                 "type": "DBColumn",
             },
-            {
+            "y_position_column": {
                 "name": "y_position_column",
                 "default": None,
                 "description": "heatmap_y_column",
                 "type": "DBColumn",
             },
-            {
+            "color_column": {
                 "name": "color_column",
                 "default": None,
                 "description": "heatmap_value_column",
                 "type": "DBColumn",
             },
-            {
+            "aggregation_type": {
                 "name": "aggregation_type",
                 "default": ["mean", "median", "max", "min", "sum"],
                 "description": "a string (can be mean, median, max, min or sum)",
                 "type": "DropdownSingleSelect",
             },
-            {
+            "color_scale": {
                 "name": "color_scale",
                 "description": "color_scale (only if specified by the user. defaults to YlGnBu)",
                 "default": [
@@ -605,7 +605,7 @@ tool_name_dict = tools = {
                 ],
                 "type": "DropdownSingleSelect",
             },
-        ],
+        },
         "toolbox": "plots",
         "output_metadata": [
             {

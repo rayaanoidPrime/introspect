@@ -34,12 +34,14 @@ async def get_tool_library_prompt(toolboxes=[], user_question=None):
         toolbox = tool["toolbox"]
         if toolbox in toolboxes:
             tool_inputs_prompt = {}
-            for input in tool["input_metadata"]:
-                tool_inputs_prompt[input["name"]] = (
-                    f"{create_simple_tool_types(input['type'])} - {input['description']}"
+            # input_metadata is an object
+            for input_metadata in tool["input_metadata"].values():
+                tool_inputs_prompt[input_metadata["name"]] = (
+                    f"{create_simple_tool_types(input_metadata['type'])} - {input_metadata['description']}"
                 )
 
             tool_outputs_prompt = {}
+            # outputs is an array
             for output in tool["output_metadata"]:
                 tool_outputs_prompt[output["name"]] = (
                     f"{create_simple_tool_types(output.get('type', 'pandas.core.frame.DataFrame'))}, {output['description']}"

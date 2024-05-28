@@ -172,13 +172,13 @@ class Executor:
                     resolved_inputs[input_name] = resolve_input(val, self.global_dict)
 
                 # execute this step
-                result, tool_function_parameters = await execute_tool(
+                result, tool_input_metadata = await execute_tool(
                     step["tool_name"], resolved_inputs, self.global_dict
                 )
 
                 step["error_message"] = result.get("error_message")
 
-                step["function_signature"] = tool_function_parameters
+                step["input_metadata"] = tool_input_metadata
                 # when we're re running, we will need to reconstruct the model messages
                 # store these for later
                 # later we'll have to replace these with the user's edited inputs perhaps.

@@ -113,7 +113,7 @@ function AnalysisManager({
       db_creds: null,
     };
 
-    console.groupCollapsed("Analysis Manager");
+    console.groupCollapsed("Analysis Manager submitting");
     console.log("Submitting", analysisData);
     console.groupEnd();
 
@@ -254,7 +254,7 @@ function AnalysisManager({
 
     if (response?.analysis_id !== analysisId) return;
 
-    console.log("re run result");
+    console.groupCollapsed("Analysis manager re run");
     console.log(response);
 
     let newReRunningSteps = reRunningSteps.slice();
@@ -309,6 +309,7 @@ function AnalysisManager({
     toolRunDataCache = newToolRunDataCache;
 
     setAnalysisData(newAnalysisData);
+    console.groupEnd();
 
     if (onReRunData && typeof onReRunData === "function") {
       onReRunData(response);

@@ -3,6 +3,7 @@ import setupBaseUrl from "../utils/setupBaseUrl";
 import { Annotation, EditorState, Transaction } from "@codemirror/state";
 import { Doc, XmlElement, applyUpdate, encodeStateAsUpdate } from "yjs";
 import { v4 } from "uuid";
+import { toolsMetadata } from "./tools_metadata";
 
 export const getAnalysis = async (reportId) => {
   const urlToConnect = setupBaseUrl("http", "get_report");
@@ -422,4 +423,24 @@ export function appendAnalysisToYjsDoc(yjsDoc, analysisId) {
     console.log(tr);
   });
   return true;
+}
+
+export function createInitialToolInputs(toolName, parentIds) {
+  let initialInputs = {};
+
+  // if there's a pandas dataframe type in the inputs, default that to the parent's output
+  Object.values(toolsMetadata[toolName].input_metadata).forEach((inp) => {
+    if (inp.type === "pandas.core.frame.DataFrame") {
+      try {
+        initialInputs[inp.name] = "global_dict." + parentIds?.[0];
+      } catch (e) {
+        console.log(e);
+      }
+    } else {
+      initialInputs[inp.name] = Array.isArray(inp.default)
+        ? inp.default[0]
+        : inp.default;
+    }
+  });
+  return initialInputs;
 }

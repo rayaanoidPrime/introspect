@@ -9,7 +9,10 @@ import {
   PlusSquareOutlined,
   PlusSquareTwoTone,
 } from "@ant-design/icons";
-import { toolDisplayNames } from "../../../../utils/utils";
+import {
+  createInitialToolInputs,
+  toolDisplayNames,
+} from "../../../../utils/utils";
 
 const nodeCssSize = 15;
 
@@ -145,7 +148,7 @@ export default function StepsDag({
               parents: [child],
               children: [],
               step: {
-                inputs: [],
+                inputs: {},
                 tool_name: null,
                 parent_step: step,
               },

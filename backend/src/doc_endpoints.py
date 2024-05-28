@@ -608,7 +608,7 @@ async def create_new_step(request: Request):
         if parent_step is None or type(parent_step) != dict:
             return {"success": False, "error_message": "Invalid parent step."}
 
-        if inputs is None or type(inputs) != list:
+        if inputs is None or type(inputs) != dict:
             return {"success": False, "error_message": "Invalid inputs."}
 
         if outputs_storage_keys is None or type(outputs_storage_keys) != list:
@@ -656,7 +656,7 @@ async def create_new_step(request: Request):
             "tool_name": tool_name,
             "model_generated_inputs": inputs,
             "inputs": inputs,
-            "function_signature": tool["input_metadata"],
+            "input_metadata": tool["input_metadata"],
             "tool_run_id": new_tool_run_id,
             "outputs_storage_keys": outputs_storage_keys,
         }
