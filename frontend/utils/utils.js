@@ -402,8 +402,7 @@ export function createNewYjsXmlElement(nodeName, attributes) {
 // blockGroup.insert(blockGroup.length, [newBlock])
 // arr = Y.encodeStateAsUpdate(doc)
 // // send arr to the backend to update the table
-export function appendAnalysisToYjsDoc(initialDocState, docTitle, analysisId) {
-  const doc = createYjsDocFromUint8Array(initialDocState);
+export function appendAnalysisToYjsDoc(yjsDoc, analysisId) {
   const newBlock = createNewYjsXmlElement("blockcontainer", {
     id: v4(),
     backgroundColor: "default",
@@ -412,12 +411,15 @@ export function appendAnalysisToYjsDoc(initialDocState, docTitle, analysisId) {
   const newAnalysis = createNewYjsXmlElement("analysis", {
     analysisId: analysisId,
   });
-
   newBlock.insert(0, [newAnalysis]);
-  const blockGroup = doc.getXmlFragment("document-store").firstChild;
-  blockGroup.insert(blockGroup.length, [newBlock]);
 
-  doc.getMap("document-title").set("title", docTitle);
+  // yjsD.emit("update", [encoder.toUint8Array(), transaction.origin, doc]);
 
-  return [doc, encodeStateAsUpdate(doc)];
+  yjsDoc.transact((tr) => {
+    const blockGroup = yjsDoc.getXmlFragment("document-store").firstChild;
+
+    blockGroup.insert(blockGroup.length, [newBlock]);
+    console.log(tr);
+  });
+  return true;
 }

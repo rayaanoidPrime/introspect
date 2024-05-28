@@ -5,7 +5,8 @@ import { AnalysisAgent } from "./AnalysisAgent";
 import { PlusOutlined } from "@ant-design/icons";
 import { appendAnalysisToYjsDoc } from "../../../../utils/utils";
 import setupBaseUrl from "../../../../utils/setupBaseUrl";
-import { encodeStateAsUpdate } from "yjs";
+import { Doc, applyUpdate, encodeStateAsUpdate } from "yjs";
+import YPartyKitProvider from "y-partykit/provider";
 
 const defaultProps = {
   rootAnalysisId: null,
@@ -18,6 +19,8 @@ const defaultProps = {
     },
   ],
 };
+
+const partyEndpoint = process.env.NEXT_PUBLIC_AGENTS_ENDPOINT;
 
 function AnalysisVersionViewer(props) {
   props = { ...defaultProps, ...props };
@@ -195,7 +198,7 @@ function AnalysisVersionViewer(props) {
                       }}
                     >
                       <div className="grow">{version.user_question}</div>
-                      {version.analysis_id !== "dummy" && (
+                      {version.analysis_id !== "dummy" && !loading && (
                         <div
                           className="rounded-sm hover:bg-blue-500 p-1 flex justify-center hover:text-white"
                           onClick={() => {
@@ -255,45 +258,50 @@ function AnalysisVersionViewer(props) {
         onOk={() => {
           console.log(selectedDashboards);
           selectedDashboards.forEach((dashboardId) => {
-            // add this analysis to the dashboard
-            console.log("Adding analysis to dashboard", dashboardId);
             const dashboard = props.dashboards.find(
               (dashboard) => dashboard.doc_id === dashboardId
             );
 
             if (!dashboard) return;
 
-            const initialState = new Uint8Array(
-              JSON.parse(dashboard.doc_uint8)["bytes"]
-            );
-            console.log(analysisVersionList[selectedAnalysisIndex].analysis_id);
-            const [newDoc, yjsState] = appendAnalysisToYjsDoc(
-              initialState,
-              dashboard.doc_title,
-              analysisVersionList[selectedAnalysisIndex].analysis_id
-            );
+            const analysisId =
+              analysisVersionList[selectedAnalysisIndex].analysis_id;
+            const docId = dashboard.doc_id;
+            const docTitle = dashboard.doc_title;
 
             try {
-              // write to db
-              fetch(setupBaseUrl("http", "update_dashboard_data"), {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  doc_id: dashboard.doc_id,
-                  doc_uint8: JSON.stringify({ bytes: Array.from(yjsState) }),
-                  doc_title: dashboard.doc_title,
-                }),
-              })
-                .then((d) => d.json())
-                .then((d) => {
-                  if (d.success) {
-                    message.success("Analysis added to dashboard");
-                  } else {
-                    message.error("Failed to add analysis to dashboard");
-                  }
-                });
+              const newDoc = new Doc();
+              // connect to partykit to flush updates to all connected editors + the backend
+              const yjsProvider = new YPartyKitProvider(
+                partyEndpoint,
+                docId,
+                newDoc,
+                {
+                  params: {
+                    doc_id: docId,
+                    username: v4(),
+                  },
+                  protocol: "ws",
+                }
+              );
+
+              yjsProvider.on("sync", () => {
+                // appendAnalysisToYjsDoc(yjsProvider.doc, analysisId);
+              });
+
+              // yjsProvider.doc.on("update", () => {
+              //   console.log(
+              //     "update: ",
+              //     yjsProvider.doc
+              //       .getXmlFragment("document-store")
+              //       .firstChild.toJSON()
+              //   );
+              // });
+              // console.log("synced", docId);
+              // console.log(yjsProvider.doc.toJSON());
+              // // appendAnalysisToYjsDoc(newDoc, docTitle, analysisId);
+              // console.log("Adding analysis to dashboard", dashboardId);
+              // });
             } catch (e) {
               message.error("Failed to add analysis to dashboard " + e);
             }

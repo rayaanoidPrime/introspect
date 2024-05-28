@@ -84,7 +84,7 @@ export const AnalysisAgent = ({
     }
   }
 
-  async function onReRunMessage(response, newAnalysisData) {
+  async function onReRunMessage(response) {
     try {
       setRerunningSteps(analysisManager.reRunningSteps);
       // remove all pending updates for this tool_run_id

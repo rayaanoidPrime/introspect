@@ -253,6 +253,12 @@ function AnalysisManager({
     const response = JSON.parse(event.data);
 
     if (response?.analysis_id !== analysisId) return;
+
+    console.log("re run result");
+    console.log(response);
+
+    let newReRunningSteps = reRunningSteps.slice();
+
     // re run messages can be of two types:
     // 1. which step is GOING TO BE RUN. this won't just be the step that was asked to be re run by the user.
     // this can also be the step's parents and it's children.
@@ -263,38 +269,18 @@ function AnalysisManager({
       // this has better UX: lets us move and click around the dag on
       // any node but the currently rerunning step
       console.log("step re running started: ", response.pre_tool_run_message);
-      const newReRunningSteps = reRunningSteps.slice();
 
       newReRunningSteps.push({
         tool_run_id: response.pre_tool_run_message,
-        timeout: setTimeout(() => {
-          reRunningSteps = reRunningSteps.filter(
-            (d) => d.tool_run_id !== response.pre_tool_run_message
-          );
-        }, 40000),
-        clearTimeout: function () {
-          // function to clear the above timeout.
-          clearTimeout(this.timeout);
-        },
       });
-
-      reRunningSteps = newReRunningSteps;
-    }
-
-    console.log("re run result");
-    console.log(response);
-
-    // remove the tool run id from rerunning steps and clear it's timeout
-    reRunningSteps = reRunningSteps.filter((d) => {
-      if (d.tool_run_id === response.tool_run_id) {
-        d.clearTimeout();
-        return false;
+    } else {
+      if (!response.success) {
+        throw new Error(response?.error_message);
       }
-      return true;
-    });
-
-    if (!response.success) {
-      throw new Error(response?.error_message);
+      // remove the tool run id from rerunning steps and clear it's timeout
+      newReRunningSteps = newReRunningSteps.filter((d) => {
+        return d.tool_run_id !== response.tool_run_id;
+      });
     }
 
     let newToolRunDataCache = { ...toolRunDataCache };
@@ -302,25 +288,30 @@ function AnalysisManager({
       newToolRunDataCache[response.tool_run_id] = Object.assign({}, response);
     }
 
-    // // if this re run has an error_message (or if it doesn't), update the analysisSteps
+    // if this re run has an error_message (or if it doesn't), update the analysisSteps
     const newAnalysisData = { ...analysisData };
 
     const newSteps = newAnalysisData.gen_steps.steps.slice();
 
-    const idx = newSteps.findIndex((d) => d.tool_run_id === res.tool_run_id);
+    const idx = newSteps.findIndex(
+      (d) => d.tool_run_id === response.tool_run_id
+    );
     if (idx > -1) {
       newSteps[idx] = {
         ...newSteps[idx],
-        error_message: res?.tool_run_data?.error_message,
+        error_message: response?.tool_run_data?.error_message,
       };
     }
 
     newAnalysisData.gen_steps.steps = newSteps;
+
+    reRunningSteps = newReRunningSteps;
     toolRunDataCache = newToolRunDataCache;
 
+    setAnalysisData(newAnalysisData);
+
     if (onReRunData && typeof onReRunData === "function") {
-      setAnalysisData(newAnalysisData);
-      onReRunData(response, newAnalysisData);
+      onReRunData(response);
     }
   }
 
@@ -384,7 +375,7 @@ function AnalysisManager({
       toolRunDataCache = val;
     },
     get reRunningSteps() {
-      return Object.assign({}, reRunningSteps);
+      return reRunningSteps.slice();
     },
     set reRunningSteps(val) {
       reRunningSteps = val;
