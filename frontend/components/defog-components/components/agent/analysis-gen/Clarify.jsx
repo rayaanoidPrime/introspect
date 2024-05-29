@@ -95,11 +95,7 @@ export default function Clarify({
 
     // run the command below after a 100ms delay
     setTimeout(() => {
-      handleSubmit(
-        null,
-        { clarification_questions: answers.current },
-        "clarify"
-      );
+      handleSubmit({ clarification_questions: answers.current }, "clarify");
     }, 100);
   }
 

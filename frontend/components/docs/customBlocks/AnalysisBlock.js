@@ -1,7 +1,6 @@
 import { createReactBlockSpec } from "@blocknote/react";
 import { createGlobalStyle } from "styled-components";
 import { AnalysisAgent } from "../../defog-components/components/agent/AnalysisAgent";
-import { v4 } from "uuid";
 import ErrorBoundary from "../../defog-components/components/common/ErrorBoundary";
 
 function createAnalysisBlockCss(blockId) {

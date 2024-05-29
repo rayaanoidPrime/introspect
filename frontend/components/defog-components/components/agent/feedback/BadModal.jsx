@@ -1,7 +1,10 @@
-import { Button, Modal, message } from "antd";
+import { Button, Modal } from "antd";
 import StepsDag from "../../common/StepsDag";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { toolDisplayNames, toolShortNames } from "../../../../../utils/utils";
+import { tempSuggestion } from "./temp";
+import Context from "../../common/Context";
+import { AnalysisAgent } from "../AnalysisAgent";
 
 export default function BadModal({
   open,
@@ -16,6 +19,8 @@ export default function BadModal({
 
   const [activeNode, _setActiveNode] = useState(null);
   const [rawFeedback, setRawFeedback] = useState(null);
+
+  const [context, _] = useContext(Context);
 
   // which feedback section is the user currently on
   const [activeSection, setActiveSection] = useState("general");
@@ -34,16 +39,19 @@ export default function BadModal({
   });
 
   const handleSubmit = useCallback(async () => {
-    console.log(comments);
     setLoading(true);
     const feedbackResponse = await submitFeedback({
       is_correct: false,
       comments: comments,
     });
+
     setLoading(false);
+    console.log(Date.now().toLocaleString(), "feedback response");
+    console.log(feedbackResponse);
+    // setRawFeedback(tempSuggestion);
 
     if (feedbackResponse && feedbackResponse.success) {
-      setRawFeedback(feedbackResponse.suggested_improvements);
+      setRawFeedback(feedbackResponse);
       // scroll to the bottom of the modal
       document.querySelector(".feedback-modal").scrollTo(0, 10000);
     }
@@ -223,7 +231,7 @@ export default function BadModal({
                             activeNode.data.step.tool_run_id
                           ].inputs
                         ).map(([key, value]) => (
-                          <div>
+                          <div key={key}>
                             <span className="italic">{key}</span>:{" "}
                             {/* {JSON.stringify(value)} */}
                             {/* if value is a number or string, display it. Else, display a JSON stringified version of it */}
@@ -245,7 +253,7 @@ export default function BadModal({
                         {comments["step_wise"][
                           activeNode.data.step.tool_run_id
                         ].outputs.map((output) => (
-                          <div>{output}</div>
+                          <div key={output}>{output}</div>
                         ))}
                       </p>
                       <textarea
@@ -291,24 +299,31 @@ export default function BadModal({
         Submit
       </Button>
 
-      <div className="flex flex-row">
-        <div className={`raw-suggestions py-5 px-5 w-12/12`}>
-          {rawFeedback && (
-            <>
-              <p className="text-lg  text-gray-900 font-bold">
-                Raw suggestions from the model
-              </p>
-              <p className="text-sm  text-gray-400">
-                The model suggested the following improvements
-              </p>
-              <div className={`mr-4`}>
-                <pre className="w-full min-h-10 p-2 border border-gray-300 rounded-md">
-                  {rawFeedback}
-                </pre>
+      <div className={`raw-suggestions py-5 px-5 w-12/12`}>
+        {rawFeedback?.new_analysis_id && (
+          <>
+            <p className="text-lg  text-gray-900 font-bold">
+              Based on your feedback, here is the new plan from the model
+            </p>
+            <div className="content">
+              <div className="editor-container py-2 px-4 mt-4 bg-white rounded-md mb-8">
+                <div className="defog-analysis-container">
+                  <div
+                    data-content-type="analysis"
+                    data-analysis-id={analysisId}
+                  >
+                    <AnalysisAgent
+                      key={rawFeedback.new_analysis_id}
+                      analysisId={rawFeedback.new_analysis_id}
+                      username={context.username}
+                      disableFeedback={true}
+                    />
+                  </div>
+                </div>
               </div>
-            </>
-          )}
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </Modal>
   );

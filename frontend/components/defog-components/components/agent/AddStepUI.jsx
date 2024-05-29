@@ -5,6 +5,7 @@ import { AddStepInputList } from "./AddStepInputList";
 import { ToolReRun } from "./ToolReRun";
 import setupBaseUrl from "../../../../utils/setupBaseUrl";
 import { v4 } from "uuid";
+import { createInitialToolInputs } from "../../../../utils/utils";
 
 const toolOptions = Object.keys(toolsMetadata).map((tool) => {
   return { value: tool, label: toolsMetadata[tool]?.tool_name };
@@ -25,6 +26,7 @@ export function AddStepUI({
 
   // all the default inputs are null, except for pandas dataframes, which are the parent's output
   const sanitizeInputs = (inputs) => {
+    return inputs;
     // if none of the inputs start with "global_dict.", then add it to the first input that is a string
     if (
       inputs
@@ -43,14 +45,14 @@ export function AddStepUI({
   };
 
   const [inputs, setInputs] = useState(
-    sanitizeInputs(activeNode?.data?.step?.inputs || [])
+    sanitizeInputs(activeNode?.data?.step?.inputs || {})
   );
   const [outputs, setOutputs] = useState(["output_" + v4().split("-")[0]]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setSelectedTool(activeNode?.data?.step?.tool_name);
-    setInputs(sanitizeInputs(activeNode?.data?.step?.inputs || []));
+    setInputs(sanitizeInputs(activeNode?.data?.step?.inputs || {}));
     setLoading(activeNode?.data?.step?.loading || false);
   }, [activeNode?.data?.id]);
 
@@ -66,6 +68,10 @@ export function AddStepUI({
           loading={loading || selectedTool === null}
           onClick={async () => {
             setLoading(true);
+            console.groupCollapsed("AddStepUI: Run button clicked");
+            console.log("inputs", inputs);
+            console.log("outputs", outputs);
+            console.groupEnd();
 
             try {
               const newStepSuccess = await fetch(createNewStepEndpoint, {
@@ -120,28 +126,17 @@ export function AddStepUI({
         showSearch
         onChange={(value) => {
           if (!activeNode.data?.step?.inputs) return;
+          const initialInputs = createInitialToolInputs(
+            value,
+            activeNode?.data?.parentIds
+          );
 
-          activeNode.data.step.inputs = Array(
-            toolsMetadata[value].function_signature.length
-          ).fill(null);
-
-          // if there's a pandas dataframe type in the inputs, default that to the parent's output
-          toolsMetadata[value].function_signature.forEach((sig, idx) => {
-            if (sig.type === "pandas.core.frame.DataFrame") {
-              try {
-                activeNode.data.step.inputs[idx] =
-                  "global_dict." + activeNode?.data?.parentIds?.[0];
-              } catch (e) {
-                console.log(e);
-              }
-            }
-          });
-
-          setInputs(activeNode.data?.step?.inputs.slice());
+          setInputs(initialInputs);
 
           setSelectedTool(value);
 
           activeNode.data.step.tool_name = value;
+          activeNode.data.step.inputs = initialInputs;
         }}
         placeholder="Select a tool"
       />
@@ -155,9 +150,9 @@ export function AddStepUI({
             toolMetadata={toolsMetadata[selectedTool]}
             analysisId={analysisId}
             inputs={inputs}
-            onEdit={(idx, prop, newVal) => {
-              activeNode.data.step.inputs[idx] = newVal;
-              setInputs(activeNode.data?.step?.inputs.slice());
+            onEdit={(prop, newVal) => {
+              activeNode.data.step.inputs[prop] = newVal;
+              setInputs(Object.assign({}, activeNode.data?.step?.inputs));
             }}
             parentNodeData={parentNodeData}
           />
@@ -167,7 +162,7 @@ export function AddStepUI({
           <AddStepInputList
             toolRunId={activeNode.data.id}
             toolMetadata={{
-              function_signature: [
+              input_metadata: [
                 {
                   name: "output_names",
                   default: [],
@@ -178,7 +173,7 @@ export function AddStepUI({
             autoFocus={false}
             newListValueDefault={() => "output_" + v4().split("-")[0]}
             inputs={[outputs]}
-            onEdit={(idx, prop, newVal) => {
+            onEdit={(prop, newVal) => {
               // don't need to worry about idx, because it's always 0
               setOutputs(newVal);
             }}

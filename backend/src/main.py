@@ -135,7 +135,7 @@ async def create_report(request: Request):
 
         print("create_report", params)
 
-        err, report_data = initialise_report(
+        err, report_data = await initialise_report(
             "", username, params.get("custom_id"), params.get("other_data")
         )
 
@@ -187,10 +187,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 # start a report data manager
                 # this fetches currently existing report data for this report
                 report_data_manager = ReportDataManager(
-                    data["user_question"],
-                    report_id,
-                    DEFOG_API_KEY,
-                    data.get("db_creds"),
+                    data["user_question"], report_id
                 )
 
                 await report_data_manager.async_init()
@@ -218,7 +215,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 # run the agent as per the request_type
                 err, agent_output = await report_data_manager.run_agent(
                     report_id=report_id,
-                    api_key=DEFOG_API_KEY,
                     request_type=request_type,
                     user_question=data["user_question"],
                     client_description=client_description,

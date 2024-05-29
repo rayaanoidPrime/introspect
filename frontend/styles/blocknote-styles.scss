@@ -777,8 +777,8 @@ $grid: repeating-linear-gradient(
         width: 100%;
         height: 100%;
         z-index: 3;
-        opacity: 0;
-        pointer-events: none;
+        // opacity: 0;
+        // pointer-events: none;
 
         .analysis-recipe-background {
           width: 100%;
@@ -1526,10 +1526,6 @@ $grid: repeating-linear-gradient(
     pointer-events: none;
     margin-bottom: 1em;
     font-family: $code;
-  }
-  .tool-run-analysis-text {
-    background-color: $very-light-gray;
-    padding: 1em;
   }
 }
 

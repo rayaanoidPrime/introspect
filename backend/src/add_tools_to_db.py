@@ -1,6 +1,5 @@
 from agents.planner_executor.tool_helpers.all_tools import tools
 from db_utils import add_tool
-from utils import embed_string
 
 import asyncio
 

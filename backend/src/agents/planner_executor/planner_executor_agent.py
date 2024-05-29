@@ -34,20 +34,18 @@ class Executor:
     def __init__(
         self,
         report_id,
-        api_key,
         user_question,
         client_description,
         glossary,
         table_metadata_csv,
         assignment_understanding,
-        dfg,
-        dfg_api_key="",
         toolboxes=[],
         parent_analyses=[],
         similar_plans=[],
+        predefined_steps=None,
+        direct_parent_analysis=None,
     ):
         self.user_question = user_question
-        self.api_key = api_key
         self.client_description = client_description
         self.glossary = glossary
         self.table_metadata_csv = table_metadata_csv
@@ -58,8 +56,8 @@ class Executor:
         self.parent_analyses = parent_analyses
         self.previous_responses = []
         self.similar_plans = similar_plans
-
-        self.dfg = dfg
+        self.predefined_steps = predefined_steps
+        self.direct_parent_analysis = direct_parent_analysis
 
         self.global_dict = {
             "user_question": user_question,
@@ -115,50 +113,55 @@ class Executor:
             while True:
                 url = llm_calls_url
 
-                if next_step_data_description.startswith("There was an error"):
-                    payload = {
-                        "request_type": "fix_error",
-                        "question": self.user_question,
-                        "metadata": self.table_metadata_csv,
-                        "tool_library_prompt": self.tool_library_prompt,
-                        "assignment_understanding": self.assignment_understanding,
-                        "parent_questions": [
-                            p["user_question"] for p in self.parent_analyses
-                        ],
-                        "previous_responses": self.previous_responses,
-                        "next_step_data_description": "",
-                        "error": next_step_data_description,
-                        "erroreous_response": ans,
-                        "similar_plans": self.similar_plans[:2],
-                    }
-                    ans = await asyncio.to_thread(requests.post, url, json=payload)
+                if self.predefined_steps is None:
+                    if next_step_data_description.startswith("There was an error"):
+                        payload = {
+                            "request_type": "fix_error",
+                            "question": self.user_question,
+                            "metadata": self.table_metadata_csv,
+                            "tool_library_prompt": self.tool_library_prompt,
+                            "assignment_understanding": self.assignment_understanding,
+                            "parent_questions": [
+                                p["user_question"] for p in self.parent_analyses
+                            ],
+                            "previous_responses": self.previous_responses,
+                            "next_step_data_description": "",
+                            "error": next_step_data_description,
+                            "erroreous_response": ans,
+                            "similar_plans": self.similar_plans[:2],
+                            "direct_parent_analysis": self.direct_parent_analysis,
+                        }
+                        ans = await asyncio.to_thread(requests.post, url, json=payload)
+                    else:
+                        payload = {
+                            "request_type": "create_plan",
+                            "question": self.user_question,
+                            "metadata": self.table_metadata_csv,
+                            "tool_library_prompt": self.tool_library_prompt,
+                            "assignment_understanding": self.assignment_understanding,
+                            "parent_questions": [
+                                p["user_question"] for p in self.parent_analyses
+                            ],
+                            "previous_responses": self.previous_responses,
+                            "next_step_data_description": next_step_data_description,
+                            "similar_plans": self.similar_plans[:2],
+                            "direct_parent_analysis": self.direct_parent_analysis,
+                        }
+                        ans = await asyncio.to_thread(requests.post, url, json=payload)
+                    ans = ans.json()["generated_step"]
+                    print(ans)
+                    self.previous_responses.append(ans)
+
+                    match = re.search("(?:```yaml)([\s\S]*?)(?=```)", ans)
+
+                    if match is None:
+                        break
+
+                    step = yaml.safe_load(match[1].strip())[0]
+                    # add a unique id to this tool as the tool_run prop
+                    step["tool_run_id"] = str(uuid4())
                 else:
-                    payload = {
-                        "request_type": "create_plan",
-                        "question": self.user_question,
-                        "metadata": self.table_metadata_csv,
-                        "tool_library_prompt": self.tool_library_prompt,
-                        "assignment_understanding": self.assignment_understanding,
-                        "parent_questions": [
-                            p["user_question"] for p in self.parent_analyses
-                        ],
-                        "previous_responses": self.previous_responses,
-                        "next_step_data_description": next_step_data_description,
-                        "similar_plans": self.similar_plans[:2],
-                    }
-                    ans = await asyncio.to_thread(requests.post, url, json=payload)
-                ans = ans.json()["generated_step"]
-                print(ans)
-
-                match = re.search("(?:```yaml)([\s\S]*?)(?=```)", ans)
-
-                if match is None:
-                    break
-
-                step = yaml.safe_load(match[1].strip())[0]
-
-                # add a unique id to this tool as the tool_run prop
-                step["tool_run_id"] = str(uuid4())
+                    step = self.predefined_steps.pop(0)
 
                 print(step)
 
@@ -169,15 +172,13 @@ class Executor:
                     resolved_inputs[input_name] = resolve_input(val, self.global_dict)
 
                 # execute this step
-                result, tool_function_parameters = await execute_tool(
+                result, tool_input_metadata = await execute_tool(
                     step["tool_name"], resolved_inputs, self.global_dict
                 )
 
                 step["error_message"] = result.get("error_message")
 
-                self.previous_responses.append(ans)
-
-                step["function_signature"] = tool_function_parameters
+                step["input_metadata"] = tool_input_metadata
                 # when we're re running, we will need to reconstruct the model messages
                 # store these for later
                 # later we'll have to replace these with the user's edited inputs perhaps.
@@ -194,8 +195,25 @@ class Executor:
                         + "Length of outputs_storage_keys and outputs don't match. Force matching the length."
                         + Style.RESET_ALL
                     )
+                    # if outputs_storage_keys < outputs, append the difference with output_idx
+                    if len(step.get("outputs_storage_keys")) < len(
+                        result.get("outputs")
+                    ):
+                        for i in range(
+                            len(step.get("outputs_storage_keys")),
+                            len(result.get("outputs")),
+                        ):
+                            step["outputs_storage_keys"].append(
+                                f"{step['tool_name']}_output_{i}"
+                            )
 
-                    pass
+                    # if outputs_storage_keys > outputs, remove the difference
+                    if len(step.get("outputs_storage_keys")) > len(
+                        result.get("outputs")
+                    ):
+                        step["outputs_storage_keys"] = step["outputs_storage_keys"][
+                            : len(result.get("outputs"))
+                        ]
 
                 # if we're here, means this step ran successfully.
                 # if the outputs of this step match any of the previous steps, either exactly or:

@@ -1,7 +1,10 @@
 import traceback
+
+import yaml
 from agents.clarifier.clarifier_agent import Clarifier
+from utils import get_clean_plan
 from db_utils import (
-    get_parent_analyses,
+    get_multiple_reports,
     get_report_data,
     get_similar_correct_plans,
     update_report_data,
@@ -21,12 +24,16 @@ prop_names = {
     "gen_steps": "steps",
 }
 
+import os
+
+dfg_api_key = os.environ["DEFOG_API_KEY"]
+
 
 class ReportDataManager:
-    def __init__(self, user_question, report_id, api_key, db_creds=None):
+    def __init__(self, user_question, report_id):
         self.report_id = report_id
         self.report_data = None
-        self.api_key = api_key
+        self.api_key = dfg_api_key
         self.user_question = user_question
         self.invalid = False
         self.similar_plans = []
@@ -35,15 +42,39 @@ class ReportDataManager:
         # if so, load the report details from there
         err1, report_data = get_report_data(report_id)
 
-        self.db_creds = db_creds
-
         # if there are parent_analyses, get the user_question from each of them
-        err2, parent_analyses = get_parent_analyses(
+        err2, parent_analyses = get_multiple_reports(
             report_data.get("parent_analyses") or []
         )
         self.parent_analyses = parent_analyses
 
-        self.invalid = err1 or err2
+        self.direct_parent_id = report_data.get("direct_parent_id")
+        self.direct_parent_analysis = None
+
+        err3 = None
+
+        if self.direct_parent_id:
+            err3, self.direct_parent_analysis = get_report_data(self.direct_parent_id)
+            # if we get something valid, we only need two things:
+            # the user question, and the generated steps in yaml format
+            if err3 is None:
+                # if this has gen_steps
+                # and if we had actual steps in the gen_steps
+                if (
+                    self.direct_parent_analysis.get("gen_steps", None)
+                    and len(self.direct_parent_analysis["gen_steps"]["steps"]) > 0
+                ):
+                    clean_plan = get_clean_plan(self.direct_parent_analysis)
+
+                    self.direct_parent_analysis = {
+                        "user_question": self.direct_parent_analysis.get(
+                            "user_question"
+                        ),
+                        "plan": clean_plan,
+                        "plan_yaml": yaml.dump(clean_plan),
+                    }
+
+        self.invalid = err1 or err2 or err3
 
         if self.invalid is None and report_data is not None:
             self.report_data = report_data
@@ -162,7 +193,8 @@ class ReportDataManager:
                 **kwargs,
                 **post_processing_arguments,
                 parent_analyses=self.parent_analyses,
-                similar_plans=self.similar_plans
+                similar_plans=self.similar_plans,
+                direct_parent_analysis=self.direct_parent_analysis,
             )
 
             if result["success"] is not True:

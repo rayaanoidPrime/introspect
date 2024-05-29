@@ -6,7 +6,7 @@ export function setupWebsocketManager(
   onMessage = () => {}
 ) {
   let socket = null;
-  let log = true;
+  let log = false;
   let timeout = null;
   let lastPingTime = Date.now();
   // -1 so it goes to 0 on 1st connect

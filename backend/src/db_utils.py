@@ -66,7 +66,7 @@ Feedback = Base.classes.defog_plans_feedback
 free_tier_quota = 100
 
 
-def initialise_report(user_question, username, custom_id=None, other_data={}):
+async def initialise_report(user_question, username, custom_id=None, other_data={}):
     err = None
     timestamp = str(datetime.datetime.now())
     new_report_data = None
@@ -303,6 +303,7 @@ async def update_report_data(
                     # insert back into reports table
                     # if the request type is user_question, we will also update the embedding
                     if request_type == "user_question":
+                        print(new_data)
                         cursor = conn.connection.cursor()
                         new_embedding = await embed_string(new_data)
                         cursor.execute(
@@ -341,6 +342,7 @@ def report_data_from_row(row):
         report_markdown = row.report_markdown or ""
         parent_analyses = row.parent_analyses or []
         follow_up_analyses = row.follow_up_analyses or []
+        direct_parent_id = row.direct_parent_id or None
 
         # send only the ones that are not none.
         # we should have a better solution to this.
@@ -351,6 +353,7 @@ def report_data_from_row(row):
             "report_markdown": report_markdown,
             "parent_analyses": parent_analyses,
             "follow_up_analyses": follow_up_analyses,
+            "direct_parent_id": direct_parent_id,
         }
 
         if clarify is not None:
@@ -721,6 +724,7 @@ async def get_all_docs(username):
                 select(
                     Docs.__table__.columns["doc_id"],
                     Docs.__table__.columns["doc_title"],
+                    Docs.__table__.columns["doc_uint8"],
                     Docs.__table__.columns["timestamp"],
                     Docs.__table__.columns["archived"],
                 ).where(Docs.username == username)
@@ -1169,7 +1173,7 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
         return {"success": False, "error_message": str(e)}
 
 
-def get_parent_analyses(parent_analyses=[]):
+def get_multiple_reports(report_ids=[], columns=["report_id", "user_question"]):
     err = None
     analyses = []
     try:
@@ -1178,10 +1182,11 @@ def get_parent_analyses(parent_analyses=[]):
             rows = conn.execute(
                 select(
                     *[
-                        Reports.__table__.columns["report_id"],
-                        Reports.__table__.columns["user_question"],
+                        Reports.__table__.columns[c]
+                        for c in columns
+                        if c in Reports.__table__.columns
                     ]
-                ).where(Reports.report_id.in_(parent_analyses))
+                ).where(Reports.report_id.in_(report_ids))
             )
 
             if rows.rowcount != 0:
@@ -1607,3 +1612,30 @@ async def delete_tool(function_name):
         err = str(e)
     finally:
         return err
+
+
+async def get_analysis_versions(root_analysis_id):
+    # get all versions of an analysis
+    # get ids that end with -v1, -v2, -v3..
+    err = None
+    versions = []
+    try:
+        with engine.connect() as conn:
+            cursor = conn.connection.cursor()
+            cursor.execute(
+                """
+                SELECT report_id, user_question, gen_steps
+                FROM defog_reports
+                WHERE root_analysis_id = %s
+                ORDER BY timestamp ASC
+                """,
+                (root_analysis_id,),
+            )
+            rows = cursor.fetchall()
+            versions = [{"analysis_id": x[0], "user_question": x[1]} for x in rows]
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        err = str(e)
+    finally:
+        return err, versions

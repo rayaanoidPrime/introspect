@@ -1,6 +1,9 @@
 import { contrast, random } from "chroma-js";
 import setupBaseUrl from "../utils/setupBaseUrl";
 import { Annotation, EditorState, Transaction } from "@codemirror/state";
+import { Doc, XmlElement, applyUpdate, encodeStateAsUpdate } from "yjs";
+import { v4 } from "uuid";
+import { toolsMetadata } from "./tools_metadata";
 
 export const getAnalysis = async (reportId) => {
   const urlToConnect = setupBaseUrl("http", "get_report");
@@ -70,6 +73,8 @@ export const getAllDocs = async (username) => {
     return { success: false, error_message: e };
   }
 };
+
+export const getAllDashboards = getAllDocs;
 
 export const getTableData = async (tableId) => {
   const urlToConnect = setupBaseUrl("http", "get_table_chart");
@@ -367,4 +372,75 @@ export function createPythonFunctionInputString(inputDict, indent = 2) {
     (inputDict.type ? ": " + inputDict.type : "") +
     (inputDict.description ? " # " + inputDict.description : "")
   );
+}
+
+export function createYjsDocFromUint8Array(uint8Array) {
+  const doc = new Doc();
+  applyUpdate(doc, uint8Array);
+  return doc;
+}
+
+export function createNewYjsXmlElement(nodeName, attributes) {
+  const newElement = new XmlElement(nodeName);
+  for (const [key, value] of Object.entries(attributes)) {
+    newElement.setAttribute(key, value);
+  }
+  return newElement;
+}
+
+// inserting to a new blocknote doc using yjs
+// newBlock = new Y.XmlElement("blockcontainer");
+// newBlock.setAttribute("id", v4());
+// newBlock.setAttribute("backgroundColor", "default");
+// newBlock.setAttribute("textColor", "default");
+// newAnalysis = new Y.XmlElement("analysis");
+// newAnalysis.setAttribute("id", analysisId);
+// newBlock.insert(0, [newAnalysis])
+// doc = new Y.Doc()
+// // get the uin8array of the doc from the backend table
+// Y.applyUpdate(doc, arr)
+// blockGroup = doc.getXmlFragment("document-store").firstChild
+// blockGroup.insert(blockGroup.length, [newBlock])
+// arr = Y.encodeStateAsUpdate(doc)
+// // send arr to the backend to update the table
+export function appendAnalysisToYjsDoc(yjsDoc, analysisId) {
+  const newBlock = createNewYjsXmlElement("blockcontainer", {
+    id: v4(),
+    backgroundColor: "default",
+    textColor: "default",
+  });
+  const newAnalysis = createNewYjsXmlElement("analysis", {
+    analysisId: analysisId,
+  });
+  newBlock.insert(0, [newAnalysis]);
+
+  // yjsD.emit("update", [encoder.toUint8Array(), transaction.origin, doc]);
+
+  yjsDoc.transact((tr) => {
+    const blockGroup = yjsDoc.getXmlFragment("document-store").firstChild;
+
+    blockGroup.insert(blockGroup.length, [newBlock]);
+    console.log(tr);
+  });
+  return true;
+}
+
+export function createInitialToolInputs(toolName, parentIds) {
+  let initialInputs = {};
+
+  // if there's a pandas dataframe type in the inputs, default that to the parent's output
+  Object.values(toolsMetadata[toolName].input_metadata).forEach((inp) => {
+    if (inp.type === "pandas.core.frame.DataFrame") {
+      try {
+        initialInputs[inp.name] = "global_dict." + parentIds?.[0];
+      } catch (e) {
+        console.log(e);
+      }
+    } else {
+      initialInputs[inp.name] = Array.isArray(inp.default)
+        ? inp.default[0]
+        : inp.default;
+    }
+  });
+  return initialInputs;
 }

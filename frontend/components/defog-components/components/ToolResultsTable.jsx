@@ -239,7 +239,11 @@ export function ToolResultsTable({
           />
         ),
         tabLabel: "Table",
-        icon: <TableOutlined />,
+        icon: (
+          <div className="mr-1 inline">
+            <TableOutlined />
+          </div>
+        ),
       });
     }
 
@@ -270,7 +274,11 @@ export function ToolResultsTable({
             </ErrorBoundary>
           ),
           tabLabel: "Chart",
-          icon: <BarChartOutlined />,
+          icon: (
+            <div className="mr-1 inline">
+              <BarChartOutlined />
+            </div>
+          ),
         });
       }
     } else {

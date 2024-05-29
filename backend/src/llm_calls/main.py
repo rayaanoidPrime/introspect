@@ -6,58 +6,18 @@ import pandas as pd
 import json
 from io import StringIO
 import yaml
+from prompts import (
+    basic_plan_system_prompt,
+    basic_user_prompt,
+    tweak_parent_analysis_system_prompt,
+    tweak_parent_analysis_user_prompt,
+)
 
 openai_api_key = os.environ["OPENAI_API_KEY"]
 
 openai = OpenAI(api_key=openai_api_key)
 
 model = "gpt-4o"
-
-# tool_library_prompt = """- tool_name: data_fetcher_and_aggregator
-#   description: Converting a natural language question into a SQL query, that then runs on an external database. Fetches, joins, filters, aggregates, and performs arithmetic computations on data. Remember that this tool does not have access to the data returned by the previous steps. It only has access to the data in the database. We should attempt to give this tool very specific questions that pertain to the user question, instead of overly broad or generic ones. However, do not make any mention of which table to query when you give it your question. You can use this exactly once among all steps.
-#   inputs: [natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string]
-#   outputs: pandas df
-
-# - tool_name: global_dict_data_fetcher_and_aggregator
-#   description: Converting a natural language question into a SQL query, that then runs on a database that is stored in global_dict. Fetches, filters, aggregates, and performs arithmetic computations on data. This tool has access to all of global_dict. This will only run on the data that is stored in global_dict. For external databases, use the data_fetcher_and_aggregator tool.
-#   inputs: [natural language description of the data required as a string, "global_dict.<input_df_name>"]
-#   outputs: pandas df
-
-# - tool_name: line_plot
-#   description: This function generates a line plot using python's seaborn library. It should be used when the user wants to see how a variable changes over time, and should be used immediately after the data_fetcher tool.
-#   inputs: ["global_dict.<input_df_name>", xaxis column (exactly a single column - often a datetime or string), yaxis column (exactly a single column - always a numerical value), hue column or None, facet column or None (try as much as possible for this now to be None, though), estimator ("mean" if data must be aggregated, "None" if it is not aggregated), individual_id_column or None (try as much as possible for this not to be None)]
-#   outputs: pandas df
-
-# - tool_name: t_test
-#   description: This function gets two groups and runs a t-test to check if there is a significant difference between their means. There are two ways to run the test: paired and unpaired. Paired test has one group column, unpaired has one group column.
-#   inputs: ["global_dict.<input_df_name>", group column, score column, name column or None, type of t test as a string (paired or unpaired)]
-#   outputs: pandas df
-
-# - tool_name: wilcoxon_test
-#   description: This function gets two groups and runs a wilcoxon test to check if there is a significant difference between their means.
-#   inputs: ["global_dict.<input_df_name>", group column, score column, name column]
-#   outputs: pandas df
-
-# - tool_name: anova_test
-#   description: This function gets more than two groups and runs an anova test to check if there is a significant difference between their means.
-#   inputs: ["global_dict.<input_df_name>", group column, score column]
-#   outputs: pandas df
-
-# - tool_name: fold_change
-#   description: This function calculates the fold change over time for different groups. Fold change is the ratio of the final value to the initial value. Should only be used if the user explicitly mentions the words "fold change" in their request.
-#   inputs: ["global_dict.<input_df_name>", value column (the numerical value), group column (the column that represents the group), time column (the column that represents the time point)]
-#   outputs: pandas
-
-# - tool_name: boxplot
-#   description: Generates a boxplot using python's seaborn library. Also accepts a faceting column. This usually required the full dataset and not summary statistics. Use the facet feature only when specifically asked for it.
-#   inputs: ["global_dict.<input_df_name>", [boxplot_x column, boxplot_y column], facet = True/False, facet column]
-#   outputs: pandas df
-
-# - tool_name: heatmap
-#   description: Generates a heatmap using python's seaborn library. This accepts the full dataset as the first parameter, and not summary statistics or aggregates.
-#   inputs: ["global_dict.<input_df_name>", heatmap_x_column, heatmap_y_column, heatmap_value_column, aggregation_type as a string (can be mean, median, max, min or sum), color_scale (only if specified by the user. defaults to YlGnBu)]
-#   outputs: pandas df
-# """
 
 
 def clean_response(res):
@@ -118,6 +78,7 @@ def create_plan(
     tool_library_prompt,
     error=None,
     erroreous_response=None,
+    direct_parent_analysis=None,
 ):
     parent_analyses_prompt = (
         ""
@@ -129,37 +90,6 @@ def create_plan(
     print(user_question)
     print(assignment_understanding)
 
-    system_prompt = f"""You are a task planner. Your job is to plan out a series of steps in order to complete a task given by the user. The user will give you a description of the task, and you will need to figure out what tools to use to complete the task. Each tool has inputs, use cases and outputs.
-
-You have access to a global dictionary, where you will save the outputs of running each tool. You can reuse the variables in this dictionary as inputs to other tools by providing the name as "global_dict.variable_name".
-
-You will also be given the metadata for the user's database. You can reference the columns in this metadata in the inputs for the tools.
-
-You can use the following tools:
-{tool_library_prompt}
-
-Here is the user's database metadata in CSV format:
-{table_metadata_csv}
-
-You will give your plan one step at a time. Each step is an object with the following format:
-```yaml
-- description: what you're doing in this step
-  tool_name: tool_name
-  inputs: inputs for this tool. Empty array if no inputs. Map the inputs as closely to column names in the metadata as possible
-  outputs_storage_keys: [list of variable names to store outputs in the global dictionary, in the same order as the outputs of the tool]
-  done: true if this is the last step in the plan, false otherwise
-```
-
-The user will review each step. Then will ask you for the next step if nothing is wrong. If something is wrong, they will tell you what is wrong and you will need to fix it. You can fix it by changing the tool, the inputs, or the output name. Make sure to not have any placeholders for user inputs in your generated steps. It will be run directly with the tool, without any user intervention in between.
-
-Remember that if a user asks for a variable changes or is affected, they are asking for a line chart of a numerical value over time, using the visit_timepoint column as the x axis. The only exception to this is if they explicitly ask for a fold change.
-If a user is asking for something *at* baseline, they are most likely asking for a boxplot of the variable_value.
-
-If a user asks a simple question that can be adequately answered by just SQL, the no additional steps are needed and we can be done.
-
-Only generate the YAML markdown string that starts with ```yaml and ends with ```. Nothing else.
-"""
-
     assignment_understanding_prompt = (
         ""
         if assignment_understanding == ""
@@ -167,8 +97,34 @@ Only generate the YAML markdown string that starts with ```yaml and ends with ``
 {assignment_understanding}"""
     )
 
-    user_prompt = f"""This is the user's task: {user_question}. {parent_analyses_prompt}
-{assignment_understanding_prompt}"""
+    system_prompt = None
+    user_prompt = None
+
+    if not direct_parent_analysis:
+        system_prompt = basic_plan_system_prompt.format(
+            tool_library_prompt=tool_library_prompt,
+            table_metadata_csv=table_metadata_csv,
+        )
+        user_prompt = basic_user_prompt.format(
+            user_question=user_question,
+            parent_analyses_prompt=parent_analyses_prompt,
+            assignment_understanding_prompt=assignment_understanding_prompt,
+        )
+    else:
+        system_prompt = tweak_parent_analysis_system_prompt.format(
+            tool_library_prompt=tool_library_prompt,
+            table_metadata_csv=table_metadata_csv,
+            original_user_question=direct_parent_analysis["user_question"],
+            original_plan=direct_parent_analysis["plan_yaml"],
+        )
+        user_prompt = tweak_parent_analysis_user_prompt.format(
+            user_question=user_question,
+            parent_analyses_prompt=parent_analyses_prompt,
+            assignment_understanding_prompt=assignment_understanding_prompt,
+        )
+
+    print(system_prompt)
+    print(user_prompt)
 
     if len(similar_plans) > 0:
         similar_plans_yaml = yaml.dump(
@@ -231,7 +187,11 @@ Only generate the YAML markdown string that starts with ```yaml and ends with ``
 
 
 def get_clarification(
-    user_question, client_description, table_metadata_csv, parent_questions
+    user_question,
+    client_description,
+    table_metadata_csv,
+    parent_questions=None,
+    direct_parent_analysis=None,
 ):
     system_prompt = f"""You are a data analyst who has been asked a question about a dataset that contains data about biological assays.
 
@@ -477,30 +437,33 @@ def main(request):
             data["client_description"],
             data["metadata"],
             data.get("parent_questions", []),
+            data.get("direct_parent_analysis", None),
         )
     elif request_type == "create_plan":
         resp = create_plan(
-            data["question"],
-            data["similar_plans"],
-            data["metadata"],
-            data["assignment_understanding"],
-            data["parent_questions"],
-            data["previous_responses"],
-            data["next_step_data_description"],
-            data["tool_library_prompt"],
+            user_question=data["question"],
+            similar_plans=data["similar_plans"],
+            table_metadata_csv=data["metadata"],
+            assignment_understanding=data["assignment_understanding"],
+            parent_questions=data["parent_questions"],
+            previous_responses=data["previous_responses"],
+            next_step_data_description=data["next_step_data_description"],
+            tool_library_prompt=data["tool_library_prompt"],
+            direct_parent_analysis=data.get("direct_parent_analysis", None),
         )
     elif request_type == "fix_error":
         resp = create_plan(
-            data["question"],
-            data["similar_plans"],
-            data["metadata"],
-            data["assignment_understanding"],
-            data["parent_questions"],
-            data["previous_responses"],
-            data["next_step_data_description"],
-            data["tool_library_prompt"],
-            data["error"],
-            data["erroreous_response"],
+            user_question=data["question"],
+            similar_plans=data["similar_plans"],
+            table_metadata_csv=data["metadata"],
+            assignment_understanding=data["assignment_understanding"],
+            parent_questions=data["parent_questions"],
+            previous_responses=data["previous_responses"],
+            next_step_data_description=data["next_step_data_description"],
+            tool_library_prompt=data["tool_library_prompt"],
+            error=data["error"],
+            erroreous_response=data["erroreous_response"],
+            direct_parent_analysis=data.get("direct_parent_analysis", None),
         )
 
     elif request_type == "ping":

@@ -2,6 +2,7 @@ import datetime
 import inspect
 import json
 import os
+import trace
 from uuid import uuid4
 from colorama import Fore, Style
 import traceback
@@ -13,7 +14,8 @@ from agents.planner_executor.tool_helpers.core_functions import analyse_data
 from agents.planner_executor.tool_helpers.all_tools import tool_name_dict
 import pandas as pd
 from io import StringIO
-from utils import get_db_type, log_msg
+from agents.main_agent import execute
+from utils import get_clean_plan, get_db_type, log_msg
 
 DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]
 
@@ -23,10 +25,12 @@ from db_utils import (
     add_tool,
     delete_tool,
     get_all_docs,
+    get_analysis_versions,
     get_doc_data,
     get_report_data,
     get_tool_run,
     get_toolboxes,
+    initialise_report,
     store_feedback,
     store_tool_run,
     toggle_disable_tool,
@@ -141,15 +145,11 @@ async def add_to_recently_viewed_docs_endpoint(request: Request):
         if username is None or type(username) != str:
             return {"success": False, "error_message": "Invalid username."}
 
-        if api_key is None or type(api_key) != str:
-            return {"success": False, "error_message": "Invalid api key."}
-
         if doc_id is None or type(doc_id) != str:
             return {"success": False, "error_message": "Invalid document id."}
 
         await add_to_recently_viewed_docs(
             username=username,
-            api_key=api_key,
             doc_id=doc_id,
             timestamp=str(datetime.datetime.now()),
         )
@@ -260,13 +260,7 @@ async def get_analyses(request: Request):
     Get all analysis of a user using the api key.
     """
     try:
-        data = await request.json()
-        api_key = DEFOG_API_KEY
-
-        if api_key is None or type(api_key) != str:
-            return {"success": False, "error_message": "Invalid api key."}
-
-        err, analyses = await get_all_analyses(api_key)
+        err, analyses = await get_all_analyses()
         if err:
             return {"success": False, "error_message": err}
 
@@ -487,7 +481,6 @@ async def rerun_step(websocket: WebSocket):
             async for err, reran_id, new_data in rerun_step_and_dependents(
                 analysis_id, tool_run_id, steps, global_dict=global_dict
             ):
-                # print("New data: ", new_data)
                 if new_data and type(new_data) == dict:
                     if reran_id:
                         print("Reran step: ", reran_id)
@@ -615,7 +608,7 @@ async def create_new_step(request: Request):
         if parent_step is None or type(parent_step) != dict:
             return {"success": False, "error_message": "Invalid parent step."}
 
-        if inputs is None or type(inputs) != list:
+        if inputs is None or type(inputs) != dict:
             return {"success": False, "error_message": "Invalid inputs."}
 
         if outputs_storage_keys is None or type(outputs_storage_keys) != list:
@@ -663,7 +656,7 @@ async def create_new_step(request: Request):
             "tool_name": tool_name,
             "model_generated_inputs": inputs,
             "inputs": inputs,
-            "function_signature": tool["input_metadata"],
+            "input_metadata": tool["input_metadata"],
             "tool_run_id": new_tool_run_id,
             "outputs_storage_keys": outputs_storage_keys,
         }
@@ -1046,20 +1039,7 @@ async def submit_feedback(request: Request):
         if err:
             raise Exception(err)
 
-        generated_plan = analysis_data.get("gen_steps", {}).get("steps", [])
-        cleaned_plan = []
-        for item in generated_plan:
-            cleaned_item = {}
-            for key, value in item.items():
-                if key in [
-                    "tool_name",
-                    "model_generated_inputs",
-                    "outputs_storage_keys",
-                    "done",
-                    "error_message",
-                ]:
-                    cleaned_item[key] = value
-            cleaned_plan.append(cleaned_item)
+        cleaned_plan = get_clean_plan(analysis_data)
 
         generated_plan_yaml = yaml.dump(cleaned_plan)
 
@@ -1115,12 +1095,71 @@ async def submit_feedback(request: Request):
             raw_response = r.json()["diagnosis"]
 
             # extract yaml from metadata
-            recommended_plan = raw_response.split("```yaml")[-1].split("```")[0].strip()
-            print(recommended_plan, flush=True)
+            initial_recommended_plan = (
+                raw_response.split("```yaml")[-1].split("```")[0].strip()
+            )
+            print(initial_recommended_plan, flush=True)
+            new_analysis_id = str(uuid4())
+            new_analysis_data = None
             try:
-                recommended_plan = yaml.safe_load(recommended_plan)
-            except:
+                initial_recommended_plan = yaml.safe_load(initial_recommended_plan)
+                # give each tool a tool_run_id
+                # duplicate model_generated_inputs to inputs
+                for i, item in enumerate(initial_recommended_plan):
+                    item["tool_run_id"] = str(uuid4())
+                    item["inputs"] = item["model_generated_inputs"].copy()
+
+                # create a new analysis with these as steps
+                err, new_analysis_data = await initialise_report(
+                    user_question,
+                    username,
+                    new_analysis_id,
+                    {"gen_steps": [], "clarify": []},
+                )
+                if err:
+                    raise Exception(err)
+
+                # run the steps
+                metadata_dets = await get_metadata()
+                glossary = metadata_dets["glossary"]
+                client_description = metadata_dets["client_description"]
+                table_metadata_csv = metadata_dets["table_metadata_csv"]
+
+                setup, post_process = await execute(
+                    report_id=new_analysis_id,
+                    user_question=user_question,
+                    client_description=client_description,
+                    table_metadata_csv=table_metadata_csv,
+                    assignment_understanding="",
+                    glossary=glossary,
+                    toolboxes=[],
+                    parent_analyses=[],
+                    similar_plans=[],
+                    predefined_steps=initial_recommended_plan,
+                )
+
+                if not setup.get("success"):
+                    raise Exception(setup.get("error_message", ""))
+
+                final_executed_plan = []
+                # run the generator
+                if "generator" in setup:
+                    g = setup["generator"]
+                    async for step in g():
+                        # step comes in as a list of 1 step
+                        final_executed_plan += step
+                        err = await update_report_data(
+                            new_analysis_id, "gen_steps", step
+                        )
+                        if err:
+                            raise Exception(err)
+
+                recommended_plan = final_executed_plan
+            except Exception as e:
+                print(e)
+                traceback.print_exc()
                 recommended_plan = None
+                new_analysis_data = None
 
             if err is not None:
                 raise Exception(err)
@@ -1130,6 +1169,8 @@ async def submit_feedback(request: Request):
                 "did_overwrite": did_overwrite,
                 "suggested_improvements": raw_response,
                 "recommended_plan": recommended_plan,
+                "new_analysis_id": new_analysis_id,
+                "new_analysis_data": new_analysis_data,
             }
         else:
             return {"success": True, "did_overwrite": did_overwrite}
@@ -1140,3 +1181,53 @@ async def submit_feedback(request: Request):
         print(error)
         traceback.print_exc()
         return {"success": False, "error_message": error}
+
+
+@router.post("/get_analysis_versions")
+async def get_analysis_versions_endpoint(request: Request):
+    # get all analysis ids that have teh suffix -v1, -v2, -v3 etc
+    try:
+        params = await request.json()
+        root_analysis_id = params.get("root_analysis_id", None)
+
+        if not root_analysis_id:
+            raise Exception("No root analysis provided.")
+
+        await get_analysis_versions(root_analysis_id)
+        pass
+    except Exception as e:
+        print("Error getting analysis versions: ", e)
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error_message": "Unable to get versions: " + str(e[:300]),
+        }
+
+
+@router.post("/update_dashboard_data")
+async def update_dashboard_data_endpoint(request: Request):
+    try:
+        data = await request.json()
+        if data.get("doc_uint8") is None:
+            return {"success": False, "error_message": "No document data provided."}
+
+        if data.get("doc_id") is None:
+            return {"success": False, "error_message": "No document id provided."}
+
+        col_name = "doc_blocks" if data.get("doc_blocks") else "doc_uint8"
+        err = await update_doc_data(
+            data.get("doc_id"),
+            [col_name, "doc_title"],
+            {col_name: data.get(col_name), "doc_title": data.get("doc_title")},
+        )
+        if err:
+            return {"success": False, "error_message": err}
+
+        return {"success": True}
+    except Exception as e:
+        print("Error adding analysis to dashboard: ", e)
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error_message": "Unable to add analysis to dashboard: " + str(e)[:300],
+        }

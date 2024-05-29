@@ -222,3 +222,22 @@ def create_simple_tool_types(_type):
 
     else:
         return simple_tool_types.get(_type, _type)
+
+
+def get_clean_plan(analysis_data):
+    generated_plan = analysis_data.get("gen_steps", {}).get("steps", [])
+    cleaned_plan = []
+    for item in generated_plan:
+        cleaned_item = {}
+        for key, value in item.items():
+            if key in [
+                "tool_name",
+                "model_generated_inputs",
+                "outputs_storage_keys",
+                "done",
+                "error_message",
+            ]:
+                cleaned_item[key] = value
+        cleaned_plan.append(cleaned_item)
+
+    return cleaned_plan

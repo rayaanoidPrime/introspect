@@ -96,6 +96,16 @@ CREATE TABLE public.defog_reports (
     gen_steps jsonb,
     follow_up_analyses jsonb,
     parent_analyses jsonb,
+    -- if this is a root analysis
+    -- "versions" of a root analysis will have this as false
+    is_root_analysis boolean default true,
+    -- if this is a root analysis, this will be null
+    -- if this is a version of a root analysis, this will be the report_id of the root analysis
+    root_analysis_id text,
+    -- direct_parent_id: when a new analysis is created using the new agent, this will be the report_id of the immediate
+    -- parent after which the new one is being created
+    -- think of it as "create analysis B by ~tweaking~ analysis A". A is the direct parent of B
+    direct_parent_id text,
     username text
 );
 

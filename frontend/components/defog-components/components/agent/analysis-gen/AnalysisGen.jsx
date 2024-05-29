@@ -10,7 +10,6 @@ import { ThemeContext } from "../../../context/ThemeContext";
 import styled from "styled-components";
 import { Select, Tabs, Input } from "antd";
 import { DocContext } from "../../../../docs/DocContext";
-import { InfoCircleFilled, InfoCircleOutlined } from "@ant-design/icons";
 
 const generationStages = ["clarify"];
 

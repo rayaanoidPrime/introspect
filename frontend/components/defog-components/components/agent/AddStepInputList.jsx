@@ -325,12 +325,10 @@ export const inputTypeToUI = {
     config = {
       availableParentColumns: [],
       toolRunId: "",
-      functionSignature: {},
+      inputMetadata: {},
     }
   ) => {
-    const options =
-      config?.functionSignature?.find((sig) => sig.name === inputName)
-        ?.default || [];
+    const options = config?.inputMetadata?.[inputName]?.default || [];
 
     return (
       <Select
@@ -362,13 +360,13 @@ export function AddStepInputList({
   toolRunId,
   analysisId,
   toolMetadata,
-  inputs = [],
+  inputs = {},
   onEdit = () => {},
   newListValueDefault = "",
   parentNodeData = {},
   autoFocus = true,
 }) {
-  const functionSignature = toolMetadata?.function_signature || [];
+  const inputMetadata = toolMetadata?.input_metadata || {};
   const ctr = useCallback(
     (node) => {
       if (!autoFocus) return;
@@ -397,7 +395,9 @@ export function AddStepInputList({
     if (!inputs) return [];
     let avail = [];
 
-    inputs.forEach((input) => {
+    Object.keys(inputs).forEach((input_name) => {
+      const input = inputs[input_name];
+
       if (typeof input !== "string") return;
       if (input?.startsWith("global_dict.")) {
         const id = input.split(".")[1];
@@ -413,21 +413,24 @@ export function AddStepInputList({
 
   return (
     <div className="tool-input-list" key={toolRunId} ref={ctr}>
-      {inputs.map((input, i) => {
-        const sanitizedType = sanitizeInputType(functionSignature[i].type);
+      {Object.keys(inputs).map((input_name, i) => {
+        const sanitizedType = sanitizeInputType(inputMetadata[input_name].type);
+        const input = inputs[input_name];
 
         return (
           <div key={i + "_" + toolRunId} className="tool-input">
             <span className="tool-input-type">
               {easyToolInputTypes[sanitizedType] || sanitizedType}
             </span>
-            <span className="tool-input-name">{functionSignature[i].name}</span>
+            <span className="tool-input-name">
+              {inputMetadata[input_name].name}
+            </span>
             {inputTypeToUI[sanitizedType] &&
               inputTypeToUI[sanitizedType](
-                functionSignature[i].name,
+                inputMetadata[input_name].name,
                 input,
                 function (prop, newVal) {
-                  onEdit(i, prop, newVal);
+                  onEdit(prop, newVal);
                 },
                 {
                   availableParentColumns: availableColumns,
@@ -435,8 +438,8 @@ export function AddStepInputList({
                   newListValueDefault,
                   analysisId,
                   toolRunId,
-                  functionSignature,
-                  type: functionSignature[i].type,
+                  inputMetadata,
+                  type: inputMetadata[input_name].type,
                 }
               )}
           </div>

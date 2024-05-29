@@ -325,11 +325,11 @@ const inputTypeToUI = {
       availableOutputNodes: [],
       setActiveNode: () => {},
       availableParentColumns: [],
-      functionSignature,
+      inputMetadata,
     }
   ) => {
     const options =
-      Object.values(config?.functionSignature || [])?.find(
+      Object.values(config?.inputMetadata || [])?.find(
         (sig) => sig.name === inputName
       )?.default || [];
 
@@ -389,9 +389,7 @@ export function ToolRunInputList({
   });
 
   const [inputs, setInputs] = useState(step.inputs);
-  const [functionSignature, setFunctionSignature] = useState(
-    step.function_signature
-  );
+  const [inputMetadata, setInputMetadata] = useState(step.input_metadata);
 
   const ctr = useCallback(
     (node) => {
@@ -415,7 +413,7 @@ export function ToolRunInputList({
   );
 
   // prop is input name, newVal is the new value
-  function onEdit(index, prop, newVal) {
+  function onEdit(prop, newVal) {
     const newInputs = { ...inputs };
     newInputs[prop] = newVal;
     setInputs(newInputs);
@@ -430,7 +428,7 @@ export function ToolRunInputList({
 
   useEffect(() => {
     setInputs(step.inputs);
-    setFunctionSignature(step.function_signature);
+    setInputMetadata(step.input_metadata);
   }, [step]);
 
   // in case any input is a pd dataframe, and one of the inputs is either DBColumn or list[DBColumn]
@@ -440,9 +438,7 @@ export function ToolRunInputList({
   return (
     <div className="tool-input-list" key={toolRunId} ref={ctr}>
       {Object.keys(inputs).map((input_name, i) => {
-        const sanitizedType = sanitizeInputType(
-          functionSignature[input_name].type
-        );
+        const sanitizedType = sanitizeInputType(inputMetadata[input_name].type);
         const input = inputs[input_name];
 
         return (
@@ -451,29 +447,29 @@ export function ToolRunInputList({
               {easyToolInputTypes[sanitizedType] || sanitizedType}
             </span>
             <span className="tool-input-name">
-              {functionSignature[input_name].name}
+              {inputMetadata[input_name].name}
             </span>
 
             {inputTypeToUI[sanitizedType] ? (
               inputTypeToUI[sanitizedType](
                 toolRunId,
-                functionSignature[input_name].name,
+                inputMetadata[input_name].name,
                 input,
                 function (prop, newVal) {
-                  onEdit(i, prop, newVal);
+                  onEdit(prop, newVal);
                 },
                 {
                   availableOutputNodes,
                   setActiveNode,
                   availableParentColumns,
-                  functionSignature,
-                  type: functionSignature[input_name].type,
+                  inputMetadata,
+                  type: inputMetadata[input_name].type,
                 }
               )
             ) : (
               <span className="tool-input-value" contentEditable>
                 {step.inputs.length - 1 < i
-                  ? String(functionSignature[input_name].default)
+                  ? String(inputMetadata[input_name].default)
                   : String(input)}
               </span>
             )}

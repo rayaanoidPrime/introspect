@@ -9,7 +9,10 @@ import {
   PlusSquareOutlined,
   PlusSquareTwoTone,
 } from "@ant-design/icons";
-import { toolDisplayNames } from "../../../../utils/utils";
+import {
+  createInitialToolInputs,
+  toolDisplayNames,
+} from "../../../../utils/utils";
 
 const nodeCssSize = 15;
 
@@ -34,20 +37,20 @@ export default function StepsDag({
   toolIcon = () => <HiWrenchScrewdriver />,
   extraNodeClasses = () => "",
 }) {
+  console.log(steps);
   const [graph, setGraph] = useState({ nodes: {}, links: [] });
   const [nodes, setNodes] = useState([]);
+  const effectDep = JSON.stringify(steps || []);
 
   useEffect(() => {
+    console.log("inside effect", steps);
     let g = { nodes: {}, links: [] };
     steps.forEach((step) => {
       // each step is a node
       // each resulting variable is a node
       // each input from global dictionaries is also node
       // if exists in nodes, don't do anything
-
-      // short random id
-      // const step_id = v4().slice(0, 8) + "-" + step["tool_name"];
-      const step_id = step.id;
+      const step_id = step.tool_run_id;
       // create node for this step
       g["nodes"][step_id] = {
         id: step_id,
@@ -148,7 +151,7 @@ export default function StepsDag({
               parents: [child],
               children: [],
               step: {
-                inputs: [],
+                inputs: {},
                 tool_name: null,
                 parent_step: step,
               },
@@ -223,7 +226,7 @@ export default function StepsDag({
     } catch (e) {
       console.log("Error setting active node: ", e);
     }
-  }, [steps]);
+  }, [effectDep]);
 
   return (
     <div className="analysis-graph" key={steps?.length}>

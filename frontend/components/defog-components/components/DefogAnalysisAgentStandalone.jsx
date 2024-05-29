@@ -1,16 +1,26 @@
-import { AnalysisAgent } from "./agent/AnalysisAgent";
-import React, { useContext, useEffect, useState, Fragment } from "react";
+import React, {
+  useContext,
+  useEffect,
+  useState,
+  Fragment,
+  useMemo,
+} from "react";
 import Context from "./common/Context";
 import { v4 } from "uuid";
 import { DocContext, RelatedAnalysesContext } from "../../docs/DocContext";
 import { ReactiveVariablesContext } from "../../docs/ReactiveVariablesContext";
-import { getAllAnalyses, getUserMetadata } from "../../../utils/utils";
+import {
+  getAllAnalyses,
+  getAllDashboards,
+  getUserMetadata,
+} from "../../../utils/utils";
 import styled, { createGlobalStyle } from "styled-components";
 import ErrorBoundary from "./common/ErrorBoundary";
 import setupBaseUrl from "../../../utils/setupBaseUrl";
 import { setupWebsocketManager } from "../../../utils/websocket-manager";
+import AnalysisVersionViewer from "./agent/AnalysisVersionViewer";
 
-export default function DefogAnalysisAgent({ analysisId, username }) {
+export default function DefogAnalysisAgentStandalone({ analysisId, username }) {
   const [context, setContext] = useState({});
   const [id, setId] = useState(analysisId || "analysis-" + v4());
   const [docContext, setDocContext] = useState(useContext(DocContext));
@@ -28,11 +38,17 @@ export default function DefogAnalysisAgent({ analysisId, username }) {
   // this is for handling re runs of tools
   const [reRunManager, setReRunManager] = useState(null);
 
+  const [dashboards, setDashboards] = useState([]);
+
   useEffect(() => {
     async function setup() {
       // setup user items
       const items = docContext.userItems;
       const analyses = await getAllAnalyses();
+      const dashboards = await getAllDashboards(username);
+      if (dashboards?.success) {
+        setDashboards(dashboards.docs);
+      }
 
       if (analyses && analyses.success) {
         items.analyses = analyses.analyses;
@@ -74,16 +90,6 @@ export default function DefogAnalysisAgent({ analysisId, username }) {
           toolSocketManager: toolSocketManager,
         },
       });
-
-      // add to recently viewed docs for this user
-      // await fetch(recentlyViewedEndpoint, {
-      //   method: "POST",
-      //   body: JSON.stringify({
-      //     api_key: apiToken,
-      //     doc_id: docId,
-      //     username: username,
-      //   }),
-      // });
     }
 
     setup();
@@ -124,30 +130,20 @@ export default function DefogAnalysisAgent({ analysisId, username }) {
             <Context.Provider value={[context, setContext]}>
               <GlobalStyle />
               <FontLoadCss>
-                <div className="defog-analysis-root defog-analysis-agent-rc md:w-11/12  ">
-                  {
-                    // if there's an analysis id, it's fine
-                    // but if there's no analysis id, then the api token and username
-
-                    <>
-                      <div className="content">
-                        <div className="editor-container py-2 px-4 mt-4 bg-white rounded-md mb-8">
-                          <div className="defog-analysis-container">
-                            <div
-                              data-content-type="analysis"
-                              data-analysis-id={analysisId}
-                            >
-                              <AnalysisAgent
-                                key={analysisId}
-                                analysisId={id}
-                                username={username}
-                              />
-                            </div>
-                          </div>
-                        </div>
+                <div className="content md:w-11/12">
+                  <div className="editor-container mt-4 mb-8">
+                    <div className="defog-analysis-container">
+                      <div
+                        data-content-type="analysis"
+                        data-analysis-id={analysisId}
+                      >
+                        <AnalysisVersionViewer
+                          username={username}
+                          dashboards={dashboards}
+                        />
                       </div>
-                    </>
-                  }
+                    </div>
+                  </div>
                 </div>
               </FontLoadCss>
             </Context.Provider>
