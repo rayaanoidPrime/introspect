@@ -2,39 +2,44 @@ import { Input, Modal, message } from "antd";
 import { useEffect, useRef, useState } from "react";
 import { v4 } from "uuid";
 import { AnalysisAgent } from "./AnalysisAgent";
-import { PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined, StarOutlined } from "@ant-design/icons";
 import { appendAnalysisToYjsDoc } from "../../../../utils/utils";
 import setupBaseUrl from "../../../../utils/setupBaseUrl";
 import { Doc, applyUpdate, encodeStateAsUpdate } from "yjs";
 import YPartyKitProvider from "y-partykit/provider";
-
-const defaultProps = {
-  rootAnalysisId: null,
-  username: null,
-  dashboards: [],
-  analysisVersionList: [
-    {
-      user_question: "New analysis",
-      analysis_id: "dummy",
-    },
-  ],
-};
+import { AnalysisHistoryMenuItem } from "./AnalysisHistoryMenuItem";
 
 const partyEndpoint = process.env.NEXT_PUBLIC_AGENTS_ENDPOINT;
 
-function AnalysisVersionViewer(props) {
-  props = { ...defaultProps, ...props };
-  const [selectedAnalysisIndex, setSelectedAnalysisIndex] = useState(
-    props?.analysisVersionList?.length - 1 >= 0
-      ? props?.analysisVersionList?.length - 1
-      : 0
-  );
+function AnalysisVersionViewer({ dashboards, username }) {
+  const [activeAnalysisId, setActiveAnalysisId] = useState(null);
 
-  const [analysisVersionList, setAnalysisVersionList] = useState(
-    props?.analysisVersionList
-  );
+  const [activeRootAnalysisId, setActiveRootAnalysisId] = useState(null); // this is the currently selected root analysis
 
-  const [rootAnalysis, setRootAnalysis] = useState(props?.rootAnalysisId); // this is the root analysis
+  // we render these in the history panel and don't unmount them
+  // for faster switching between them
+  const [last10Analysis, setLast10Analysis] = useState([]); // this is the last 10 analysis
+
+  // an object that stores all analysis in this "session"
+  // structure:
+  // {
+  //  rootAnalysisId: {
+  //     root: {
+  //       analysisId: "analysis-1",
+  //       user_question: "Show me 5 rows",
+  //     },
+  //     versionList: [
+  //       {
+  //        analysisId: "analysis-1-v1",
+  //        user_question: "Show me 5 rows",
+  //        manager: ...
+  //       },
+  //      ...
+  //    ]
+  //   }
+  //  ...
+  // }
+  const [sessionAnalysis, setSessionAnalysis] = useState({});
 
   const [loading, setLoading] = useState(false);
   const searchRef = useRef(null);
@@ -43,17 +48,16 @@ function AnalysisVersionViewer(props) {
 
   const managerCreatedHook = (manager, analysisId) => {
     // add manager to analysisVersionList
-    let newAnalysisVersionList = analysisVersionList.map((item) => {
-      if (item.analysis_id === analysisId) {
-        return {
-          ...item,
-          manager,
-        };
-      }
-      return item;
-    });
-
-    setAnalysisVersionList(newAnalysisVersionList);
+    // let newAnalysisVersionList = analysisVersionList.map((item) => {
+    //   if (item.analysisId === analysisId) {
+    //     return {
+    //       ...item,
+    //       manager,
+    //     };
+    //   }
+    //   return item;
+    // });
+    // setAnalysisVersionList(newAnalysisVersionList);
   };
 
   useEffect(() => {
@@ -94,113 +98,100 @@ function AnalysisVersionViewer(props) {
     };
   });
 
-  // raise error if:
-  // 1. we don't have analysisVersionList, but have a rootAnalysisId
-  // 2. we have analysisVersionList, but don't have a rootAnalysisId
-  // 3. root anlaysis is not a valid object
-  // 4. analysisVersionList is not an array
-  // 5. each item in analysisVersionList should have an analysis_id and user_question
-  // 6. root analysis object should have an analysis_id and user_question
-  // 7. we have a username
-  if (
-    (!analysisVersionList && rootAnalysis) ||
-    (rootAnalysis && typeof rootAnalysis !== "object") ||
-    (analysisVersionList && !Array.isArray(analysisVersionList)) ||
-    (analysisVersionList &&
-      analysisVersionList.some(
-        (item) => !item.analysis_id || !item.user_question
-      )) ||
-    (rootAnalysis &&
-      (!rootAnalysis.analysis_id || !rootAnalysis.user_question)) ||
-    !props.username
-  ) {
-    message.error("Invalid props passed to AnalysisVersionViewer");
-    return;
-  }
-
   const handleSubmit = () => {
     try {
       setLoading(true);
-      let newAnalysisVersionList = [
-        ...(rootAnalysis ? analysisVersionList : []),
-      ];
-      let directParentIndex = selectedAnalysisIndex;
+      console.log(activeRootAnalysisId);
 
-      // check if the last analysis is not a dummy analysis
-      // and either:
-      // doesn't have gen_steps as the nextStage
-      // or has gen_steps as the nextStage but the gen_steps is empty
-      // if so, delete this from the list and create a new analysis
-      const lastAnalysis =
-        newAnalysisVersionList?.[newAnalysisVersionList.length - 1];
-      const lastAnalysisData = lastAnalysis?.manager?.analysisData;
+      // if we have an active root analysis, we're appending to that
+      // otherwise we're starting a new analysis
+      let newAnalysis = {
+        analysisId: "analysis-" + v4(),
+        isRoot: !activeRootAnalysisId,
+        rootAnalysisId: activeRootAnalysisId,
+        user_question: searchRef.current.input.value,
+      };
+      let activeRootAnalysis;
 
-      if (
-        lastAnalysis &&
-        lastAnalysisData &&
-        lastAnalysis.analysis_id !== "dummy" &&
-        // either no steps or non existent steps
-        !lastAnalysisData?.gen_steps?.steps?.length
-      ) {
-        console.log(
-          "the last analysis was still at clarify stage, deleting it and starting a fresh one"
-        );
-        newAnalysisVersionList = newAnalysisVersionList.slice(
-          0,
-          newAnalysisVersionList.length - 1
-        );
-        directParentIndex = newAnalysisVersionList.length - 1;
+      if (activeRootAnalysisId) {
+        activeRootAnalysis = sessionAnalysis[activeRootAnalysisId].root;
+        const versionList =
+          sessionAnalysis[activeRootAnalysis.analysisId].versionList;
+        if (versionList.length) {
+          newAnalysis.directParentId =
+            versionList[versionList.length - 1].analysisId;
+        } else {
+          newAnalysis.directParentId = activeRootAnalysis.analysisId;
+        }
+      } else {
+        newAnalysis.directParentId = null;
       }
-
-      let newAnalysisId = null;
 
       // this is extra stuff we will send to the backend when creating an entry
       // in the db
       let createAnalysisRequestExtraParams = {
         user_question: searchRef.current.input.value,
-        // if rootAnalysis is not defined, means we're starting something from scratch
-        is_root_analysis: !rootAnalysis,
+        is_root_analysis: !activeRootAnalysisId,
+        root_analysisId: activeRootAnalysisId?.analysisId,
+        direct_parent_id: newAnalysis.directParentId,
       };
 
-      if (!rootAnalysis || directParentIndex === -1) {
-        newAnalysisId = "analysis-" + v4();
-        setRootAnalysis({
-          analysis_id: newAnalysisId,
-          user_question: searchRef.current.input.value,
-        });
-        createAnalysisRequestExtraParams.is_root_analysis = true;
-      } else {
-        // else create a follow up analysis
-        newAnalysisId =
-          "analysis-" + v4() + "-v" + newAnalysisVersionList.length;
-        createAnalysisRequestExtraParams["root_analysis_id"] =
-          rootAnalysis.analysis_id;
+      newAnalysis.createAnalysisRequestBody = {
+        // the backend receives an extra param called "other_data" when appending to the table
+        other_data: createAnalysisRequestExtraParams,
+      };
 
-        createAnalysisRequestExtraParams["direct_parent_id"] =
-          newAnalysisVersionList[directParentIndex].analysis_id;
+      let newSessionAnalysis = { ...sessionAnalysis };
+
+      // if we have an active root analysis, we're appending to that
+      // otherwise we're starting a new root analysis
+      if (!activeRootAnalysisId) {
+        setActiveRootAnalysisId(newAnalysis.analysisId);
+        newSessionAnalysis[newAnalysis.analysisId] = {
+          root: newAnalysis,
+          versionList: [],
+        };
+      } else {
+        newSessionAnalysis[activeRootAnalysis.analysisId].versionList.push(
+          newAnalysis
+        );
       }
 
-      const newAnalysis = {
-        analysis_id: newAnalysisId,
-        user_question: searchRef.current.input.value,
-        createAnalysisRequestBody: {
-          // the backend receives an extra param called "other_data" when appending to the table
-          other_data: createAnalysisRequestExtraParams,
-        },
-      };
+      // // check if the last analysis is not a dummy analysis
+      // // and either:
+      // // doesn't have gen_steps as the nextStage
+      // // or has gen_steps as the nextStage but the gen_steps is empty
+      // // if so, delete this from the list and create a new analysis
+      // const lastAnalysis =
+      //   newAnalysisVersionList?.[newAnalysisVersionList.length - 1];
+      // const lastAnalysisData = lastAnalysis?.manager?.analysisData;
+
+      // if (
+      //   lastAnalysis &&
+      //   lastAnalysisData &&
+      //   lastAnalysis.analysisId !== "dummy" &&
+      //   // either no steps or non existent steps
+      //   !lastAnalysisData?.gen_steps?.steps?.length
+      // ) {
+      //   console.log(
+      //     "the last analysis was still at clarify stage, deleting it and starting a fresh one"
+      //   );
+      //   newAnalysisVersionList = newAnalysisVersionList.slice(
+      //     0,
+      //     newAnalysisVersionList.length - 1
+      //   );
+      //   directParentIndex = newAnalysisVersionList.length - 1;
+      // }
+
+      // let newAnalysisId = null;
+
       console.groupCollapsed("Analysis version viewer");
-      console.log("directParentIndex", directParentIndex);
-      console.log("old list: ", analysisVersionList);
-      console.log("newAnalysisVersionList", newAnalysisVersionList);
-      console.log("rootAnalysis", rootAnalysis);
-      console.log("newAnalysis", newAnalysis);
       console.groupEnd();
 
-      newAnalysisVersionList = [...newAnalysisVersionList, newAnalysis];
-
-      setAnalysisVersionList(newAnalysisVersionList);
-
-      setSelectedAnalysisIndex(newAnalysisVersionList.length - 1);
+      setSessionAnalysis(newSessionAnalysis);
+      setActiveAnalysisId(newAnalysis.analysisId);
+      searchRef.current.input.value = "";
+      setLast10Analysis([...last10Analysis.slice(0, 9), newAnalysis]);
     } catch (e) {
       message.error("Failed to create analysis: " + e);
     } finally {
@@ -208,74 +199,39 @@ function AnalysisVersionViewer(props) {
     }
   };
 
+  console.log(activeAnalysisId);
+
   // w-0
   return (
     <>
       <div className="flex flex-col bg-gray-50 min-h-96 rounded-md text-gray-600 border border-gray-300">
         <div className="flex grow">
-          {selectedAnalysisIndex > -1 && (
-            <div className="flex flex-col basis-1/4 mr-4 px-2 pt-5 pb-14 bg-gray-100 rounded-tl-lg relative">
-              <h2 className="px-2 mb-3">History</h2>
-              <div className="flex flex-col px-2">
-                {analysisVersionList.map((version, i) => {
-                  return (
-                    <div
-                      key={
-                        version.analysis_id +
-                        "-" +
-                        version.user_question +
-                        "-" +
-                        i
-                      }
-                      className={
-                        "flex flex-row items-center py-2 px-2 mb-1 hover:cursor-pointer rounded-md hover:bg-gray-200 " +
-                        `${analysisVersionList[selectedAnalysisIndex]?.analysis_id === version.analysis_id ? "font-bold bg-gray-200 " : ""}`
-                      }
-                      onClick={() => {
-                        setSelectedAnalysisIndex(i);
-                      }}
-                    >
-                      <div className="grow">{version.user_question}</div>
-                      {version.analysis_id !== "dummy" && !loading && (
-                        <div
-                          className="rounded-sm hover:bg-blue-500 p-1 flex justify-center hover:text-white"
-                          onClick={() => {
-                            console.log(version.analysis_id);
-                            setSelectedAnalysisIndex(i);
-                            // add this to a dashboard
-                            setAddToDashboardSelection(version);
-                          }}
-                        >
-                          <PlusOutlined />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          <div className="basis-3/4 rounded-tr-lg pb-14 pt-5">
-            {rootAnalysis ? (
-              analysisVersionList[selectedAnalysisIndex].analysis_id !==
-                "dummy" && (
-                <AnalysisAgent
-                  key={analysisVersionList[selectedAnalysisIndex].analysis_id}
-                  analysisId={
-                    analysisVersionList[selectedAnalysisIndex]?.analysis_id
+          <div className="basis-3/4 rounded-tr-lg pb-14 pt-5 pl-5 relative">
+            {last10Analysis.map((analysis) => {
+              return (
+                <div
+                  key={analysis.analysisId}
+                  className={
+                    activeAnalysisId === analysis.analysisId
+                      ? "relative z-2"
+                      : "absolute opacity-0"
                   }
-                  createAnalysisRequestBody={
-                    analysisVersionList[selectedAnalysisIndex]
-                      ?.createAnalysisRequestBody || {}
-                  }
-                  username={props.username}
-                  initiateAutoSubmit={true}
-                  searchRef={searchRef}
-                  setGlobalLoading={setLoading}
-                  managerCreatedHook={managerCreatedHook}
-                />
-              )
-            ) : (
+                >
+                  <AnalysisAgent
+                    analysisId={analysis.analysisId}
+                    createAnalysisRequestBody={
+                      analysis.createAnalysisRequestBody
+                    }
+                    username={username}
+                    initiateAutoSubmit={true}
+                    searchRef={searchRef}
+                    setGlobalLoading={setLoading}
+                    managerCreatedHook={managerCreatedHook}
+                  />
+                </div>
+              );
+            })}
+            {!activeAnalysisId && (
               <div className="w-full h-full place-content-center m-auto">
                 <p className="w-1/4 m-auto text-gray-400 text-center">
                   Ask and press Enter
@@ -283,6 +239,69 @@ function AnalysisVersionViewer(props) {
               </div>
             )}
           </div>
+
+          {
+            <div className="flex flex-col basis-1/4 mr-0 px-2 pt-5 pb-14 bg-gray-100 rounded-tl-lg relative">
+              <h2 className="px-2 mb-3">History</h2>
+              <div className="flex flex-col px-2">
+                {Object.keys(sessionAnalysis).map((rootAnalysisId, i) => {
+                  const root = sessionAnalysis[rootAnalysisId].root;
+                  const analysisVersionList =
+                    sessionAnalysis[rootAnalysisId].versionList;
+
+                  return (
+                    <>
+                      <AnalysisHistoryMenuItem
+                        key={root.analysisId}
+                        analysis={root}
+                        isActive={activeAnalysisId === root.analysisId}
+                        setActiveRootAnalysisId={setActiveRootAnalysisId}
+                        setActiveAnalysisId={setActiveAnalysisId}
+                        setAddToDashboardSelection={setAddToDashboardSelection}
+                        extraClasses={"mt-2"}
+                      />
+                      {analysisVersionList.map((version, i) => {
+                        return (
+                          <AnalysisHistoryMenuItem
+                            key={version.analysisId}
+                            analysis={version}
+                            isActive={activeAnalysisId === version.analysisId}
+                            setActiveRootAnalysisId={setActiveRootAnalysisId}
+                            setActiveAnalysisId={setActiveAnalysisId}
+                            setAddToDashboardSelection={
+                              setAddToDashboardSelection
+                            }
+                            extraClasses="ml-5 border-l-2"
+                          />
+                        );
+                      })}
+                    </>
+                  );
+                })}
+                {!activeRootAnalysisId ? (
+                  <AnalysisHistoryMenuItem
+                    isDummy={true}
+                    isActive={!activeRootAnalysisId}
+                    extraClasses={"mt-2"}
+                  />
+                ) : (
+                  <div className="w-full mt-5 sticky bottom-5">
+                    <div
+                      className="cursor-pointer z-20 bg-blue-200 relative hover:bg-blue-500 hover:text-white p-2 text-blue-400 shadow-custom"
+                      onClick={() => {
+                        // start a new root analysis
+                        setActiveRootAnalysisId(null);
+                        setActiveAnalysisId(null);
+                      }}
+                    >
+                      New <PlusOutlined />
+                    </div>
+                    <div className="absolute w-full h-10 bg-gray-100 z-0"></div>
+                  </div>
+                )}
+              </div>
+            </div>
+          }
         </div>
         <div className="sticky bottom-14 z-10">
           <Input
@@ -293,7 +312,7 @@ function AnalysisVersionViewer(props) {
             }}
             placeholder="Show me 5 rows"
             disabled={loading}
-            rootClassName="bg-white absolute mx-auto left-0 right-0 border-2 border-gray-400 -bottom-8 p-2 rounded-lg w-full lg:w-6/12 mx-auto h-16 shadow-custom hover:border-blue-500 focus:border-blue-500"
+            rootClassName="bg-white absolute mx-auto -left-1/4 right-0 border-2 border-gray-400 -bottom-8 p-2 rounded-lg w-full lg:w-6/12 mx-auto h-16 shadow-custom hover:border-blue-500 focus:border-blue-500"
           />
         </div>
       </div>
@@ -303,14 +322,13 @@ function AnalysisVersionViewer(props) {
         onOk={() => {
           console.log(selectedDashboards);
           selectedDashboards.forEach((dashboardId) => {
-            const dashboard = props.dashboards.find(
+            const dashboard = dashboards.find(
               (dashboard) => dashboard.doc_id === dashboardId
             );
 
             if (!dashboard) return;
 
-            const analysisId =
-              analysisVersionList[selectedAnalysisIndex].analysis_id;
+            const analysisId = analysisVersionList[activeAnalysisId].analysisId;
             const docId = dashboard.doc_id;
             const docTitle = dashboard.doc_title;
 
@@ -358,7 +376,7 @@ function AnalysisVersionViewer(props) {
         }}
       >
         <div className="dashboard-selection mt-8 flex flex-col max-h-80 overflow-scroll bg-gray-100 rounded-md">
-          {props.dashboards.map((dashboard) => (
+          {dashboards.map((dashboard) => (
             <div
               className={
                 "flex flex-row p-2 hover:bg-gray-200 cursor-pointer text-gray-400 items-start " +

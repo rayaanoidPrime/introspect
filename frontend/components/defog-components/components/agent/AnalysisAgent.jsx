@@ -30,8 +30,8 @@ export const AnalysisAgent = ({
   block,
   createAnalysisRequestBody = {},
   initiateAutoSubmit = false,
-  searchRef,
-  setGlobalLoading,
+  searchRef = null,
+  setGlobalLoading = () => {},
   managerCreatedHook = () => {},
 }) => {
   // const [messageApi, contextHolder] = message.useMessage();
