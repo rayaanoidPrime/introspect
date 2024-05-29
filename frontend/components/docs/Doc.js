@@ -140,13 +140,6 @@ export function Editor({ docId = null, username = null }) {
     protocol: "ws",
   });
 
-  yjsProvider.doc.on("update", () => {
-    console.log(
-      "update: ",
-      yjsProvider.doc.getXmlFragment("document-store").firstChild.toJSON()
-    );
-  });
-
   const editor = useCreateBlockNote({
     ...createEditorConfig(null, yjsDoc, yjsProvider, username),
     placeholders: {

@@ -17,7 +17,6 @@ export function AnalysisHistoryMenuItem({
         extraClasses
       }
       onClick={() => {
-        console.log(analysis);
         setActiveRootAnalysisId(analysis?.rootAnalysisId);
         setActiveAnalysisId(analysis?.analysisId);
       }}

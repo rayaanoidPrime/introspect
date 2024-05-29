@@ -37,10 +37,13 @@ export default function StepsDag({
   toolIcon = () => <HiWrenchScrewdriver />,
   extraNodeClasses = () => "",
 }) {
+  console.log(steps);
   const [graph, setGraph] = useState({ nodes: {}, links: [] });
   const [nodes, setNodes] = useState([]);
+  const effectDep = JSON.stringify(steps || []);
 
   useEffect(() => {
+    console.log("inside effect", steps);
     let g = { nodes: {}, links: [] };
     steps.forEach((step) => {
       // each step is a node
@@ -223,7 +226,7 @@ export default function StepsDag({
     } catch (e) {
       console.log("Error setting active node: ", e);
     }
-  }, [steps]);
+  }, [effectDep]);
 
   return (
     <div className="analysis-graph" key={steps?.length}>

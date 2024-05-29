@@ -236,6 +236,8 @@ function AnalysisManager({
 
       setAnalysisData(newAnalysisData);
 
+      console.log(newAnalysisData);
+
       if (onNewData && typeof onNewData === "function") {
         onNewData(response, newAnalysisData);
       }
