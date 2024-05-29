@@ -17,11 +17,8 @@ export function AnalysisHistoryMenuItem({
         extraClasses
       }
       onClick={() => {
-        if (isDummy) return;
         console.log(analysis);
-        setActiveRootAnalysisId(
-          analysis.isRoot ? analysis.analysisId : analysis.rootAnalysisId
-        );
+        setActiveRootAnalysisId(analysis?.rootAnalysisId);
         setActiveAnalysisId(analysis?.analysisId);
       }}
     >

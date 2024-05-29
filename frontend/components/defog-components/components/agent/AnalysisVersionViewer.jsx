@@ -1,5 +1,5 @@
 import { Input, Modal, message } from "antd";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { v4 } from "uuid";
 import { AnalysisAgent } from "./AnalysisAgent";
 import { PlusOutlined, StarOutlined } from "@ant-design/icons";
@@ -11,7 +11,15 @@ import { AnalysisHistoryMenuItem } from "./AnalysisHistoryMenuItem";
 
 const partyEndpoint = process.env.NEXT_PUBLIC_AGENTS_ENDPOINT;
 
-function AnalysisVersionViewer({ dashboards, username }) {
+function AnalysisVersionViewer({
+  dashboards,
+  username,
+  // this isn't always reinforced
+  // we check for this only when we're creating a new analysis
+  // but not otherwise
+  // the priority is to have the new analysis rendered to not lose the manager
+  maxRenderedAnalysis = 2,
+}) {
   const [activeAnalysisId, setActiveAnalysisId] = useState(null);
 
   const [activeRootAnalysisId, setActiveRootAnalysisId] = useState(null); // this is the currently selected root analysis
@@ -98,108 +106,124 @@ function AnalysisVersionViewer({ dashboards, username }) {
     };
   });
 
-  const handleSubmit = () => {
-    try {
-      setLoading(true);
-      console.log(activeRootAnalysisId);
+  const handleSubmit = useCallback(
+    (rootAnalysisId, isRoot) => {
+      try {
+        setLoading(true);
 
-      // if we have an active root analysis, we're appending to that
-      // otherwise we're starting a new analysis
-      let newAnalysis = {
-        analysisId: "analysis-" + v4(),
-        isRoot: !activeRootAnalysisId,
-        rootAnalysisId: activeRootAnalysisId,
-        user_question: searchRef.current.input.value,
-      };
-      let activeRootAnalysis;
-
-      if (activeRootAnalysisId) {
-        activeRootAnalysis = sessionAnalysis[activeRootAnalysisId].root;
-        const versionList =
-          sessionAnalysis[activeRootAnalysis.analysisId].versionList;
-        if (versionList.length) {
-          newAnalysis.directParentId =
-            versionList[versionList.length - 1].analysisId;
-        } else {
-          newAnalysis.directParentId = activeRootAnalysis.analysisId;
-        }
-      } else {
-        newAnalysis.directParentId = null;
-      }
-
-      // this is extra stuff we will send to the backend when creating an entry
-      // in the db
-      let createAnalysisRequestExtraParams = {
-        user_question: searchRef.current.input.value,
-        is_root_analysis: !activeRootAnalysisId,
-        root_analysisId: activeRootAnalysisId?.analysisId,
-        direct_parent_id: newAnalysis.directParentId,
-      };
-
-      newAnalysis.createAnalysisRequestBody = {
-        // the backend receives an extra param called "other_data" when appending to the table
-        other_data: createAnalysisRequestExtraParams,
-      };
-
-      let newSessionAnalysis = { ...sessionAnalysis };
-
-      // if we have an active root analysis, we're appending to that
-      // otherwise we're starting a new root analysis
-      if (!activeRootAnalysisId) {
-        setActiveRootAnalysisId(newAnalysis.analysisId);
-        newSessionAnalysis[newAnalysis.analysisId] = {
-          root: newAnalysis,
-          versionList: [],
+        // if we have an active root analysis, we're appending to that
+        // otherwise we're starting a new analysis
+        const newId = "analysis-" + v4();
+        let newAnalysis = {
+          analysisId: newId,
+          isRoot: !isRoot,
+          rootAnalysisId: isRoot ? newId : rootAnalysisId,
+          user_question: searchRef.current.input.value,
         };
-      } else {
-        newSessionAnalysis[activeRootAnalysis.analysisId].versionList.push(
-          newAnalysis
-        );
+        let rootAnalysis;
+
+        if (rootAnalysisId) {
+          rootAnalysis = sessionAnalysis[rootAnalysisId].root;
+          const versionList =
+            sessionAnalysis[rootAnalysis.analysisId].versionList;
+          if (versionList.length) {
+            newAnalysis.directParentId =
+              versionList[versionList.length - 1].analysisId;
+          } else {
+            newAnalysis.directParentId = rootAnalysis.analysisId;
+          }
+        } else {
+          newAnalysis.directParentId = null;
+        }
+
+        // this is extra stuff we will send to the backend when creating an entry
+        // in the db
+        let createAnalysisRequestExtraParams = {
+          user_question: searchRef.current.input.value,
+          is_root_analysis: !rootAnalysisId,
+          root_analysisId: rootAnalysisId?.analysisId,
+          direct_parent_id: newAnalysis.directParentId,
+        };
+
+        newAnalysis.createAnalysisRequestBody = {
+          // the backend receives an extra param called "other_data" when appending to the table
+          other_data: createAnalysisRequestExtraParams,
+        };
+
+        let newSessionAnalysis = { ...sessionAnalysis };
+
+        // if we have an active root analysis, we're appending to that
+        // otherwise we're starting a new root analysis
+        if (!rootAnalysisId) {
+          setActiveRootAnalysisId(newAnalysis.analysisId);
+          newSessionAnalysis[newAnalysis.analysisId] = {
+            root: newAnalysis,
+            versionList: [],
+          };
+        } else {
+          newSessionAnalysis[rootAnalysis.analysisId].versionList.push(
+            newAnalysis
+          );
+        }
+
+        // // check if the last analysis is not a dummy analysis
+        // // and either:
+        // // doesn't have gen_steps as the nextStage
+        // // or has gen_steps as the nextStage but the gen_steps is empty
+        // // if so, delete this from the list and create a new analysis
+        // const lastAnalysis =
+        //   newAnalysisVersionList?.[newAnalysisVersionList.length - 1];
+        // const lastAnalysisData = lastAnalysis?.manager?.analysisData;
+
+        // if (
+        //   lastAnalysis &&
+        //   lastAnalysisData &&
+        //   lastAnalysis.analysisId !== "dummy" &&
+        //   // either no steps or non existent steps
+        //   !lastAnalysisData?.gen_steps?.steps?.length
+        // ) {
+        //   console.log(
+        //     "the last analysis was still at clarify stage, deleting it and starting a fresh one"
+        //   );
+        //   newAnalysisVersionList = newAnalysisVersionList.slice(
+        //     0,
+        //     newAnalysisVersionList.length - 1
+        //   );
+        //   directParentIndex = newAnalysisVersionList.length - 1;
+        // }
+
+        // let newAnalysisId = null;
+
+        console.groupCollapsed("Analysis version viewer");
+        console.groupEnd();
+
+        setSessionAnalysis(newSessionAnalysis);
+        setActiveAnalysisId(newAnalysis.analysisId);
+        setActiveRootAnalysisId(newAnalysis.rootAnalysisId);
+        searchRef.current.input.value = "";
+        // remove the earliest one only if we have more than 10
+        setLast10Analysis((prev) => {
+          if (prev.length >= maxRenderedAnalysis) {
+            return [...prev.slice(1), newAnalysis];
+          } else {
+            return [...prev, newAnalysis];
+          }
+        });
+      } catch (e) {
+        message.error("Failed to create analysis: " + e);
+      } finally {
+        setLoading(false);
       }
+    },
+    [sessionAnalysis]
+  );
 
-      // // check if the last analysis is not a dummy analysis
-      // // and either:
-      // // doesn't have gen_steps as the nextStage
-      // // or has gen_steps as the nextStage but the gen_steps is empty
-      // // if so, delete this from the list and create a new analysis
-      // const lastAnalysis =
-      //   newAnalysisVersionList?.[newAnalysisVersionList.length - 1];
-      // const lastAnalysisData = lastAnalysis?.manager?.analysisData;
-
-      // if (
-      //   lastAnalysis &&
-      //   lastAnalysisData &&
-      //   lastAnalysis.analysisId !== "dummy" &&
-      //   // either no steps or non existent steps
-      //   !lastAnalysisData?.gen_steps?.steps?.length
-      // ) {
-      //   console.log(
-      //     "the last analysis was still at clarify stage, deleting it and starting a fresh one"
-      //   );
-      //   newAnalysisVersionList = newAnalysisVersionList.slice(
-      //     0,
-      //     newAnalysisVersionList.length - 1
-      //   );
-      //   directParentIndex = newAnalysisVersionList.length - 1;
-      // }
-
-      // let newAnalysisId = null;
-
-      console.groupCollapsed("Analysis version viewer");
-      console.groupEnd();
-
-      setSessionAnalysis(newSessionAnalysis);
-      setActiveAnalysisId(newAnalysis.analysisId);
-      searchRef.current.input.value = "";
-      setLast10Analysis([...last10Analysis.slice(0, 9), newAnalysis]);
-    } catch (e) {
-      message.error("Failed to create analysis: " + e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  console.log(activeAnalysisId);
+  console.log(
+    activeRootAnalysisId,
+    activeAnalysisId,
+    sessionAnalysis,
+    last10Analysis
+  );
 
   // w-0
   return (
@@ -207,6 +231,33 @@ function AnalysisVersionViewer({ dashboards, username }) {
       <div className="flex flex-col bg-gray-50 min-h-96 rounded-md text-gray-600 border border-gray-300">
         <div className="flex grow">
           <div className="basis-3/4 rounded-tr-lg pb-14 pt-5 pl-5 relative">
+            {activeAnalysisId &&
+              !last10Analysis.some(
+                (analysis) => analysis.analysisId === activeAnalysisId
+              ) && (
+                // make sure we render the active analysis if clicked
+                <div key={activeAnalysisId} className={"relative z-2"}>
+                  <AnalysisAgent
+                    analysisId={activeAnalysisId}
+                    createAnalysisRequestBody={
+                      // just a little fucked.
+                      activeAnalysisId === activeRootAnalysisId
+                        ? sessionAnalysis[activeRootAnalysisId].root
+                            .createAnalysisRequestBody
+                        : sessionAnalysis[
+                            activeRootAnalysisId
+                          ].versionList.find(
+                            (item) => item.analysisId === activeAnalysisId
+                          ).createAnalysisRequestBody
+                    }
+                    username={username}
+                    initiateAutoSubmit={true}
+                    searchRef={searchRef}
+                    setGlobalLoading={setLoading}
+                    managerCreatedHook={managerCreatedHook}
+                  />
+                </div>
+              )}
             {last10Analysis.map((analysis) => {
               return (
                 <div
@@ -281,14 +332,22 @@ function AnalysisVersionViewer({ dashboards, username }) {
                 {!activeRootAnalysisId ? (
                   <AnalysisHistoryMenuItem
                     isDummy={true}
+                    setActiveRootAnalysisId={setActiveRootAnalysisId}
+                    setActiveAnalysisId={setActiveAnalysisId}
                     isActive={!activeRootAnalysisId}
                     extraClasses={"mt-2"}
                   />
                 ) : (
                   <div className="w-full mt-5 sticky bottom-5">
                     <div
-                      className="cursor-pointer z-20 bg-blue-200 relative hover:bg-blue-500 hover:text-white p-2 text-blue-400 shadow-custom"
+                      data-enabled={!loading}
+                      className={
+                        "cursor-pointer z-20 relative " +
+                        "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom " +
+                        "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
+                      }
                       onClick={() => {
+                        if (loading) return;
                         // start a new root analysis
                         setActiveRootAnalysisId(null);
                         setActiveAnalysisId(null);
@@ -308,7 +367,9 @@ function AnalysisVersionViewer({ dashboards, username }) {
             type="text"
             ref={searchRef}
             onPressEnter={(ev) => {
-              handleSubmit();
+              // whenever we submit, we either start a new analysis or append to the current one
+              // based on where the user is currently in the UI
+              handleSubmit(activeRootAnalysisId, !activeRootAnalysisId);
             }}
             placeholder="Show me 5 rows"
             disabled={loading}
