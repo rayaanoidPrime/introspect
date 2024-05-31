@@ -107,7 +107,7 @@ function AnalysisVersionViewer({
   });
 
   const handleSubmit = useCallback(
-    (rootAnalysisId, isRoot) => {
+    (rootAnalysisId, isRoot, directParentId) => {
       try {
         setLoading(true);
 
@@ -120,28 +120,15 @@ function AnalysisVersionViewer({
           rootAnalysisId: isRoot ? newId : rootAnalysisId,
           user_question: searchRef.current.input.value,
         };
-        let rootAnalysis;
 
-        if (rootAnalysisId) {
-          rootAnalysis = sessionAnalysis[rootAnalysisId].root;
-          const versionList =
-            sessionAnalysis[rootAnalysis.analysisId].versionList;
-          if (versionList.length) {
-            newAnalysis.directParentId =
-              versionList[versionList.length - 1].analysisId;
-          } else {
-            newAnalysis.directParentId = rootAnalysis.analysisId;
-          }
-        } else {
-          newAnalysis.directParentId = null;
-        }
+        newAnalysis.directParentId = directParentId;
 
         // this is extra stuff we will send to the backend when creating an entry
         // in the db
         let createAnalysisRequestExtraParams = {
           user_question: searchRef.current.input.value,
           is_root_analysis: !rootAnalysisId,
-          root_analysisId: rootAnalysisId?.analysisId,
+          root_analysis_id: rootAnalysisId?.analysisId,
           direct_parent_id: newAnalysis.directParentId,
         };
 
@@ -161,6 +148,7 @@ function AnalysisVersionViewer({
             versionList: [],
           };
         } else {
+          const rootAnalysis = sessionAnalysis[rootAnalysisId].root;
           newSessionAnalysis[rootAnalysis.analysisId].versionList.push(
             newAnalysis
           );
@@ -369,7 +357,11 @@ function AnalysisVersionViewer({
             onPressEnter={(ev) => {
               // whenever we submit, we either start a new analysis or append to the current one
               // based on where the user is currently in the UI
-              handleSubmit(activeRootAnalysisId, !activeRootAnalysisId);
+              handleSubmit(
+                activeRootAnalysisId,
+                !activeRootAnalysisId,
+                activeAnalysisId
+              );
             }}
             placeholder="Show me 5 rows"
             disabled={loading}
@@ -382,6 +374,7 @@ function AnalysisVersionViewer({
         open={addToDashboardSelection}
         onOk={() => {
           console.log(selectedDashboards);
+          return;
           selectedDashboards.forEach((dashboardId) => {
             const dashboard = dashboards.find(
               (dashboard) => dashboard.doc_id === dashboardId

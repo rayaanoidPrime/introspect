@@ -34,13 +34,11 @@ export default function StepsDag({
   toolIcon = () => <HiWrenchScrewdriver />,
   extraNodeClasses = () => "",
 }) {
-  console.log(steps);
   const [graph, setGraph] = useState({ nodes: {}, links: [] });
   const [nodes, setNodes] = useState([]);
   const effectDep = JSON.stringify(steps || []);
 
   useEffect(() => {
-    console.log("inside effect", steps);
     let g = { nodes: {}, links: [] };
     steps.forEach((step) => {
       // each step is a node
