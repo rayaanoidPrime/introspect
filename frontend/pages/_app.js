@@ -4,6 +4,7 @@ import { Context } from "$components/common/Context";
 import "../styles/base-styles.scss";
 import "../styles/doc-styles.scss";
 import "../styles/blocknote-styles.scss";
+import "../styles/query-data.scss";
 
 export default function App({ Component, pageProps }) {
   const [context, setContext] = useState({});

@@ -275,8 +275,6 @@ export const AnalysisAgent = ({
     [analysisId, activeNode, reRunManager, dag, analysisManager]
   );
 
-  console.log(analysisData, dag);
-
   return (
     <ErrorBoundary>
       <div className="analysis-agent-container">
