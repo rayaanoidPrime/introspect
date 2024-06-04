@@ -410,14 +410,22 @@ Give your response as just a markdown string with just the SQL query, and nothin
 
 
 def generate_tool_code(
-    tool_name, tool_description, function_name, def_statement, return_statement
+    tool_name,
+    tool_description,
+    user_question,
+    function_name,
+    def_statement,
+    function_body,
+    return_statement,
 ):
     system_prompt = generate_tool_code_system_prompt
     user_prompt = generate_tool_code_user_prompt.format(
         function_name=function_name,
         tool_description=tool_description,
         def_statement=def_statement,
+        function_body=function_body,
         return_statement=return_statement,
+        user_question=user_question,
     )
 
     print("\n\n")
@@ -521,8 +529,10 @@ def main(request):
         resp = generate_tool_code(
             data["tool_name"],
             data["tool_description"],
+            data["user_question"],
             data["function_name"],
             data["def_statement"],
+            data["function_body"],
             data["return_statement"],
         )
 

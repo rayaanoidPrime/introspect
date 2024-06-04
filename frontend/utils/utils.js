@@ -446,10 +446,6 @@ export function createInitialToolInputs(toolName, parentIds) {
   return initialInputs;
 }
 
-export function mergeClassNames(...args) {
-  return args.filter((arg) => arg).join(" ");
-}
-
 export function arrayOfObjectsToObject(arr, key) {
   return arr.reduce((acc, obj) => {
     acc[obj[key]] = obj;

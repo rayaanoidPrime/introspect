@@ -921,8 +921,6 @@ async def toggle_disable_tool_endpoint(request: Request):
         if err:
             raise Exception(err)
 
-        print("Toggled tool: ", function_name)
-
         return {"success": True}
     except Exception as e:
         print("Error disabling tool: ", e)
@@ -1243,6 +1241,8 @@ async def generate_tool_code_endpoint(request: Request):
         tool_description = data.get("tool_description")
         function_name = data.get("function_name")
         def_statement = data.get("def_statement")
+        function_body = data.get("function_body")
+        user_question = data.get("user_question")
         return_statement = data.get("return_statement")
         toolbox = data.get("toolbox")
 
@@ -1254,12 +1254,20 @@ async def generate_tool_code_endpoint(request: Request):
         ):
             raise Exception("Invalid parameters.")
 
+        if function_body == "":
+            function_body = "  #Add code here\n  pass"
+
+        if not user_question or user_question == "":
+            user_question = "Please write the tool code."
+
         payload = {
             "request_type": "generate_tool_code",
             "tool_name": tool_name,
             "tool_description": tool_description,
+            "user_question": user_question,
             "function_name": function_name,
             "def_statement": def_statement,
+            "function_body": function_body,
             "return_statement": return_statement,
             "toolbox": toolbox,
         }
