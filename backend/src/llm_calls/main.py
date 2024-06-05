@@ -190,14 +190,10 @@ def create_plan(
 
 def get_clarification(
     user_question,
-    client_description,
-    table_metadata_csv,
-    parent_questions=None,
-    direct_parent_analysis=None,
 ):
     system_prompt = f"""You are a data analyst who has been asked a question about a dataset.
 
-Your job is to determine if a question is clear. If and only if the question is not clear, you can ask clarifying questions (if any) to the client.
+Your job is to determine if a question is clear. If and only if the question is not clear, you can ask clarifying questions (if any) to the client. Do not ask for data sources or any extraneous information - only ask for clarification around ambiguous parts of the question.
 
 If no clarification is required, just respond with "No clarification is needed"
 """
@@ -470,13 +466,7 @@ def main(request):
     elif request_type == "turn_into_statement":
         resp = turn_into_statement(data["clarification_questions"])
     elif request_type == "clarify_task":
-        resp = get_clarification(
-            data["question"],
-            data["client_description"],
-            data["metadata"],
-            data.get("parent_questions", []),
-            data.get("direct_parent_analysis", None),
-        )
+        resp = get_clarification(data["question"])
     elif request_type == "create_plan":
         resp = create_plan(
             user_question=data["question"],
