@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ToolEditorInput } from "./ToolEditorInput";
 import { Modal } from "antd";
 import Table from "$components/tailwind/Table";
-import temp from "./temp.json";
+import { CodeBracketSquareIcon } from "@heroicons/react/20/solid";
+import ToolCodeEditor from "./ToolCodeEditor";
 
-export function ToolFlow({ toolName, testingResults }) {
+export function ToolFlow({ toolName, testingResults, code }) {
   const inputsCtr = useRef(null);
   const outputsCtr = useRef(null);
   const toolNameNode = useRef(null);
@@ -110,6 +111,7 @@ export function ToolFlow({ toolName, testingResults }) {
           open={activeInput}
           onCancel={() => setActiveInput(null)}
           onOk={() => setActiveInput(null)}
+          title={activeInput.type.toUpperCase()}
         >
           {activeInput.type === "table" && (
             <Table
@@ -126,6 +128,15 @@ export function ToolFlow({ toolName, testingResults }) {
               alt="chart"
             />
           )}
+          {/* if code, just show a mono div with code inside */}
+          {activeInput.type === "code" && (
+            <>
+              <ToolCodeEditor
+                toolCode={activeInput.code}
+                className="h-96 overflow-scroll"
+              />
+            </>
+          )}
         </Modal>
       )}
       <div className="flex flex-row items-center h-80vh justify-between">
@@ -134,7 +145,7 @@ export function ToolFlow({ toolName, testingResults }) {
         </div>
         {/* <div className="mb-4 font-bold">Inputs</div> */}
         <div
-          className="flex flex-col overflow-auto justify-center items-start"
+          className="flex flex-col overflow-auto justify-center items-start z-10"
           ref={inputsCtr}
         >
           {testingResults.inputs.map((input, i) => (
@@ -154,10 +165,16 @@ export function ToolFlow({ toolName, testingResults }) {
         </div>
 
         <div
-          className="font-bold rounded-md bg-blue-400 text-white p-1 px-2"
+          className="font-bold flex flex-row items-center "
           ref={toolNameNode}
         >
-          {toolName}
+          <div className="rounded-md bg-blue-500 text-white p-1 px-2 ">
+            {toolName}
+          </div>
+          <CodeBracketSquareIcon
+            className="h-6 w-6 inline-block ml-2 text-blue-200 cursor-pointer hover:text-blue-400 z-20 bg-white"
+            onClick={() => setActiveInput({ type: "code", code: code })}
+          />
         </div>
 
         <div className="flex flex-col" ref={outputsCtr}>
@@ -175,9 +192,9 @@ export function ToolFlow({ toolName, testingResults }) {
                   />
                 )}
               </div>
-              <div className="m-4 w-20 rounded-md border shadow-sm">
-                {output.chart_images &&
-                  output.chart_images.map((d) => (
+              {output?.chart_images?.length ? (
+                <div className="m-4 w-20 rounded-md border shadow-sm">
+                  {output.chart_images.map((d) => (
                     <ToolEditorInput
                       key={d.data}
                       name="Image"
@@ -189,7 +206,10 @@ export function ToolFlow({ toolName, testingResults }) {
                       }}
                     />
                   ))}
-              </div>
+                </div>
+              ) : (
+                <></>
+              )}
             </div>
           ))}
         </div>

@@ -3,7 +3,7 @@ import { Modal } from "antd";
 import { useState } from "react";
 import { ToolEditor } from "./ToolEditor";
 
-export default function AddTool({ toolbox }) {
+export default function AddTool({ toolbox, onAddTool = (...args) => {} }) {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
@@ -33,7 +33,7 @@ export default function AddTool({ toolbox }) {
           <h1 className="text-lg font-bold mb-4">
             Add a tool to the {toolboxDisplayNames[toolbox]} toolbox
           </h1>
-          <ToolEditor />
+          <ToolEditor tool={{ toolbox: toolbox }} onAddTool={onAddTool} />
         </div>
       </Modal>
     </>

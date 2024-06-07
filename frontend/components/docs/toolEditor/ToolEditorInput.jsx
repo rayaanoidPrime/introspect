@@ -30,7 +30,7 @@ export function ToolEditorInput({
           <div className="h-full">
             <PhotoIcon
               onClick={() => onClick(input)}
-              className="w-full text-gray-300 cursor-pointer"
+              className="w-full text-blue-50 cursor-pointer hover:text-blue-200"
             />
           </div>
         ) : (

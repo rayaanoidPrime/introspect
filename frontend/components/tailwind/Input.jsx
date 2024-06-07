@@ -39,6 +39,7 @@ export function Input({
           aria-invalid="true"
           aria-describedby="email-error"
           value={value}
+          disabled={disabled}
           onChange={(ev) => {
             if (disabled) return;
             onChange(ev);

@@ -223,7 +223,7 @@ export default function ManageTools() {
                             );
                           })}
 
-                          <AddTool toolbox={toolbox} />
+                          <AddTool toolbox={toolbox} onAddTool={onAddTool} />
                         </div>
                       </div>
                     );

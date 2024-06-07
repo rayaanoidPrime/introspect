@@ -18,7 +18,7 @@ import pandas as pd
 from io import StringIO
 from agents.main_agent import execute
 from tool_code_utilities import add_default_imports, fix_savefig_calls
-from utils import execute_code, get_clean_plan, get_db_type, log_msg
+from utils import execute_code, get_clean_plan, get_db_type, log_msg, snake_case
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -906,7 +906,7 @@ async def delete_tool_endpoint(request: Request):
         if err:
             return {"success": False, "error_message": err}
 
-        logging.info("Deleted tool: ", function_name)
+        logging.info("Deleted tool: " + function_name)
 
         return {"success": True}
     except Exception as e:
@@ -1284,6 +1284,17 @@ async def generate_tool_code_endpoint(request: Request):
                 tool_code = resp["tool_code"]
                 testing_code = resp["testing_code"]
 
+                # find the function name in tool_code
+                try:
+                    function_name = tool_code.split("def ")[1].split("(")[0]
+                except Exception as e:
+                    logging.error("Error finding function name: " + str(e))
+                    # default to snake case tool name
+                    function_name = snake_case(tool_name)
+                    logging.error(
+                        "Defaulting to snake case tool name: " + function_name
+                    )
+
                 # try running this code
                 err, testing_details = await execute_code(
                     [tool_code, testing_code], "test_tool"
@@ -1294,9 +1305,6 @@ async def generate_tool_code_endpoint(request: Request):
 
                 # unfortunately testing_details has outputs, and inside of it is another outputs which is returned by the tool :tear:
                 testing_details["outputs"] = testing_details["outputs"]["outputs"]
-
-                logging.info(testing_details)
-                logging.info(testing_details["outputs"])
 
                 # convert inputs to a format we can send back to the user
                 # convert pandas dfs to csvs in both inoputs and outputs
@@ -1317,6 +1325,7 @@ async def generate_tool_code_endpoint(request: Request):
                         "tool_description": tool_description,
                         "generated_code": tool_code,
                         "testing_code": testing_code,
+                        "function_name": function_name,
                         "testing_results": {
                             "inputs": testing_details["inputs"],
                             "outputs": testing_details["outputs"],

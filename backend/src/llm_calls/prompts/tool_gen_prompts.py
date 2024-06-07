@@ -43,8 +43,8 @@ def test_tool():
     ...
     return {
         inputs: [
-            { name: input_1, type: input_1_type, value: sample_input_1 },
-            { name: input_2, type: input_2_type, value: sample_input_2 },
+            { name: input_1, type: input_1_type, value: sample_input_1, description: input_1_description},
+            { name: input_2, type: input_2_type, value: sample_input_2, description: input_2_description},
             ...
         ],
         outputs: tool_outputs
@@ -64,8 +64,8 @@ def test_tool():
     ...
     return {
         inputs: [
-            { name: input_1, type: input_1_type, value: sample_input_1 },
-            { name: input_2, type: input_2_type, value: sample_input_2 },
+            { name: input_1, type: input_1_type, value: sample_input_1, description: input_1_description },
+            { name: input_2, type: input_2_type, value: sample_input_2, description: input_2_description },
             ...
         ],
         outputs: tool_outputs

@@ -448,9 +448,17 @@ export function createInitialToolInputs(toolName, parentIds) {
   return initialInputs;
 }
 
-export function arrayOfObjectsToObject(arr, key) {
+export function arrayOfObjectsToObject(arr, key, includeKeys = null) {
   return arr.reduce((acc, obj) => {
-    acc[obj[key]] = obj;
+    acc[obj[key]] = Object.keys(obj).reduce((acc2, k) => {
+      if (Array.isArray(includeKeys) && !includeKeys.includes(k)) {
+        return acc2;
+      }
+
+      acc2[k] = obj[k];
+      return acc2;
+    }, {});
+
     return acc;
   }, {});
 }
@@ -478,3 +486,41 @@ export function parseData(data_csv) {
     data: r.newRows,
   };
 }
+
+const addToolEndpoint = setupBaseUrl("http", "add_tool");
+export const addTool = async ({
+  tool_name,
+  function_name,
+  description,
+  code,
+  input_metadata,
+  output_metadata,
+  toolbox,
+  no_code = false,
+}) => {
+  const payload = {
+    tool_name,
+    function_name,
+    description,
+    code,
+    input_metadata,
+    output_metadata,
+    toolbox,
+    no_code: no_code,
+  };
+  try {
+    const res = await fetch(addToolEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const json = await res.json();
+    return json;
+  } catch (e) {
+    console.error(e);
+    return { success: false, error_message: e };
+  }
+};

@@ -291,3 +291,7 @@ async def execute_code(
         traceback.print_exc()
     finally:
         return err, out
+
+
+def snake_case(s):
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", s).lower()

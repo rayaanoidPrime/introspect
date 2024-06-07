@@ -5,6 +5,7 @@ export function TextArea({
   value = "",
   status = null,
   label = null,
+  disabled = false,
   rootClassName = "",
   placeholder = "Enter text here",
   id = "",
@@ -22,6 +23,7 @@ export function TextArea({
       <div className="relative rounded-md shadow-sm">
         <div className="">
           <textarea
+            disabled={disabled}
             rows={4}
             name={name}
             id={id}
