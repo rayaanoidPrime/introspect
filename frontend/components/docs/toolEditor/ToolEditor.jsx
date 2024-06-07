@@ -85,6 +85,10 @@ export function ToolEditor({
   const handleFinalSubmit = useCallback(async () => {
     setLoading(true);
     try {
+      if (!testingResults) {
+        message.error("Please run the tool before submitting");
+        return;
+      }
       const payload = {
         tool_name: toolName,
         function_name: functionName,
