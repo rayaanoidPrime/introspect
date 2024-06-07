@@ -19,8 +19,10 @@ psycopg2-binary
 pyyaml
 redshift_connector
 requests
+scikit-learn
 scipy
 seaborn
+sentence_transformers
 slack_sdk
 snowflake-connector-python
 sqlalchemy
