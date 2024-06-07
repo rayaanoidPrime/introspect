@@ -3,6 +3,7 @@ colorama
 databricks-sql-connector
 defog==0.64.2
 fastapi
+geopandas
 google-auth
 google-cloud-bigquery
 google-cloud-storage
