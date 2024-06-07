@@ -1,44 +1,29 @@
-import { easyToolInputTypes } from "$utils/utils";
-import { Select } from "antd";
-import { Button } from "$tailwind/Button";
-import { Input } from "$tailwind/Input";
-import { TextArea } from "$tailwind/TextArea";
-import { useState } from "react";
-import { MdDeleteOutline } from "react-icons/md";
 import TrashIcon from "$components/icons/TrashIcon";
+import { Button } from "$components/tailwind/Button";
+import { Input } from "$components/tailwind/Input";
 import SingleSelect from "$components/tailwind/SingleSelect";
+import { TextArea } from "$components/tailwind/TextArea";
+import { easyToolInputTypes } from "$utils/utils";
 
-const skipImages = false;
-
-export function ToolEditor({
-  tool = {
-    code: "",
-    description: "",
-    function_name: "",
-    input_metadata: {},
-    output_metadata: [],
-    tool_name: "",
-    toolbox: "",
-  },
+export default function DefineTool({
+  toolName,
+  setToolName,
+  toolDocString,
+  setToolDocString,
+  //   toolInputs,
+  //   setToolInputs,
+  //   toolOutputs,
+  //   setToolOutputs,
+  //   skipImages,
 }) {
-  const [toolName, setToolName] = useState(tool.tool_name);
-  const [toolDocString, setToolDocString] = useState(tool.description);
-  const [toolInputs, setToolInputs] = useState(
-    // interally tool inputs are stores as a input_name: {type, description..}
-    // but to render we will convert to an array of objects
-    Object.values(tool.input_metadata)
-  );
-
-  const [toolOutputs, setToolOutputs] = useState(tool.output_metadata);
-
   return (
-    <div className="w-8/12 h-5/6 *:font-mono">
+    <>
       <div>
         <Input
           label="Tool name"
           type="text"
           rootClassName="mb-4 text-gray-600 "
-          placeholder="Tool name"
+          placeholder="Give your tool a name"
           status={toolName ? "" : "error"}
           onChange={(ev) => setToolName(ev.target.value)}
           value={toolName}
@@ -51,7 +36,7 @@ export function ToolEditor({
           value={toolDocString}
         />
       </div>
-      <div className="tool-inputs mt-12">
+      {/* <div className="tool-inputs mt-12">
         <h2 className="block text-xs font-light mb-2">Inputs</h2>
         {!toolInputs.length ? (
           <></>
@@ -79,9 +64,8 @@ export function ToolEditor({
                 }}
                 options={Object.keys(easyToolInputTypes).map((type, i) => {
                   return {
-                    name: easyToolInputTypes[type],
+                    label: easyToolInputTypes[type],
                     value: type,
-                    id: type,
                   };
                 })}
               />
@@ -271,7 +255,7 @@ export function ToolEditor({
         >
           Add output
         </Button>
-      </div>
-    </div>
+      </div> */}
+    </>
   );
 }

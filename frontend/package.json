@@ -38,7 +38,7 @@
     "d3-dag": "^1.1.0",
     "d3-hierarchy": "^3.1.2",
     "defog-analysis-agent-rc": "file:./components/defog-analysis-agent-rc/",
-    "defog-components": "^1.0.3",
+    "defog-components": "^1.9.4",
     "js-base64": "^3.7.7",
     "next": "^13.1.2",
     "next-remove-imports": "^1.0.12",

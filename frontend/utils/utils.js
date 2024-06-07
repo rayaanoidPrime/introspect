@@ -4,6 +4,8 @@ import { Annotation, EditorState, Transaction } from "@codemirror/state";
 import { Doc, XmlElement, applyUpdate, encodeStateAsUpdate } from "yjs";
 import { v4 } from "uuid";
 import { toolsMetadata } from "./tools_metadata";
+import { csvParse } from "d3";
+import { reFormatData } from "$components/defog-components/components/common/utils";
 
 export const getAnalysis = async (reportId) => {
   const urlToConnect = setupBaseUrl("http", "get_report");
@@ -451,4 +453,28 @@ export function arrayOfObjectsToObject(arr, key) {
     acc[obj[key]] = obj;
     return acc;
   }, {});
+}
+
+export function parseData(data_csv) {
+  const data = csvParse(data_csv);
+  const colNames = data.columns;
+  const rows = data.map((d) => Object.values(d));
+
+  const r = reFormatData(rows, colNames);
+
+  // make sure we correctly render quantitative columns
+  // if a column has numeric: true
+  // convert all entires in all rows to number
+  r.newCols.forEach((col, i) => {
+    if (col.numeric) {
+      r.newRows.forEach((row) => {
+        row[col.title] = Number(row?.[col.title]);
+      });
+    }
+  });
+
+  return {
+    columns: r.newCols,
+    data: r.newRows,
+  };
 }

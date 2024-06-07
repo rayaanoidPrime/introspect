@@ -1,6 +1,8 @@
 from datetime import datetime
+import inspect
 import re
 import json
+import trace
 import traceback
 import pandas as pd
 from defog import Defog
@@ -258,3 +260,34 @@ def get_clean_plan(analysis_data):
         cleaned_plan.append(cleaned_item)
 
     return cleaned_plan
+
+
+async def execute_code(
+    code_snippets: list,  # list of code strings to execute
+    fn_name,  # function name to call
+    use_globals=False,  # whether to use globals as the sandbox
+):
+    """
+    Runs code string and returns output.
+    """
+    err = None
+    out = None
+    try:
+        sandbox = {}
+        if use_globals:
+            sandbox = globals()
+
+        for code in code_snippets:
+            exec(code, sandbox)
+
+        # check if test_tool is an async function
+        if inspect.iscoroutinefunction(sandbox[fn_name]):
+            out = await sandbox[fn_name]()
+        else:
+            out = sandbox[fn_name]()
+    except Exception as e:
+        out = None
+        err = str(e)
+        traceback.print_exc()
+    finally:
+        return err, out

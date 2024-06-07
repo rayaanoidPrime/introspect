@@ -6,11 +6,13 @@ export function Input({
   label = null,
   type = "text",
   status = null,
+  disabled = false,
   rootClassName = "",
   placeholder = "Enter text here",
   id = "",
   name = "text-input",
-  onChange = () => {},
+  onChange = (...args) => {},
+  onPressEnter = (...args) => {},
   inputHtmlProps = {},
   inputClassName = "",
 }) {
@@ -30,14 +32,23 @@ export function Input({
           name={name}
           id={id}
           className={twMerge(
-            `block w-full focus:shadow-sm rounded-md border-0 py-1.5 pr-10 ring-1 ring-inset ring-gray-300 placeholder:text-red-300 focus:ring-1 focus:ring-inset ${status !== "error" ? "focus:ring-blue-400" : "focus:ring-rose-400"} sm:text-sm sm:leading-6`,
+            `block w-full focus:shadow-sm rounded-md border-0 py-1.5 pr-10 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset ${status !== "error" ? "focus:ring-blue-400" : "focus:ring-rose-400 ring-rose-400"} sm:text-sm sm:leading-6 ${disabled ? "bg-gray-100 text-gray-400  focus:ring-gray-100 cursor-not-allowed" : "bg-white"}`,
             inputClassName
           )}
           placeholder={placeholder}
           aria-invalid="true"
           aria-describedby="email-error"
           value={value}
-          onChange={onChange}
+          onChange={(ev) => {
+            if (disabled) return;
+            onChange(ev);
+          }}
+          onKeyDown={(ev) => {
+            if (disabled) return;
+            if (ev.key === "Enter") {
+              onPressEnter(ev);
+            }
+          }}
           {...inputHtmlProps}
         />
         {status === "error" && (

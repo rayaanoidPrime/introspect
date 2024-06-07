@@ -26,7 +26,7 @@ const addToolEndpoint = setupBaseUrl("http", "add_tool");
 const generateToolCodeEndpoint = setupBaseUrl("http", "generate_tool_code");
 const skipImages = false;
 
-export default function AddTool({ toolbox, onAddTool }) {
+export default function _AddTool({ toolbox, onAddTool }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [toolFunctionBody, setToolFunctionBody] = useState(
     "\n  #\n  # YOUR FUNCTION BODY HERE\n  #\n  pass\n"

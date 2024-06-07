@@ -4,9 +4,10 @@ import Meta from "$components/common/Meta";
 import Scaffolding from "$components/common/Scaffolding";
 import { toolboxDisplayNames } from "$utils/utils";
 import { useEffect, useMemo, useState } from "react";
-import AddTool from "$components/docs/AddTool";
+import AddTool from "$components/docs/toolEditor/AddTool";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { ToolEditor } from "$components/docs/ToolEditor";
+import { ToolEditor } from "$components/docs/toolEditor/ToolEditor";
+import Tabs from "$components/tailwind/Tabs";
 
 const toggleDisableToolEndpoint = setupBaseUrl("http", "toggle_disable_tool");
 const deleteToolEndpoint = setupBaseUrl("http", "delete_tool");
@@ -77,6 +78,7 @@ export default function ManageTools() {
                 <>
                   <div className="flex border-b bg-gray-100 p-2 rounded-t-md">
                     <div className="grow">
+                      <Tabs />
                       <h1 className="text-lg mb-2">
                         {tools[selectedTool].tool_name}
                       </h1>
@@ -221,10 +223,7 @@ export default function ManageTools() {
                             );
                           })}
 
-                          <AddTool
-                            toolbox={toolbox}
-                            onAddTool={onAddTool}
-                          ></AddTool>
+                          <AddTool toolbox={toolbox} />
                         </div>
                       </div>
                     );

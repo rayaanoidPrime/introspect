@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 import functions_framework
 from openai import OpenAI
 import os
@@ -6,13 +7,25 @@ import pandas as pd
 import json
 from io import StringIO
 import yaml
-from prompts import (
+from prompts.prompts import (
     basic_plan_system_prompt,
     basic_user_prompt,
     tweak_parent_analysis_system_prompt,
     tweak_parent_analysis_user_prompt,
+)
+
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+from prompts.tool_gen_prompts import (
     generate_tool_code_system_prompt,
     generate_tool_code_user_prompt,
+    edit_tool_code_system_prompt,
+    edit_tool_code_user_prompt,
+    return_format_prompt,
+    input_types_prompt,
+    fix_error_prompt,
 )
 
 openai_api_key = os.environ["OPENAI_API_KEY"]
@@ -89,8 +102,8 @@ def create_plan(
         + "\n".join([f"""- {p}""" for p in parent_questions])
     )
 
-    print(user_question)
-    print(assignment_understanding)
+    logging.info(user_question)
+    logging.info(assignment_understanding)
 
     assignment_understanding_prompt = (
         ""
@@ -125,8 +138,8 @@ def create_plan(
             assignment_understanding_prompt=assignment_understanding_prompt,
         )
 
-    print(system_prompt)
-    print(user_prompt)
+    logging.info(system_prompt)
+    logging.info(user_prompt)
 
     if len(similar_plans) > 0:
         similar_plans_yaml = yaml.dump(
@@ -142,7 +155,7 @@ def create_plan(
 
     user_prompt = user_prompt.strip()
 
-    print(user_prompt)
+    logging.info(user_prompt)
 
     subsequent_prompts = []
     for idx, item in enumerate(previous_responses):
@@ -235,7 +248,7 @@ Do you have any clarifications you need from the user? You are only allowed to a
 
 def turn_into_statement(clarification_questions):
     if not clarification_questions or len(clarification_questions) == 0:
-        print("Generating a blank statement")
+        logging.info("Generating a blank statement")
         return {"statements": ""}
 
     qna = "\n".join(
@@ -244,7 +257,7 @@ def turn_into_statement(clarification_questions):
             for q in clarification_questions
         ]
     )
-    # print(qna)
+    # logging.info(qna)
     system_prompt = "Your role is to convert Question/Answer format messages into statements in a numbered list. Only return statements as a numbered list, nothing else."
     user_prompt = f"Here are the responses:\n\n{qna}\n\nConvert these into numbered statements. Only give me these statements, nothing else."
     messages = [
@@ -255,7 +268,7 @@ def turn_into_statement(clarification_questions):
         model=model, messages=messages, temperature=0, seed=42
     )
     statements = completion.choices[0].message.content
-    print(statements)
+    logging.info(statements)
     return {"statements": statements}
 
 
@@ -287,8 +300,8 @@ Give your answer as just a single string. Your answer must be one of the followi
         seed=42,
     )
     result = completion.choices[0].message.content
-    print(question)
-    print(result)
+    logging.info(question)
+    logging.info(result)
     if "gene" in result or "cell" in result:
         question = (
             "Please refer only to the `gmb_gxp_rdap_dev.translational_research_dev_test.ts_flow_cytometry_merged_result_flagged_mock_gct1056_01` table to answer this question, regardless of what the user input says\n\nUser input: "
@@ -351,7 +364,7 @@ Give your answer as just a single string. Your answer must be one of the followi
     #         key_idx = qlower.find(key)
     #         if qlower[key_idx - 1] == " ":
     #             # ugly hack for now
-    #             print("adding additional context")
+    #             logging.info("adding additional context")
     #             additional_context = f"The {key} cells are represented by the following values in the `variable_value` column:\n"
     #             additional_context += "- " + "\n -".join(cell_dict[key])
 
@@ -409,35 +422,39 @@ Give your response as just a markdown string with just the SQL query, and nothin
     return {"query": query}
 
 
-def generate_tool_code(
-    tool_name,
-    tool_description,
-    user_question,
-    function_name,
-    def_statement,
-    function_body,
-    return_statement,
-):
-    system_prompt = generate_tool_code_system_prompt
-    user_prompt = generate_tool_code_user_prompt.format(
-        function_name=function_name,
-        tool_description=tool_description,
-        def_statement=def_statement,
-        function_body=function_body,
-        return_statement=return_statement,
-        user_question=user_question,
-    )
+def generate_tool_code(user_question, tool_name, tool_description, current_code):
+    system_prompt = None
+    user_prompt = None
 
-    print("\n\n")
-    print(system_prompt, flush=True)
-    print("\n\n")
-    print(user_prompt, flush=True)
-    print("\n\n")
+    if not current_code:
+        system_prompt = generate_tool_code_system_prompt
+        user_prompt = generate_tool_code_user_prompt.format(
+            tool_name=tool_name,
+            tool_description=tool_description,
+            return_format_prompt=return_format_prompt,
+            input_types_prompt=input_types_prompt,
+            user_question=user_question,
+        )
+    else:
+        system_prompt = edit_tool_code_system_prompt
+        user_prompt = edit_tool_code_user_prompt.format(
+            tool_name=tool_name,
+            tool_description=tool_description,
+            return_format_prompt=return_format_prompt,
+            input_types_prompt=input_types_prompt,
+            user_question=user_question,
+            current_code=current_code,
+        )
 
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
+
+    logging.info(system_prompt)
+    logging.info(user_prompt)
+
+    logging.info(f"{"Generating" if not current_code else "Editing"} tool code...")
 
     completion = openai.chat.completions.create(
         model=model,
@@ -446,14 +463,71 @@ def generate_tool_code(
         seed=42,
     )
 
+    messages.append(
+        {
+            "role": "assistant",
+            "content": completion.choices[0].message.content,
+        }
+    )
+
     generated_code = completion.choices[0].message.content
     try:
-        # remove ```python
-        # and ending ```
-        generated_code = generated_code.split("```python")[-1].split("```")[0].strip()
+        # tool code comes in "```python...```"
+        # tool testing code comes in "```python-testing...```"
+        tool_code = generated_code.split("```python")[1].split("```")[0]
+        testing_code = generated_code.split("```python-testing")[1].split("```")[0]
 
-        return {"generated_code": generated_code}
-        pass
+        logging.info(tool_code)
+        logging.info("\n\n")
+        logging.info(testing_code)
+        return {
+            "tool_code": tool_code,
+            "testing_code": testing_code,
+            "messages": messages,
+        }
+
+    except Exception as e:
+        return {"error_message": str(e)}
+
+
+def fix_tool_code(error, messages: list):
+    user_prompt = fix_error_prompt.format(error=error)
+    messages.append({"role": "user", "content": user_prompt})
+
+    completion = openai.chat.completions.create(
+        model=model,
+        messages=messages,
+        temperature=0,
+        seed=42,
+    )
+
+    logging.info(f"Fixing error: {error}...")
+
+    messages.append(
+        {
+            "role": "assistant",
+            "content": completion.choices[0].message.content,
+        }
+    )
+
+    generated_code = completion.choices[0].message.content
+
+    try:
+
+        # tool code comes in "```python...```"
+        # tool testing code comes in "```python-testing...```"
+        tool_code = generated_code.split("```python")[1].split("```")[0]
+        testing_code = generated_code.split("```python-testing")[1].split("```")[0]
+
+        logging.info(tool_code)
+        logging.info("\n\n")
+        logging.info(testing_code)
+
+        return {
+            "tool_code": tool_code,
+            "testing_code": testing_code,
+            "messages": messages,
+        }
     except Exception as e:
         return {"error_message": str(e)}
 
@@ -480,8 +554,10 @@ def main(request):
         resp = generate_sql(
             data.get("question", ""), data.get("metadata"), data.get("glossary")
         )
+        logging.info(resp)
     elif request_type == "turn_into_statement":
         resp = turn_into_statement(data["clarification_questions"])
+        logging.info(resp)
     elif request_type == "clarify_task":
         resp = get_clarification(
             data["question"],
@@ -490,6 +566,7 @@ def main(request):
             data.get("parent_questions", []),
             data.get("direct_parent_analysis", None),
         )
+        logging.info(resp)
     elif request_type == "create_plan":
         resp = create_plan(
             user_question=data["question"],
@@ -502,6 +579,7 @@ def main(request):
             tool_library_prompt=data["tool_library_prompt"],
             direct_parent_analysis=data.get("direct_parent_analysis", None),
         )
+        logging.info(resp)
     elif request_type == "fix_error":
         resp = create_plan(
             user_question=data["question"],
@@ -516,28 +594,30 @@ def main(request):
             erroreous_response=data["erroreous_response"],
             direct_parent_analysis=data.get("direct_parent_analysis", None),
         )
+        logging.info(resp)
 
     elif request_type == "ping":
         resp = {"status": "ok"}
+        logging.info(resp)
 
     elif request_type == "analyse_data":
         resp = analyse_data(
             data["question"], pd.read_json(data["data"], orient="split")
         )
+        logging.info(resp)
 
     elif request_type == "generate_tool_code":
         resp = generate_tool_code(
+            data["user_question"],
             data["tool_name"],
             data["tool_description"],
-            data["user_question"],
-            data["function_name"],
-            data["def_statement"],
-            data["function_body"],
-            data["return_statement"],
+            data.get("current_code", None),
         )
+
+    elif request_type == "fix_tool_code":
+        resp = fix_tool_code(data["error"], data["messages"])
 
     else:
         resp = {"error": "Unsupported question"}
 
-    print(resp)
     return (resp, 200, headers)

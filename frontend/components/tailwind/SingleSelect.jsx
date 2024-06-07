@@ -29,17 +29,21 @@ export default function SingleSelect({
     query === ""
       ? options
       : options.filter((option) => {
-          return option.name.toLowerCase().includes(query.toLowerCase());
+          console.log(option);
+          return (option.label + "")
+            .toLowerCase()
+            .includes(query.toLowerCase());
         });
 
   // find the option matching the default value
   const [selectedOption, setSelectedOption] = useState(
-    options.find((option) => option.id === defaultValue)
+    options.find((option) => option.value === defaultValue)
   );
 
   return (
     <Combobox
       as="div"
+      by="value"
       className={rootClassName}
       value={selectedOption}
       defaultValue={defaultValue}
@@ -61,7 +65,7 @@ export default function SingleSelect({
           className="w-full rounded-md border-0 bg-white py-1.5 pl-3 pr-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-400 sm:text-sm sm:leading-6"
           onChange={(event) => setQuery(event.target.value)}
           onBlur={() => setQuery("")}
-          displayValue={(option) => option?.name}
+          displayValue={(option) => option?.label}
         />
         <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
           <ChevronUpDownIcon
@@ -79,7 +83,7 @@ export default function SingleSelect({
           >
             {filteredOptions.map((option) => (
               <ComboboxOption
-                key={option.id}
+                key={option.value}
                 value={option}
                 className={({ focus }) =>
                   twMerge(
@@ -96,7 +100,7 @@ export default function SingleSelect({
                         selected && "font-semibold"
                       )}
                     >
-                      {option.name}
+                      {option.label}
                     </span>
 
                     {selected && (
