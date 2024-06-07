@@ -1,12 +1,11 @@
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { Button, Input, Modal, Select, message } from "antd";
+import { Input, Modal, Select, message } from "antd";
+import { Button } from "$tailwind/Button";
 import {
   arrayOfObjectsToObject,
   breakLinesPretty,
   createPythonFunctionInputString,
   easyToolInputTypes,
-  forcedAnnotation,
-  mergeClassNames,
   preventModifyTargetRanges,
   snakeCase,
   toolboxDisplayNames,
@@ -20,13 +19,14 @@ import { Range, RangeSet, RangeValue } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { classname } from "@uiw/codemirror-extensions-classname";
 import { HiSparkles } from "react-icons/hi2";
+import { twMerge } from "tailwind-merge";
 const { TextArea } = Input;
 
 const addToolEndpoint = setupBaseUrl("http", "add_tool");
 const generateToolCodeEndpoint = setupBaseUrl("http", "generate_tool_code");
 const skipImages = false;
 
-export default function AddTool({ toolbox, onAddTool }) {
+export default function _AddTool({ toolbox, onAddTool }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [toolFunctionBody, setToolFunctionBody] = useState(
     "\n  #\n  # YOUR FUNCTION BODY HERE\n  #\n  pass\n"
@@ -261,6 +261,7 @@ export default function AddTool({ toolbox, onAddTool }) {
           function_name: snakeCase(toolName),
           def_statement: toolDefStatement,
           return_statement: toolReturnStatement,
+          function_body: toolFunctionBody,
           toolbox: toolbox,
         }),
       }).then((response) => response.json());
@@ -447,7 +448,6 @@ export default function AddTool({ toolbox, onAddTool }) {
                   );
                 })}
                 <Button
-                  type="primary"
                   className="bg-gray-100 text-gray-500 hover:bg-blue-400 hover:text-white font-mono"
                   onClick={() => {
                     const nm = "input_" + (toolInputs.length + 1);
@@ -575,7 +575,6 @@ export default function AddTool({ toolbox, onAddTool }) {
                   );
                 })}
                 <Button
-                  type="primary"
                   className="bg-gray-100 text-gray-500 hover:bg-blue-400 hover:text-white font-mono"
                   onClick={() => {
                     setToolOutputs([
@@ -597,7 +596,7 @@ export default function AddTool({ toolbox, onAddTool }) {
               <div className="flex flex-row mb-2">
                 <h2 className="grow text-sm uppercase font-light">Code</h2>
                 <div
-                  className={mergeClassNames(
+                  className={twMerge(
                     "border border-gray-100 cursor-pointer px-1 rounded-md group shadow-sm text-xl flex items-center",
                     "hover:border-gray-300 hover:border-transparent hover:bg-yellow-400 text-yellow-400",
                     // disable if loading
@@ -607,7 +606,7 @@ export default function AddTool({ toolbox, onAddTool }) {
                   onClick={handleGenerateToolCode}
                 >
                   <HiSparkles
-                    className={mergeClassNames(
+                    className={twMerge(
                       "group-hover:text-white",
                       generateToolCodeLoading &&
                         "text-gray-200 group-hover:text-gray-200"
@@ -671,7 +670,6 @@ export default function AddTool({ toolbox, onAddTool }) {
         </div>
         <div className="text-right mt-10">
           <Button
-            type="primary"
             className="font-mono"
             onClick={handleSubmit}
             disabled={generateToolCodeLoading}

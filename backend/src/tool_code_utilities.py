@@ -12,6 +12,7 @@ import pandas as pd
 import os
 
 DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]
+report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 
 
 import matplotlib.pyplot as plt
@@ -122,3 +123,22 @@ default_top_level_imports = "\n\n".join(
         "import pandas as pd",
     ]
 )
+
+
+def add_default_imports(code):
+    """
+    Adds the default imports to the code.
+    """
+    return default_top_level_imports + "\n\n" + code
+
+
+def fix_savefig_calls(code):
+    """
+    Fixes the savefig calls in the code by changing the path and always appending report_assets_dir variable to the path.
+    """
+    # check both for double and single quote
+    code = code.replace('savefig("', f'savefig({report_assets_dir} + "')
+    code = code.replace("savefig('", f"savefig({report_assets_dir} + '")
+    # remove jic we got two slashes
+    code = code.replace("//", "/")
+    return code

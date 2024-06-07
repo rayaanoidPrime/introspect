@@ -1,6 +1,6 @@
 import { PlusOutlined } from "@ant-design/icons";
 
-export function AnalysisHistoryMenuItem({
+export function AnalysisHistoryItem({
   analysis,
   isActive,
   setActiveAnalysisId,
@@ -12,8 +12,10 @@ export function AnalysisHistoryMenuItem({
   return (
     <div
       className={
-        "flex flex-row items-center py-2 px-2 mb-2 hover:cursor-pointer hover:bg-gray-200 " +
+        "flex flex-row items-center py-2 px-2 mb-2 hover:cursor-pointer hover:bg-gray-200 history-item " +
         `${isActive ? "font-bold bg-gray-200 " : ""}` +
+        (isDummy ? "dummy-analysis" : analysis.analysisId) +
+        " " +
         extraClasses
       }
       onClick={() => {

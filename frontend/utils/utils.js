@@ -4,6 +4,8 @@ import { Annotation, EditorState, Transaction } from "@codemirror/state";
 import { Doc, XmlElement, applyUpdate, encodeStateAsUpdate } from "yjs";
 import { v4 } from "uuid";
 import { toolsMetadata } from "./tools_metadata";
+import { csvParse } from "d3";
+import { reFormatData } from "$components/defog-components/components/common/utils";
 
 export const getAnalysis = async (reportId) => {
   const urlToConnect = setupBaseUrl("http", "get_report");
@@ -446,13 +448,79 @@ export function createInitialToolInputs(toolName, parentIds) {
   return initialInputs;
 }
 
-export function mergeClassNames(...args) {
-  return args.filter((arg) => arg).join(" ");
-}
-
-export function arrayOfObjectsToObject(arr, key) {
+export function arrayOfObjectsToObject(arr, key, includeKeys = null) {
   return arr.reduce((acc, obj) => {
-    acc[obj[key]] = obj;
+    acc[obj[key]] = Object.keys(obj).reduce((acc2, k) => {
+      if (Array.isArray(includeKeys) && !includeKeys.includes(k)) {
+        return acc2;
+      }
+
+      acc2[k] = obj[k];
+      return acc2;
+    }, {});
+
     return acc;
   }, {});
 }
+
+export function parseData(data_csv) {
+  const data = csvParse(data_csv);
+  const colNames = data.columns;
+  const rows = data.map((d) => Object.values(d));
+
+  const r = reFormatData(rows, colNames);
+
+  // make sure we correctly render quantitative columns
+  // if a column has numeric: true
+  // convert all entires in all rows to number
+  r.newCols.forEach((col, i) => {
+    if (col.numeric) {
+      r.newRows.forEach((row) => {
+        row[col.title] = Number(row?.[col.title]);
+      });
+    }
+  });
+
+  return {
+    columns: r.newCols,
+    data: r.newRows,
+  };
+}
+
+const addToolEndpoint = setupBaseUrl("http", "add_tool");
+export const addTool = async ({
+  tool_name,
+  function_name,
+  description,
+  code,
+  input_metadata,
+  output_metadata,
+  toolbox,
+  no_code = false,
+}) => {
+  const payload = {
+    tool_name,
+    function_name,
+    description,
+    code,
+    input_metadata,
+    output_metadata,
+    toolbox,
+    no_code: no_code,
+  };
+  try {
+    const res = await fetch(addToolEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const json = await res.json();
+    return json;
+  } catch (e) {
+    console.error(e);
+    return { success: false, error_message: e };
+  }
+};

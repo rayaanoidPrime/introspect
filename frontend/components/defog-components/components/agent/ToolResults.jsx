@@ -1,5 +1,4 @@
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { reFormatData } from "../common/utils";
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
 import { ToolResultsTable } from "../ToolResultsTable";
 import { ToolRunError } from "./ToolRunError";
@@ -11,25 +10,12 @@ import Lottie from "lottie-react";
 import LoadingLottie from "../svg/loader.json";
 import ErrorBoundary from "../common/ErrorBoundary";
 import { csvParse } from "d3";
-import { getToolRunData, toolDisplayNames } from "$utils/utils";
+import { getToolRunData, parseData, toolDisplayNames } from "$utils/utils";
 import ToolRunAnalysis from "./ToolRunAnalysis";
 import { AddStepUI } from "./AddStepUI";
 import { MdDeleteOutline } from "react-icons/md";
 import { Modal } from "antd";
 import setupBaseUrl from "$utils/setupBaseUrl";
-
-function parseData(data_csv) {
-  const data = csvParse(data_csv);
-  const colNames = data.columns;
-  const rows = data.map((d) => Object.values(d));
-
-  const r = reFormatData(rows, colNames);
-
-  return {
-    columns: r.newCols,
-    data: r.newRows,
-  };
-}
 
 function parseOutputs(data, analysisData) {
   let parsedOutputs = {};

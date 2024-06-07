@@ -9,6 +9,7 @@ dayjs.extend(customParseFormat);
 
 import { chartColors } from "../../context/ThemeContext";
 import { Popover } from "antd";
+import { mean } from "d3";
 
 export const questionModes = [
   [
@@ -38,17 +39,112 @@ export const questionModes = [
   ),
   placeholder: d[1],
 }));
-
 const dateFormats = [
   "YYYY-MM-DD HH:mm:ss",
   "YYYY-MM-DDTHH:mm:ss",
   "YYYY-MM-DD",
   "YYYY-MM",
+  "YYYY-MMM",
 ];
 
-export function isDate(s) {
-  return dayjs(s, dateFormats, true).isValid();
-  // return /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$/gi.test(s);
+export function checkIfDate(s, colIdx, colName, rows) {
+  // test if it's a date column
+  // if it's == year or month or date
+  // or if it contains year, month or date somewhere in the name
+
+  let isDate =
+    // either neat date
+    dayjs(s, dateFormats, true).isValid() ||
+    // or hacky date >.<
+    /^year$/gi.test(colName) ||
+    /^month$/gi.test(colName) ||
+    /^date$/gi.test(colName) ||
+    /^week$/gi.test(colName) ||
+    /year/gi.test(colName) ||
+    /month/gi.test(colName) ||
+    /date/gi.test(colName) ||
+    /week/gi.test(colName);
+
+  // now to actually guess the date format
+  let dateType, parseFormat;
+  let dateToUnix = (val) => val;
+
+  if (isDate) {
+    // find out what it matches
+    if (/^year$/gi.test(colName) || /year/gi.test(colName)) dateType = "year";
+    if (/^month$/gi.test(colName) || /month/gi.test(colName))
+      dateType = "month";
+    if (/^date$/gi.test(colName) || /date/gi.test(colName)) dateType = "date";
+    if (/^week$/gi.test(colName) || /week/gi.test(colName)) dateType = "week";
+
+    // if it matches something, find what is the format
+    if (dateType === "week") {
+      // week should mean it's a week of the year so it should be a number from 1->52
+      // it can either be integers or strings
+      dateToUnix = (val) => dayjs().week(+val).unix();
+      parseFormat = "W-YYYY";
+    }
+    if (dateType === "year") {
+      // year should be a 4 digit number
+      // first convert it to all numbers, and add month to it
+      dateToUnix = (val) => dayjs("1-" + +val, "M-YYYY").unix();
+
+      parseFormat = "M-YYYY";
+    }
+    if (dateType === "month") {
+      // month can either be a 1 or 2 digit number or a string of month name
+      // check from the rows which it is
+      for (let i = 0; i < rows.length; i++) {
+        let val = rows[i][colIdx];
+        if (!val) continue;
+
+        if (typeof val === "number") {
+          // add current year to it for parsing
+          dateToUnix = (val) =>
+            dayjs(val + "-" + new Date().getFullYear(), "M-YYYY").unix();
+          parseFormat = "M-YYYY";
+        } else {
+          // if it's a string
+          // then check if it has alphabets
+          const maybeMonthName = /[a-zA-Z]/.test(val);
+          if (maybeMonthName) {
+            // check length
+            if (val.length > 3) {
+              // if it's more than 3, it's a full month name
+              dateToUnix = (val) => dayjs(val, "MMMM").unix();
+              parseFormat = "MMMM";
+            } else {
+              // if it's less than equal to 3, it's probably a short month name
+              dateToUnix = (val) => dayjs(val, "MMM").unix();
+              parseFormat = "MMM";
+            }
+          } else {
+            // is just month number
+            // add current year to it for parsing
+            dateToUnix = (val) =>
+              dayjs(val + "-" + new Date().getFullYear(), "M-YYYY").unix();
+            parseFormat = "M-YYYY";
+          }
+        }
+
+        // only check the first non null value
+        break;
+      }
+    }
+
+    if (dateType === "date") {
+      // we assume dayjs will be able to parse it
+      dateToUnix = (val) => dayjs(val).unix();
+      parseFormat = null;
+    }
+  } else {
+    dateToUnix = (val) => val;
+    parseFormat = null;
+    dateType = null;
+    isDate = false;
+  }
+
+  return { isDate, dateType, parseFormat, dateToUnix };
 }
 
 export function cleanString(s) {
@@ -69,16 +165,17 @@ export function roundColumns(data, columns) {
     decimalCols?.forEach((colName) => {
       let x = roundedData[i][colName];
       // try to convert to a number
-      if (+x || x === 0) {
-        try {
-          // round to two decimals
-          return x.toFixed(2);
-        } catch (e) {
-          // set to null
-          return null;
+      try {
+        // round to two decimals if number is greater than 1e-2, if not round to up to 6 decimal places
+        if (Math.abs(x) > 1e-2) {
+          roundedData[i][colName] = Math.round(x * 1e2) / 1e2;
+        } else {
+          roundedData[i][colName] = Math.round(x * 1e6) / 1e6;
         }
-      } else {
-        return null;
+      } catch (e) {
+        // set to null
+        console.log(e);
+        roundedData[i][colName] = x;
       }
     });
   });
@@ -90,9 +187,13 @@ export function roundColumns(data, columns) {
 // so use regex instead of typeof
 // from here: https://stackoverflow.com/questions/2811031/decimal-or-numeric-values-in-regular-expression-validation
 function isNumber(input) {
-  const regex1 = /^-?(0|[1-9]\d*)?(\.\d+)?$/;
-  const regex2 = /\d$/;
-  return regex1.test(input) && regex2.test(input);
+  // This regex matches a string that is a valid number with an optional % sign at the end.
+  const regex = /^-?(0|[1-9]\d*)?(\.\d+)?%?$/;
+
+  // Check if the input ends with a digit or a % sign, ensuring it's a number or a percentage
+  const endsWithDigitOrPercent = /\d%?$/.test(input);
+
+  return regex.test(input) && endsWithDigitOrPercent;
 }
 
 function isExpontential(input) {
@@ -105,6 +206,7 @@ export function inferColumnType(rows, colIdx, colName) {
   const res = {};
   res["numeric"] = false;
   res["variableType"] = "quantitative";
+
   if (
     colName.endsWith("_id") ||
     colName.startsWith("id_") ||
@@ -113,28 +215,35 @@ export function inferColumnType(rows, colIdx, colName) {
     res["colType"] = "string";
     res["variableType"] = "categorical";
     res["numeric"] = false;
-    res["simpleTypeOf"] = typeof val;
-    return res;
-  } else if (/^year$/gi.test(colName) || /^month$/gi.test(colName)) {
-    res["colType"] = "date";
-    res["variableType"] = "categorical";
-    res["numeric"] = false;
-    res["simpleTypeOf"] = typeof val;
+    res["simpleTypeOf"] = "string";
     return res;
   } else {
+    // look at the first non-null row and guess the type
     for (let i = 0; i < rows.length; i++) {
       const val = rows[i][colIdx];
       if (val === null) continue;
-      else if (isDate(val)) {
+
+      const dateCheck = checkIfDate(val, colIdx, colName, rows);
+      if (dateCheck.isDate) {
         res["colType"] = "date";
         res["variableType"] = "categorical";
         res["numeric"] = false;
+        res["parseFormat"] = dateCheck.parseFormat;
+        res["dateToUnix"] = dateCheck.dateToUnix;
+        res["dateType"] = dateCheck.dateType;
+        res["isDate"] = dateCheck.isDate;
       }
       // is a number and also has a decimal
       else if (isNumber(val) && val.toString().indexOf(".") >= 0) {
         res["colType"] = "decimal";
         res["numeric"] = true;
         res["variableType"] = "quantitative";
+        try {
+          // get the mean of this column
+          res["mean"] = mean(rows, (d) => d[colIdx]);
+        } catch (e) {
+          // do nothing
+        }
       }
       // if number but no decimal
       // or is exponential value
@@ -142,24 +251,52 @@ export function inferColumnType(rows, colIdx, colName) {
         res["colType"] = "integer";
         res["numeric"] = true;
         res["variableType"] = "quantitative";
+        // get the mean of this column
+        res["mean"] = mean(rows, (d) => d[colIdx]);
       } else {
         res["colType"] = typeof val;
         res["numeric"] = res["colType"] === "number";
         res["variableType"] =
           res["colType"] === "number" ? "quantitative" : "categorical";
+
+        // if it's a number, get the mean
+        if (res["numeric"]) {
+          try {
+            // get the mean of this column
+            res["mean"] = mean(rows, (d) => d[colIdx]);
+          } catch (e) {
+            // do nothing
+          }
+        }
       }
 
       res["simpleTypeOf"] = typeof val;
+      // just return. so we don't look at any further than the first non-null row
       return res;
     }
   }
 }
 
 function formatTime(val) {
-  return dayjs(val, [
-    ...dateFormats,
-    ["YYYY", "MM", "MMM", "M", "MMMM"],
-  ]).format("D MMM 'YY");
+  const toTitleCase = (str) => {
+    return str.replace(/\w\S*/g, function (txt) {
+      return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
+  };
+
+  // convert all values to date
+  val = toTitleCase(val);
+  // check if it matches any of the date formats
+  const date = dayjs(val, dateFormats, true);
+  if (date.isValid()) {
+    return date.format("D MMM 'YY");
+  } else {
+    return val;
+  }
+
+  // dayjs(val, [...dateFormats, ["YYYY", "MM", "MMM", "M", "MMMM"]]).format(
+  //   "D MMM 'YY",
+  // );
 }
 
 export function setChartJSDefaults(

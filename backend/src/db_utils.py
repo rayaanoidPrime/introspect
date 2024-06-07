@@ -1580,7 +1580,10 @@ async def toggle_disable_tool(function_name):
                 conn.execute(
                     update(Tools)
                     .where(Tools.function_name == function_name)
-                    .values(disabled=not Tools.disabled)
+                    .values(disabled=not rows.disabled)
+                )
+                print(
+                    "Toggled tool: ", function_name, "to disabled: ", not rows.disabled
                 )
     except Exception as e:
         print(e)

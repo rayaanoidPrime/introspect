@@ -1,3 +1,4 @@
+import base64
 import datetime
 import inspect
 import json
@@ -7,6 +8,7 @@ from uuid import uuid4
 from colorama import Fore, Style
 import traceback
 
+from fastapi.responses import JSONResponse
 import requests
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
 from agents.planner_executor.tool_helpers.rerun_step import rerun_step_and_dependents
@@ -15,7 +17,11 @@ from agents.planner_executor.tool_helpers.all_tools import tool_name_dict
 import pandas as pd
 from io import StringIO
 from agents.main_agent import execute
-from utils import get_clean_plan, get_db_type, log_msg
+from tool_code_utilities import add_default_imports, fix_savefig_calls
+from utils import execute_code, get_clean_plan, get_db_type, log_msg, snake_case
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]
 
@@ -77,7 +83,7 @@ async def get_user_metadata(request: Request):
             },
         }
     except Exception as e:
-        print("Error getting metadata: ", e)
+        logging.info("Error getting metadata: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": "Unable to parse your request."}
 
@@ -92,7 +98,8 @@ async def doc_websocket_endpoint(websocket: WebSocket):
                 # don't do anything
                 continue
             if data.get("doc_uint8") is None:
-                print("No document data provided.", data)
+                logging.info("No document data provided.")
+                logging.info(data)
                 # send error back
                 await manager.send_personal_message(
                     {"success": False, "error_message": "No document data provided."},
@@ -105,7 +112,9 @@ async def doc_websocket_endpoint(websocket: WebSocket):
                     {"success": False, "error_message": "No document id provided."},
                     websocket,
                 )
-                print("Doc id is none ", data)
+                logging.info("Doc id is none ")
+                logging.info(data)
+
                 continue
 
             col_name = "doc_blocks" if data.get("doc_blocks") else "doc_uint8"
@@ -115,16 +124,18 @@ async def doc_websocket_endpoint(websocket: WebSocket):
                 {col_name: data.get(col_name), "doc_title": data.get("doc_title")},
             )
 
-            print(data.get("api_key"), data.get("username"), data.get("doc_id"))
+            logging.info(data.get("api_key"))
+            logging.info(data.get("username"))
+            logging.info(data.get("doc_id"))
 
             await manager.send_personal_message(data, websocket)
     except WebSocketDisconnect as e:
-        # print("Disconnected. Error: ", e)
+        # logging.info("Disconnected. Error: " +  str(e))
         # traceback.print_exc()
         manager.disconnect(websocket)
         await websocket.close()
     except Exception as e:
-        # print("Disconnected. Error: ", e)
+        # logging.info("Disconnected. Error: " +  str(e))
         # traceback.print_exc()
         # other reasons for disconnect, like websocket being closed or a timeout
         manager.disconnect(websocket)
@@ -156,7 +167,7 @@ async def add_to_recently_viewed_docs_endpoint(request: Request):
 
         return {"success": True}
     except Exception as e:
-        print("Error getting analyses: ", e)
+        logging.info("Error getting analyses: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": "Unable to parse your request."}
 
@@ -222,7 +233,7 @@ async def get_toolboxes_endpoint(request: Request):
 
         return {"success": True, "toolboxes": toolboxes}
     except Exception as e:
-        print("Error getting analyses: ", e)
+        logging.info("Error getting analyses: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": "Unable to parse your request."}
 
@@ -249,7 +260,7 @@ async def get_docs(request: Request):
             "recently_viewed_docs": recently_viewed_docs,
         }
     except Exception as e:
-        print("Error getting analyses: ", e)
+        logging.info("Error getting analyses: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": "Unable to parse your request."}
 
@@ -266,7 +277,7 @@ async def get_analyses(request: Request):
 
         return {"success": True, "analyses": analyses}
     except Exception as e:
-        print("Error getting analyses: ", e)
+        logging.info("Error getting analyses: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": "Unable to parse your request."}
 
@@ -282,11 +293,11 @@ async def update_table_chart(websocket: WebSocket):
                 continue
 
             if data.get("table_id") is None:
-                print("No table id ")
+                logging.info("No table id ")
                 continue
 
             if data.get("data") is None:
-                print("No data given for table update")
+                logging.info("No data given for table update")
                 continue
 
             err, analysis, updated_data = await update_table_chart_data(
@@ -295,25 +306,25 @@ async def update_table_chart(websocket: WebSocket):
 
             if err is None:
                 # run this table again
-                print("Ran fine.")
+                logging.info("Ran fine.")
                 await manager.send_personal_message(
                     {"success": True, "run_again": True, "table_data": updated_data},
                     websocket,
                 )
             elif err is not None:
-                print("Error re running:", err)
+                logging.info("Error re running:" + str(err))
                 await manager.send_personal_message(
                     {"success": False, "run_again": True, "error_message": str(err)},
                     websocket,
                 )
 
     except WebSocketDisconnect as e:
-        # print("Disconnected. Error: ", e)
+        # logging.info("Disconnected. Error: " +  str(e))
         # traceback.print_exc()
         manager.disconnect(websocket)
         await websocket.close()
     except Exception as e:
-        # print("Disconnected. Error: ", e)
+        # logging.info("Disconnected. Error: " +  str(e))
         traceback.print_exc()
         # other reasons for disconnect, like websocket being closed or a timeout
         manager.disconnect(websocket)
@@ -339,7 +350,7 @@ async def get_table_chart(request: Request):
 
         return {"success": True, "table_data": table_data}
     except Exception as e:
-        print("Error getting analyses: ", e)
+        logging.info("Error getting analyses: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": "Unable to parse your request."}
 
@@ -352,7 +363,7 @@ async def get_tool_run_endpoint(request: Request):
     try:
         data = await request.json()
         tool_run_id = data.get("tool_run_id")
-        print("getting tool run: ", tool_run_id)
+        logging.info("getting tool run: " + tool_run_id)
 
         if tool_run_id is None or type(tool_run_id) != str:
             return {"success": False, "error_message": "Invalid tool run id."}
@@ -364,7 +375,7 @@ async def get_tool_run_endpoint(request: Request):
 
         return {"success": True, "tool_run_data": tool_run}
     except Exception as e:
-        print("Error getting analyses: ", e)
+        logging.info("Error getting analyses: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": "Unable to parse your request."}
 
@@ -381,11 +392,11 @@ async def edit_tool_run(websocket: WebSocket):
                 continue
 
             if data.get("tool_run_id") is None:
-                print("No tool run id ")
+                logging.info("No tool run id ")
                 continue
 
             if data.get("analysis_id") is None:
-                print("No analysis id ")
+                logging.info("No analysis id ")
                 continue
 
             update_res = await update_tool_run_data(
@@ -395,17 +406,17 @@ async def edit_tool_run(websocket: WebSocket):
                 data.get("new_val"),
             )
             if not update_res["success"]:
-                print(
+                logging.info(
                     f"{Fore.RED} {Style.Bright} Error updating tool run: {update_res['error_message']}{Style.RESET_ALL}"
                 )
 
     except WebSocketDisconnect as e:
-        # print("Disconnected. Error: ", e)
+        # logging.info("Disconnected. Error: " +  str(e))
         # traceback.print_exc()
         manager.disconnect(websocket)
         await websocket.close()
     except Exception as e:
-        # print("Disconnected. Error: ", e)
+        # logging.info("Disconnected. Error: " +  str(e))
         traceback.print_exc()
         # other reasons for disconnect, like websocket being closed or a timeout
         manager.disconnect(websocket)
@@ -477,13 +488,13 @@ async def rerun_step(websocket: WebSocket):
                     "analysis_id": analysis_id,
                 }
 
-            print([s["inputs"] for s in steps])
+            logging.info([s["inputs"] for s in steps])
             async for err, reran_id, new_data in rerun_step_and_dependents(
                 analysis_id, tool_run_id, steps, global_dict=global_dict
             ):
                 if new_data and type(new_data) == dict:
                     if reran_id:
-                        print("Reran step: ", reran_id)
+                        logging.info("Reran step: " + reran_id)
                         await manager.send_personal_message(
                             {
                                 "success": True,
@@ -494,7 +505,7 @@ async def rerun_step(websocket: WebSocket):
                             websocket,
                         )
                     elif new_data.get("pre_tool_run_message"):
-                        print(
+                        logging.info(
                             f"Starting rerunning of step: {new_data.get('pre_tool_run_message')} with websocket: {websocket} in application_state: {websocket.application_state} and client_state: {websocket.client_state}"
                         )
                         await manager.send_personal_message(
@@ -507,7 +518,7 @@ async def rerun_step(websocket: WebSocket):
                             websocket,
                         )
                 else:
-                    print("Error: ", err)
+                    logging.info("Error: " + str(err))
                     await manager.send_personal_message(
                         {
                             "success": False,
@@ -519,12 +530,12 @@ async def rerun_step(websocket: WebSocket):
                     )
 
     except WebSocketDisconnect as e:
-        print("Disconnected. Error: ", e)
+        logging.info("Disconnected. Error: " + str(e))
         # traceback.print_exc()
         manager.disconnect(websocket)
         await websocket.close()
     except Exception as e:
-        # print("Disconnected. Error: ", e)
+        # logging.info("Disconnected. Error: " +  str(e))
         traceback.print_exc()
         # other reasons for disconnect, like websocket being closed or a timeout
         manager.disconnect(websocket)
@@ -563,12 +574,12 @@ async def analyse_data_endpoint(websocket: WebSocket):
                 await manager.send_personal_message(chunk, websocket)
 
     except WebSocketDisconnect as e:
-        # print("Disconnected. Error: ", e)
+        # logging.info("Disconnected. Error: " +  str(e))
         # traceback.print_exc()
         manager.disconnect(websocket)
         await websocket.close()
     except Exception as e:
-        # print("Disconnected. Error: ", e)
+        # logging.info("Disconnected. Error: " +  str(e))
         traceback.print_exc()
         await manager.send_personal_message(
             {"success": False, "error_message": str(e)[:300]}, websocket
@@ -691,7 +702,7 @@ async def create_new_step(request: Request):
         }
 
     except Exception as e:
-        print("Error creating new step: ", e)
+        logging.info("Error creating new step: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
     return
@@ -716,7 +727,7 @@ async def delete_doc_endpoint(request: Request):
 
         return {"success": True}
     except Exception as e:
-        print("Error deleting doc: ", e)
+        logging.info("Error deleting doc: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
 
@@ -803,7 +814,7 @@ async def download_csv(request: Request):
         }
 
     except Exception as e:
-        print("Error downloading csv: ", e)
+        logging.info("Error downloading csv: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
 
@@ -862,7 +873,7 @@ async def delete_steps(request: Request):
         return {"success": True, "new_steps": new_steps}
 
     except Exception as e:
-        print("Error deleting steps: ", e)
+        logging.info("Error deleting steps: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
 
@@ -895,11 +906,11 @@ async def delete_tool_endpoint(request: Request):
         if err:
             return {"success": False, "error_message": err}
 
-        print("Deleted tool: ", function_name)
+        logging.info("Deleted tool: " + function_name)
 
         return {"success": True}
     except Exception as e:
-        print("Error disabling tool: ", e)
+        logging.info("Error disabling tool: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
 
@@ -921,11 +932,9 @@ async def toggle_disable_tool_endpoint(request: Request):
         if err:
             raise Exception(err)
 
-        print("Toggled tool: ", function_name)
-
         return {"success": True}
     except Exception as e:
-        print("Error disabling tool: ", e)
+        logging.info("Error disabling tool: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
 
@@ -995,11 +1004,11 @@ async def add_tool_endpoint(request: Request):
         if err:
             raise Exception(err)
 
-        print("Added tool: ", function_name)
+        logging.info("Added tool: " + function_name)
 
         return {"success": True}
     except Exception as e:
-        print("Error adding tool: ", e)
+        logging.info("Error adding tool: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
 
@@ -1100,7 +1109,7 @@ async def submit_feedback(request: Request):
             initial_recommended_plan = (
                 raw_response.split("```yaml")[-1].split("```")[0].strip()
             )
-            print(initial_recommended_plan, flush=True)
+            logging.info(initial_recommended_plan)
             new_analysis_id = str(uuid4())
             new_analysis_data = None
             try:
@@ -1158,7 +1167,7 @@ async def submit_feedback(request: Request):
 
                 recommended_plan = final_executed_plan
             except Exception as e:
-                print(e)
+                logging.info(e)
                 traceback.print_exc()
                 recommended_plan = None
                 new_analysis_data = None
@@ -1178,9 +1187,9 @@ async def submit_feedback(request: Request):
             return {"success": True, "did_overwrite": did_overwrite}
 
     except Exception as e:
-        print(str(e))
+        logging.info(str(e))
         error = str(e)[:300]
-        print(error)
+        logging.info(error)
         traceback.print_exc()
         return {"success": False, "error_message": error}
 
@@ -1198,7 +1207,7 @@ async def get_analysis_versions_endpoint(request: Request):
         await get_analysis_versions(root_analysis_id)
         pass
     except Exception as e:
-        print("Error getting analysis versions: ", e)
+        logging.info("Error getting analysis versions: " + str(e))
         traceback.print_exc()
         return {
             "success": False,
@@ -1227,7 +1236,7 @@ async def update_dashboard_data_endpoint(request: Request):
 
         return {"success": True}
     except Exception as e:
-        print("Error adding analysis to dashboard: ", e)
+        logging.info("Error adding analysis to dashboard: " + str(e))
         traceback.print_exc()
         return {
             "success": False,
@@ -1241,40 +1250,106 @@ async def generate_tool_code_endpoint(request: Request):
         data = await request.json()
         tool_name = data.get("tool_name")
         tool_description = data.get("tool_description")
-        function_name = data.get("function_name")
-        def_statement = data.get("def_statement")
-        return_statement = data.get("return_statement")
-        toolbox = data.get("toolbox")
+        user_question = data.get("user_question")
+        current_code = data.get("current_code")
 
-        if (
-            not tool_name
-            or not function_name
-            or not def_statement
-            or not return_statement
-        ):
+        if not tool_name:
             raise Exception("Invalid parameters.")
+
+        if not user_question or user_question == "":
+            user_question = "Please write the tool code."
 
         payload = {
             "request_type": "generate_tool_code",
             "tool_name": tool_name,
             "tool_description": tool_description,
-            "function_name": function_name,
-            "def_statement": def_statement,
-            "return_statement": return_statement,
-            "toolbox": toolbox,
+            "user_question": user_question,
+            "current_code": current_code,
         }
 
-        resp = requests.post(
-            llm_calls_url,
-            json=payload,
-        ).json()
+        retries = 0
+        error = None
+        while retries < 3:
+            try:
+                logging.info(payload)
+                resp = requests.post(
+                    llm_calls_url,
+                    json=payload,
+                ).json()
 
-        if resp.get("error_message"):
-            raise Exception(resp.get("error_message"))
+                # testing code has two functions: generate_sample_inputs and test_tool
+                if resp.get("error_message"):
+                    raise Exception(resp.get("error_message"))
 
-        return {"success": True, "generated_code": resp["generated_code"]}
+                tool_code = resp["tool_code"]
+                testing_code = resp["testing_code"]
+
+                # find the function name in tool_code
+                try:
+                    function_name = tool_code.split("def ")[1].split("(")[0]
+                except Exception as e:
+                    logging.error("Error finding function name: " + str(e))
+                    # default to snake case tool name
+                    function_name = snake_case(tool_name)
+                    logging.error(
+                        "Defaulting to snake case tool name: " + function_name
+                    )
+
+                # try running this code
+                err, testing_details = await execute_code(
+                    [tool_code, testing_code], "test_tool"
+                )
+
+                if err:
+                    raise Exception(err)
+
+                # unfortunately testing_details has outputs, and inside of it is another outputs which is returned by the tool :tear:
+                testing_details["outputs"] = testing_details["outputs"]["outputs"]
+
+                # convert inputs to a format we can send back to the user
+                # convert pandas dfs to csvs in both inoputs and outputs
+                for i, input in enumerate(testing_details["inputs"]):
+                    value = input["value"]
+                    if type(value) == pd.DataFrame:
+                        testing_details["inputs"][i]["value"] = value.to_csv(
+                            index=False
+                        )
+
+                for output in testing_details["outputs"]:
+                    output["data"] = output["data"].to_csv(index=False)
+
+                return JSONResponse(
+                    {
+                        "success": True,
+                        "tool_name": tool_name,
+                        "tool_description": tool_description,
+                        "generated_code": tool_code,
+                        "testing_code": testing_code,
+                        "function_name": function_name,
+                        "testing_results": {
+                            "inputs": testing_details["inputs"],
+                            "outputs": testing_details["outputs"],
+                        },
+                    }
+                )
+            except Exception as e:
+                error = str(e)[:300]
+                logging.info("Error generating tool code: " + str(e))
+                traceback.print_exc()
+            finally:
+                if error:
+                    payload = {
+                        "request_type": "fix_tool_code",
+                        "error": error,
+                        "messages": resp["messages"],
+                    }
+                retries += 1
+
+        logging.info("Max retries reached but couldn't generate code.")
+        raise Exception("Max retries exceeded but couldn't generate code.")
+
     except Exception as e:
-        print("Error generating tool code: ", e)
+        logging.info("Error generating tool code: " + str(e))
         traceback.print_exc()
         return {
             "success": False,

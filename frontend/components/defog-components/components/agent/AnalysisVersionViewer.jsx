@@ -7,7 +7,8 @@ import { appendAnalysisToYjsDoc } from "$utils/utils";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { Doc, applyUpdate, encodeStateAsUpdate } from "yjs";
 import YPartyKitProvider from "y-partykit/provider";
-import { AnalysisHistoryMenuItem } from "./AnalysisHistoryMenuItem";
+import { AnalysisHistoryItem } from "./AnalysisHistoryItem";
+import { AnalysisVersionViewerLinks } from "./AnalysisVersionViewerLinks";
 
 const partyEndpoint = process.env.NEXT_PUBLIC_AGENTS_ENDPOINT;
 
@@ -47,7 +48,9 @@ function AnalysisVersionViewer({
   //   }
   //  ...
   // }
-  const [sessionAnalysis, setSessionAnalysis] = useState({});
+  const [sessionAnalyses, setSessionAnalyses] = useState({});
+  // just a duplicate of the above but in a flat object
+  const [allAnalyses, setAllAnalyses] = useState({});
 
   const [loading, setLoading] = useState(false);
   const searchRef = useRef(null);
@@ -116,7 +119,7 @@ function AnalysisVersionViewer({
         const newId = "analysis-" + v4();
         let newAnalysis = {
           analysisId: newId,
-          isRoot: !isRoot,
+          isRoot: isRoot,
           rootAnalysisId: isRoot ? newId : rootAnalysisId,
           user_question: searchRef.current.input.value,
         };
@@ -127,9 +130,9 @@ function AnalysisVersionViewer({
         // in the db
         let createAnalysisRequestExtraParams = {
           user_question: searchRef.current.input.value,
-          is_root_analysis: !rootAnalysisId,
-          root_analysis_id: rootAnalysisId?.analysisId,
-          direct_parent_id: newAnalysis.directParentId,
+          is_root_analysis: isRoot,
+          root_analysis_id: rootAnalysisId,
+          direct_parent_id: directParentId,
         };
 
         newAnalysis.createAnalysisRequestBody = {
@@ -137,19 +140,19 @@ function AnalysisVersionViewer({
           other_data: createAnalysisRequestExtraParams,
         };
 
-        let newSessionAnalysis = { ...sessionAnalysis };
+        let newSessionAnalyses = { ...sessionAnalyses };
 
         // if we have an active root analysis, we're appending to that
         // otherwise we're starting a new root analysis
         if (!rootAnalysisId) {
           setActiveRootAnalysisId(newAnalysis.analysisId);
-          newSessionAnalysis[newAnalysis.analysisId] = {
+          newSessionAnalyses[newAnalysis.analysisId] = {
             root: newAnalysis,
             versionList: [],
           };
         } else {
-          const rootAnalysis = sessionAnalysis[rootAnalysisId].root;
-          newSessionAnalysis[rootAnalysis.analysisId].versionList.push(
+          const rootAnalysis = sessionAnalyses[rootAnalysisId].root;
+          newSessionAnalyses[rootAnalysis.analysisId].versionList.push(
             newAnalysis
           );
         }
@@ -185,10 +188,14 @@ function AnalysisVersionViewer({
         console.groupCollapsed("Analysis version viewer");
         console.groupEnd();
 
-        setSessionAnalysis(newSessionAnalysis);
+        setSessionAnalyses(newSessionAnalyses);
         setActiveAnalysisId(newAnalysis.analysisId);
         setActiveRootAnalysisId(newAnalysis.rootAnalysisId);
         searchRef.current.input.value = "";
+        setAllAnalyses({
+          ...allAnalyses,
+          [newAnalysis.analysisId]: newAnalysis,
+        });
         // remove the earliest one only if we have more than 10
         setLast10Analysis((prev) => {
           if (prev.length >= maxRenderedAnalysis) {
@@ -203,20 +210,16 @@ function AnalysisVersionViewer({
         setLoading(false);
       }
     },
-    [sessionAnalysis]
-  );
-
-  console.log(
-    activeRootAnalysisId,
-    activeAnalysisId,
-    sessionAnalysis,
-    last10Analysis
+    [sessionAnalyses, allAnalyses]
   );
 
   // w-0
   return (
     <>
-      <div className="flex flex-col bg-gray-50 min-h-96 rounded-md text-gray-600 border border-gray-300">
+      <div
+        className="flex flex-col bg-gray-50 min-h-96 rounded-md text-gray-600 border border-gray-300"
+        id="analysis-version-viewer"
+      >
         <div className="flex grow">
           <div className="basis-3/4 rounded-tr-lg pb-14 pt-5 pl-5 relative">
             {activeAnalysisId &&
@@ -230,9 +233,9 @@ function AnalysisVersionViewer({
                     createAnalysisRequestBody={
                       // just a little fucked.
                       activeAnalysisId === activeRootAnalysisId
-                        ? sessionAnalysis[activeRootAnalysisId].root
+                        ? sessionAnalyses[activeRootAnalysisId].root
                             .createAnalysisRequestBody
-                        : sessionAnalysis[
+                        : sessionAnalyses[
                             activeRootAnalysisId
                           ].versionList.find(
                             (item) => item.analysisId === activeAnalysisId
@@ -282,15 +285,19 @@ function AnalysisVersionViewer({
           {
             <div className="flex flex-col basis-1/4 mr-0 px-2 pt-5 pb-14 bg-gray-100 rounded-tl-lg relative">
               <h2 className="px-2 mb-3">History</h2>
-              <div className="flex flex-col px-2">
-                {Object.keys(sessionAnalysis).map((rootAnalysisId, i) => {
-                  const root = sessionAnalysis[rootAnalysisId].root;
+              <div className="flex flex-col px-2 relative history-list">
+                <AnalysisVersionViewerLinks
+                  analyses={allAnalyses}
+                  activeAnalysisId={activeAnalysisId}
+                />
+                {Object.keys(sessionAnalyses).map((rootAnalysisId, i) => {
+                  const root = sessionAnalyses[rootAnalysisId].root;
                   const analysisVersionList =
-                    sessionAnalysis[rootAnalysisId].versionList;
+                    sessionAnalyses[rootAnalysisId].versionList;
 
                   return (
                     <>
-                      <AnalysisHistoryMenuItem
+                      <AnalysisHistoryItem
                         key={root.analysisId}
                         analysis={root}
                         isActive={activeAnalysisId === root.analysisId}
@@ -301,7 +308,7 @@ function AnalysisVersionViewer({
                       />
                       {analysisVersionList.map((version, i) => {
                         return (
-                          <AnalysisHistoryMenuItem
+                          <AnalysisHistoryItem
                             key={version.analysisId}
                             analysis={version}
                             isActive={activeAnalysisId === version.analysisId}
@@ -310,7 +317,7 @@ function AnalysisVersionViewer({
                             setAddToDashboardSelection={
                               setAddToDashboardSelection
                             }
-                            extraClasses="ml-5 border-l-2"
+                            extraClasses="ml-2 border-l-2"
                           />
                         );
                       })}
@@ -318,7 +325,7 @@ function AnalysisVersionViewer({
                   );
                 })}
                 {!activeRootAnalysisId ? (
-                  <AnalysisHistoryMenuItem
+                  <AnalysisHistoryItem
                     isDummy={true}
                     setActiveRootAnalysisId={setActiveRootAnalysisId}
                     setActiveAnalysisId={setActiveAnalysisId}

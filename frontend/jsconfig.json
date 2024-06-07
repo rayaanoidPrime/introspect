@@ -5,7 +5,8 @@
     "paths": {
       // utils folder ./utils/
       "$utils/*": ["./utils/*"],
-      "$components/*": ["./components/*"]
+      "$components/*": ["./components/*"],
+      "$tailwind/*": ["./components/tailwind/*"]
     },
     "jsx": "react-jsx"
   }
