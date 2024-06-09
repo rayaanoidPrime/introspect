@@ -1,4 +1,3 @@
-import { message } from "antd";
 import setupBaseUrl from "./setupBaseUrl";
 
 export function setupWebsocketManager(

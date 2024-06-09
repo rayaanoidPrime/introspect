@@ -7,8 +7,6 @@ import { AnalysisHistoryItem } from "./AnalysisHistoryItem";
 import { AnalysisVersionViewerLinks } from "./AnalysisVersionViewerLinks";
 import { ArrowRightEndOnRectangleIcon } from "@heroicons/react/20/solid";
 
-const partyEndpoint = process.env.NEXT_PUBLIC_AGENTS_ENDPOINT;
-
 function AnalysisVersionViewer({
   dashboards,
   token,
