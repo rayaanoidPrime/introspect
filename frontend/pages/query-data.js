@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import Meta from "$components/common/Meta";
 import Scaffolding from "$components/common/Scaffolding";
 import dynamic from "next/dynamic";

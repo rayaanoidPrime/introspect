@@ -19,7 +19,7 @@ const AlignModel = () => {
 
     // after 100ms, get the glossary and golden queries
     getGlossaryGoldenQueries(devMode);
-  }, []);
+  }, [devMode]);
 
   const getGlossaryGoldenQueries = async (dev) => {
     setIsLoading(true);
@@ -99,9 +99,9 @@ const AlignModel = () => {
         <div style={{ paddingBottom: "1em" }}>
           <h1>Align Model</h1>
           <p>
-            Here, you can see the instructions and "golden queries" that the
-            model is currently using to create SQL queries. You can change them
-            here, and also get suggestions on how to improve them.
+            Here, you can see the instructions and golden queries that the model
+            is currently using to create SQL queries. You can change them here,
+            and also get suggestions on how to improve them.
           </p>
         </div>
 
