@@ -1,7 +1,7 @@
 # builds image for the agents backend
 FROM python:3.10
 
-WORKDIR agents-python-server
+WORKDIR backend
 
 ARG OPENAI_API_KEY=""
 
@@ -9,37 +9,17 @@ ARG OPENAI_API_KEY=""
 ENV OPENAI_API_KEY=$OPENAI_API_KEY
 
 # need cmake for scikit
-RUN apt-get update && apt-get install -y python3-pip cmake supervisor cron
+RUN apt-get update && apt-get install -y python3-pip cmake
 
-# if your are struggling with docker aggressively caching everything and not updating your latest files, just uncomment the line below. this will delete all files in the directory and ensure that you can run without running into caching issue
-# RUN rm -rf agents && rm -rf scripts
+COPY ./backend/requirements.txt ./requirements.txt
 
-COPY ./backend/src/requirements.txt ./requirements.txt
-# install requirements
-RUN pip install -r requirements.txt
+RUN pip install -r ./requirements.txt
 
 # download the SentenceTransformers all-MiniLM-L6-v2 model
 RUN python -c 'from sentence_transformers import SentenceTransformer; SentenceTransformer("all-MiniLM-L6-v2")'
 
-# copy deletion cron
-COPY ./backend/docker-setup-files/delete-cron /etc/cron.d/delete-cron
-
-# copy startup script
-COPY ./backend/docker-setup-files/startup.sh /startup.sh
-
-# Give execution rights on the cron job
-RUN chmod 0644 /etc/cron.d/delete-cron
-
-# Apply cron job
-RUN crontab /etc/cron.d/delete-cron
-
-# Create the log file to be able to run tail
-RUN touch /var/log/cron.log
-
 # expose python server port
 EXPOSE 1235
-
-COPY ./backend/src/ ./
 
 # create empty report assets dirs
 RUN mkdir -p /agents-assets/report-assets
@@ -51,9 +31,7 @@ RUN mkdir -p /agents-assets/report-assets/linechart
 RUN mkdir -p /agents-assets/report-assets/linecharts
 RUN touch /agent-logs-out
 
-RUN crontab /etc/cron.d/delete-cron
-
 ENV PYTHONUNBUFFERED=true
 
 # start startup script
-CMD /bin/bash /startup.sh $OPENAI_API_KEY
+CMD sh ./startup.sh
