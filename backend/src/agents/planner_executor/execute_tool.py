@@ -2,7 +2,7 @@ import re
 import pandas as pd
 import traceback
 import inspect
-from utils import error_str, warn_str
+from utils import SqlExecutionError, error_str, warn_str
 from db_utils import get_all_tools
 import asyncio
 from tool_code_utilities import default_top_level_imports
@@ -140,6 +140,9 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
                 result = {
                     "error_message": f"IndexError: index not found {e}. This might be due to empty dataframes from columns in the generated data from earlier. You might need to run data fetcher again to make sure the query is correct."
                 }
+            except SqlExecutionError as e:
+                print("HAD SQL ERROR\n", str(e), flush=True)
+                result = {"sql": e.sql, "error_message": str(e)}
             except Exception as e:
                 print(error_str(f"Error for tool {function_name}: {e}"))
                 traceback.print_exc()

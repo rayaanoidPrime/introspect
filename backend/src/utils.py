@@ -298,3 +298,12 @@ async def execute_code(
 
 def snake_case(s):
     return re.sub(r"(?<!^)(?=[A-Z])", "_", s).lower()
+
+
+class SqlExecutionError(Exception):
+    def __init__(self, sql, error_message):
+        # Call the base class constructor with the parameters it needs
+        super().__init__(f"{error_message}")
+
+        # Now for your custom code...
+        self.sql = sql

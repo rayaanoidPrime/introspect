@@ -1506,9 +1506,16 @@ async def add_tool(
             register_vector(conn.connection)
             # first check if it exists
             rows = conn.execute(select(Tools).where(Tools.tool_name == tool_name))
+
+            # check if latest tool code is same as the code we are trying to insert
+            no_changes = False
             if rows.rowcount != 0:
+                no_changes = rows.fetchone().code == code
+
+            if no_changes:
                 raise ValueError(f"Tool {tool_name} already exists.")
             else:
+                # update with latest
                 embedding = await embed_string(tool_name + "-" + description)
                 cursor = conn.connection.cursor()
                 query = """

@@ -157,7 +157,8 @@ function AnalysisManager({
 
   function onMainSocketMessage(event) {
     let response;
-    let newAnalysisData = null;
+    let newAnalysisData = { ...analysisData };
+    let rType, prop;
     try {
       if (!event.data) {
         throw new Error(
@@ -174,12 +175,10 @@ function AnalysisManager({
         throw new Error(response.error_message);
       }
 
-      const rType = response.request_type;
-      const prop = propNames[rType];
+      rType = response.request_type;
+      prop = propNames[rType];
 
       const nextStage = agentRequestTypes[agentRequestTypes.indexOf(rType) + 1];
-
-      newAnalysisData = { ...analysisData };
 
       if (nextStage) {
         // if any of the stages including and after nextStage exists
@@ -232,13 +231,22 @@ function AnalysisManager({
           }
         }
       }
-
-      setAnalysisData(newAnalysisData);
     } catch (e) {
       console.log(e);
       response = { error_message: e };
-      newAnalysisData = null;
+
+      console.log(newAnalysisData);
+      // if we have an error, and the current stage is empty, remove it
+      if (
+        newAnalysisData &&
+        newAnalysisData[rType] &&
+        !newAnalysisData[rType][prop]?.length
+      ) {
+        delete newAnalysisData[rType];
+      }
     } finally {
+      console.log(newAnalysisData);
+      setAnalysisData(newAnalysisData);
       if (onNewData && typeof onNewData === "function") {
         onNewData(response, newAnalysisData);
       }
