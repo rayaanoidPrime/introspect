@@ -292,7 +292,7 @@ class Executor:
 
                         self.global_dict[key] = data
                         # name the df too
-                        self.global_dict[key].name = key
+                        self.global_dict[key].df_name = key
                         # warn if more than 20 columns
                         warn_str(
                             f"More than 20 columns in dataset generated for {key}. Only storing the first 20."
