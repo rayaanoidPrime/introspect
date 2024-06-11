@@ -1208,6 +1208,7 @@ async def generate_tool_code_endpoint(request: Request):
             "tool_description": tool_description,
             "user_question": user_question,
             "current_code": current_code,
+            "api_key": DEFOG_API_KEY,
         }
 
         retries = 0
@@ -1285,6 +1286,7 @@ async def generate_tool_code_endpoint(request: Request):
                         "request_type": "fix_tool_code",
                         "error": error,
                         "messages": resp["messages"],
+                        "api_key": DEFOG_API_KEY,
                     }
                 retries += 1
 
