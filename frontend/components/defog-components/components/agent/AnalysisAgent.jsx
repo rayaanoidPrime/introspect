@@ -362,6 +362,14 @@ export const AnalysisAgent = ({
                           setToolRunDataCache={setToolRunDataCache}
                           tools={tools}
                           analysisBusy={analysisBusy}
+                          handleDeleteSteps={async (toolRunIds) => {
+                            try {
+                              await analysisManager.deleteSteps(toolRunIds);
+                            } catch (e) {
+                              console.log(e);
+                              console.log(e.stack);
+                            }
+                          }}
                         ></ToolResults>
                       ) : (
                         analysisBusy && (
