@@ -159,6 +159,9 @@ function AnalysisManager({
     let response;
     let newAnalysisData = { ...analysisData };
     let rType, prop;
+    let skip = false;
+
+    // if it's a pong request, skip
     try {
       if (!event.data) {
         throw new Error(
@@ -169,7 +172,15 @@ function AnalysisManager({
       response = JSON.parse(event.data);
 
       // if the response's analysis_id isn't this analysisId, ignore
-      if (response?.analysis_id !== analysisId) return;
+      if (response?.analysis_id !== analysisId) {
+        skip = true;
+        return;
+      }
+
+      if (response.pong) {
+        skip = true;
+        return;
+      }
 
       if (response?.error_message) {
         throw new Error(response.error_message);
@@ -235,17 +246,18 @@ function AnalysisManager({
       console.log(e);
       response = { error_message: e };
 
-      console.log(newAnalysisData);
-      // if we have an error, and the current stage is empty, remove it
+      // if we have an error, and the current stage's data is empty, remove it
       if (
         newAnalysisData &&
-        newAnalysisData[rType] &&
-        !newAnalysisData[rType][prop]?.length
+        newAnalysisData?.[newAnalysisData.currentStage]?.[
+          propNames[newAnalysisData.currentStage]
+        ]?.length === 0
       ) {
-        delete newAnalysisData[rType];
+        delete newAnalysisData[newAnalysisData.currentStage];
       }
     } finally {
-      console.log(newAnalysisData);
+      if (skip) return;
+
       setAnalysisData(newAnalysisData);
       if (onNewData && typeof onNewData === "function") {
         onNewData(response, newAnalysisData);

@@ -1513,8 +1513,14 @@ async def add_tool(
                 no_changes = rows.fetchone().code == code
 
             if no_changes:
-                raise ValueError(f"Tool {tool_name} already exists.")
+                raise ValueError(
+                    f"Tool {tool_name} already exists and no code changes detected."
+                )
             else:
+                # delete if exists
+                if rows.rowcount != 0:
+                    conn.execute(delete(Tools).where(Tools.tool_name == tool_name))
+
                 # update with latest
                 embedding = await embed_string(tool_name + "-" + description)
                 cursor = conn.connection.cursor()

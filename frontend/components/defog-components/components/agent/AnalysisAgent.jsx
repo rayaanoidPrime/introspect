@@ -59,8 +59,6 @@ export const AnalysisAgent = ({
     docContext.val.socketManagers;
 
   function onMainSocketMessage(response, newAnalysisData) {
-    if (response && response.pong) return;
-
     try {
       if (response.error_message) {
         throw new Error(response.error_message);
@@ -264,7 +262,6 @@ export const AnalysisAgent = ({
     },
     [analysisManager, setGlobalLoading]
   );
-
   const handleReRun = useCallback(
     (toolRunId, preRunActions = {}) => {
       if (

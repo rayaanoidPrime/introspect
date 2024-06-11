@@ -122,7 +122,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
 
                         if found:
                             df = pd.read_feather(f_path)
-                            df.name = var
+                            df.df_name = var
                             global_dict[var] = df
 
                     if not found or tool_run_data["edited"]:
@@ -218,7 +218,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
             if not err:
                 # save the result in the global_dict
                 global_dict[output_nm] = result
-                global_dict[output_nm].name = output_nm
+                global_dict[output_nm].df_name = output_nm
                 # first remove any errors
                 update_res = await update_tool_run_data(
                     analysis_id,
@@ -274,7 +274,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
             # save the result["outputs"]
             if not err:
                 global_dict[output_nm] = result["outputs"][0]["data"]
-                global_dict[output_nm].name = output_nm
+                global_dict[output_nm].df_name = output_nm
 
                 # first remove any errors from target_step
                 target_step["error_message"] = None
@@ -352,7 +352,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
                 data = result["outputs"][i]["data"]
                 if data is not None and isinstance(data, pd.DataFrame):
                     global_dict[out] = result["outputs"][i]["data"]
-                    global_dict[out].name = out
+                    global_dict[out].df_name = out
         else:
             log_error(f"Error re running step: {err}")
 

@@ -88,7 +88,7 @@ async def global_dict_data_fetcher_and_aggregator(
     # table_name,column_name,column_data_type
     metadata = "table_name,column_name,column_data_type\n"
     for input_df in input_dfs:
-        df_name = input_df.name
+        df_name = input_df.df_name
         metadata += "\n".join(
             [f"{df_name},{col},{input_df[col].dtype}" for col in input_df.columns]
         )
