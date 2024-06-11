@@ -229,6 +229,8 @@ export const AnalysisAgent = ({
     initialiseAnalysis();
   }, []);
 
+  console.log(analysisData);
+
   useEffect(() => {
     if (analysisManager) {
       managerCreatedHook(analysisManager, analysisId);

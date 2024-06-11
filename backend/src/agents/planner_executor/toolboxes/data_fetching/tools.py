@@ -11,6 +11,7 @@ async def data_fetcher_and_aggregator(
     import pandas as pd
     from tool_code_utilities import safe_sql, fetch_query_into_df
     from defog import Defog
+    from utils import SqlExecutionError
 
     if question == "" or question is None:
         raise ValueError("Question cannot be empty")
@@ -50,7 +51,11 @@ async def data_fetcher_and_aggregator(
 
     print(f"Running query: {query}")
 
-    df = await fetch_query_into_df(query)
+    try:
+        df = await fetch_query_into_df(query)
+    except Exception as e:
+        print("Raising execution error", flush=True)
+        raise SqlExecutionError(query, str(e))
 
     analysis = ""
     return {

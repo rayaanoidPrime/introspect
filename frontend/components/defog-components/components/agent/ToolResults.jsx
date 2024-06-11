@@ -426,6 +426,8 @@ export function ToolResults({
 
   const [displayLoadingOverlay, setDisplayLoadingOverlay] = useState(false);
 
+  console.log(toolRunData);
+
   useEffect(() => {
     if (analysisBusy) {
       setDisplayLoadingOverlay(true);

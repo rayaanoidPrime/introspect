@@ -148,8 +148,10 @@ class Executor:
                             "api_key": self.dfg_api_key,
                         }
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
+
+                    print(ans.json())
+
                     ans = ans.json()["generated_step"]
-                    print(ans)
                     self.previous_responses.append(ans)
 
                     match = re.search("(?:```yaml)([\s\S]*?)(?=```)", ans)

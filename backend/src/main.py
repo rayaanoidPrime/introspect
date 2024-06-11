@@ -295,6 +295,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         store_result = await store_tool_run(
                             resp["analysis_id"], step, result
                         )
+                        print(store_result, flush=True)
                         resp["output"] = {
                             "success": True,
                             "steps": [step],
