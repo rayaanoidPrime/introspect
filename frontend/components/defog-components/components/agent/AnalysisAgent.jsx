@@ -210,8 +210,6 @@ export const AnalysisAgent = ({
             },
           });
         }
-
-        console.log(initiateAutoSubmit, analysisManager?.analysisData);
         if (
           initiateAutoSubmit &&
           !analysisManager?.analysisData?.currentStage

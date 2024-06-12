@@ -572,8 +572,6 @@ export function createChartConfig(
     },
   }));
 
-  console.log(chartData);
-
   return { chartData, chartLabels };
 }
 
@@ -721,8 +719,6 @@ export const reFormatData = (data, columns) => {
     newCols = [];
     newRows = [];
   }
-
-  console.log(newCols, newRows);
 
   return { newCols, newRows };
 };
