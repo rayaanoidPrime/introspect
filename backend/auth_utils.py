@@ -1,19 +1,13 @@
 import hashlib
-import psycopg2
-import os
+import sqlite3
+
 
 SALT = "TOMMARVOLORIDDLE"
 
 
 def get_db_conn():
-    conn = psycopg2.connect(
-        host=os.environ["DBHOST"],
-        dbname=os.environ["DATABASE"],
-        user=os.environ["DBUSER"],
-        password=os.environ["DBPASSWORD"],
-        port=os.environ["DBPORT"],
-    )
-    return conn
+    # return sqlite3 connection
+    return sqlite3.connect("./defog.db")
 
 
 def validate_user(token, user_type=None, get_username=False):

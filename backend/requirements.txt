@@ -16,7 +16,6 @@ pandas
 pandasql
 pgvector
 pika
-psycopg2-binary
 pyyaml
 redshift_connector
 requests

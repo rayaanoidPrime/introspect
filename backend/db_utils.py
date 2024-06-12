@@ -15,7 +15,7 @@ from agents.planner_executor.tool_helpers.core_functions import (
     execute_code,
 )
 
-import psycopg2
+import sqlite3
 from auth_utils import validate_user
 
 import asyncio
@@ -34,11 +34,10 @@ db_creds = {
 }
 
 
-connection_uri = f"postgresql+psycopg2://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
+connection_uri = "sqlite:///defog.db"
 
 engine = create_engine(
     connection_uri,
-    pool_pre_ping=True,
 )
 
 Base = automap_base()
@@ -1181,13 +1180,7 @@ def get_multiple_reports(report_ids=[], columns=["report_id", "user_question"]):
 
 
 def get_db_conn():
-    conn = psycopg2.connect(
-        host=os.environ["DBHOST"],
-        dbname=os.environ["DATABASE"],
-        user=os.environ["DBUSER"],
-        password=os.environ["DBPASSWORD"],
-        port=os.environ["DBPORT"],
-    )
+    conn = sqlite3.connect("./defog.db")
     return conn
 
 
