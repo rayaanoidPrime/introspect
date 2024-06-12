@@ -33,6 +33,8 @@ export function CodeEditor({
     setToolCode(newVal);
   };
 
+  const languageClass = `language-${language} `;
+
   return (
     <ErrorBoundary>
       <>
@@ -42,7 +44,7 @@ export function CodeEditor({
           basicSetup={{
             lineNumbers: false,
           }}
-          className={`language-${language} ` + className}
+          className={languageClass + className}
           value={toolCode}
           onChange={(val) => {
             updateCodeAndSql(val);

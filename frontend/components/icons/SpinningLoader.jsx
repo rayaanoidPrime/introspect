@@ -1,7 +1,8 @@
 export default function SpinningLoader({ fill = "text-white" }) {
+  const extraClasses = fill;
   return (
     <svg
-      className={`animate-spin inline mr-3 h-5 w-5 ${fill}`}
+      className={`animate-spin inline mr-3 h-5 w-5 ` + extraClasses}
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
