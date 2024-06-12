@@ -41,7 +41,7 @@ export function Collapse({
               transform: collapsed ? "rotate(0deg)" : "rotate(90deg)",
             }}
           />
-          <span className="font-bold text-lg">{title}</span>
+          <span className="font-bold text-md">{title}</span>
         </div>
         <div
           ref={ctr}

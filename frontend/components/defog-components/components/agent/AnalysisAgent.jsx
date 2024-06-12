@@ -23,6 +23,7 @@ import Input from "antd/es/input";
 import Clarify from "./analysis-gen/Clarify";
 import AnalysisManager from "./analysisManager";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import { AnalysisFeedback } from "./feedback/AnalysisFeedback";
 
 const getToolsEndpoint = setupBaseUrl("http", "get_user_tools");
 
@@ -343,7 +344,7 @@ export const AnalysisAgent = ({
 
               {analysisData.currentStage === "gen_steps" ? (
                 <div className="analysis-content flex flex-row max-w-full overflow-auto">
-                  <div className="analysis-results grow overflow-scroll">
+                  <div className="analysis-results grow overflow-scroll relative">
                     <ErrorBoundary>
                       {analysisData?.gen_steps?.steps.length ? (
                         <ToolResults
@@ -387,6 +388,14 @@ export const AnalysisAgent = ({
                         )
                       )}
                     </ErrorBoundary>
+                    <div className="absolute top-8 right-12">
+                      <AnalysisFeedback
+                        analysisSteps={analysisData?.gen_steps?.steps || []}
+                        analysisId={analysisId}
+                        user_question={analysisData?.user_question}
+                        token={token}
+                      />
+                    </div>
                   </div>
                   <div className="analysis-steps overflow-auto">
                     <StepsDag
