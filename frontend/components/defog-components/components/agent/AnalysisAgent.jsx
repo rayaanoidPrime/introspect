@@ -318,7 +318,7 @@ export const AnalysisAgent = ({
                 <></>
               )}
               {analysisData.currentStage === "clarify" ? (
-                <div className="analysis-recipe">
+                <div className="analysis-recipe w-full">
                   <Clarify
                     data={analysisData.clarify}
                     handleSubmit={(stageInput, submitStage) => {
@@ -342,8 +342,8 @@ export const AnalysisAgent = ({
               )}
 
               {analysisData.currentStage === "gen_steps" ? (
-                <div className="analysis-content flex">
-                  <div className="analysis-results">
+                <div className="analysis-content flex flex-row max-w-full overflow-auto">
+                  <div className="analysis-results grow overflow-scroll">
                     <ErrorBoundary>
                       {analysisData?.gen_steps?.steps.length ? (
                         <ToolResults
@@ -388,7 +388,7 @@ export const AnalysisAgent = ({
                       )}
                     </ErrorBoundary>
                   </div>
-                  <div className="analysis-steps">
+                  <div className="analysis-steps overflow-auto">
                     <StepsDag
                       steps={analysisData?.gen_steps?.steps || []}
                       nodeSize={[40, 10]}
