@@ -8,8 +8,6 @@ export function RelatedAnalysesMiniMap({ editor = null }) {
     .x((d) => d.x)
     .y((d) => d.y);
 
-  if (!relatedAnalysesContext) return null;
-
   // the document might keep shifting as new things are rendered, so calculate this stuff every, 1 second?
   const [svgPaths, setSvgPaths] = useState([]);
 
@@ -83,7 +81,9 @@ export function RelatedAnalysesMiniMap({ editor = null }) {
     }, 1000);
 
     return () => clearInterval(interval);
-  });
+  }, []);
+
+  if (!relatedAnalysesContext) return null;
 
   //   using those coords, create svg paths that span the entire height of the document
   return (
