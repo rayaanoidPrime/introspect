@@ -1278,14 +1278,15 @@ async def add_tool(
                 select(Tools).where(Tools.tool_name == tool_name)
             ).fetchone()
 
-            # check if latest tool code is same as the code we are trying to insert
-            no_changes = False
-            if row:
-                no_changes = row.code == code
+        # check if latest tool code is same as the code we are trying to insert
+        no_changes = False
+        if row:
+            no_changes = row.code == code
 
-            if no_changes:
-                print(f"Tool {tool_name} already exists and no code changes detected.")
-            else:
+        if no_changes:
+            print(f"Tool {tool_name} already exists and no code changes detected.")
+        else:
+            with engine.begin() as conn:
                 # delete if exists
                 if row:
                     conn.execute(delete(Tools).where(Tools.tool_name == tool_name))
