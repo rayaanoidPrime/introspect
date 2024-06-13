@@ -1167,10 +1167,6 @@ def get_multiple_reports(report_ids=[], columns=["report_id", "user_question"]):
         return err, analyses
 
 
-def get_db_conn():
-    return engine
-
-
 async def store_feedback(
     user_question,
     analysis_id,
