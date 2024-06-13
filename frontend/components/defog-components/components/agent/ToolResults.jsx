@@ -472,9 +472,10 @@ export function ToolResults({
                 error_message={toolRunData?.error_message}
               ></ToolRunError>
             )}
-            <div className="tool-action-buttons">
+            <div className="tool-action-buttons flex flex-row gap-2">
               {/* {edited && ( */}
               <ToolReRun
+                className="font-mono bg-gray-50 border border-gray-200 text-gray-500 hover:bg-blue-500 hover:text-white"
                 onClick={() => {
                   handleReRun(toolRunId);
                 }}
@@ -483,7 +484,7 @@ export function ToolResults({
               <ToolReRun
                 onClick={showModal}
                 text="Delete"
-                className="tool-delete"
+                className="font-mono bg-gray-50 border border-gray-200 text-gray-500 hover:bg-rose-500 hover:text-white"
               ></ToolReRun>
               <Modal
                 okText={"Yes, delete"}

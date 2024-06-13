@@ -346,6 +346,16 @@ export const AnalysisAgent = ({
                 <div className="analysis-content flex flex-row max-w-full overflow-auto">
                   <div className="analysis-results grow overflow-scroll relative">
                     <ErrorBoundary>
+                      {!analysisBusy && analysisData && (
+                        <div className="">
+                          <AnalysisFeedback
+                            analysisSteps={analysisData?.gen_steps?.steps || []}
+                            analysisId={analysisId}
+                            user_question={analysisData?.user_question}
+                            token={token}
+                          />
+                        </div>
+                      )}
                       {analysisData?.gen_steps?.steps.length ? (
                         <ToolResults
                           analysisId={analysisId}
@@ -388,16 +398,6 @@ export const AnalysisAgent = ({
                         )
                       )}
                     </ErrorBoundary>
-                    {!analysisBusy && (
-                      <div className="absolute top-8 right-12">
-                        <AnalysisFeedback
-                          analysisSteps={analysisData?.gen_steps?.steps || []}
-                          analysisId={analysisId}
-                          user_question={analysisData?.user_question}
-                          token={token}
-                        />
-                      </div>
-                    )}
                   </div>
                   <div className="analysis-steps overflow-auto">
                     <StepsDag

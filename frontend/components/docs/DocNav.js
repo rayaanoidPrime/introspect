@@ -75,7 +75,6 @@ export default function DocNav({ token, currentDocId }) {
         el.classList.remove("open");
       }
     }
-    // ctr.style.minWidth = `${count * sidebarWidth + 20}px`;
   }, [sidebarsOpen]);
 
   function toggleSidebar(sidebarNm) {

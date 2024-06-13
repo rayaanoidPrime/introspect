@@ -4,6 +4,7 @@ import ErrorBoundary from "./common/ErrorBoundary";
 import CodeMirror from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
 import { sql } from "@codemirror/lang-sql";
+import { twMerge } from "tailwind-merge";
 
 export function CodeEditor({
   analysisId = null,
@@ -42,7 +43,7 @@ export function CodeEditor({
           basicSetup={{
             lineNumbers: false,
           }}
-          className={`language-${language} ` + className}
+          className={twMerge("language-" + language, className)}
           value={toolCode}
           onChange={(val) => {
             updateCodeAndSql(val);

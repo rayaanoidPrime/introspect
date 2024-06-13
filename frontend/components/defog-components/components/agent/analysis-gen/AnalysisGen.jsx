@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import Clarify from "./Clarify";
 import { ThemeContext } from "../../../context/ThemeContext";
-import styled from "styled-components";
 import { Select, Tabs, Input } from "antd";
 import { DocContext } from "../../../../docs/DocContext";
 
@@ -138,7 +137,7 @@ export default function AnalysisGen({
   }, [memoDep]);
 
   return (
-    <AnalysisGenWrap theme={theme}>
+    <div>
       <div className="analysis-gen-ctr">
         <div className="analysis-toolbox-selection-ctr">
           <div className="analysis-toolbox-selection-header">ASK DEFOG</div>
@@ -183,24 +182,6 @@ export default function AnalysisGen({
           <></>
         )}
       </div>
-    </AnalysisGenWrap>
+    </div>
   );
 }
-
-const AnalysisGenWrap = styled.div`
-  .stage-heading {
-    text-align: center;
-    color: gray;
-    font-weight: normal;
-    font-size: 0.8em;
-    margin-bottom: 3em;
-    pointer-events: none;
-  }
-  .ant-input-search .ant-input {
-    background-color: white;
-    color: #3a3a3a;
-    * {
-      color: #3a3a3a;
-    }
-  }
-`;

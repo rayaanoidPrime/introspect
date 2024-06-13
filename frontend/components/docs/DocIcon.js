@@ -1,5 +1,4 @@
 import React from "react";
-import styled from "styled-components";
 
 import { TbArchive, TbArchiveOff } from "react-icons/tb";
 import Link from "next/link";
@@ -11,7 +10,7 @@ export default function DocIcon({
   onClick = null,
 }) {
   return (
-    <DocIconWrap>
+    <div className="doc-icon-ctr">
       <Link
         target="_blank"
         href={{
@@ -73,82 +72,6 @@ export default function DocIcon({
       ) : (
         <></>
       )}
-    </DocIconWrap>
+    </div>
   );
 }
-
-const DocIconWrap = styled.div`
-  width: 200px;
-  margin: 10px;
-  margin-bottom: 2em;
-  position: relative;
-
-  &:hover {
-    .doc-archive-icon {
-      opacity: 1;
-    }
-  }
-
-  .doc-archive-icon {
-    position: absolute;
-    top: -10px;
-    right: -10px;
-    opacity: 0;
-    cursor: pointer;
-    font-size: 15px;
-    padding: 5px;
-    background-color: white;
-    border: 1px solid #949494;
-    border-radius: 50%;
-    height: 30px;
-    width: 30px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 4;
-    svg path:not(:first-child) {
-      stroke: #949494;
-    }
-  }
-
-  .doc-icon {
-    border-radius: 8px;
-    width: 100%;
-    height: 150px;
-    display: flex;
-    justify-content: center;
-    align-items: left;
-    background: #a8b1c021;
-    flex-direction: column;
-    padding: 20px;
-
-    &.add-doc {
-      align-items: center;
-      .add-doc-plus {
-        font-size: 3rem;
-        font-weight: bold;
-        color: #a8b1c0c3;
-      }
-    }
-    .stage-icon-label {
-      color: #a8b1c0ff;
-      font-weight: bold;
-      &.done {
-        color: #a8b1c061;
-        text-decoration: line-through;
-        .anticon {
-          margin-left: 4px;
-        }
-      }
-    }
-  }
-  .doc-title {
-    color: #a8b1c0ff;
-    font-weight: bold;
-    margin-top: 1em;
-  }
-  .doc-date {
-    color: #a8b1c0ff;
-    font-weight: bold;
-  }
-`;

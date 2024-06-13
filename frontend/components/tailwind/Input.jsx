@@ -32,7 +32,14 @@ export function Input({
           name={name}
           id={id}
           className={twMerge(
-            `block w-full focus:shadow-sm rounded-md border-0 py-1.5 pr-10 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset ${status !== "error" ? "focus:ring-blue-400" : "focus:ring-rose-400 ring-rose-400"} sm:text-sm sm:leading-6 ${disabled ? "bg-gray-100 text-gray-400  focus:ring-gray-100 cursor-not-allowed" : "bg-white"}`,
+            "block w-full focus:shadow-sm rounded-md border-0 py-1.5 pr-10 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset",
+            status !== "error"
+              ? "focus:ring-blue-400"
+              : "focus:ring-rose-400 ring-rose-400",
+            "sm:text-sm sm:leading-6",
+            disabled
+              ? "bg-gray-100 text-gray-400  focus:ring-gray-100 cursor-not-allowed"
+              : "bg-white",
             inputClassName
           )}
           placeholder={placeholder}
