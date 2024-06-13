@@ -168,14 +168,12 @@ def get_report_data(report_id):
             print("Looking for uuid: ", report_id)
             # try to fetch report_data data
             with engine.begin() as conn:
-                rows = conn.execute(
+                row = conn.execute(
                     select(Reports).where(Reports.report_id == report_id)
-                )
+                ).fetchone()
 
-                if rows.rowcount > 0:
-                    #  7b2b3091-02d1-45d4-9210-e8d855118690
+                if row:
                     print("Found uuid: ", report_id)
-                    row = rows.fetchone()
                     report_data = report_data_from_row(row)
                 else:
                     err = (
@@ -216,15 +214,13 @@ async def update_report_data(
         else:
             with engine.begin() as conn:
                 # first get the data
-                rows = conn.execute(
+                row = conn.execute(
                     select(Reports.__table__.columns[request_type]).where(
                         Reports.report_id == report_id
                     )
-                )
+                ).fetchone()
 
-                if rows.rowcount > 0:
-                    row = rows.fetchone()
-                    # print(row)
+                if row:
                     curr_data = getattr(row, request_type) or []
                     print("current data length ", len(curr_data))
 
@@ -364,10 +360,10 @@ def get_all_reports():
     try:
         with engine.begin() as conn:
             # first get the data
-            rows = conn.execute(select(Reports).where(Reports.api_key == DEFOG_API_KEY))
-            if rows.rowcount > 0:
-                rows = rows.fetchall()
-
+            rows = conn.execute(
+                select(Reports).where(Reports.api_key == DEFOG_API_KEY)
+            ).fetchall()
+            if len(rows) > 0:
                 # reshape with "success = true"
                 for row in rows:
                     rpt = report_data_from_row(row)
@@ -391,16 +387,15 @@ async def add_to_recently_viewed_docs(token, doc_id, timestamp):
         with engine.begin() as conn:
             # add to recently accessed documents for this username
             # check if it exists
-            rows = conn.execute(
+            row = conn.execute(
                 select(RecentlyViewedDocs)
                 .where(RecentlyViewedDocs.username == username)
                 .where(RecentlyViewedDocs.api_key == DEFOG_API_KEY)
-            )
+            ).fetchone()
 
-            if rows.rowcount > 0:
+            if row:
                 print("Adding to recently viewed docs for user: ", username)
                 # get the recent_docs array
-                row = rows.fetchone()
                 recent_docs = row.recent_docs or []
                 # recent_docs is an array of arrays
                 # each item is a [doc_id, timestamp]
@@ -458,12 +453,11 @@ async def get_doc_data(doc_id, token, col_name="doc_blocks"):
         #     err = err_validate or "Your API Key is invalid."
         with engine.begin() as conn:
             # check if document exists
-            rows = conn.execute(select(Docs).where(Docs.doc_id == doc_id))
+            row = conn.execute(select(Docs).where(Docs.doc_id == doc_id)).fetchone()
 
-            if rows.rowcount > 0:
+            if row:
                 # document exists
                 print("Found document with id: ", doc_id)
-                row = rows.fetchone()
                 doc_data = {
                     "doc_id": row.doc_id,
                     col_name: getattr(row, col_name),
@@ -533,13 +527,13 @@ async def update_doc_data(doc_id, col_names=[], new_data={}):
     try:
         with engine.begin() as conn:
             # first get the data
-            rows = conn.execute(
+            row = conn.execute(
                 select(*[Docs.__table__.columns[c] for c in col_names]).where(
                     Docs.doc_id == doc_id
                 )
-            )
+            ).fetchone()
 
-            if rows.rowcount > 0:
+            if row:
                 print("Updating document with id: ", doc_id, "column: ", col_names)
                 conn.execute(update(Docs).where(Docs.doc_id == doc_id).values(new_data))
             else:
@@ -586,11 +580,11 @@ async def update_table_chart_data(table_id, edited_table_data):
         with engine.begin() as conn:
             # check if exists.
             # if not, create
-            rows = conn.execute(
+            row = conn.execute(
                 select(TableCharts).where(TableCharts.table_id == table_id)
-            )
+            ).fetchone()
 
-            if rows.rowcount == 0:
+            if not row:
                 err = "Invalid table id"
             else:
                 # print(edited_table_data)
@@ -656,14 +650,13 @@ async def get_table_data(table_id):
     try:
         with engine.begin() as conn:
             # check if document exists
-            rows = conn.execute(
+            row = conn.execute(
                 select(TableCharts).where(TableCharts.table_id == table_id)
-            )
+            ).fetchone()
 
-            if rows.rowcount > 0:
+            if row:
                 # document exists
                 print("Found table with id: ", table_id)
-                row = rows.fetchone()
                 table_data = row._mapping
 
             else:
@@ -703,8 +696,8 @@ async def get_all_docs(token):
                     Docs.__table__.columns["timestamp"],
                     Docs.__table__.columns["archived"],
                 ).where(Docs.username == username)
-            )
-            if rows.rowcount > 0:
+            ).fetchall()
+            if len(rows) > 0:
                 rows = rows.fetchall()
 
                 for row in rows:
@@ -720,11 +713,9 @@ async def get_all_docs(token):
                 select(
                     RecentlyViewedDocs.__table__.columns["recent_docs"],
                 ).where(RecentlyViewedDocs.username == username)
-            )
+            ).fetchall()
 
-            if rows.rowcount > 0:
-                rows = rows.fetchall()
-
+            if len(rows) > 0:
                 for row in rows:
                     doc = row._mapping
                     for recent_doc in doc["recent_docs"]:
@@ -782,11 +773,9 @@ async def get_all_analyses():
                 )
                 .where(Reports.api_key == DEFOG_API_KEY)
                 .where(Reports.report_id.contains("analysis"))
-            )
+            ).fetchall()
 
-            if rows.rowcount > 0:
-                rows = rows.fetchall()
-
+            if len(rows.rowcount) > 0:
                 for row in rows:
                     analyses.append(row._mapping)
     except Exception as e:
@@ -1165,11 +1154,9 @@ def get_multiple_reports(report_ids=[], columns=["report_id", "user_question"]):
                         if c in Reports.__table__.columns
                     ]
                 ).where(Reports.report_id.in_(report_ids))
-            )
+            ).fetchall()
 
-            if rows.rowcount > 0:
-                rows = rows.fetchall()
-
+            if len(rows) > 0:
                 for row in rows:
                     analyses.append(row._mapping)
     except Exception as e:
@@ -1265,20 +1252,20 @@ async def add_tool(
         # insert into the tools table
         with engine.begin() as conn:
             # first check if it exists
-            rows = conn.execute(select(Tools).where(Tools.tool_name == tool_name))
+            row = conn.execute(
+                select(Tools).where(Tools.tool_name == tool_name)
+            ).fetchone()
 
             # check if latest tool code is same as the code we are trying to insert
             no_changes = False
-            print(rows.rowcount)
-            if rows.rowcount > 0:
-                row = rows.fetchone()
+            if row:
                 no_changes = row.code == code
 
             if no_changes:
                 print(f"Tool {tool_name} already exists and no code changes detected.")
             else:
                 # delete if exists
-                if rows.rowcount > 0:
+                if row:
                     conn.execute(delete(Tools).where(Tools.tool_name == tool_name))
 
                 # update with latest
