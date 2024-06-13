@@ -41,7 +41,9 @@ engine = create_engine(
 )
 
 Base = automap_base()
-Base.prepare(engine, reflect=True)
+
+# reflect the tables
+Base.prepare(autoload_with=engine)
 
 Docs = Base.classes.defog_docs
 RecentlyViewedDocs = Base.classes.defog_recently_viewed_docs
@@ -170,7 +172,7 @@ def get_report_data(report_id):
                     select(Reports).where(Reports.report_id == report_id)
                 )
 
-                if rows.rowcount != 0:
+                if rows.rowcount > 0:
                     #  7b2b3091-02d1-45d4-9210-e8d855118690
                     print("Found uuid: ", report_id)
                     row = rows.fetchone()
@@ -220,7 +222,7 @@ async def update_report_data(
                     )
                 )
 
-                if rows.rowcount != 0:
+                if rows.rowcount > 0:
                     row = rows.fetchone()
                     # print(row)
                     curr_data = getattr(row, request_type) or []
@@ -271,7 +273,7 @@ async def update_report_data(
                         print(new_data)
                         cursor = conn.connection.cursor()
                         cursor.execute(
-                            "UPDATE defog_reports SET user_question = %s WHERE report_id = %s",
+                            "UPDATE defog_reports SET user_question = ? WHERE report_id = ?",
                             (new_data, report_id),
                         )
                     else:
@@ -363,7 +365,7 @@ def get_all_reports():
         with engine.begin() as conn:
             # first get the data
             rows = conn.execute(select(Reports).where(Reports.api_key == DEFOG_API_KEY))
-            if rows.rowcount != 0:
+            if rows.rowcount > 0:
                 rows = rows.fetchall()
 
                 # reshape with "success = true"
@@ -395,7 +397,7 @@ async def add_to_recently_viewed_docs(token, doc_id, timestamp):
                 .where(RecentlyViewedDocs.api_key == DEFOG_API_KEY)
             )
 
-            if rows.rowcount != 0:
+            if rows.rowcount > 0:
                 print("Adding to recently viewed docs for user: ", username)
                 # get the recent_docs array
                 row = rows.fetchone()
@@ -458,7 +460,7 @@ async def get_doc_data(doc_id, token, col_name="doc_blocks"):
             # check if document exists
             rows = conn.execute(select(Docs).where(Docs.doc_id == doc_id))
 
-            if rows.rowcount != 0:
+            if rows.rowcount > 0:
                 # document exists
                 print("Found document with id: ", doc_id)
                 row = rows.fetchone()
@@ -507,7 +509,7 @@ async def delete_doc(doc_id):
         with engine.begin() as conn:
             result = conn.execute(delete(Docs).where(Docs.doc_id == doc_id))
 
-            if result.rowcount != 0:
+            if result.rowcount > 0:
                 print("Deleted doc with id: ", doc_id)
             else:
                 err = "Doc not found."
@@ -537,7 +539,7 @@ async def update_doc_data(doc_id, col_names=[], new_data={}):
                 )
             )
 
-            if rows.rowcount != 0:
+            if rows.rowcount > 0:
                 print("Updating document with id: ", doc_id, "column: ", col_names)
                 conn.execute(update(Docs).where(Docs.doc_id == doc_id).values(new_data))
             else:
@@ -658,7 +660,7 @@ async def get_table_data(table_id):
                 select(TableCharts).where(TableCharts.table_id == table_id)
             )
 
-            if rows.rowcount != 0:
+            if rows.rowcount > 0:
                 # document exists
                 print("Found table with id: ", table_id)
                 row = rows.fetchone()
@@ -702,7 +704,7 @@ async def get_all_docs(token):
                     Docs.__table__.columns["archived"],
                 ).where(Docs.username == username)
             )
-            if rows.rowcount != 0:
+            if rows.rowcount > 0:
                 rows = rows.fetchall()
 
                 for row in rows:
@@ -720,7 +722,7 @@ async def get_all_docs(token):
                 ).where(RecentlyViewedDocs.username == username)
             )
 
-            if rows.rowcount != 0:
+            if rows.rowcount > 0:
                 rows = rows.fetchall()
 
                 for row in rows:
@@ -782,7 +784,7 @@ async def get_all_analyses():
                 .where(Reports.report_id.contains("analysis"))
             )
 
-            if rows.rowcount != 0:
+            if rows.rowcount > 0:
                 rows = rows.fetchall()
 
                 for row in rows:
@@ -1165,7 +1167,7 @@ def get_multiple_reports(report_ids=[], columns=["report_id", "user_question"]):
                 ).where(Reports.report_id.in_(report_ids))
             )
 
-            if rows.rowcount != 0:
+            if rows.rowcount > 0:
                 rows = rows.fetchall()
 
                 for row in rows:
@@ -1267,14 +1269,16 @@ async def add_tool(
 
             # check if latest tool code is same as the code we are trying to insert
             no_changes = False
-            if rows.rowcount != 0:
-                no_changes = rows.fetchone().code == code
+            print(rows.rowcount)
+            if rows.rowcount > 0:
+                row = rows.fetchone()
+                no_changes = row.code == code
 
             if no_changes:
                 print(f"Tool {tool_name} already exists and no code changes detected.")
             else:
                 # delete if exists
-                if rows.rowcount != 0:
+                if rows.rowcount > 0:
                     conn.execute(delete(Tools).where(Tools.tool_name == tool_name))
 
                 # update with latest
@@ -1284,7 +1288,7 @@ async def add_tool(
                         tool_name, function_name, code, description, toolbox, 
                         input_metadata, output_metadata, cannot_delete, cannot_disable, disabled
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                     )
                 """
                 values = (
@@ -1399,7 +1403,7 @@ async def get_analysis_versions(root_analysis_id):
                 """
                 SELECT report_id, user_question, gen_steps
                 FROM defog_reports
-                WHERE root_analysis_id = %s
+                WHERE root_analysis_id = ?
                 ORDER BY timestamp ASC
                 """,
                 (root_analysis_id,),
