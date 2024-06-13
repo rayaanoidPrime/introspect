@@ -34,11 +34,9 @@ db_creds = {
 }
 
 
-connection_uri = "sqlite:///defog.db"
+connection_uri = "sqlite:///defog_local.db"
 
-engine = create_engine(
-    connection_uri,
-)
+engine = create_engine(connection_uri, connect_args={"timeout": 3})
 
 Base = automap_base()
 
@@ -267,12 +265,14 @@ async def update_report_data(
                     # if the request type is user_question, we will also update the embedding
                     if request_type == "user_question":
                         print(new_data)
+                        print(report_id)
                         cursor = conn.connection.cursor()
                         cursor.execute(
                             "UPDATE defog_reports SET user_question = ? WHERE report_id = ?",
                             (new_data, report_id),
                         )
                     else:
+                        print(curr_data)
                         conn.execute(
                             update(Reports)
                             .where(Reports.report_id == report_id)
@@ -775,7 +775,7 @@ async def get_all_analyses():
                 .where(Reports.report_id.contains("analysis"))
             ).fetchall()
 
-            if len(rows.rowcount) > 0:
+            if len(rows) > 0:
                 for row in rows:
                     analyses.append(row._mapping)
     except Exception as e:
@@ -959,14 +959,14 @@ async def store_tool_run(analysis_id, step, run_result, skip_step_update=False):
             else:
                 conn.execute(insert(ToolRuns).values(insert_data))
 
-            if not skip_step_update:
-                # also update the error message in gen_steps in the reports table
-                await update_particular_step(
-                    analysis_id,
-                    step["tool_run_id"],
-                    "error_message",
-                    run_result.get("error_message"),
-                )
+        if not skip_step_update:
+            # also update the error message in gen_steps in the reports table
+            await update_particular_step(
+                analysis_id,
+                step["tool_run_id"],
+                "error_message",
+                run_result.get("error_message"),
+            )
 
         return {"success": True, "tool_run_data": insert_data}
     except Exception as e:
@@ -1169,7 +1169,7 @@ def get_multiple_reports(report_ids=[], columns=["report_id", "user_question"]):
 
 
 def get_db_conn():
-    conn = sqlite3.connect("./defog.db")
+    conn = sqlite3.connect("./defog_local.db")
     return conn
 
 
