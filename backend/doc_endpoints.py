@@ -50,13 +50,9 @@ from db_utils import (
     get_all_tools,
 )
 
-from utils import get_metadata
-
 router = APIRouter()
 
 manager = ConnectionManager()
-
-import yaml
 
 dfg_api_key = os.environ["DEFOG_API_KEY"]
 llm_calls_url = os.environ["LLM_CALLS_URL"]
