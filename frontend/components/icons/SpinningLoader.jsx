@@ -1,6 +1,7 @@
 import { twMerge } from "tailwind-merge";
 
 export default function SpinningLoader({ fill = "text-white" }) {
+  const extraClasses = fill;
   return (
     <svg
       className={twMerge("animate-spin inline mr-3 h-5 w-5", fill)}

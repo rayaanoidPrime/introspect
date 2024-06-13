@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Request
-import json
 import os
-from auth_utils import validate_user
+from db_utils import validate_user
 from generic_utils import make_request
 from defog import Defog
 

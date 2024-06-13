@@ -13,6 +13,10 @@ export function TextArea({
   onChange = () => {},
   textAreaHtmlProps = {},
 }) {
+  const extraClasses =
+    status !== "error"
+      ? "focus:ring-blue-400"
+      : "focus:ring-rose-400 ring-rose-400";
   return (
     <div className={twMerge("text-gray-600", rootClassName)}>
       {label && (

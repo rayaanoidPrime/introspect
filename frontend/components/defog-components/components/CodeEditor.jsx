@@ -34,6 +34,8 @@ export function CodeEditor({
     setToolCode(newVal);
   };
 
+  const languageClass = `language-${language} `;
+
   return (
     <ErrorBoundary>
       <>

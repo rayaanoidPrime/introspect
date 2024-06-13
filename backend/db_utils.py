@@ -15,9 +15,6 @@ from agents.planner_executor.tool_helpers.core_functions import (
     execute_code,
 )
 
-import psycopg2
-from auth_utils import validate_user
-
 import asyncio
 from utils import warn_str, YieldList, make_request
 import os
@@ -33,16 +30,21 @@ db_creds = {
     "database": os.environ["DATABASE"],
 }
 
-
-connection_uri = f"postgresql+psycopg2://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
-
-engine = create_engine(
-    connection_uri,
-    pool_pre_ping=True,
-)
+if os.environ.get("INTERNAL_DB") == "sqlite":
+    print("using sqlite as our internal db")
+    # if using sqlite
+    connection_uri = "sqlite:///defog_local.db"
+    engine = create_engine(connection_uri, connect_args={"timeout": 3})
+else:
+    # if using postgres
+    print("using postgres as our internal db")
+    connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
+    engine = create_engine(connection_uri)
 
 Base = automap_base()
-Base.prepare(engine, reflect=True)
+
+# reflect the tables
+Base.prepare(autoload_with=engine)
 
 Docs = Base.classes.defog_docs
 RecentlyViewedDocs = Base.classes.defog_recently_viewed_docs
@@ -55,7 +57,28 @@ Users = Base.classes.defog_users
 Feedback = Base.classes.defog_plans_feedback
 
 
-free_tier_quota = 100
+def validate_user(token, user_type=None, get_username=False):
+    with engine.begin() as conn:
+        user = conn.execute(
+            select(Users).where(Users.hashed_password == token)
+        ).fetchone()
+
+    if user:
+        if user_type == "admin":
+            if user[0] == "admin":
+                if get_username:
+                    return user[1]
+                else:
+                    return True
+            else:
+                return False
+        else:
+            if get_username:
+                return user[1]
+            else:
+                return True
+    else:
+        return False
 
 
 async def initialise_report(user_question, token, custom_id=None, other_data={}):
@@ -167,14 +190,12 @@ def get_report_data(report_id):
             print("Looking for uuid: ", report_id)
             # try to fetch report_data data
             with engine.begin() as conn:
-                rows = conn.execute(
+                row = conn.execute(
                     select(Reports).where(Reports.report_id == report_id)
-                )
+                ).fetchone()
 
-                if rows.rowcount != 0:
-                    #  7b2b3091-02d1-45d4-9210-e8d855118690
+                if row:
                     print("Found uuid: ", report_id)
-                    row = rows.fetchone()
                     report_data = report_data_from_row(row)
                 else:
                     err = (
@@ -215,15 +236,13 @@ async def update_report_data(
         else:
             with engine.begin() as conn:
                 # first get the data
-                rows = conn.execute(
+                row = conn.execute(
                     select(Reports.__table__.columns[request_type]).where(
                         Reports.report_id == report_id
                     )
-                )
+                ).fetchone()
 
-                if rows.rowcount != 0:
-                    row = rows.fetchone()
-                    # print(row)
+                if row:
                     curr_data = getattr(row, request_type) or []
                     print("current data length ", len(curr_data))
 
@@ -270,12 +289,14 @@ async def update_report_data(
                     # if the request type is user_question, we will also update the embedding
                     if request_type == "user_question":
                         print(new_data)
-                        cursor = conn.connection.cursor()
-                        cursor.execute(
-                            "UPDATE defog_reports SET user_question = %s WHERE report_id = %s",
-                            (new_data, report_id),
+                        print(report_id)
+                        conn.execute(
+                            update(Reports)
+                            .where(Reports.report_id == report_id)
+                            .values({request_type: new_data})
                         )
                     else:
+                        print(curr_data)
                         conn.execute(
                             update(Reports)
                             .where(Reports.report_id == report_id)
@@ -363,10 +384,10 @@ def get_all_reports():
     try:
         with engine.begin() as conn:
             # first get the data
-            rows = conn.execute(select(Reports).where(Reports.api_key == DEFOG_API_KEY))
-            if rows.rowcount != 0:
-                rows = rows.fetchall()
-
+            rows = conn.execute(
+                select(Reports).where(Reports.api_key == DEFOG_API_KEY)
+            ).fetchall()
+            if len(rows) > 0:
                 # reshape with "success = true"
                 for row in rows:
                     rpt = report_data_from_row(row)
@@ -390,16 +411,15 @@ async def add_to_recently_viewed_docs(token, doc_id, timestamp):
         with engine.begin() as conn:
             # add to recently accessed documents for this username
             # check if it exists
-            rows = conn.execute(
+            row = conn.execute(
                 select(RecentlyViewedDocs)
                 .where(RecentlyViewedDocs.username == username)
                 .where(RecentlyViewedDocs.api_key == DEFOG_API_KEY)
-            )
+            ).fetchone()
 
-            if rows.rowcount != 0:
+            if row:
                 print("Adding to recently viewed docs for user: ", username)
                 # get the recent_docs array
-                row = rows.fetchone()
                 recent_docs = row.recent_docs or []
                 # recent_docs is an array of arrays
                 # each item is a [doc_id, timestamp]
@@ -457,12 +477,11 @@ async def get_doc_data(doc_id, token, col_name="doc_blocks"):
         #     err = err_validate or "Your API Key is invalid."
         with engine.begin() as conn:
             # check if document exists
-            rows = conn.execute(select(Docs).where(Docs.doc_id == doc_id))
+            row = conn.execute(select(Docs).where(Docs.doc_id == doc_id)).fetchone()
 
-            if rows.rowcount != 0:
+            if row:
                 # document exists
                 print("Found document with id: ", doc_id)
-                row = rows.fetchone()
                 doc_data = {
                     "doc_id": row.doc_id,
                     col_name: getattr(row, col_name),
@@ -508,7 +527,7 @@ async def delete_doc(doc_id):
         with engine.begin() as conn:
             result = conn.execute(delete(Docs).where(Docs.doc_id == doc_id))
 
-            if result.rowcount != 0:
+            if result.rowcount > 0:
                 print("Deleted doc with id: ", doc_id)
             else:
                 err = "Doc not found."
@@ -532,13 +551,13 @@ async def update_doc_data(doc_id, col_names=[], new_data={}):
     try:
         with engine.begin() as conn:
             # first get the data
-            rows = conn.execute(
+            row = conn.execute(
                 select(*[Docs.__table__.columns[c] for c in col_names]).where(
                     Docs.doc_id == doc_id
                 )
-            )
+            ).fetchone()
 
-            if rows.rowcount != 0:
+            if row:
                 print("Updating document with id: ", doc_id, "column: ", col_names)
                 conn.execute(update(Docs).where(Docs.doc_id == doc_id).values(new_data))
             else:
@@ -585,11 +604,11 @@ async def update_table_chart_data(table_id, edited_table_data):
         with engine.begin() as conn:
             # check if exists.
             # if not, create
-            rows = conn.execute(
+            row = conn.execute(
                 select(TableCharts).where(TableCharts.table_id == table_id)
-            )
+            ).fetchone()
 
-            if rows.rowcount == 0:
+            if not row:
                 err = "Invalid table id"
             else:
                 # print(edited_table_data)
@@ -655,14 +674,13 @@ async def get_table_data(table_id):
     try:
         with engine.begin() as conn:
             # check if document exists
-            rows = conn.execute(
+            row = conn.execute(
                 select(TableCharts).where(TableCharts.table_id == table_id)
-            )
+            ).fetchone()
 
-            if rows.rowcount != 0:
+            if row:
                 # document exists
                 print("Found table with id: ", table_id)
-                row = rows.fetchone()
                 table_data = row._mapping
 
             else:
@@ -702,10 +720,8 @@ async def get_all_docs(token):
                     Docs.__table__.columns["timestamp"],
                     Docs.__table__.columns["archived"],
                 ).where(Docs.username == username)
-            )
-            if rows.rowcount != 0:
-                rows = rows.fetchall()
-
+            ).fetchall()
+            if len(rows) > 0:
                 for row in rows:
                     doc = row._mapping
                     own_docs.append(doc)
@@ -719,11 +735,9 @@ async def get_all_docs(token):
                 select(
                     RecentlyViewedDocs.__table__.columns["recent_docs"],
                 ).where(RecentlyViewedDocs.username == username)
-            )
+            ).fetchall()
 
-            if rows.rowcount != 0:
-                rows = rows.fetchall()
-
+            if len(rows) > 0:
                 for row in rows:
                     doc = row._mapping
                     for recent_doc in doc["recent_docs"]:
@@ -781,11 +795,9 @@ async def get_all_analyses():
                 )
                 .where(Reports.api_key == DEFOG_API_KEY)
                 .where(Reports.report_id.contains("analysis"))
-            )
+            ).fetchall()
 
-            if rows.rowcount != 0:
-                rows = rows.fetchall()
-
+            if len(rows) > 0:
                 for row in rows:
                     analyses.append(row._mapping)
     except Exception as e:
@@ -969,14 +981,14 @@ async def store_tool_run(analysis_id, step, run_result, skip_step_update=False):
             else:
                 conn.execute(insert(ToolRuns).values(insert_data))
 
-            if not skip_step_update:
-                # also update the error message in gen_steps in the reports table
-                await update_particular_step(
-                    analysis_id,
-                    step["tool_run_id"],
-                    "error_message",
-                    run_result.get("error_message"),
-                )
+        if not skip_step_update:
+            # also update the error message in gen_steps in the reports table
+            await update_particular_step(
+                analysis_id,
+                step["tool_run_id"],
+                "error_message",
+                run_result.get("error_message"),
+            )
 
         return {"success": True, "tool_run_data": insert_data}
     except Exception as e:
@@ -1017,8 +1029,6 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
 
     error = None
     new_data = None
-    if tool_run_id is None or prop is None or analysis_id is None:
-        return "Invalid tool run data"
 
     # if new_val is a pandas df, only print the shape and columns
     if type(new_val) == type(pd.DataFrame()):
@@ -1029,6 +1039,9 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
         print("Updating property: ", prop, " with value: ", new_val)
 
     try:
+        if tool_run_id is None or prop is None or analysis_id is None:
+            raise Exception("Invalid tool run data")
+
         with engine.begin() as conn:
             # get tool run data
             row = conn.execute(
@@ -1036,107 +1049,110 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
             ).fetchone()
             if row is None:
                 error = "Tool run not found"
-                return error
+                raise Exception(error)
 
-            step = row._mapping.step
+        step = row._mapping.step
 
-            if prop == "sql" or prop == "code_str" or prop == "analysis":
-                # these exist in tool_run_details
-                # copy row mapping
-                tool_run_details = row._mapping.tool_run_details
-                # update the property
-                tool_run_details[prop] = new_val
-                # also set edited to True
-                # update the row
+        if prop == "sql" or prop == "code_str" or prop == "analysis":
+            # these exist in tool_run_details
+            # copy row mapping
+            tool_run_details = row._mapping.tool_run_details
+            # update the property
+            tool_run_details[prop] = new_val
+            # also set edited to True
+            # update the row
+            with engine.begin() as conn:
                 conn.execute(
                     update(ToolRuns)
                     .where(ToolRuns.tool_run_id == tool_run_id)
                     .values(tool_run_details=tool_run_details, edited=True)
                 )
-            elif prop == "error_message":
-                # update the row
-                # probably after a re run, so set edited to false
-                # tool_run_data also unfortunately has error message in it's "step"
-                new_step = row._mapping.step
-                new_step["error_message"] = new_val
+        elif prop == "error_message":
+            # update the row
+            # probably after a re run, so set edited to false
+            # tool_run_data also unfortunately has error message in it's "step"
+            new_step = row._mapping.step
+            new_step["error_message"] = new_val
+            with engine.begin() as conn:
                 conn.execute(
                     update(ToolRuns)
                     .where(ToolRuns.tool_run_id == tool_run_id)
                     .values(error_message=new_val, edited=False, step=new_step)
                 )
-                # also remove errors from the steps in the report_data
-                await update_particular_step(
-                    analysis_id, tool_run_id, "error_message", new_val
-                )
+            # also remove errors from the steps in the report_data
+            await update_particular_step(
+                analysis_id, tool_run_id, "error_message", new_val
+            )
 
-            elif prop == "inputs":
-                # these exist in step
-                # copy row mapping
-                # update the property
-                step[prop] = new_val
-                # also set edited to True
-                # update the row
+        elif prop == "inputs":
+            # these exist in step
+            # copy row mapping
+            # update the property
+            step[prop] = new_val
+            # also set edited to True
+            # update the row
+            with engine.begin() as conn:
                 conn.execute(
                     update(ToolRuns)
                     .where(ToolRuns.tool_run_id == tool_run_id)
                     .values(step=step, analysis_id=analysis_id, edited=True)
                 )
-                # we should also update this in the defog_reports table in the gen_steps column
-                await update_particular_step(
-                    analysis_id, tool_run_id, "inputs", new_val
-                )
+            # we should also update this in the defog_reports table in the gen_steps column
+            await update_particular_step(analysis_id, tool_run_id, "inputs", new_val)
 
-            elif prop == "outputs":
-                files_for_rabbitmq_queue = []
-                # set edited to false because this is most probably after a re run
-                # this will only be called if data_Fetcher was re run with a new sql.
-                # all other tools re runs will use the store_tool_run function.
-                # don't need to check for chart_images or reactive_vars
-                for k in new_val:
-                    # update the row
-                    # save this dataset on local disk in feather format in report_dataset_dir/datasets
-                    db_path = step["tool_run_id"] + "_output-" + k + ".feather"
-                    data = new_val[k]["data"]
+        elif prop == "outputs":
+            files_for_rabbitmq_queue = []
+            # set edited to false because this is most probably after a re run
+            # this will only be called if data_Fetcher was re run with a new sql.
+            # all other tools re runs will use the store_tool_run function.
+            # don't need to check for chart_images or reactive_vars
+            for k in new_val:
+                # update the row
+                # save this dataset on local disk in feather format in report_dataset_dir/datasets
+                db_path = step["tool_run_id"] + "_output-" + k + ".feather"
+                data = new_val[k]["data"]
 
-                    if data is not None and type(data) == type(pd.DataFrame()):
-                        if len(data) > 1000:
-                            print(
-                                warn_str(
-                                    "More than 1000 rows in output. Storing full db as feather, but sending only 1000 rows to client."
-                                )
+                if data is not None and type(data) == type(pd.DataFrame()):
+                    if len(data) > 1000:
+                        print(
+                            warn_str(
+                                "More than 1000 rows in output. Storing full db as feather, but sending only 1000 rows to client."
                             )
-
-                        # for sending to client, store max 1000 rows
-                        new_val[k]["data"] = data.head(1000).to_csv(
-                            float_format="%.3f", index=False
                         )
 
-                        # have to reset index for feather to work
-                        data.reset_index(drop=True).to_feather(
-                            report_assets_dir + "/datasets/" + db_path
-                        )
+                    # for sending to client, store max 1000 rows
+                    new_val[k]["data"] = data.head(1000).to_csv(
+                        float_format="%.3f", index=False
+                    )
 
-                        # also store this in gcs
+                    # have to reset index for feather to work
+                    data.reset_index(drop=True).to_feather(
+                        report_assets_dir + "/datasets/" + db_path
+                    )
 
-                        files_for_rabbitmq_queue.append(
-                            report_assets_dir + "/datasets/" + db_path
-                        )
+                    # also store this in gcs
 
-                # add files to rabbitmq queue
-                # if len(files_for_rabbitmq_queue) > 0:
-                #     err = await add_files_to_rabbitmq_queue(files_for_rabbitmq_queue)
-                #     if err is not None:
-                #         print(error_str(err))
+                    files_for_rabbitmq_queue.append(
+                        report_assets_dir + "/datasets/" + db_path
+                    )
 
+            # add files to rabbitmq queue
+            # if len(files_for_rabbitmq_queue) > 0:
+            #     err = await add_files_to_rabbitmq_queue(files_for_rabbitmq_queue)
+            #     if err is not None:
+            #         print(error_str(err))
+
+            with engine.begin() as conn:
                 conn.execute(
                     update(ToolRuns)
                     .where(ToolRuns.tool_run_id == tool_run_id)
                     .values(outputs=new_val, edited=False)
                 )
 
-            row = conn.execute(
-                select(ToolRuns).where(ToolRuns.tool_run_id == tool_run_id)
-            ).fetchone()
+            with engine.begin() as conn:
+                row = conn.execute(
+                    select(ToolRuns).where(ToolRuns.tool_run_id == tool_run_id)
+                ).fetchone()
 
             if row is not None:
                 new_data = dict(row._mapping)
@@ -1164,11 +1180,9 @@ def get_multiple_reports(report_ids=[], columns=["report_id", "user_question"]):
                         if c in Reports.__table__.columns
                     ]
                 ).where(Reports.report_id.in_(report_ids))
-            )
+            ).fetchall()
 
-            if rows.rowcount != 0:
-                rows = rows.fetchall()
-
+            if len(rows) > 0:
                 for row in rows:
                     analyses.append(row._mapping)
     except Exception as e:
@@ -1178,17 +1192,6 @@ def get_multiple_reports(report_ids=[], columns=["report_id", "user_question"]):
         analyses = []
     finally:
         return err, analyses
-
-
-def get_db_conn():
-    conn = psycopg2.connect(
-        host=os.environ["DBHOST"],
-        dbname=os.environ["DATABASE"],
-        user=os.environ["DBUSER"],
-        password=os.environ["DBPASSWORD"],
-        port=os.environ["DBPORT"],
-    )
-    return conn
 
 
 async def store_feedback(
@@ -1222,7 +1225,7 @@ def get_all_tools():
     err = None
     tools = {}
     try:
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             all_tools = conn.execute(select(Tools)).fetchall()
             # convert this to a dictionary without embedding
             all_tools = {
@@ -1270,43 +1273,40 @@ async def add_tool(
         # insert into the tools table
         with engine.begin() as conn:
             # first check if it exists
-            rows = conn.execute(select(Tools).where(Tools.tool_name == tool_name))
+            row = conn.execute(
+                select(Tools).where(Tools.tool_name == tool_name)
+            ).fetchone()
 
-            # check if latest tool code is same as the code we are trying to insert
-            no_changes = False
-            if rows.rowcount != 0:
-                no_changes = rows.fetchone().code == code
+        # check if latest tool code is same as the code we are trying to insert
+        no_changes = False
+        if row:
+            no_changes = row.code == code
 
-            if no_changes:
-                print(f"Tool {tool_name} already exists and no code changes detected.")
-            else:
+        if no_changes:
+            print(f"Tool {tool_name} already exists and no code changes detected.")
+        else:
+            with engine.begin() as conn:
                 # delete if exists
-                if rows.rowcount != 0:
+                if row:
                     conn.execute(delete(Tools).where(Tools.tool_name == tool_name))
 
                 # update with latest
-                cursor = conn.connection.cursor()
-                query = """
-                    INSERT INTO defog_tools (
-                        tool_name, function_name, code, description, toolbox, 
-                        input_metadata, output_metadata, cannot_delete, cannot_disable, disabled
-                    ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                conn.execute(
+                    insert(Tools).values(
+                        {
+                            "tool_name": tool_name,
+                            "function_name": function_name,
+                            "description": description,
+                            "code": code,
+                            "toolbox": toolbox,
+                            "input_metadata": input_metadata,
+                            "output_metadata": output_metadata,
+                            "cannot_delete": cannot_delete,
+                            "cannot_disable": cannot_disable,
+                            "disabled": False,
+                        }
                     )
-                """
-                values = (
-                    tool_name,
-                    function_name,
-                    code,
-                    description,
-                    toolbox,
-                    json.dumps(input_metadata),
-                    json.dumps(output_metadata),
-                    cannot_delete,
-                    cannot_disable,
-                    False,
                 )
-                cursor.execute(query, values)
 
         print("Adding tool to the defog API server", tool_name)
         asyncio.create_task(
@@ -1400,13 +1400,13 @@ async def get_analysis_versions(root_analysis_id):
     err = None
     versions = []
     try:
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             cursor = conn.connection.cursor()
             cursor.execute(
                 """
                 SELECT report_id, user_question, gen_steps
                 FROM defog_reports
-                WHERE root_analysis_id = %s
+                WHERE root_analysis_id = ?
                 ORDER BY timestamp ASC
                 """,
                 (root_analysis_id,),
