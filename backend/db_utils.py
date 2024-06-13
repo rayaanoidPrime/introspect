@@ -1031,8 +1031,6 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
 
     error = None
     new_data = None
-    if tool_run_id is None or prop is None or analysis_id is None:
-        return "Invalid tool run data"
 
     # if new_val is a pandas df, only print the shape and columns
     if type(new_val) == type(pd.DataFrame()):
@@ -1043,6 +1041,9 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
         print("Updating property: ", prop, " with value: ", new_val)
 
     try:
+        if tool_run_id is None or prop is None or analysis_id is None:
+            raise Exception("Invalid tool run data")
+
         with engine.begin() as conn:
             # get tool run data
             row = conn.execute(
@@ -1050,7 +1051,7 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
             ).fetchone()
             if row is None:
                 error = "Tool run not found"
-                return error
+                raise Exception(error)
 
         step = row._mapping.step
 
