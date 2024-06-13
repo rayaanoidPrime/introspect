@@ -226,8 +226,6 @@ export const AnalysisAgent = ({
     initialiseAnalysis();
   }, []);
 
-  console.log(analysisData);
-
   useEffect(() => {
     if (analysisManager) {
       managerCreatedHook(analysisManager, analysisId);
@@ -288,7 +286,7 @@ export const AnalysisAgent = ({
 
   return (
     <ErrorBoundary>
-      <div className="analysis-agent-container">
+      <div className="analysis-agent-container min-h-96">
         <ThemeContext.Provider
           value={{ theme: { type: "light", config: lightThemeColor } }}
           key="1"
