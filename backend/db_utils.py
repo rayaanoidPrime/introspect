@@ -15,7 +15,6 @@ from agents.planner_executor.tool_helpers.core_functions import (
     execute_code,
 )
 
-import sqlite3
 from auth_utils import validate_user
 
 import asyncio
@@ -1169,8 +1168,7 @@ def get_multiple_reports(report_ids=[], columns=["report_id", "user_question"]):
 
 
 def get_db_conn():
-    conn = sqlite3.connect("./defog_local.db")
-    return conn
+    return engine
 
 
 async def store_feedback(
@@ -1204,7 +1202,7 @@ def get_all_tools():
     err = None
     tools = {}
     try:
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             all_tools = conn.execute(select(Tools)).fetchall()
             # convert this to a dictionary without embedding
             all_tools = {
@@ -1384,7 +1382,7 @@ async def get_analysis_versions(root_analysis_id):
     err = None
     versions = []
     try:
-        with engine.connect() as conn:
+        with engine.begin() as conn:
             cursor = conn.connection.cursor()
             cursor.execute(
                 """
