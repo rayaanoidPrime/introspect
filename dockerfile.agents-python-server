@@ -11,19 +11,6 @@ ENV OPENAI_API_KEY=$OPENAI_API_KEY
 # need cmake for scikit
 RUN apt-get update && apt-get install -y python3-pip cmake
 
-# install sqlite3
-# Run package updates and install software
-RUN apt-get update && \
-  apt-get install -y wget build-essential && \
-  wget https://www.sqlite.org/2024/sqlite-autoconf-3450000.tar.gz && \
-  tar xvfz sqlite-autoconf-3450000.tar.gz && \
-  cd sqlite-autoconf-3450000 && \
-  ./configure && \
-  make && \
-  make install && \
-  apt-get remove -y --auto-remove sqlite3
-
-
 COPY ./backend/requirements.txt ./requirements.txt
 
 RUN pip install -r ./requirements.txt
