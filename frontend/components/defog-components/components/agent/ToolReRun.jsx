@@ -1,4 +1,5 @@
-import { Button } from "antd";
+import { Button } from "$components/tailwind/Button";
+import { twMerge } from "tailwind-merge";
 
 export function ToolReRun({
   onClick = () => {},
@@ -7,15 +8,8 @@ export function ToolReRun({
   className = "tool-re-run",
 }) {
   return (
-    <div
-      className={
-        "tool-action-button " +
-        className +
-        (loading ? " tool-action-button-loading" : "")
-      }
-      onClick={onClick}
-    >
+    <Button disabled={loading} className={twMerge(className)} onClick={onClick}>
       <p>{text}</p>
-    </div>
+    </Button>
   );
 }

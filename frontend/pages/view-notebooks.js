@@ -1,6 +1,5 @@
 import React, { useState, useContext, useEffect, useRef } from "react";
 import DocIcon from "$components/docs/DocIcon";
-import styled from "styled-components";
 import { Context } from "$components/common/Context";
 import Meta from "$components/common/Meta";
 import { Collapse, message } from "antd";
@@ -161,7 +160,7 @@ const ViewNotebooks = () => {
   }, [context, context.token]);
 
   return (
-    <Wrap>
+    <>
       <Meta />
       <Scaffolding id={"view-notebooks"} userType={context.userType}>
         <h1 className="text-2xl font-bold mb-4">Notebooks</h1>
@@ -229,19 +228,8 @@ const ViewNotebooks = () => {
           </>
         )}
       </Scaffolding>
-    </Wrap>
+    </>
   );
 };
-
-const Wrap = styled.div`
-  .archived-collapse {
-    background-color: transparent;
-    .ant-collapse-content {
-      .ant-collapse-content-box {
-        padding: 0;
-      }
-    }
-  }
-`;
 
 export default ViewNotebooks;

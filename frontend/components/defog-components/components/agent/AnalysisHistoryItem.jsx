@@ -1,4 +1,5 @@
 import { PlusOutlined } from "@ant-design/icons";
+import { twMerge } from "tailwind-merge";
 
 export function AnalysisHistoryItem({
   analysis,
@@ -11,13 +12,12 @@ export function AnalysisHistoryItem({
 }) {
   return (
     <div
-      className={
-        "flex flex-row items-center py-2 px-2 mb-2 hover:cursor-pointer hover:bg-gray-200 history-item " +
-        `${isActive ? "font-bold bg-gray-200 " : ""}` +
-        (isDummy ? "dummy-analysis" : analysis.analysisId) +
-        " " +
+      className={twMerge(
+        "flex flex-row items-center py-2 px-2 mb-2 hover:cursor-pointer hover:bg-gray-200 history-item",
+        isActive ? "font-bold bg-gray-200 " : "",
+        isDummy ? "dummy-analysis" : analysis.analysisId,
         extraClasses
-      }
+      )}
       onClick={() => {
         setActiveRootAnalysisId(analysis?.rootAnalysisId);
         setActiveAnalysisId(analysis?.analysisId);

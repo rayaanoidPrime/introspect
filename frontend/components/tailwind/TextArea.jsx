@@ -33,8 +33,12 @@ export function TextArea({
             id={id}
             placeholder={placeholder}
             className={
-              `block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset sm:text-sm sm:leading-6 ` +
-              extraClasses
+              "block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset" +
+                status !==
+              "error"
+                ? "focus:ring-blue-400"
+                : "focus:ring-rose-400 ring-rose-400" +
+                  "sm:text-sm sm:leading-6"
             }
             value={value}
             onChange={onChange}

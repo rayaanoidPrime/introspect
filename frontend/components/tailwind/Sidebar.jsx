@@ -30,7 +30,6 @@ export default function Sidebar({
 
   useEffect(() => {
     if (!containerRef.current || !contentRef.current) return;
-    console.log(containerRef.current, contentRef.current);
     containerRef.current.style.width = `${contentRef.current.clientWidth}px`;
   }, []);
 

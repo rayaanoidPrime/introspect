@@ -1,6 +1,5 @@
 import { Button, Divider, Input, Select, Slider, Space } from "antd";
-import React, { useState, useRef, Fragment, useMemo } from "react";
-import styled from "styled-components";
+import React, { useState, useRef } from "react";
 import Lottie from "lottie-react";
 import LoadingLottie from "../../svg/loader.json";
 import AgentLoader from "../../common/AgentLoader";
@@ -181,7 +180,7 @@ export default function Clarify({
   };
 
   return (
-    <ClarifyWrap>
+    <div className="clarify-container">
       {success &&
         (clarification_questions.length ? (
           <>
@@ -230,36 +229,6 @@ export default function Clarify({
           </Button>
         </div>
       )}
-    </ClarifyWrap>
+    </div>
   );
 }
-
-const ClarifyWrap = styled.div`
-  .ant-slider,
-  .ant-select,
-  .ant-input {
-    min-width: 300px;
-    max-width: 500px;
-  }
-
-  ul {
-    margin-block-start: 0;
-    padding-inline-start: 0;
-
-    li {
-      list-style: none;
-      margin-bottom: 2em;
-      padding-right: 1em;
-      > div {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
-
-        .writer-target {
-          width: 400px;
-          padding-right: 10px;
-        }
-      }
-    }
-  }
-`;

@@ -320,9 +320,8 @@ function AnalysisVersionViewer({
                       sessionAnalyses[rootAnalysisId].versionList;
 
                     return (
-                      <>
+                      <div key={root.analysisId}>
                         <AnalysisHistoryItem
-                          key={root.analysisId}
                           analysis={root}
                           isActive={activeAnalysisId === root.analysisId}
                           setActiveRootAnalysisId={setActiveRootAnalysisId}
@@ -346,7 +345,7 @@ function AnalysisVersionViewer({
                             />
                           );
                         })}
-                      </>
+                      </div>
                     );
                   })}
                   {!activeRootAnalysisId ? (
