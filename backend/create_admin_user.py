@@ -15,7 +15,7 @@ hashed_password = hashlib.sha256((username + SALT + password).encode()).hexdiges
 # check if admin user exists first
 admin_exists = False
 
-with engine.connect() as conn:
+with engine.begin() as conn:
     user = conn.execute(select(Users).where(Users.username == username)).fetchone()
 
 if user:
@@ -23,7 +23,7 @@ if user:
     print("Admin user already exists.")
 else:
     print("Creating admin user...")
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(
             insert(Users).values(
                 username=username,

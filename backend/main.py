@@ -9,7 +9,6 @@ from report_data_manager import ReportDataManager
 from agents.planner_executor.execute_tool import execute_tool
 import doc_endpoints
 from uuid import uuid4
-from auth_utils import validate_user
 from utils import make_request
 
 from db_utils import (
@@ -18,6 +17,7 @@ from db_utils import (
     initialise_report,
     update_report_data,
     store_tool_run,
+    validate_user,
 )
 import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes
 

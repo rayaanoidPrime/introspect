@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 from defog import Defog
-from auth_utils import validate_user
+from db_utils import validate_user
 import pandas as pd
 import asyncio
 import os

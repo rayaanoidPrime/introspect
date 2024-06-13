@@ -3,7 +3,7 @@ import json
 import os
 from defog import Defog
 
-from auth_utils import validate_user
+from db_utils import validate_user
 import asyncio
 from generic_utils import make_request, convert_nested_dict_to_list
 
