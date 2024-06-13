@@ -1052,101 +1052,102 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
                 error = "Tool run not found"
                 return error
 
-            step = row._mapping.step
+        step = row._mapping.step
 
-            if prop == "sql" or prop == "code_str" or prop == "analysis":
-                # these exist in tool_run_details
-                # copy row mapping
-                tool_run_details = row._mapping.tool_run_details
-                # update the property
-                tool_run_details[prop] = new_val
-                # also set edited to True
-                # update the row
+        if prop == "sql" or prop == "code_str" or prop == "analysis":
+            # these exist in tool_run_details
+            # copy row mapping
+            tool_run_details = row._mapping.tool_run_details
+            # update the property
+            tool_run_details[prop] = new_val
+            # also set edited to True
+            # update the row
+            with engine.begin() as conn:
                 conn.execute(
                     update(ToolRuns)
                     .where(ToolRuns.tool_run_id == tool_run_id)
                     .values(tool_run_details=tool_run_details, edited=True)
                 )
-            elif prop == "error_message":
-                # update the row
-                # probably after a re run, so set edited to false
-                # tool_run_data also unfortunately has error message in it's "step"
-                new_step = row._mapping.step
-                new_step["error_message"] = new_val
+        elif prop == "error_message":
+            # update the row
+            # probably after a re run, so set edited to false
+            # tool_run_data also unfortunately has error message in it's "step"
+            new_step = row._mapping.step
+            new_step["error_message"] = new_val
+            with engine.begin() as conn:
                 conn.execute(
                     update(ToolRuns)
                     .where(ToolRuns.tool_run_id == tool_run_id)
                     .values(error_message=new_val, edited=False, step=new_step)
                 )
-                # also remove errors from the steps in the report_data
-                await update_particular_step(
-                    analysis_id, tool_run_id, "error_message", new_val
-                )
+            # also remove errors from the steps in the report_data
+            await update_particular_step(
+                analysis_id, tool_run_id, "error_message", new_val
+            )
 
-            elif prop == "inputs":
-                # these exist in step
-                # copy row mapping
-                # update the property
-                step[prop] = new_val
-                # also set edited to True
-                # update the row
+        elif prop == "inputs":
+            # these exist in step
+            # copy row mapping
+            # update the property
+            step[prop] = new_val
+            # also set edited to True
+            # update the row
+            with engine.begin() as conn:
                 conn.execute(
                     update(ToolRuns)
                     .where(ToolRuns.tool_run_id == tool_run_id)
                     .values(step=step, analysis_id=analysis_id, edited=True)
                 )
-                # we should also update this in the defog_reports table in the gen_steps column
-                await update_particular_step(
-                    analysis_id, tool_run_id, "inputs", new_val
-                )
+            # we should also update this in the defog_reports table in the gen_steps column
+            await update_particular_step(analysis_id, tool_run_id, "inputs", new_val)
 
-            elif prop == "outputs":
-                files_for_rabbitmq_queue = []
-                # set edited to false because this is most probably after a re run
-                # this will only be called if data_Fetcher was re run with a new sql.
-                # all other tools re runs will use the store_tool_run function.
-                # don't need to check for chart_images or reactive_vars
-                for k in new_val:
-                    # update the row
-                    # save this dataset on local disk in feather format in report_dataset_dir/datasets
-                    db_path = step["tool_run_id"] + "_output-" + k + ".feather"
-                    data = new_val[k]["data"]
+        elif prop == "outputs":
+            files_for_rabbitmq_queue = []
+            # set edited to false because this is most probably after a re run
+            # this will only be called if data_Fetcher was re run with a new sql.
+            # all other tools re runs will use the store_tool_run function.
+            # don't need to check for chart_images or reactive_vars
+            for k in new_val:
+                # update the row
+                # save this dataset on local disk in feather format in report_dataset_dir/datasets
+                db_path = step["tool_run_id"] + "_output-" + k + ".feather"
+                data = new_val[k]["data"]
 
-                    if data is not None and type(data) == type(pd.DataFrame()):
-                        if len(data) > 1000:
-                            print(
-                                warn_str(
-                                    "More than 1000 rows in output. Storing full db as feather, but sending only 1000 rows to client."
-                                )
+                if data is not None and type(data) == type(pd.DataFrame()):
+                    if len(data) > 1000:
+                        print(
+                            warn_str(
+                                "More than 1000 rows in output. Storing full db as feather, but sending only 1000 rows to client."
                             )
-
-                        # for sending to client, store max 1000 rows
-                        new_val[k]["data"] = data.head(1000).to_csv(
-                            float_format="%.3f", index=False
                         )
 
-                        # have to reset index for feather to work
-                        data.reset_index(drop=True).to_feather(
-                            report_assets_dir + "/datasets/" + db_path
-                        )
+                    # for sending to client, store max 1000 rows
+                    new_val[k]["data"] = data.head(1000).to_csv(
+                        float_format="%.3f", index=False
+                    )
 
-                        # also store this in gcs
+                    # have to reset index for feather to work
+                    data.reset_index(drop=True).to_feather(
+                        report_assets_dir + "/datasets/" + db_path
+                    )
 
-                        files_for_rabbitmq_queue.append(
-                            report_assets_dir + "/datasets/" + db_path
-                        )
+                    # also store this in gcs
 
-                # add files to rabbitmq queue
-                # if len(files_for_rabbitmq_queue) > 0:
-                #     err = await add_files_to_rabbitmq_queue(files_for_rabbitmq_queue)
-                #     if err is not None:
-                #         print(error_str(err))
+                    files_for_rabbitmq_queue.append(
+                        report_assets_dir + "/datasets/" + db_path
+                    )
 
-                conn.execute(
-                    update(ToolRuns)
-                    .where(ToolRuns.tool_run_id == tool_run_id)
-                    .values(outputs=new_val, edited=False)
-                )
+            # add files to rabbitmq queue
+            # if len(files_for_rabbitmq_queue) > 0:
+            #     err = await add_files_to_rabbitmq_queue(files_for_rabbitmq_queue)
+            #     if err is not None:
+            #         print(error_str(err))
+
+            conn.execute(
+                update(ToolRuns)
+                .where(ToolRuns.tool_run_id == tool_run_id)
+                .values(outputs=new_val, edited=False)
+            )
 
             row = conn.execute(
                 select(ToolRuns).where(ToolRuns.tool_run_id == tool_run_id)
