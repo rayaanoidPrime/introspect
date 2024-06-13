@@ -2,7 +2,6 @@ from datetime import datetime
 import inspect
 import re
 import json
-import trace
 import traceback
 import pandas as pd
 from defog import Defog
