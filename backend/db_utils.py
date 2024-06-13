@@ -722,8 +722,6 @@ async def get_all_docs(token):
                 ).where(Docs.username == username)
             ).fetchall()
             if len(rows) > 0:
-                rows = rows.fetchall()
-
                 for row in rows:
                     doc = row._mapping
                     own_docs.append(doc)
