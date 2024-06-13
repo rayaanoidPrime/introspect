@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS defog_docs (
-    doc_id text NOT NULL,
+    doc_id text PRIMARY KEY,
     doc_md text,
     doc_blocks jsonb,
     editor_defog_blocks jsonb,
@@ -13,12 +13,13 @@ CREATE TABLE IF NOT EXISTS defog_docs (
 );
 
 CREATE TABLE IF NOT EXISTS defog_recently_viewed_docs (
+    username text PRIMARY KEY,
     api_key text NOT NULL,
-    username text NOT NULL,
     recent_docs jsonb
 );
 
 CREATE TABLE IF NOT EXISTS defog_reports (
+    report_id text PRIMARY KEY,
     api_key text NOT NULL,
     email text,
     "timestamp" text,
@@ -30,7 +31,6 @@ CREATE TABLE IF NOT EXISTS defog_reports (
     gen_approaches jsonb,
     user_question text,
     gen_report jsonb,
-    report_id text NOT NULL,
     gen_steps jsonb,
     follow_up_analyses jsonb,
     parent_analyses jsonb,
@@ -48,12 +48,12 @@ CREATE TABLE IF NOT EXISTS defog_reports (
 );
 
 CREATE TABLE IF NOT EXISTS defog_table_charts (
+    table_id text PRIMARY KEY,
     data_csv jsonb,
     query text,
     chart_images jsonb,
     sql text,
     code text,
-    table_id text NOT NULL,
     tool jsonb,
     edited boolean,
     error text,
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS defog_table_charts (
 );
 
 CREATE TABLE IF NOT EXISTS defog_tool_runs (
-    tool_run_id text NOT NULL,
+    tool_run_id text PRIMARY KEY,
     step jsonb,
     outputs jsonb,
     tool_name text,
@@ -73,13 +73,13 @@ CREATE TABLE IF NOT EXISTS defog_tool_runs (
 
 
 CREATE TABLE IF NOT EXISTS defog_toolboxes (
-    api_key text NOT NULL,
+    api_key text PRIMARY KEY,
     username text NOT NULL,
     toolboxes jsonb
 );
 
 CREATE TABLE IF NOT EXISTS defog_tools (
-    tool_name TEXT NOT NULL,
+    tool_name TEXT PRIMARY KEY,
     function_name TEXT NOT NULL,
     description TEXT NOT NULL,
     code TEXT NOT NULL,
@@ -92,7 +92,7 @@ CREATE TABLE IF NOT EXISTS defog_tools (
 );
 
 CREATE TABLE IF NOT EXISTS defog_users (
-    username text NOT NULL,
+    username text PRIMARY KEY,
     hashed_password text,
     token text NOT NULL,
     user_type text NOT NULL,
@@ -104,13 +104,13 @@ CREATE TABLE IF NOT EXISTS defog_users (
 
 
 CREATE TABLE IF NOT EXISTS defog_plans_feedback (
+    analysis_id text PRIMARY KEY,
     api_key text NOT NULL,
-    username text NOT NULL,
     user_question text NOT NULL,
+    username text NOT NULL,
     comments jsonb,
     is_correct boolean NOT NULL,
     -- join on this with the defog_reports.report_id table to get the actual plan data
-    analysis_id text NOT NULL,
     -- store for later reference. in case metadata changes later
     metadata text NOT NULL,
     client_description text,
