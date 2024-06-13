@@ -59,19 +59,17 @@ async def add_user(request: Request):
         ).hexdigest()
 
         # check if user already exists
-        cur.execute(
-            "SELECT * FROM defog_users WHERE username = %s", (dets["username"],)
-        )
+        cur.execute("SELECT * FROM defog_users WHERE username = ?", (dets["username"],))
         user_exists = cur.fetchone()
 
         if user_exists:
             cur.execute(
-                "UPDATE defog_users SET hashed_password = %s, user_type = %s WHERE username = %s",
+                "UPDATE defog_users SET hashed_password = ?, user_type = ? WHERE username = ?",
                 (hashed_password, dets["user_type"], dets["username"]),
             )
         else:
             cur.execute(
-                "INSERT INTO defog_users (username, hashed_password, token, user_type, is_premium) VALUES (%s, %s, %s, %s, %s)",
+                "INSERT INTO defog_users (username, hashed_password, token, user_type, is_premium) VALUES (?, ?, ?, ?, ?)",
                 (
                     dets["username"],
                     hashed_password,
@@ -115,7 +113,7 @@ async def delete_user(request: Request):
     username = params.get("username", None)
     conn = get_db_conn()
     cur = conn.cursor()
-    cur.execute("DELETE FROM defog_users WHERE username = %s", (username,))
+    cur.execute("DELETE FROM defog_users WHERE username = ?", (username,))
     conn.commit()
     conn.close()
     return {"status": "success"}

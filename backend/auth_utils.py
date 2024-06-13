@@ -14,7 +14,7 @@ def validate_user(token, user_type=None, get_username=False):
     conn = get_db_conn()
     cur = conn.cursor()
     cur.execute(
-        "SELECT user_type, username FROM defog_users WHERE hashed_password = %s",
+        "SELECT user_type, username FROM defog_users WHERE hashed_password = ?",
         (token,),
     )
     user = cur.fetchone()
@@ -42,7 +42,7 @@ def login_user(username, password):
     conn = get_db_conn()
     cur = conn.cursor()
     cur.execute(
-        "SELECT user_type FROM defog_users WHERE hashed_password = %s",
+        "SELECT user_type FROM defog_users WHERE hashed_password = ?",
         (hashed_password,),
     )
     user = cur.fetchone()
@@ -62,7 +62,7 @@ def reset_password(username, new_password):
     conn = get_db_conn()
     cur = conn.cursor()
     cur.execute(
-        "UPDATE defog_users SET hashed_password = %s WHERE username = %s",
+        "UPDATE defog_users SET hashed_password = ? WHERE username = ?",
         (hashed_password, username),
     )
     conn.commit()
@@ -77,7 +77,7 @@ def get_hashed_password(username, password):
 def validate_user_email(email):
     conn = get_db_conn()
     cur = conn.cursor()
-    cur.execute("SELECT user_type FROM defog_users WHERE username = %s", (email,))
+    cur.execute("SELECT user_type FROM defog_users WHERE username = ?", (email,))
     user = cur.fetchone()
     conn.close()
     if user:

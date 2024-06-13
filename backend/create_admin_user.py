@@ -21,14 +21,14 @@ hashed_password = hashlib.sha256((username + SALT + password).encode()).hexdiges
 
 # check if admin user exists first
 admin_exists = False
-cur.execute("SELECT * FROM defog_users WHERE username = %s", (username,))
+cur.execute("SELECT * FROM defog_users WHERE username = ?", (username,))
 if cur.fetchone():
     admin_exists = True
     print("Admin user already exists.")
 
 if not admin_exists:
     cur.execute(
-        "INSERT INTO defog_users (username, hashed_password, token, user_type, is_premium) VALUES (%s, %s, %s, %s, %s)",
+        "INSERT INTO defog_users (username, hashed_password, token, user_type, is_premium) VALUES (?, ?, ?, ?, ?)",
         (username, hashed_password, INTERNAL_API_KEY, "admin", True),
     )
     con.commit()
