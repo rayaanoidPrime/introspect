@@ -76,8 +76,6 @@ async def get_metadata(request: Request):
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
     try:
-        # with open(os.path.join(defog_path, "metadata.json"), "r") as f:
-        #     table_metadata = json.load(f)
         md = await make_request(
             f"{DEFOG_BASE_URL}/get_metadata", {"api_key": DEFOG_API_KEY}
         )
@@ -193,10 +191,6 @@ async def update_metadata(request: Request):
             "dev": dev,
         },
     )
-
-    # write to local file
-    with open(os.path.join(defog_path, "metadata.json"), "w") as f:
-        json.dump(table_metadata, f)
 
     return r
 
