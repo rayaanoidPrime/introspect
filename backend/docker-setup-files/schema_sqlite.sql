@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS defog_docs (
     doc_xml text,
     doc_uint8 jsonb,
     doc_title text,
-    archived boolean default false
+    archived integer default false
 );
 
 CREATE TABLE IF NOT EXISTS defog_recently_viewed_docs (
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS defog_reports (
     email text,
     "timestamp" text,
     report_uuid text,
-    approaches json,
+    approaches jsonb,
     report_markdown text,
     clarify jsonb,
     understand jsonb,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS defog_reports (
     parent_analyses jsonb,
     -- if this is a root analysis
     -- "versions" of a root analysis will have this as false
-    is_root_analysis boolean default true,
+    is_root_analysis integer default true,
     -- if this is a root analysis, this will be null
     -- if this is a version of a root analysis, this will be the report_id of the root analysis
     root_analysis_id text,
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS defog_table_charts (
     sql text,
     code text,
     tool jsonb,
-    edited boolean,
+    edited integer,
     error text,
     reactive_vars jsonb
 );
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS defog_tool_runs (
     tool_name text,
     tool_run_details jsonb,
     error_message text,
-    edited boolean,
+    edited integer,
     analysis_id text
 );
 
@@ -86,9 +86,9 @@ CREATE TABLE IF NOT EXISTS defog_tools (
     input_metadata jsonb,
     output_metadata jsonb,
     toolbox TEXT,
-    disabled BOOLEAN NOT NULL DEFAULT FALSE,
-    cannot_delete BOOLEAN NOT NULL DEFAULT FALSE,
-    cannot_disable BOOLEAN NOT NULL DEFAULT FALSE
+    disabled integer NOT NULL DEFAULT FALSE,
+    cannot_delete integer NOT NULL DEFAULT FALSE,
+    cannot_disable integer NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS defog_users (
@@ -97,9 +97,9 @@ CREATE TABLE IF NOT EXISTS defog_users (
     token text NOT NULL,
     user_type text NOT NULL,
     csv_tables text,
-    is_premium boolean,
-    created_at timestamp without time zone,
-    is_verified boolean
+    is_premium integer,
+    created_at text,
+    is_verified integer
 );
 
 
@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS defog_plans_feedback (
     user_question text NOT NULL,
     username text NOT NULL,
     comments jsonb,
-    is_correct boolean NOT NULL,
+    is_correct integer NOT NULL,
     -- join on this with the defog_reports.report_id table to get the actual plan data
     -- store for later reference. in case metadata changes later
     metadata text NOT NULL,
