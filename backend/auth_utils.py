@@ -7,7 +7,7 @@ SALT = "TOMMARVOLORIDDLE"
 
 def get_db_conn():
     # return sqlite3 connection
-    return sqlite3.connect("./defog.db")
+    return sqlite3.connect("./defog_local.db")
 
 
 def validate_user(token, user_type=None, get_username=False):
