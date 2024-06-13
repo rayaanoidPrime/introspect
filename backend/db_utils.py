@@ -15,8 +15,6 @@ from agents.planner_executor.tool_helpers.core_functions import (
     execute_code,
 )
 
-from auth_utils import validate_user
-
 import asyncio
 from utils import warn_str, YieldList, make_request
 import os
@@ -32,10 +30,16 @@ db_creds = {
     "database": os.environ["DATABASE"],
 }
 
-
-connection_uri = "sqlite:///defog_local.db"
-
-engine = create_engine(connection_uri, connect_args={"timeout": 3})
+if os.environ.get("INTERNAL_DB") == "sqlite":
+    print("using sqlite as our internal db")
+    # if using sqlite
+    connection_uri = "sqlite:///defog_local.db"
+    engine = create_engine(connection_uri, connect_args={"timeout": 3})
+else:
+    # if using postgres
+    print("using postgres as our internal db")
+    connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
+    engine = create_engine(connection_uri)
 
 Base = automap_base()
 
@@ -53,7 +57,28 @@ Users = Base.classes.defog_users
 Feedback = Base.classes.defog_plans_feedback
 
 
-free_tier_quota = 100
+def validate_user(token, user_type=None, get_username=False):
+    with engine.begin() as conn:
+        user = conn.execute(
+            select(Users).where(Users.hashed_password == token)
+        ).fetchone()
+
+    if user:
+        if user_type == "admin":
+            if user[0] == "admin":
+                if get_username:
+                    return user[1]
+                else:
+                    return True
+            else:
+                return False
+        else:
+            if get_username:
+                return user[1]
+            else:
+                return True
+    else:
+        return False
 
 
 async def initialise_report(user_question, token, custom_id=None, other_data={}):
@@ -265,10 +290,10 @@ async def update_report_data(
                     if request_type == "user_question":
                         print(new_data)
                         print(report_id)
-                        cursor = conn.connection.cursor()
-                        cursor.execute(
-                            "UPDATE defog_reports SET user_question = ? WHERE report_id = ?",
-                            (new_data, report_id),
+                        conn.execute(
+                            update(Reports)
+                            .where(Reports.report_id == report_id)
+                            .values({request_type: new_data})
                         )
                     else:
                         print(curr_data)
@@ -1263,28 +1288,22 @@ async def add_tool(
                     conn.execute(delete(Tools).where(Tools.tool_name == tool_name))
 
                 # update with latest
-                cursor = conn.connection.cursor()
-                query = """
-                    INSERT INTO defog_tools (
-                        tool_name, function_name, code, description, toolbox, 
-                        input_metadata, output_metadata, cannot_delete, cannot_disable, disabled
-                    ) VALUES (
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                conn.execute(
+                    insert(Tools).values(
+                        {
+                            "tool_name": tool_name,
+                            "function_name": function_name,
+                            "description": description,
+                            "code": code,
+                            "toolbox": toolbox,
+                            "input_metadata": input_metadata,
+                            "output_metadata": output_metadata,
+                            "cannot_delete": cannot_delete,
+                            "cannot_disable": cannot_disable,
+                            "disabled": False,
+                        }
                     )
-                """
-                values = (
-                    tool_name,
-                    function_name,
-                    code,
-                    description,
-                    toolbox,
-                    json.dumps(input_metadata),
-                    json.dumps(output_metadata),
-                    cannot_delete,
-                    cannot_disable,
-                    False,
                 )
-                cursor.execute(query, values)
 
         print("Adding tool to the defog API server", tool_name)
         asyncio.create_task(

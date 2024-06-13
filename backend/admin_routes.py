@@ -5,12 +5,10 @@ from sqlalchemy import (
     insert,
     delete,
 )
-from db_utils import engine, Users
-from auth_utils import validate_user
+from db_utils import engine, Users, validate_user
 import hashlib
 import pandas as pd
 from io import StringIO
-from auth_routes import validate_user
 import requests
 import asyncio
 
@@ -97,7 +95,7 @@ async def get_users(request: Request):
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
 
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         users = conn.execute(select(Users)).fetchall()
 
     users = pd.DataFrame(users, columns=["username", "user_type"]).to_dict(
@@ -114,6 +112,6 @@ async def delete_user(request: Request):
         return {"error": "unauthorized"}
 
     username = params.get("username", None)
-    with engine.connect() as conn:
+    with engine.begin() as conn:
         conn.execute(delete(Users).where(Users.username == username))
     return {"status": "success"}
