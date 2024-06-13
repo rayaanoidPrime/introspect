@@ -1143,15 +1143,17 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
             #     if err is not None:
             #         print(error_str(err))
 
-            conn.execute(
-                update(ToolRuns)
-                .where(ToolRuns.tool_run_id == tool_run_id)
-                .values(outputs=new_val, edited=False)
-            )
+            with engine.begin() as conn:
+                conn.execute(
+                    update(ToolRuns)
+                    .where(ToolRuns.tool_run_id == tool_run_id)
+                    .values(outputs=new_val, edited=False)
+                )
 
-            row = conn.execute(
-                select(ToolRuns).where(ToolRuns.tool_run_id == tool_run_id)
-            ).fetchone()
+            with engine.begin() as conn:
+                row = conn.execute(
+                    select(ToolRuns).where(ToolRuns.tool_run_id == tool_run_id)
+                ).fetchone()
 
             if row is not None:
                 new_data = dict(row._mapping)
