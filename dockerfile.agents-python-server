@@ -23,7 +23,6 @@ RUN mkdir -p /agents-assets/report-assets
 RUN mkdir -p /agents-assets/report-assets/boxplots 
 RUN mkdir -p /agents-assets/report-assets/datasets 
 RUN mkdir -p /agents-assets/report-assets/heatmaps 
-RUN mkdir -p /agents-assets/report-assets/kaplan-meier-plots 
 RUN mkdir -p /agents-assets/report-assets/linechart 
 RUN mkdir -p /agents-assets/report-assets/linecharts
 RUN touch /agent-logs-out
