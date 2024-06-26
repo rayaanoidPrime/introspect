@@ -126,6 +126,11 @@ export function AddStepUI({
         showSearch
         onChange={(value) => {
           if (!activeNode.data?.step?.inputs) return;
+          if (!value) {
+            setSelectedTool(null);
+            setInputs({});
+            return;
+          }
           const initialInputs = createInitialToolInputs(
             value,
             activeNode?.data?.parentIds
