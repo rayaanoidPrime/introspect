@@ -61,6 +61,35 @@ tool_name_dict = tools = {
             }
         ],
     },
+    "send_email": {
+        "function_name": "send_email",
+        "tool_name": "Send Email",
+        "description": "This function sends a full dataframe from a preceding step as an email to the specified recipient.",
+        "fn": send_email,
+        "code": inspect.getsource(send_email),
+        "input_metadata": {
+            "recipient_email_address": {
+                "name": "recipient",
+                "default": None,
+                "description": "email address of the recipient",
+                "type": "str",
+            },
+            "full_data": {
+                "name": "full_data",
+                "default": None,
+                "description": "global_dict.<input_df_name>",
+                "type": "pandas.core.frame.DataFrame",
+            },
+        },
+        "toolbox": "data_fetching",
+        "output_metadata": [
+            {
+                "name": "output_df",
+                "description": "pandas dataframe",
+                "type": "pandas.core.frame.DataFrame",
+            }
+        ],
+    },
     "t_test": {
         "function_name": "t_test",
         "fn": t_test,
