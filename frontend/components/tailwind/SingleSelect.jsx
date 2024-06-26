@@ -7,7 +7,7 @@ import {
   Label,
 } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 // const options = [
@@ -20,8 +20,10 @@ export default function SingleSelect({
   popupClassName = "",
   onChange = null,
   defaultValue = null,
+  disabled = false,
   options = [],
   label = null,
+  optionRenderer = null,
 }) {
   const [query, setQuery] = useState("");
 
@@ -29,7 +31,6 @@ export default function SingleSelect({
     query === ""
       ? options
       : options.filter((option) => {
-          console.log(option);
           return (option.label + "")
             .toLowerCase()
             .includes(query.toLowerCase());
@@ -40,6 +41,10 @@ export default function SingleSelect({
     options.find((option) => option.value === defaultValue)
   );
 
+  useEffect(() => {
+    setSelectedOption(options.find((option) => option.value === defaultValue));
+  }, [defaultValue]);
+
   return (
     <Combobox
       as="div"
@@ -47,6 +52,7 @@ export default function SingleSelect({
       className={rootClassName}
       value={selectedOption}
       defaultValue={defaultValue}
+      disabled={disabled}
       onChange={(option) => {
         setQuery("");
         setSelectedOption(option);
@@ -56,13 +62,16 @@ export default function SingleSelect({
       }}
     >
       {label && (
-        <Label className="block text-sm mb-2 font-medium leading-6 text-gray-900">
-          Assigned to
-        </Label>
+        <label className="block text-xs mb-2 font-light text-gray-600">
+          {label}
+        </label>
       )}
       <div className="relative">
         <ComboboxInput
-          className="w-full rounded-md border-0 bg-white py-1.5 pl-3 pr-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-400 sm:text-sm sm:leading-6"
+          className={twMerge(
+            "w-full rounded-md border-0 py-1.5 pl-3 pr-10  shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-400 sm:text-sm sm:leading-6",
+            disabled ? "bg-gray-100 text-gray-400" : "bg-white text-gray-900"
+          )}
           onChange={(event) => setQuery(event.target.value)}
           onBlur={() => setQuery("")}
           displayValue={(option) => option?.label}
@@ -77,7 +86,7 @@ export default function SingleSelect({
         {filteredOptions.length > 0 && (
           <ComboboxOptions
             className={twMerge(
-              "z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm absolute bottom-10",
+              "z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm absolute top-8",
               popupClassName
             )}
           >
@@ -94,15 +103,20 @@ export default function SingleSelect({
               >
                 {({ focus, selected }) => (
                   <>
-                    <span
-                      className={twMerge(
-                        "block truncate",
-                        selected && "font-semibold"
-                      )}
-                    >
-                      {option.label}
-                    </span>
-
+                    {optionRenderer ? (
+                      optionRenderer(option, focus, selected)
+                    ) : (
+                      <>
+                        <span
+                          className={twMerge(
+                            "block truncate",
+                            selected && "font-semibold"
+                          )}
+                        >
+                          {option.label}
+                        </span>
+                      </>
+                    )}
                     {selected && (
                       <span
                         className={twMerge(

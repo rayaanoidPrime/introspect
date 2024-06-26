@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 1235",
+    "dev": "next dev -p 1236",
     "build": "next build",
-    "start": "next start -p 1235",
+    "start": "next start -p 1236",
     "export": "next build && next export && sh ./export.sh",
     "lint": "next lint"
   },

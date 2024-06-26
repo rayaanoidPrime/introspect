@@ -411,9 +411,12 @@ export function AddStepInputList({
     return avail;
   }, [inputs, parentNodeData, toolRunId]);
 
+  console.log(inputs);
+
   return (
     <div className="tool-input-list" key={toolRunId} ref={ctr}>
       {Object.keys(inputs).map((input_name, i) => {
+        console.log(inputMetadata, input_name);
         const sanitizedType = sanitizeInputType(inputMetadata[input_name].type);
         const input = inputs[input_name];
 

@@ -47,6 +47,8 @@ services:
       args:
         OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
     restart: always
+    ports:
+      - "1235:1235"
     volumes:
       - agents-assets:/agents-assets/
       - ./backend:/backend

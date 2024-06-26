@@ -29,6 +29,7 @@ export default function DefineTool({
           value={toolName}
         />
         <TextArea
+          rootClassName="w-full"
           label="Description"
           placeholder="What does this tool do?"
           status={toolDocString ? "" : "error"}

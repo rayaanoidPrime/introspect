@@ -1,7 +1,9 @@
 import { ChevronRightIcon } from "@heroicons/react/20/solid";
-import { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
+let timeout,
+  count = 0;
 export function Collapse({
   children,
   title,
@@ -10,6 +12,41 @@ export function Collapse({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const ctr = useRef(null);
+  const [haveHeight, setHaveHeight] = useState(false);
+
+  function setHeight() {
+    if (count > 10) return;
+
+    if (ctr.current) {
+      const contentCtr = ctr.current.querySelector(".content");
+      if (contentCtr) {
+        if (contentCtr.offsetHeight > 0) {
+          setHaveHeight(true);
+          ctr.current.style.maxHeight = !collapsed
+            ? `${contentCtr.offsetHeight}px`
+            : "0px";
+        } else {
+          timeout = setTimeout(() => {
+            count++;
+            if (count > 10) {
+              clearTimeout(timeout);
+            }
+
+            setHeight();
+          }, 300);
+        }
+      }
+    }
+  }
+
+  useEffect(() => {
+    setHeight();
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [collapsed]);
+
+  console.log("Renrdering;");
 
   return (
     <>
@@ -18,20 +55,15 @@ export function Collapse({
           "flex flex-col max-h-96 mb-2 pointer-events-auto cursor-pointer",
           rootClassName
         )}
-        onClick={() => {
-          console.log("bleh");
-          setCollapsed(!collapsed);
-          if (ctr.current) {
-            const contentCtr = ctr.current.querySelector(".content");
-            if (contentCtr) {
-              ctr.current.style.maxHeight = collapsed
-                ? `${contentCtr.scrollHeight}px`
-                : "0px";
-            }
-          }
-        }}
       >
-        <div className={twMerge("h-10 flex items-center", headerClassNames)}>
+        <div
+          className={twMerge("h-10 flex items-center", headerClassNames)}
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setCollapsed(!collapsed);
+          }}
+        >
           <ChevronRightIcon
             className="w-4 h-4 inline fill-gray-500"
             style={{

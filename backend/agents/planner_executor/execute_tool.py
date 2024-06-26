@@ -103,13 +103,23 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
             exec(code, globals())
             fn = globals()[function_name]
 
+            validated_fn = fn
+            # if function isn't async, wrap it in an async function for create_Task to work
+            if not inspect.iscoroutinefunction(fn):
+
+                async def async_fn(**kwargs):
+                    return fn(**kwargs)
+
+                validated_fn = async_fn
+
             task = asyncio.create_task(
-                fn(**tool_function_inputs, global_dict=global_dict)
+                validated_fn(**tool_function_inputs, global_dict=global_dict)
             )
             try:
                 # expand tool inputs
                 # if it takes more than 120 seconds, then timeout
                 result = await asyncio.wait_for(task, timeout=120)
+                print("result", result)
             except asyncio.TimeoutError:
                 print(error_str(f"Error for tool {function_name}: TimeoutError"))
                 result = {

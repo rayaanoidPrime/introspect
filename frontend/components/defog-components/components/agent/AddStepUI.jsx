@@ -126,6 +126,11 @@ export function AddStepUI({
         showSearch
         onChange={(value) => {
           if (!activeNode.data?.step?.inputs) return;
+          if (!value) {
+            setSelectedTool(null);
+            setInputs({});
+            return;
+          }
           const initialInputs = createInitialToolInputs(
             value,
             activeNode?.data?.parentIds
@@ -159,7 +164,7 @@ export function AddStepUI({
           <h1 className="inputs-header">OUTPUTS</h1>
           {/* a little kooky, but */}
           {/* just reuse AddStepInputList to store outputs */}
-          <AddStepInputList
+          {/* <AddStepInputList
             toolRunId={activeNode.data.id}
             toolMetadata={{
               input_metadata: [
@@ -178,7 +183,7 @@ export function AddStepUI({
               setOutputs(newVal);
             }}
             parentNodeData={parentNodeData}
-          />
+          /> */}
         </>
       )}
     </div>

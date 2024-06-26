@@ -240,7 +240,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     classification = await get_classification(data["user_question"])
 
                 print(classification, flush=True)
-                if classification["prediction"] == "sqlcoder":
+                if False and classification["prediction"] == "sqlcoder":
                     # first, send the clarifier result as done
                     if request_type == "clarify":
                         resp["output"] = {

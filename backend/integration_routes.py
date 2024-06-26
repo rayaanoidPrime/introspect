@@ -121,15 +121,22 @@ async def generate_metadata(request: Request):
     with open(os.path.join(defog_path, "selected_tables.json"), "w") as f:
         json.dump(tables, f)
 
+    print("here 1")
+
     defog = Defog()
     defog.base_url = DEFOG_BASE_URL
     table_metadata = await asyncio.to_thread(
         defog.generate_db_schema, tables=tables, upload=False, scan=False
     )
 
+    print("DEFOG_BASE_URL= ", DEFOG_BASE_URL, flush=True)
+    print("here 2", DEFOG_API_KEY, dev, flush=True)
+    print(table_metadata, flush=True)
+
     md = await make_request(
         f"{DEFOG_BASE_URL}/get_metadata", {"api_key": DEFOG_API_KEY, "dev": dev}
     )
+    print("here 3")
     try:
         existing_metadata = md["table_metadata"]
     except:

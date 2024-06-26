@@ -131,6 +131,8 @@ class Executor:
                             "direct_parent_analysis": self.direct_parent_analysis,
                             "api_key": self.dfg_api_key,
                             "plan_id": self.analysis_id,
+                            "api_endpoint": "http://34.216.130.139:5173/v1/",
+                            "model_name": "defog/agents-llama-8b-instruct",
                         }
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
                     else:
@@ -148,6 +150,8 @@ class Executor:
                             "direct_parent_analysis": self.direct_parent_analysis,
                             "api_key": self.dfg_api_key,
                             "plan_id": self.analysis_id,
+                            "api_endpoint": "http://34.216.130.139:5173/v1/",
+                            "model_name": "defog/agents-llama-8b-instruct",
                         }
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
 
@@ -167,7 +171,7 @@ class Executor:
                 else:
                     step = self.predefined_steps.pop(0)
 
-                print(step)
+                print("step: ", step, flush=True)
 
                 # prepare to execute this step, by resolving the inputs
                 # if there's a global_dict.variable_name reference in step["inputs"], replace it with the value from global_dict
@@ -179,6 +183,8 @@ class Executor:
                 result, tool_input_metadata = await execute_tool(
                     step["tool_name"], resolved_inputs, self.global_dict
                 )
+
+                print("result: ", result, flush=True)
 
                 step["error_message"] = result.get("error_message")
 

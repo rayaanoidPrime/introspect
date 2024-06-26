@@ -13,10 +13,6 @@ export function TextArea({
   onChange = () => {},
   textAreaHtmlProps = {},
 }) {
-  const extraClasses =
-    status !== "error"
-      ? "focus:ring-blue-400"
-      : "focus:ring-rose-400 ring-rose-400";
   return (
     <div className={twMerge("text-gray-600", rootClassName)}>
       {label && (
@@ -32,14 +28,13 @@ export function TextArea({
             name={name}
             id={id}
             placeholder={placeholder}
-            className={
-              "block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset" +
-                status !==
-              "error"
+            className={twMerge(
+              "block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset",
+              status !== "error"
                 ? "focus:ring-blue-400"
                 : "focus:ring-rose-400 ring-rose-400" +
-                  "sm:text-sm sm:leading-6"
-            }
+                    "sm:text-sm sm:leading-6"
+            )}
             value={value}
             onChange={onChange}
             {...textAreaHtmlProps}
