@@ -16,16 +16,19 @@ def generate_tool_json_for_frontend():
     tool_json = {}
     for key in tools:
         tool = tools[key]
-        tool_name = tool["tool_name"]
+        tool_name = tool["function_name"]
+        tool_name_display = tool["tool_name"]
         tool_fn = tool["fn"]
         tool_function_signature = parse_function_signature(
             inspect.signature(tool_fn).parameters, tool_name
         )
         tool_json[tool_name] = {
-            "function_name": tool_name,
-            "tool_name": tool["tool_name"],
-            "function_signature": tool_function_signature,
+            "name": tool_name,
+            "function_name": tool_name_display,
+            "description": tool["description"],
+            "input_metadata": tool["input_metadata"],
             "toolbox": tool["toolbox"],
+            "output_metadata": tool["output_metadata"],
         }
     return tool_json
 
@@ -38,6 +41,9 @@ print(j_str)
 j_str = json.dumps(j, indent=2)
 
 j_str = "export const toolsMetadata = " + j_str
+
+# prunt current di
+print(os.getcwd())
 
 f_path = "../frontend/utils/tools_metadata.js"
 
