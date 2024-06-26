@@ -1,3 +1,6 @@
+import pandas as pd
+
+
 async def data_fetcher_and_aggregator(
     question: str,
     global_dict: dict = {},
@@ -142,4 +145,30 @@ async def global_dict_data_fetcher_and_aggregator(
     return {
         "outputs": [{"data": df, "analysis": analysis}],
         "sql": query.strip(),
+    }
+
+
+async def send_email(
+    full_data: pd.DataFrame = None,
+    email_subject: str = None,
+    recipient_email_address: str = None,
+    global_dict: dict = {},
+    **kwargs,
+):
+    import resend
+    import os
+
+    # convert the full_data into markdown, using the pandas method
+    full_data_md = full_data.to_html(index=False)
+
+    resend.api_key = os.environ.get("RESEND_API_KEY")
+    params = {
+        "from": "support@defog.ai",
+        "to": recipient_email_address,
+        "subject": email_subject,
+        "html": f"You can find your analysis below:<br/><br/>{full_data_md}",
+    }
+    resend.Emails.send(params)
+    return {
+        "outputs": [{"data": full_data, "analysis": "Email sent successfully"}],
     }

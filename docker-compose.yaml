@@ -41,6 +41,7 @@ services:
       - LLM_CALLS_URL=${LLM_CALLS_URL}
       - PYTHONDONTWRITEBYTECODE=1
       - INTERNAL_DB=${INTERNAL_DB:-postgres}
+      - RESEND_API_KEY=${RESEND_API_KEY}
     build:
       context: .
       dockerfile: dockerfile.agents-python-server

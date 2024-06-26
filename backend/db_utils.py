@@ -22,20 +22,20 @@ import os
 report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]
 
-db_creds = {
-    "user": os.environ["DBUSER"],
-    "password": os.environ["DBPASSWORD"],
-    "host": os.environ["DBHOST"],
-    "port": os.environ["DBPORT"],
-    "database": os.environ["DATABASE"],
-}
-
 if os.environ.get("INTERNAL_DB") == "sqlite":
     print("using sqlite as our internal db")
     # if using sqlite
     connection_uri = "sqlite:///defog_local.db"
     engine = create_engine(connection_uri, connect_args={"timeout": 3})
 else:
+    db_creds = {
+        "user": os.environ["DBUSER"],
+        "password": os.environ["DBPASSWORD"],
+        "host": os.environ["DBHOST"],
+        "port": os.environ["DBPORT"],
+        "database": os.environ["DATABASE"],
+    }
+
     # if using postgres
     print("using postgres as our internal db")
     connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
