@@ -48,3 +48,7 @@ frontend/playwright/.cache/
 
 # local db
 *.db
+
+# pycache
+__pycache__/
+*.pyc

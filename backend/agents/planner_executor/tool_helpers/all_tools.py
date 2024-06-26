@@ -61,6 +61,41 @@ tool_name_dict = tools = {
             }
         ],
     },
+    "send_email": {
+        "function_name": "send_email",
+        "tool_name": "Send Email",
+        "description": "This function sends a full dataframe from a preceding step as an email to the specified recipient. It should be used at the end of the analysis, and only once. The recipient email address should be provided as a string, and the dataframe that has to be emailed should be provided as global_dict.<input_df_name>.",
+        "fn": send_email,
+        "code": inspect.getsource(send_email),
+        "input_metadata": {
+            "recipient_email_address": {
+                "name": "recipient_email_address",
+                "default": None,
+                "description": "email address of the recipient",
+                "type": "str",
+            },
+            "email_subject": {
+                "name": "email_subject",
+                "default": None,
+                "description": "Title of the email to be sent. This is usually a descriptive summary of the question asked.",
+                "type": "str",
+            },
+            "full_data": {
+                "name": "full_data",
+                "default": None,
+                "description": "global_dict.<input_df_name>",
+                "type": "pandas.core.frame.DataFrame",
+            },
+        },
+        "toolbox": "data_fetching",
+        "output_metadata": [
+            {
+                "name": "output_df",
+                "description": "pandas dataframe",
+                "type": "pandas.core.frame.DataFrame",
+            }
+        ],
+    },
     "t_test": {
         "function_name": "t_test",
         "fn": t_test,
@@ -307,7 +342,7 @@ tool_name_dict = tools = {
         "fn": boxplot,
         "code": inspect.getsource(boxplot),
         "tool_name": "Boxplot",
-        "description": "Generates a boxplot using python's seaborn library. Also accepts a faceting column. This usually required the full dataset and not summary statistics. Use the facet feature only when specifically asked for it.",
+        "description": "Generates a boxplot using python's seaborn library. Also accepts a faceting column. This usually requires the full dataset and not summary statistics. Use the facet feature only when specifically asked for it.",
         "input_metadata": {
             "full_data": {
                 "name": "full_data",
