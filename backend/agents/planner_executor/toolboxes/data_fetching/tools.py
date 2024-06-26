@@ -170,5 +170,18 @@ async def send_email(
     }
     resend.Emails.send(params)
     return {
-        "outputs": [{"data": full_data, "analysis": "Email sent successfully"}],
+        "outputs": [
+            {
+                "data": pd.DataFrame(
+                    [
+                        [
+                            {
+                                "message": f"Email sent successfully to {recipient_email_address}"
+                            },
+                        ]
+                    ]
+                ),
+                "analysis": "Email sent successfully",
+            }
+        ],
     }
