@@ -20,6 +20,7 @@ psycopg2-binary
 pyyaml
 redshift_connector
 requests
+resend
 scikit-learn
 scipy
 seaborn
