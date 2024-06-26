@@ -149,8 +149,9 @@ async def global_dict_data_fetcher_and_aggregator(
 
 
 async def send_email(
-    full_data: pd.DataFrame,
-    recipient_email_address: str,
+    full_data: pd.DataFrame = None,
+    email_subject: str = None,
+    recipient_email_address: str = None,
     global_dict: dict = {},
     **kwargs,
 ):
@@ -158,14 +159,14 @@ async def send_email(
     import os
 
     # convert the full_data into markdown, using the pandas method
-    full_data_md = full_data.to_markdown(index=False)
+    full_data_md = full_data.to_html(index=False)
 
     resend.api_key = os.environ.get("RESEND_API_KEY")
     params = {
         "from": "support@defog.ai",
         "to": recipient_email_address,
-        "subject": "Your Defog Analysis",
-        "html": f"You can find your analysis below:\n\n{full_data_md}",
+        "subject": email_subject,
+        "html": f"You can find your analysis below:<br/><br/>{full_data_md}",
     }
     resend.Emails.send(params)
     return {
