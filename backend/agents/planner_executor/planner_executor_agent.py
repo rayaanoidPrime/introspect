@@ -148,6 +148,9 @@ class Executor:
                             "direct_parent_analysis": self.direct_parent_analysis,
                             "api_key": self.dfg_api_key,
                             "plan_id": self.analysis_id,
+                            "llm_server_url": os.environ.get(
+                                "LLM_SERVER_ENDPOINT", None
+                            ),
                         }
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
 

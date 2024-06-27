@@ -42,6 +42,7 @@ services:
       - PYTHONDONTWRITEBYTECODE=1
       - INTERNAL_DB=${INTERNAL_DB:-postgres}
       - RESEND_API_KEY=${RESEND_API_KEY}
+      - LLM_SERVER_ENDPOINT=${LLM_SERVER_ENDPOINT}
     build:
       context: .
       dockerfile: dockerfile.agents-python-server

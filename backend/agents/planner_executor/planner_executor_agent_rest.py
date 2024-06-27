@@ -79,6 +79,7 @@ class RESTExecutor:
                 "plan_id": str(uuid4()),
                 "similar_plans": [],
                 "parent_questions": [],
+                "llm_server_url": "http://34.216.130.139:8000/v1",
             }
             ans = await make_request(llm_calls_url, json=payload)
 
