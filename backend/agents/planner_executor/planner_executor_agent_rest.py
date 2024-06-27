@@ -68,6 +68,12 @@ class RESTExecutor:
             next_step_data_description = ""
 
             # make calls to the LLM to get the next step
+            llm_server_url = os.environ.get("LLM_SERVER_ENDPOINT", None)
+            if not llm_server_url:
+                llm_server_url = None
+                print("LLM_SERVER_ENDPOINT not set, using None", flush=True)
+            else:
+                print(f"LLM_SERVER_ENDPOINT set to {llm_server_url}", flush=True)
             payload = {
                 "request_type": "create_plan",
                 "question": self.user_question,
@@ -79,6 +85,8 @@ class RESTExecutor:
                 "plan_id": str(uuid4()),
                 "similar_plans": [],
                 "parent_questions": [],
+                "llm_server_url": os.environ.get("LLM_SERVER_ENDPOINT", None),
+                "model_name": os.environ.get("LLM_MODEL_NAME", None),
             }
             ans = await make_request(llm_calls_url, json=payload)
 

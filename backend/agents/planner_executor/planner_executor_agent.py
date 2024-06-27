@@ -136,6 +136,16 @@ class Executor:
                         }
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
                     else:
+                        # make calls to the LLM to get the next step
+                        llm_server_url = os.environ.get("LLM_SERVER_ENDPOINT", None)
+                        if not llm_server_url:
+                            llm_server_url = None
+                            print("LLM_SERVER_ENDPOINT not set, using None", flush=True)
+                        else:
+                            print(
+                                f"LLM_SERVER_ENDPOINT set to {llm_server_url}",
+                                flush=True,
+                            )
                         payload = {
                             "request_type": "create_plan",
                             "question": self.user_question,
@@ -150,8 +160,8 @@ class Executor:
                             "direct_parent_analysis": self.direct_parent_analysis,
                             "api_key": self.dfg_api_key,
                             "plan_id": self.analysis_id,
-                            "api_endpoint": "http://34.216.130.139:5173/v1/",
-                            "model_name": "defog/agents-llama-8b-instruct",
+                            "llm_server_url": llm_server_url,
+                            "model_name": os.environ.get("LLM_MODEL_NAME", None),
                         }
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
 

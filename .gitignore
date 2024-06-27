@@ -52,3 +52,12 @@ frontend/playwright/.cache/
 # pycache
 __pycache__/
 *.pyc
+
+# notebooks for experimentation
+notebooks/
+
+# cache
+.cache/
+
+# venv
+.venv*/
