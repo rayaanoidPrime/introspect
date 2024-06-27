@@ -86,7 +86,7 @@ class RESTExecutor:
                 "similar_plans": [],
                 "parent_questions": [],
                 "llm_server_url": os.environ.get("LLM_SERVER_ENDPOINT", None),
-                "model_name": os.environ.get("MODEL_NAME", None),
+                "model_name": os.environ.get("LLM_MODEL_NAME", None),
             }
             ans = await make_request(llm_calls_url, json=payload)
 
