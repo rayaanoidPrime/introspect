@@ -151,6 +151,7 @@ class Executor:
                             "llm_server_url": os.environ.get(
                                 "LLM_SERVER_ENDPOINT", None
                             ),
+                            "model_name": os.environ.get("MODEL_NAME", None),
                         }
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
 
