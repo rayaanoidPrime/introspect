@@ -69,7 +69,7 @@ export default function Sidebar({
           className={twMerge("content w-80 ", contentClassNames)}
           ref={contentRef}
         >
-          {title ? <h2 className="mb-3 font-serif">{title}</h2> : <></>}
+          {title ? <h2 className="mb-3 font-sans">{title}</h2> : <></>}
           {children}
         </div>
       </div>

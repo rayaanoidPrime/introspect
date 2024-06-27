@@ -270,6 +270,7 @@ function AnalysisVersionViewer({
                 ref={searchRef}
                 onKeyDown={(ev) => {
                   if (ev.key === "Enter") {
+                    if (!searchRef.current.value) return;
                     handleSubmit(
                       activeRootAnalysisId,
                       !activeRootAnalysisId,
