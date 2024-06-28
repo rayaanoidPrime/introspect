@@ -97,10 +97,14 @@ def natural_sort(df, time_column, units=None, ascending=True):
     Sorts a dataframe in a natural way, using the natural_sort_function.
     """
     if df[time_column].dtype == "object":
-        order = natural_sort_function(df[time_column].unique().tolist())
-        df[time_column] = pd.Categorical(
-            df[time_column], categories=order, ordered=True
-        )
+        try:
+            order = natural_sort_function(df[time_column].unique().tolist())
+            df[time_column] = pd.Categorical(
+                df[time_column], categories=order, ordered=True
+            )
+        except Exception as e:
+            # if there are any errors, just pass
+            pass
         if units:
             df = df.sort_values(by=[units, time_column], ascending=ascending)
         else:
