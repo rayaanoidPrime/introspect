@@ -24,7 +24,7 @@ import Clarify from "./analysis-gen/Clarify";
 import AnalysisManager from "./analysisManager";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { AnalysisFeedback } from "./feedback/AnalysisFeedback";
-import { MessageHandlerContext } from "$components/tailwind/Message";
+import { MessageManagerContext } from "$components/tailwind/Message";
 
 const getToolsEndpoint = setupBaseUrl("http", "get_user_tools");
 
@@ -58,7 +58,7 @@ export const AnalysisAgent = ({
 
   const docContext = useContext(DocContext);
 
-  const messageManager = useContext(MessageHandlerContext);
+  const messageManager = useContext(MessageManagerContext);
 
   const { mainManager, reRunManager, toolSocketManager } =
     docContext.val.socketManagers;

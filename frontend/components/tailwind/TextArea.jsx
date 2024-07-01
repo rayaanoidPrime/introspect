@@ -2,7 +2,8 @@ import { ExclamationCircleIcon } from "@heroicons/react/20/solid";
 import { twMerge } from "tailwind-merge";
 
 export function TextArea({
-  value = "",
+  value = undefined,
+  defaultValue = undefined,
   status = null,
   label = null,
   disabled = false,
@@ -30,14 +31,14 @@ export function TextArea({
             placeholder={placeholder}
             className={twMerge(
               "block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset",
+              "sm:text-sm sm:leading-6",
               status !== "error"
                 ? "focus:ring-blue-400"
-                : "focus:ring-rose-400 ring-rose-400" +
-                    "sm:text-sm sm:leading-6"
+                : "focus:ring-rose-400 ring-rose-400"
             )}
-            value={value}
             onChange={onChange}
             {...textAreaHtmlProps}
+            {...{ defaultValue, value }}
           />
         </div>
         {status === "error" && (

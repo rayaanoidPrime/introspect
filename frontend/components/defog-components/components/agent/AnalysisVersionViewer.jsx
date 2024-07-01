@@ -7,7 +7,7 @@ import { AnalysisHistoryItem } from "./AnalysisHistoryItem";
 import { AnalysisVersionViewerLinks } from "./AnalysisVersionViewerLinks";
 import { ArrowRightEndOnRectangleIcon } from "@heroicons/react/20/solid";
 import Sidebar from "$components/tailwind/Sidebar";
-import { MessageHandlerContext } from "$components/tailwind/Message";
+import { MessageManagerContext } from "$components/tailwind/Message";
 
 function AnalysisVersionViewer({
   dashboards,
@@ -21,7 +21,7 @@ function AnalysisVersionViewer({
 }) {
   const [activeAnalysisId, setActiveAnalysisId] = useState(null);
 
-  const messageManager = useContext(MessageHandlerContext);
+  const messageManager = useContext(MessageManagerContext);
 
   const [activeRootAnalysisId, setActiveRootAnalysisId] = useState(null); // this is the currently selected root analysis
 

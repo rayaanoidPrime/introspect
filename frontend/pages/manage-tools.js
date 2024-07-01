@@ -1,13 +1,13 @@
-import { Modal, message } from "antd";
 import { Button } from "$tailwind/Button";
 import Meta from "$components/common/Meta";
 import Scaffolding from "$components/common/Scaffolding";
 import { toolboxDisplayNames } from "$utils/utils";
-import { useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import AddTool from "$components/docs/toolEditor/AddTool";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { ToolEditor } from "$components/docs/toolEditor/ToolEditor";
-import Tabs from "$components/tailwind/Tabs";
+import { MessageManagerContext } from "$components/tailwind/Message";
+import Modal from "$components/tailwind/Modal";
+import DefineTool from "$components/docs/toolEditor/DefineTool";
 
 const toggleDisableToolEndpoint = setupBaseUrl("http", "toggle_disable_tool");
 const deleteToolEndpoint = setupBaseUrl("http", "delete_tool");
@@ -15,6 +15,8 @@ const deleteToolEndpoint = setupBaseUrl("http", "delete_tool");
 export default function ManageTools() {
   // group tools by "toolbox"
   const [tools, setTools] = useState(null);
+
+  const messageManager = useContext(MessageManagerContext);
 
   const groupedTools = useMemo(() => {
     if (tools) {
@@ -30,8 +32,6 @@ export default function ManageTools() {
     }
     return null;
   }, [tools]);
-
-  console.log(tools, groupedTools);
 
   const [selectedTool, setSelectedTool] = useState(null);
 
@@ -54,6 +54,8 @@ export default function ManageTools() {
     fetchTools();
   }, []);
 
+  const columns = ["tool_name", "toolbox", "function_name", "disabled"];
+
   return (
     <>
       <Meta />
@@ -66,19 +68,14 @@ export default function ManageTools() {
               key={selectedTool}
               open={selectedTool ? true : false}
               onCancel={(ev) => {
-                ev.preventDefault();
-                ev.stopPropagation();
                 setSelectedTool(null);
               }}
-              centered
-              footer={null}
               className={"w-10/12 overflow-scroll h-[90%]"}
             >
               {selectedTool ? (
                 <>
                   <div className="flex border-b bg-gray-100 p-2 rounded-t-md">
                     <div className="grow">
-                      <Tabs />
                       <h1 className="text-lg mb-2">
                         {tools[selectedTool].tool_name}
                       </h1>
@@ -123,7 +120,7 @@ export default function ManageTools() {
                             }).then((d) => d.json());
 
                             if (res.success) {
-                              message.success(
+                              messageManager.success(
                                 `Tool ${selectedTool} is now ${goalStatus}`
                               );
                               setTools((prevTools) => {
@@ -134,7 +131,7 @@ export default function ManageTools() {
                                 return newTools;
                               });
                             } else {
-                              message.error(
+                              messageManager.error(
                                 `Failed to ${goalStatus.slice(0, -1)} tool. ${
                                   res.error_message
                                     ? "Error: " + res.error_message
@@ -163,7 +160,7 @@ export default function ManageTools() {
                             }).then((d) => d.json());
 
                             if (res.success) {
-                              message.success(
+                              messageManager.success(
                                 `Tool ${selectedTool} is now deleted`
                               );
                               setTools((prevTools) => {
@@ -174,7 +171,7 @@ export default function ManageTools() {
                               });
                               setSelectedTool(null);
                             } else {
-                              message.error(
+                              messageManager.error(
                                 `Failed to delete tool. ${
                                   res.error_message
                                     ? "Error: " + res.error_message
@@ -190,7 +187,11 @@ export default function ManageTools() {
                     </div>
                   </div>
                   <div className="mt-4 p-2">
-                    <ToolEditor tool={tools[selectedTool]} />
+                    <DefineTool
+                      toolName={tools[selectedTool].tool_name}
+                      toolDocString={tools[selectedTool].description}
+                      toolCode={tools[selectedTool].code}
+                    />
                   </div>
                 </>
               ) : (
@@ -202,32 +203,42 @@ export default function ManageTools() {
               <h1 className="text-2xl font-bold mb-4">Tool management</h1>
               <div className="tool-list">
                 {Object.keys(groupedTools).map((toolbox) => {
-                  {
-                    return (
-                      <div key={toolbox}>
-                        <h1 className="text-md font-bold mb-4">
-                          {toolboxDisplayNames[toolbox]}
-                        </h1>
-                        <div className="toolbox flex flex-wrap flex-row mb-10">
-                          {Object.keys(groupedTools[toolbox]).map((tool) => {
-                            return (
-                              <div
-                                className="tool rounded mr-3 mb-3 bg-gray-50 border border-gray-400 p-3 w-60 cursor-pointer hover:shadow-lg"
-                                key={tool}
-                                onClick={() => setSelectedTool(tool)}
-                              >
-                                <div className="tool-name text-md">
-                                  {tools[tool].tool_name}
-                                </div>
-                              </div>
-                            );
-                          })}
+                  const columns = [
+                    {
+                      title: "tool_name",
+                      dataIndex: 0,
+                    },
+                    { dataIndex: 1, title: "function_name" },
+                  ];
 
-                          <AddTool toolbox={toolbox} onAddTool={onAddTool} />
-                        </div>
+                  const rows = Object.keys(groupedTools[toolbox]).map(
+                    (tool) => [tools[tool].tool_name, tools[tool].function_name]
+                  );
+
+                  return (
+                    <div key={toolbox}>
+                      <h1 className="text-md font-bold mb-4">
+                        {toolboxDisplayNames[toolbox]}
+                      </h1>
+                      <div className="toolbox flex flex-wrap flex-row mb-10">
+                        {Object.keys(groupedTools[toolbox]).map((tool) => {
+                          return (
+                            <div
+                              className="tool rounded-md mr-3 mb-3 bg-gray-50 border border-gray-400 p-3 w-60 cursor-pointer hover:shadow-md"
+                              key={tool}
+                              onClick={() => setSelectedTool(tool)}
+                            >
+                              <div className="tool-name text-md">
+                                {tools[tool].tool_name}
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        <AddTool toolbox={toolbox} onAddTool={onAddTool} />
                       </div>
-                    );
-                  }
+                    </div>
+                  );
                 })}
               </div>
             </div>

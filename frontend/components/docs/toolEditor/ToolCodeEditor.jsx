@@ -8,6 +8,7 @@ export default function ToolCodeEditor({
   toolCode,
   className = "",
   editable = false,
+  onChange = (...args) => {},
 }) {
   const editor = useRef(null);
 
@@ -18,6 +19,10 @@ export default function ToolCodeEditor({
       value={toolCode}
       editable={editable}
       extensions={[python(), EditorView.lineWrapping]}
+      onChange={(val) => {
+        console.log(val);
+        onChange(val);
+      }}
       basicSetup={{
         lineNumbers: false,
         highlightActiveLine: false,

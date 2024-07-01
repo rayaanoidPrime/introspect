@@ -12,7 +12,7 @@ import "../styles/blocknote-styles.scss";
 import "../styles/query-data.scss";
 import {
   MessageMonitor,
-  MessageHandlerContext,
+  MessageManagerContext,
   MessageManager,
 } from "$components/tailwind/Message";
 
@@ -21,10 +21,10 @@ export default function App({ Component, pageProps }) {
 
   return (
     <Context.Provider value={[context, setContext]}>
-      <MessageHandlerContext.Provider value={MessageManager()}>
+      <MessageManagerContext.Provider value={MessageManager()}>
         <MessageMonitor />
         <Component {...pageProps} />
-      </MessageHandlerContext.Provider>
+      </MessageManagerContext.Provider>
     </Context.Provider>
   );
 }

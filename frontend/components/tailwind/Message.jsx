@@ -97,7 +97,7 @@ export function MessageManager() {
   };
 }
 
-export const MessageHandlerContext = createContext(null);
+export const MessageManagerContext = createContext(null);
 
 const icons = {
   success: <CheckCircleIcon className="text-lime-500 w-4 h-4" />,
@@ -106,7 +106,7 @@ const icons = {
 };
 
 export function MessageMonitor() {
-  const messageManager = useContext(MessageHandlerContext);
+  const messageManager = useContext(MessageManagerContext);
 
   const messages = useSyncExternalStore(
     messageManager.subscribe,
@@ -120,7 +120,7 @@ export function MessageMonitor() {
         <div
           key={message.time}
           className={twMerge(
-            `my-2 flex flex-row gap-2 items-center max-w-[80%] p-2 shadow-md bg-white text-gray-800 mx-auto rounded-lg max-w-10/12 border animate-fade-in-down-delete`,
+            `my-2 flex flex-row gap-2 items-center max-w-[80%] p-2 shadow-md bg-white text-gray-800 mx-auto rounded-lg max-w-10/12 border animate-fade-in-down`,
             message.type === "success" && "border-lime-500",
             message.type === "warning" && "border-yellow-400",
             message.type === "error" && "border-rose-500"

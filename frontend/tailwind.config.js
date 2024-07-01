@@ -75,7 +75,7 @@ module.exports = {
         "100vw": "100vw",
       },
       keyframes: {
-        "fade-in-down-delete": {
+        "fade-in-down": {
           // first opacity 0 to 1
           // then display none
           "0%": {
@@ -87,9 +87,18 @@ module.exports = {
             transform: "translateY(0)",
           },
         },
+        "fade-in": {
+          "0%": {
+            opacity: "0",
+          },
+          "100%": {
+            opacity: "1",
+          },
+        },
       },
       animation: {
-        "fade-in-down-delete": "fade-in-down-delete 1s",
+        "fade-in-down": "fade-in-down 1s",
+        "fade-in": "fade-in 0.2s",
       },
     },
   },

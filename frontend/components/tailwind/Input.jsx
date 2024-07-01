@@ -3,7 +3,8 @@ import React from "react";
 import { twMerge } from "tailwind-merge";
 
 export function Input({
-  value = null,
+  value = undefined,
+  defaultValue = undefined,
   label = null,
   type = "text",
   status = null,
@@ -46,7 +47,6 @@ export function Input({
           placeholder={placeholder}
           aria-invalid="true"
           aria-describedby="email-error"
-          value={value}
           disabled={disabled}
           onChange={(ev) => {
             if (disabled) return;
@@ -59,6 +59,7 @@ export function Input({
             }
           }}
           {...inputHtmlProps}
+          {...{ defaultValue, value }}
         />
         {status === "error" && (
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">

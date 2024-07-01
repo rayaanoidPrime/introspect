@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 import DefineTool from "./DefineTool";
 import { Button } from "$components/tailwind/Button";
 import { twMerge } from "tailwind-merge";
@@ -8,10 +8,11 @@ import SpinningLoader from "$components/icons/SpinningLoader";
 import { addTool, arrayOfObjectsToObject, parseData } from "$utils/utils";
 import { ToolFlow } from "./ToolFlow";
 import { Input } from "$components/tailwind/Input";
+import { MessageManagerContext } from "$components/tailwind/Message";
 
 const generateToolCodeEndpoint = setupBaseUrl("http", "generate_tool_code");
 
-export function ToolEditor({
+export function ToolCreator({
   tool = {
     code: "",
     description: "",
@@ -30,6 +31,7 @@ export function ToolEditor({
   const [functionName, setFunctionName] = useState(tool.function_name);
   const [testingResults, setTestingResults] = useState();
   const [confirmModal, setConfirmModal] = useState(false);
+  const messageManager = useContext(MessageManagerContext);
 
   const handleSubmit = async (userQuestion = null) => {
     setLoading(true);
@@ -49,7 +51,7 @@ export function ToolEditor({
 
       if (!response.success) {
         throw new Error(
-          "Failed to generate tool code" + response.error_message
+          "Failed to generate tool code. " + response.error_message
         );
       }
 
@@ -76,6 +78,7 @@ export function ToolEditor({
       console.log(response.testing_results);
       setTestingResults(response.testing_results);
     } catch (error) {
+      messageManager.error(error);
       console.error(error);
     } finally {
       setLoading(false);
@@ -108,15 +111,15 @@ export function ToolEditor({
       const res = await addTool(payload);
 
       if (res.success) {
-        message.success("Tool added successfully");
+        messageManager.success("Tool added successfully");
         onAddTool(payload);
         setConfirmModal(false);
       } else {
-        message.error("Failed to submit tool" + res.error_message);
+        messageManager.error("Failed to submit tool" + res.error_message);
       }
     } catch (e) {
       console.error(e);
-      message.error("Failed to submit tool" + e.message);
+      messageManager.error("Failed to submit tool" + e.message);
     } finally {
       setLoading(false);
     }
@@ -128,6 +131,7 @@ export function ToolEditor({
     generatedCode,
     tool.toolbox,
     onAddTool,
+    messageManager,
   ]);
 
   return (
@@ -143,15 +147,13 @@ export function ToolEditor({
             />
           </div>
           <Button
-            className={twMerge(
-              "p-2 mt-6 text-sm border",
-              toolName !== "" && toolDocString !== "" && !loading
-                ? ""
-                : "bg-gray-50 text-gray-300 hover:bg-gray-50 cursor-not-allowed"
-            )}
+            className={twMerge("p-2 mt-6 text-sm border")}
+            disabled={!toolName || !toolDocString || loading}
             onClick={() => {
-              if (toolName === "" || toolDocString === "") {
-                message.error("Please fill in the tool name and description");
+              if (!toolName || !toolDocString) {
+                messageManager.error(
+                  "Please fill in the tool name and description"
+                );
                 return;
               }
 
@@ -196,7 +198,7 @@ export function ToolEditor({
             disabled={loading}
             onPressEnter={(ev) => {
               if (!ev.target.value) {
-                message.error("Can't be blank!");
+                messageManager.error("Can't be blank!");
                 return;
               }
               handleSubmit(ev.target.value);
