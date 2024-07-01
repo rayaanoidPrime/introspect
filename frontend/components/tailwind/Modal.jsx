@@ -31,6 +31,7 @@ export default function Modal({
   maskClosable = true,
   rootClassNames = "",
   className = "",
+  contentClassNames = "",
 }) {
   let [isOpen, setIsOpen] = useState(open);
 
@@ -49,20 +50,28 @@ export default function Modal({
     >
       <div className="fixed inset-0 flex w-screen items-center justify-center p-4 animate-fade-in transition duration-300 ease-out data-[closed]:opacity-0">
         <div className="absolute w-full h-full bg-gray-800 opacity-50 left-0 top-0 z-[1]"></div>
-        <DialogPanel className="w-10/12 rounded-md max-h-[95%] overflow-scroll space-y-4 border bg-white px-6 py-2 pb-10 z-[2] relative">
-          <div className="absolute top-2 right-2">
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                onCancel();
-              }}
-              className="p-1"
-            >
-              {closeIcon}
-            </button>
+        <DialogPanel className="h-[95%] overflow-scroll w-10/12 space-y-4 z-[2] relative flex flex-row items-center pointer-events-none">
+          <div
+            className={twMerge(
+              "relative max-h-full overflow-scroll p-4 bg-white rounded-md grow pointer-events-auto ",
+              contentClassNames
+            )}
+          >
+            <div className="absolute top-2 right-2 z-[3]">
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  onCancel();
+                }}
+                className="p-1"
+              >
+                {closeIcon}
+              </button>
+            </div>
+            {title && <DialogTitle>{title}</DialogTitle>}
+            {children}
           </div>
-          {title && <DialogTitle>{title}</DialogTitle>}
-          {children}
+          {footer}
         </DialogPanel>
       </div>
     </Dialog>

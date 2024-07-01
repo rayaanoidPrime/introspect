@@ -2,7 +2,7 @@ import { Button } from "$tailwind/Button";
 import Meta from "$components/common/Meta";
 import Scaffolding from "$components/common/Scaffolding";
 import { toolboxDisplayNames } from "$utils/utils";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import AddTool from "$components/docs/toolEditor/AddTool";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { MessageManagerContext } from "$components/tailwind/Message";
@@ -15,6 +15,7 @@ const deleteToolEndpoint = setupBaseUrl("http", "delete_tool");
 export default function ManageTools() {
   // group tools by "toolbox"
   const [tools, setTools] = useState(null);
+  const initialTools = useRef(null);
 
   const messageManager = useContext(MessageManagerContext);
 
@@ -48,13 +49,12 @@ export default function ManageTools() {
         method: "POST",
       });
       const data = (await response.json())["tools"];
+      initialTools.current = structuredClone(data);
       setTools(data);
     }
 
     fetchTools();
   }, []);
-
-  const columns = ["tool_name", "toolbox", "function_name", "disabled"];
 
   return (
     <>
@@ -70,10 +70,17 @@ export default function ManageTools() {
               onCancel={(ev) => {
                 setSelectedTool(null);
               }}
+              footer={
+                tools?.[selectedTool]?.edited && (
+                  <Button className="absolute animate-fade-in bottom-10 shadow-md right-10 w-40 text-center rounded-md p-2">
+                    Save
+                  </Button>
+                )
+              }
               className={"w-10/12 overflow-scroll h-[90%]"}
             >
               {selectedTool ? (
-                <>
+                <div className="relative">
                   <div className="flex border-b bg-gray-100 p-2 rounded-t-md">
                     <div className="grow">
                       <h1 className="text-lg mb-2">
@@ -186,14 +193,32 @@ export default function ManageTools() {
                       )}
                     </div>
                   </div>
-                  <div className="mt-4 p-2">
+                  <div className="mt-4 p-2 relative">
                     <DefineTool
                       toolName={tools[selectedTool].tool_name}
                       toolDocString={tools[selectedTool].description}
                       toolCode={tools[selectedTool].code}
+                      handleChange={(prop, val) => {
+                        // change tool name
+                        setTools((prevTools) => {
+                          const newTools = { ...prevTools };
+                          newTools[selectedTool][prop] = val;
+
+                          newTools[selectedTool].edited = [
+                            "tool_name",
+                            "description",
+                            "code",
+                          ].some(
+                            (prop) =>
+                              initialTools.current[selectedTool][prop] !==
+                              newTools[selectedTool][prop]
+                          );
+                          return newTools;
+                        });
+                      }}
                     />
                   </div>
-                </>
+                </div>
               ) : (
                 "Please select a tool"
               )}
