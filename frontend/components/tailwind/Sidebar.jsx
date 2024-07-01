@@ -6,7 +6,6 @@ import {
 } from "@heroicons/react/20/solid";
 import React, { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
-import { Collapse } from "./Collapse";
 
 export default function Sidebar({
   title = "Menu",
@@ -49,7 +48,7 @@ export default function Sidebar({
         className={`toggle-button absolute z-10 ${location === "left" ? (open ? "right-5 top-5" : "-right-5 top-5") : open ? "-left-5 top-5" : "right-5 top-5"} cursor-pointer`}
         onClick={() => handleClick()}
       >
-        {location === "left" ? (
+        {location === "right" ? (
           open ? (
             <ArrowLeftStartOnRectangleIcon className="h-4 w-4" />
           ) : (

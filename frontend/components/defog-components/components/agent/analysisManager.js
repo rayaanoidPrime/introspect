@@ -30,9 +30,14 @@ function AnalysisManager({
   let reRunningSteps = [];
   let wasNewAnalysisCreated = false;
   let listeners = [];
+  let destroyed = false;
 
   function getAnalysisData() {
     return analysisData;
+  }
+
+  function destroy() {
+    destroyed = true;
   }
 
   function setAnalysisData(newVal) {
@@ -140,6 +145,9 @@ function AnalysisManager({
   }
 
   function submit(query, stageInput = {}, submitSourceStage = null) {
+    if (destroyed) {
+      throw new Error("Analysis Manager already destroyed.");
+    }
     if (!mainSocket || !mainSocket?.isConnected()) {
       throw new Error("Not connected to servers. Trying to reconnect.");
     }
@@ -213,8 +221,7 @@ function AnalysisManager({
       }
 
       if (response?.error_message) {
-        console.log("Error.");
-        return;
+        throw new Error(response.error_message);
       }
 
       rType = response.request_type;
@@ -478,6 +485,7 @@ function AnalysisManager({
     setMainSocket,
     setReRunSocket,
     deleteSteps,
+    destroy,
   };
 }
 

@@ -1,5 +1,5 @@
-import { Modal, message } from "antd";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Modal } from "antd";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { v4 } from "uuid";
 import { AnalysisAgent } from "./AnalysisAgent";
 import { PlusOutlined } from "@ant-design/icons";
@@ -7,6 +7,7 @@ import { AnalysisHistoryItem } from "./AnalysisHistoryItem";
 import { AnalysisVersionViewerLinks } from "./AnalysisVersionViewerLinks";
 import { ArrowRightEndOnRectangleIcon } from "@heroicons/react/20/solid";
 import Sidebar from "$components/tailwind/Sidebar";
+import { MessageHandlerContext } from "$components/tailwind/Message";
 
 function AnalysisVersionViewer({
   dashboards,
@@ -19,6 +20,8 @@ function AnalysisVersionViewer({
   maxRenderedAnalysis = 2,
 }) {
   const [activeAnalysisId, setActiveAnalysisId] = useState(null);
+
+  const messageManager = useContext(MessageHandlerContext);
 
   const [activeRootAnalysisId, setActiveRootAnalysisId] = useState(null); // this is the currently selected root analysis
 
@@ -136,34 +139,6 @@ function AnalysisVersionViewer({
           );
         }
 
-        // // check if the last analysis is not a dummy analysis
-        // // and either:
-        // // doesn't have gen_steps as the nextStage
-        // // or has gen_steps as the nextStage but the gen_steps is empty
-        // // if so, delete this from the list and create a new analysis
-        // const lastAnalysis =
-        //   newAnalysisVersionList?.[newAnalysisVersionList.length - 1];
-        // const lastAnalysisData = lastAnalysis?.manager?.analysisData;
-
-        // if (
-        //   lastAnalysis &&
-        //   lastAnalysisData &&
-        //   lastAnalysis.analysisId !== "dummy" &&
-        //   // either no steps or non existent steps
-        //   !lastAnalysisData?.gen_steps?.steps?.length
-        // ) {
-        //   console.log(
-        //     "the last analysis was still at clarify stage, deleting it and starting a fresh one"
-        //   );
-        //   newAnalysisVersionList = newAnalysisVersionList.slice(
-        //     0,
-        //     newAnalysisVersionList.length - 1
-        //   );
-        //   directParentIndex = newAnalysisVersionList.length - 1;
-        // }
-
-        // let newAnalysisId = null;
-
         console.groupCollapsed("Analysis version viewer");
         console.groupEnd();
 
@@ -184,13 +159,16 @@ function AnalysisVersionViewer({
           }
         });
       } catch (e) {
-        message.error("Failed to create analysis: " + e);
+        messageManager.error("Failed to create analysis");
+        console.log(e.stack);
       } finally {
         setLoading(false);
       }
     },
     [sessionAnalyses, allAnalyses]
   );
+
+  console.log(sessionAnalyses, allAnalyses);
 
   // w-0
   return (
@@ -228,6 +206,9 @@ function AnalysisVersionViewer({
                     searchRef={searchRef}
                     setGlobalLoading={setLoading}
                     devMode={devMode}
+                    onManagerDestroyed={(mgr, id) => {
+                      console.log(mgr, id);
+                    }}
                   />
                 </div>
               )}
@@ -251,6 +232,41 @@ function AnalysisVersionViewer({
                     searchRef={searchRef}
                     setGlobalLoading={setLoading}
                     devMode={devMode}
+                    onManagerDestroyed={(mgr, id) => {
+                      const data = mgr.analysisData;
+                      // remove the analysis from the sessionAnalyses
+                      setSessionAnalyses((prev) => {
+                        let newSessionAnalyses = { ...prev };
+                        if (newSessionAnalyses[id]) {
+                          delete newSessionAnalyses[id];
+                        } else {
+                          const rootAnalysisId = data.root_analysis_id;
+                          if (rootAnalysisId) {
+                            const rootAnalysis =
+                              newSessionAnalyses[rootAnalysisId];
+                            if (rootAnalysis) {
+                              rootAnalysis.versionList =
+                                rootAnalysis.versionList.filter(
+                                  (item) => item.analysisId !== id
+                                );
+                            }
+                          }
+                        }
+
+                        return newSessionAnalyses;
+                      });
+                      setAllAnalyses((prev) => {
+                        let newAllAnalyses = { ...prev };
+                        if (newAllAnalyses[id]) {
+                          delete newAllAnalyses[id];
+                        }
+                        return newAllAnalyses;
+                      });
+                      setActiveAnalysisId(null);
+                      if (activeRootAnalysisId === id) {
+                        setActiveRootAnalysisId(null);
+                      }
+                    }}
                   />
                 </div>
               );

@@ -24,6 +24,7 @@ import Clarify from "./analysis-gen/Clarify";
 import AnalysisManager from "./analysisManager";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { AnalysisFeedback } from "./feedback/AnalysisFeedback";
+import { MessageHandlerContext } from "$components/tailwind/Message";
 
 const getToolsEndpoint = setupBaseUrl("http", "get_user_tools");
 
@@ -37,7 +38,8 @@ export const AnalysisAgent = ({
   initiateAutoSubmit = false,
   searchRef = null,
   setGlobalLoading = () => {},
-  managerCreatedHook = () => {},
+  onManagerCreated = () => {},
+  onManagerDestroyed = () => {},
 }) => {
   // const [messageApi, contextHolder] = message.useMessage();
   const [pendingToolRunUpdates, setPendingToolRunUpdates] = useState({});
@@ -56,12 +58,15 @@ export const AnalysisAgent = ({
 
   const docContext = useContext(DocContext);
 
+  const messageManager = useContext(MessageHandlerContext);
+
   const { mainManager, reRunManager, toolSocketManager } =
     docContext.val.socketManagers;
 
   function onMainSocketMessage(response, newAnalysisData) {
     try {
       if (response.error_message) {
+        // messageManager.error(response.error_message);
         throw new Error(response.error_message);
       }
       setToolRunDataCache(analysisManager.toolRunDataCache);
@@ -87,7 +92,7 @@ export const AnalysisAgent = ({
         }
       }
     } catch (e) {
-      // messageApi.error(e);
+      messageManager.error(e);
       console.log(e);
       setAnalysisBusy(false);
       setGlobalLoading(false);
@@ -122,7 +127,7 @@ export const AnalysisAgent = ({
         });
       });
     } catch (e) {
-      // messageApi.error(e);
+      messageManager.error(e);
       console.log(e);
       console.log(e.stack);
     } finally {
@@ -219,6 +224,7 @@ export const AnalysisAgent = ({
           setAnalysisBusy(false);
         }
       } catch (e) {
+        messageManager.error(e);
         console.log(e);
         console.log(e.stack);
       }
@@ -228,7 +234,7 @@ export const AnalysisAgent = ({
 
   useEffect(() => {
     if (analysisManager) {
-      managerCreatedHook(analysisManager, analysisId);
+      onManagerCreated(analysisManager, analysisId);
       if (mainManager && reRunManager) {
         analysisManager.setMainSocket(mainManager);
         analysisManager.setReRunSocket(reRunManager);
@@ -250,11 +256,15 @@ export const AnalysisAgent = ({
         setAnalysisBusy(true);
         setGlobalLoading(true);
       } catch (err) {
-        // messageApi.error(err);
-        console.log(err);
+        messageManager.error(err);
         console.log(err.stack);
         setAnalysisBusy(false);
         setGlobalLoading(false);
+        // if the current stage is null, just destroy this analysis
+        if (submitStage === null) {
+          analysisManager.destroy();
+          onManagerDestroyed(analysisManager, analysisId);
+        }
       }
     },
     [analysisManager, setGlobalLoading]
@@ -276,15 +286,13 @@ export const AnalysisAgent = ({
       try {
         analysisManager.initiateReRun(toolRunId, preRunActions);
       } catch (e) {
-        // messageApi.error(err);
+        messageManager.error(err);
         console.log(e);
         console.log(e.stack);
       }
     },
     [analysisId, activeNode, reRunManager, dag, analysisManager]
   );
-
-  console.log(analysisData);
 
   return (
     <ErrorBoundary>
@@ -375,6 +383,7 @@ export const AnalysisAgent = ({
                             try {
                               await analysisManager.deleteSteps(toolRunIds);
                             } catch (e) {
+                              messageManager.error(e);
                               console.log(e);
                               console.log(e.stack);
                             }
