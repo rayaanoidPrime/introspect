@@ -2,12 +2,12 @@ import React from "react";
 import { twMerge } from "tailwind-merge";
 
 // a button component with onclick, className and children props
-export const Button = ({
+export default function Button({
   onClick = (...args) => {},
   className = "",
   children = null,
   disabled = false,
-}) => {
+}) {
   return (
     <button
       disabled={disabled}
@@ -26,4 +26,4 @@ export const Button = ({
       {children}
     </button>
   );
-};
+}

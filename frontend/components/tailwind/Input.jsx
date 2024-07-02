@@ -2,7 +2,7 @@ import { ExclamationCircleIcon } from "@heroicons/react/20/solid";
 import React from "react";
 import { twMerge } from "tailwind-merge";
 
-export function Input({
+export default function Input({
   value = undefined,
   defaultValue = undefined,
   label = null,
@@ -28,13 +28,13 @@ export function Input({
           {label}
         </label>
       )}
-      <div className="relative rounded-md shadow-sm">
+      <div className="relative rounded-md">
         <input
           type={type}
           name={name}
           id={id}
           className={twMerge(
-            "block w-full focus:shadow-sm rounded-md border-0 py-1.5 pr-10 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset",
+            "block w-full shadow-sm rounded-md border-0 py-1.5 pr-10 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset",
             status !== "error"
               ? "focus:ring-blue-400"
               : "focus:ring-rose-400 ring-rose-400",

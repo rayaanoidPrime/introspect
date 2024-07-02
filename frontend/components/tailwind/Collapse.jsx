@@ -4,7 +4,7 @@ import { twMerge } from "tailwind-merge";
 
 let timeout,
   count = 0;
-export function Collapse({
+export default function Collapse({
   children,
   title,
   rootClassName = "",
@@ -45,8 +45,6 @@ export function Collapse({
       clearTimeout(timeout);
     };
   }, [collapsed]);
-
-  console.log("Renrdering;");
 
   return (
     <>

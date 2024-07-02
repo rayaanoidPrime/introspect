@@ -1,7 +1,7 @@
-import { Button } from "$tailwind/Button";
+import Button from "$tailwind/Button";
 import Meta from "$components/common/Meta";
 import Scaffolding from "$components/common/Scaffolding";
-import { toolboxDisplayNames, updateTool } from "$utils/utils";
+import { addTool, toolboxDisplayNames } from "$utils/utils";
 import {
   useCallback,
   useContext,
@@ -71,12 +71,14 @@ export default function ManageTools() {
     }
     try {
       setLoading(true);
-      const res = await updateTool({
+      const res = await addTool({
         function_name: tools[selectedTool].function_name,
         tool_name: tools[selectedTool].tool_name,
         description: tools[selectedTool].description,
         code: tools[selectedTool].code,
-        props_to_update: ["tool_name", "description", "code"],
+        input_metadata: tools[selectedTool].input_metadata,
+        output_metadata: tools[selectedTool].output_metadata,
+        toolbox: tools[selectedTool].toolbox,
       });
 
       if (!res.success) {
@@ -107,7 +109,7 @@ export default function ManageTools() {
               }}
               contentClassNames="z-[5]"
               footer={
-                tools?.[selectedTool]?.edited && (
+                tools?.[selectedTool]?.edited ? (
                   <Button
                     className="absolute animate-fade-in bottom-10 shadow-md right-10 w-40 text-center rounded-md p-2 cursor-pointer z-[6]"
                     onClick={handleSave}
@@ -115,6 +117,8 @@ export default function ManageTools() {
                   >
                     Save
                   </Button>
+                ) : (
+                  false
                 )
               }
               className={"w-10/12 overflow-scroll h-[90%]"}
@@ -233,7 +237,7 @@ export default function ManageTools() {
                       )}
                     </div>
                   </div>
-                  <div className="mt-4 p-2 relative">
+                  <div className="mt-4 p-2 relative font-mono">
                     <DefineTool
                       toolName={tools[selectedTool].tool_name}
                       toolDocString={tools[selectedTool].description}

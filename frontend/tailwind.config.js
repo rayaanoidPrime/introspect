@@ -100,6 +100,9 @@ module.exports = {
         "fade-in-down": "fade-in-down 1s",
         "fade-in": "fade-in 0.2s",
       },
+      fontFamily: {
+        platypi: ["Platypi, serif"],
+      },
     },
   },
 

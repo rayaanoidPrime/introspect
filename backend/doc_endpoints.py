@@ -897,31 +897,6 @@ async def toggle_disable_tool_endpoint(request: Request):
         return {"success": False, "error_message": str(e)[:300]}
 
 
-@router.post("/update_tool")
-async def update_tool_endpoint(request: Request):
-    """
-    Update details for a particular tool.
-    function_name is primary key so that must exist
-    """
-    try:
-        data = await request.json()
-        function_name = data.get("function_name")
-        props_to_update = data.get("props_to_update")
-        update_dict = {}
-
-        for prop in props_to_update:
-            update_dict[prop] = data[prop]
-
-        err = await update_tool(function_name, update_dict)
-
-        if err:
-            raise Exception(err)
-
-        return {"success": True}
-    except Exception as e:
-        return {"success": False, "error_message": str(e)[:300]}
-
-
 @router.post("/add_tool")
 async def add_tool_endpoint(request: Request):
     """

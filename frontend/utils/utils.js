@@ -401,7 +401,6 @@ export function appendAnalysisToYjsDoc(yjsDoc, analysisId) {
     const blockGroup = yjsDoc.getXmlFragment("document-store").firstChild;
 
     blockGroup.insert(blockGroup.length, [newBlock]);
-    console.log(tr);
   });
   return true;
 }
@@ -528,30 +527,6 @@ export const deleteToolRunIds = async (analysisId, toolRunIds) => {
     const json = res.json();
 
     return res;
-  } catch (e) {
-    console.error(e);
-    return { success: false, error_message: e };
-  }
-};
-
-export const updateTool = async (payload) => {
-  const updateToolEndpoint = setupBaseUrl("http", "update_tool");
-  try {
-    const res = await fetch(updateToolEndpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to update tool");
-    }
-
-    const json = await res.json();
-
-    return json;
   } catch (e) {
     console.error(e);
     return { success: false, error_message: e };

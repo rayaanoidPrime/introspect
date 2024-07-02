@@ -1,7 +1,7 @@
 import { ExclamationCircleIcon } from "@heroicons/react/20/solid";
 import { twMerge } from "tailwind-merge";
 
-export function TextArea({
+export default function TextArea({
   value = undefined,
   defaultValue = undefined,
   status = null,
@@ -34,7 +34,10 @@ export function TextArea({
               "sm:text-sm sm:leading-6",
               status !== "error"
                 ? "focus:ring-blue-400"
-                : "focus:ring-rose-400 ring-rose-400"
+                : "focus:ring-rose-400 ring-rose-400",
+              disabled
+                ? "bg-gray-100 text-gray-400  focus:ring-gray-100 cursor-not-allowed"
+                : "bg-white"
             )}
             onChange={onChange}
             {...textAreaHtmlProps}

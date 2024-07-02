@@ -168,8 +168,6 @@ function AnalysisVersionViewer({
     [sessionAnalyses, allAnalyses]
   );
 
-  console.log(sessionAnalyses, allAnalyses);
-
   // w-0
   return (
     <>
@@ -326,7 +324,7 @@ function AnalysisVersionViewer({
                   "px-2 pt-5 pb-14 rounded-tl-lg relative sm:block"
                 }
               >
-                <div className="flex flex-col px-2 relative history-list">
+                <div className="flex flex-col  relative history-list">
                   <AnalysisVersionViewerLinks
                     analyses={allAnalyses}
                     activeAnalysisId={activeAnalysisId}

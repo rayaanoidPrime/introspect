@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ToolEditorInput } from "./ToolEditorInput";
-import { Modal } from "antd";
 import Table from "$components/tailwind/Table";
 import { CodeBracketSquareIcon } from "@heroicons/react/20/solid";
 import ToolCodeEditor from "./ToolCodeEditor";
+import Modal from "$components/tailwind/Modal";
 
-export function ToolFlow({ toolName, testingResults, code }) {
+export function ToolFlow({
+  toolName,
+  testingResults,
+  code,
+  handleCodeChange = (...args) => {},
+  showCode = true,
+}) {
   const inputsCtr = useRef(null);
   const outputsCtr = useRef(null);
   const toolNameNode = useRef(null);
@@ -110,7 +116,7 @@ export function ToolFlow({ toolName, testingResults, code }) {
         <Modal
           open={activeInput}
           onCancel={() => setActiveInput(null)}
-          onOk={() => setActiveInput(null)}
+          footer={null}
           title={activeInput.type.toUpperCase()}
         >
           {activeInput.type === "table" && (
@@ -132,20 +138,22 @@ export function ToolFlow({ toolName, testingResults, code }) {
           {activeInput.type === "code" && (
             <>
               <ToolCodeEditor
+                editable
                 toolCode={activeInput.code}
                 className="h-96 overflow-scroll"
+                onChange={handleCodeChange}
               />
             </>
           )}
         </Modal>
       )}
-      <div className="flex flex-row items-center h-80vh justify-between">
+      <div className="flex flex-row items-center justify-between">
         <div className="absolute left-0 right-0 w-full h-full pointer-events-none">
           <svg ref={svg} width={"100%"} height={"100%"} />
         </div>
         {/* <div className="mb-4 font-bold">Inputs</div> */}
         <div
-          className="flex flex-col overflow-auto justify-center items-start z-10"
+          className="flex flex-col overflow-auto justify-center items-start z-[1]"
           ref={inputsCtr}
         >
           {testingResults.inputs.map((input, i) => (
@@ -171,10 +179,12 @@ export function ToolFlow({ toolName, testingResults, code }) {
           <div className="rounded-md bg-blue-500 text-white p-1 px-2 ">
             {toolName}
           </div>
-          <CodeBracketSquareIcon
-            className="h-6 w-6 inline-block ml-2 text-blue-200 cursor-pointer hover:text-blue-400 z-20 bg-white"
-            onClick={() => setActiveInput({ type: "code", code: code })}
-          />
+          {showCode && (
+            <CodeBracketSquareIcon
+              className="h-6 w-6 inline-block ml-2 text-blue-200 cursor-pointer hover:text-blue-400 z-[2] bg-white"
+              onClick={() => setActiveInput({ type: "code", code: code })}
+            />
+          )}
         </div>
 
         <div className="flex flex-col" ref={outputsCtr}>
@@ -201,7 +211,6 @@ export function ToolFlow({ toolName, testingResults, code }) {
                       isImage={true}
                       input={d}
                       onClick={(d) => {
-                        console.log(d);
                         setActiveInput({ type: "image", data: d.data });
                       }}
                     />

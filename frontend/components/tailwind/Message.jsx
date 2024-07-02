@@ -105,7 +105,7 @@ const icons = {
   error: <XCircleIcon className="text-rose-500 w-4 h-4" />,
 };
 
-export function MessageMonitor() {
+export default function MessageMonitor() {
   const messageManager = useContext(MessageManagerContext);
 
   const messages = useSyncExternalStore(

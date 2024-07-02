@@ -3,16 +3,6 @@ import { twMerge } from "tailwind-merge";
 import SingleSelect from "./SingleSelect";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 
-const people = [
-  {
-    name: "Lindsay Walton",
-    title: "Front-end Developer",
-    email: "lindsay.walton@example.com",
-    role: "Member",
-  },
-  // More people...
-];
-
 const allowedPageSizes = [10, 20, 50, 100];
 
 const defaultColumnHeaderRender = ({
@@ -23,7 +13,6 @@ const defaultColumnHeaderRender = ({
   sortOrder,
   sortColumn,
 }) => {
-  console.log(column, i, allColumns);
   return (
     <th
       key={column.key}
@@ -164,7 +153,6 @@ export default function Table({
             <thead className="bg-gray-50">
               <tr>
                 {columnsToDisplay.map((column, i) => {
-                  console.log(columnsToDisplay);
                   return column.cellRender({
                     column,
                     i,
