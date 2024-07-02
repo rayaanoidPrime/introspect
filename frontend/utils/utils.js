@@ -495,6 +495,10 @@ export const addTool = async ({
       body: JSON.stringify(payload),
     });
 
+    if (!res.ok) {
+      throw new Error("Failed to add tool");
+    }
+
     const json = await res.json();
     return json;
   } catch (e) {
@@ -515,9 +519,39 @@ export const deleteToolRunIds = async (analysisId, toolRunIds) => {
         analysis_id: analysisId,
         tool_run_ids: toolRunIds,
       }),
-    }).then((r) => r.json());
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to delete tool run ids");
+    }
+
+    const json = res.json();
 
     return res;
+  } catch (e) {
+    console.error(e);
+    return { success: false, error_message: e };
+  }
+};
+
+export const updateTool = async (payload) => {
+  const updateToolEndpoint = setupBaseUrl("http", "update_tool");
+  try {
+    const res = await fetch(updateToolEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to update tool");
+    }
+
+    const json = await res.json();
+
+    return json;
   } catch (e) {
     console.error(e);
     return { success: false, error_message: e };

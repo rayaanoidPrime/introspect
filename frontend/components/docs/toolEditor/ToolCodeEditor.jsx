@@ -20,7 +20,6 @@ export default function ToolCodeEditor({
       editable={editable}
       extensions={[python(), EditorView.lineWrapping]}
       onChange={(val) => {
-        console.log(val);
         onChange(val);
       }}
       basicSetup={{

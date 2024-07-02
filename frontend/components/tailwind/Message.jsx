@@ -115,7 +115,7 @@ export function MessageMonitor() {
   );
 
   return (
-    <div className="fixed flex flex-col items-center w-full top-0 justify-center pt-4 z-[2000] *:transition-all">
+    <div className="fixed flex flex-col items-center w-full top-0 justify-center pt-4 z-[2000] *:transition-all pointer-events-none">
       {messages.map((message, i) => (
         <div
           key={message.time}

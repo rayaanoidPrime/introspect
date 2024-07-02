@@ -8,16 +8,6 @@ import { XCircleIcon, XMarkIcon } from "@heroicons/react/20/solid";
 import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
-// open
-// onCancel
-//   centered
-//   footer
-//   className
-// title="To improve the model, could you please give more details about why this is a bad query? :)"
-//           closeIcon
-// onOk
-// maskClosable
-
 export default function Modal({
   children = null,
   open = false,
@@ -70,8 +60,8 @@ export default function Modal({
             </div>
             {title && <DialogTitle>{title}</DialogTitle>}
             {children}
+            {footer}
           </div>
-          {footer}
         </DialogPanel>
       </div>
     </Dialog>

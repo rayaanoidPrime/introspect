@@ -1,8 +1,15 @@
 import { Button } from "$tailwind/Button";
 import Meta from "$components/common/Meta";
 import Scaffolding from "$components/common/Scaffolding";
-import { toolboxDisplayNames } from "$utils/utils";
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { toolboxDisplayNames, updateTool } from "$utils/utils";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import AddTool from "$components/docs/toolEditor/AddTool";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { MessageManagerContext } from "$components/tailwind/Message";
@@ -18,6 +25,8 @@ export default function ManageTools() {
   const initialTools = useRef(null);
 
   const messageManager = useContext(MessageManagerContext);
+
+  const [loading, setLoading] = useState(false);
 
   const groupedTools = useMemo(() => {
     if (tools) {
@@ -56,6 +65,32 @@ export default function ManageTools() {
     fetchTools();
   }, []);
 
+  const handleSave = useCallback(async () => {
+    if (loading) {
+      return;
+    }
+    try {
+      setLoading(true);
+      const res = await updateTool({
+        function_name: tools[selectedTool].function_name,
+        tool_name: tools[selectedTool].tool_name,
+        description: tools[selectedTool].description,
+        code: tools[selectedTool].code,
+        props_to_update: ["tool_name", "description", "code"],
+      });
+
+      if (!res.success) {
+        throw new Error(res.error_message);
+      } else {
+        messageManager.success("Tool updated successfully");
+      }
+    } catch (e) {
+      messageManager.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [tools, selectedTool, messageManager, setLoading, loading]);
+
   return (
     <>
       <Meta />
@@ -70,9 +105,14 @@ export default function ManageTools() {
               onCancel={(ev) => {
                 setSelectedTool(null);
               }}
+              contentClassNames="z-[5]"
               footer={
                 tools?.[selectedTool]?.edited && (
-                  <Button className="absolute animate-fade-in bottom-10 shadow-md right-10 w-40 text-center rounded-md p-2">
+                  <Button
+                    className="absolute animate-fade-in bottom-10 shadow-md right-10 w-40 text-center rounded-md p-2 cursor-pointer z-[6]"
+                    onClick={handleSave}
+                    disabled={loading}
+                  >
                     Save
                   </Button>
                 )

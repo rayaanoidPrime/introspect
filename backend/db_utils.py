@@ -1339,6 +1339,32 @@ async def add_tool(
         return err
 
 
+async def update_tool(function_name, update_dict):
+    err = None
+    try:
+        with engine.begin() as conn:
+            # check if tool exists
+            row = conn.execute(
+                select(Tools).where(Tools.function_name == function_name)
+            ).fetchone()
+
+            if row is None:
+                raise ValueError(f"Tool {function_name} does not exist.")
+            else:
+                # update with latest
+                conn.execute(
+                    update(Tools)
+                    .where(Tools.function_name == function_name)
+                    .values(update_dict)
+                )
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        err = str(e)
+    finally:
+        return err
+
+
 async def toggle_disable_tool(function_name):
     err = None
     try:
