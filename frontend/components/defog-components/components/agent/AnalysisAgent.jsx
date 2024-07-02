@@ -99,42 +99,59 @@ export const AnalysisAgent = ({
     }
   }
 
-  async function onReRunMessage(response) {
-    try {
-      setRerunningSteps(analysisManager.reRunningSteps);
-      // remove all pending updates for this tool_run_id
-      // because all new data is already there in the received response
-      setPendingToolRunUpdates((prev) => {
-        const newUpdates = { ...prev };
-        delete newUpdates[response.tool_run_id];
-        return newUpdates;
-      });
-
-      setToolRunDataCache(analysisManager.toolRunDataCache);
-
-      // update reactive context
-      Object.keys(response?.tool_run_data?.outputs || {}).forEach((k, i) => {
-        if (!response?.tool_run_data?.outputs?.[k]?.reactive_vars) return;
-        const runId = response.tool_run_id;
-        reactiveContext.update((prev) => {
-          return {
-            ...prev,
-            [runId]: {
-              ...prev[runId],
-              [k]: response?.tool_run_data?.outputs?.[k]?.reactive_vars,
-            },
-          };
+  const onReRunMessage = useCallback(
+    (response) => {
+      try {
+        setRerunningSteps(analysisManager.reRunningSteps);
+        // remove all pending updates for this tool_run_id
+        // because all new data is already there in the received response
+        setPendingToolRunUpdates((prev) => {
+          const newUpdates = { ...prev };
+          delete newUpdates[response.tool_run_id];
+          return newUpdates;
         });
-      });
-    } catch (e) {
-      messageManager.error(e);
-      console.log(e);
-      console.log(e.stack);
-    } finally {
-      setAnalysisBusy(false);
-      setGlobalLoading(false);
-    }
-  }
+
+        setToolRunDataCache(analysisManager.toolRunDataCache);
+
+        console.log(dag, [...dag?.nodes?.()]);
+        // if this is success = true, then check tool_run_data.outputs
+        // and set active node to that one
+        if (response.success) {
+          const parentNodes = [...dag.nodes()].filter(
+            (d) =>
+              d.data.isOutput &&
+              d.data.parentIds.find((p) => p === response.tool_run_id)
+          );
+          if (parentNodes.length) {
+            setActiveNodePrivate(parentNodes[0]);
+          }
+        }
+
+        // update reactive context
+        Object.keys(response?.tool_run_data?.outputs || {}).forEach((k, i) => {
+          if (!response?.tool_run_data?.outputs?.[k]?.reactive_vars) return;
+          const runId = response.tool_run_id;
+          reactiveContext.update((prev) => {
+            return {
+              ...prev,
+              [runId]: {
+                ...prev[runId],
+                [k]: response?.tool_run_data?.outputs?.[k]?.reactive_vars,
+              },
+            };
+          });
+        });
+      } catch (e) {
+        messageManager.error(e);
+        console.log(e);
+        console.log(e.stack);
+      } finally {
+        setAnalysisBusy(false);
+        setGlobalLoading(false);
+      }
+    },
+    [dag]
+  );
 
   const analysisManager = useMemo(() => {
     return AnalysisManager({
@@ -147,6 +164,8 @@ export const AnalysisAgent = ({
       createAnalysisRequestBody,
     });
   }, [analysisId]);
+
+  analysisManager.setOnReRunDataCallback(onReRunMessage);
 
   const [analysisBusy, setAnalysisBusy] = useState(initiateAutoSubmit);
 
@@ -351,7 +370,7 @@ export const AnalysisAgent = ({
               )}
 
               {analysisData.currentStage === "gen_steps" ? (
-                <div className="analysis-content flex flex-row max-w-full overflow-auto">
+                <div className="analysis-content flex flex-row max-w-full">
                   <div className="analysis-results grow overflow-scroll relative">
                     <ErrorBoundary>
                       {!analysisBusy && analysisData && (
@@ -408,7 +427,7 @@ export const AnalysisAgent = ({
                       )}
                     </ErrorBoundary>
                   </div>
-                  <div className="analysis-steps overflow-auto">
+                  <div className="analysis-steps">
                     <StepsDag
                       steps={analysisData?.gen_steps?.steps || []}
                       nodeSize={[40, 10]}

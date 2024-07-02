@@ -197,7 +197,11 @@ def get_clean_plan(analysis_data):
                 "done",
                 "error_message",
             ]:
-                cleaned_item[key] = value
+                # if key is model_generated_inputs, just change it to inputs
+                if key == "model_generated_inputs":
+                    cleaned_item["inputs"] = value
+                else:
+                    cleaned_item[key] = value
         cleaned_plan.append(cleaned_item)
 
     return cleaned_plan

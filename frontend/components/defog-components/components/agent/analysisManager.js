@@ -31,6 +31,8 @@ function AnalysisManager({
   let wasNewAnalysisCreated = false;
   let listeners = [];
   let destroyed = false;
+  let _onReRunData = onReRunData;
+  let _onNewData = onNewData;
 
   function getAnalysisData() {
     return analysisData;
@@ -297,8 +299,8 @@ function AnalysisManager({
       if (skip) return;
 
       setAnalysisData(newAnalysisData);
-      if (onNewData && typeof onNewData === "function") {
-        onNewData(response, newAnalysisData);
+      if (_onNewData && typeof _onNewData === "function") {
+        _onNewData(response, newAnalysisData);
       }
     }
   }
@@ -405,8 +407,8 @@ function AnalysisManager({
       setAnalysisData(newAnalysisData);
       console.groupEnd();
 
-      if (onReRunData && typeof onReRunData === "function") {
-        onReRunData(response);
+      if (_onReRunData && typeof _onReRunData === "function") {
+        _onReRunData(response);
       }
     }
   }
@@ -450,6 +452,14 @@ function AnalysisManager({
     listeners.forEach((l) => l());
   }
 
+  function setOnReRunDataCallback(callback) {
+    _onReRunData = callback;
+  }
+
+  function setOnNewDataCallback(callback) {
+    _onNewData = callback;
+  }
+
   return {
     init,
     get wasNewAnalysisCreated() {
@@ -486,6 +496,8 @@ function AnalysisManager({
     setReRunSocket,
     deleteSteps,
     destroy,
+    setOnReRunDataCallback,
+    setOnNewDataCallback,
   };
 }
 

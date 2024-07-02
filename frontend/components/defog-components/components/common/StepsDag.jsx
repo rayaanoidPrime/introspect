@@ -306,7 +306,7 @@ export default function StepsDag({
                 </Popover>
               );
             })}
-          <svg width={dag?.width + nodeCssSize} height={"100%"}>
+          <svg width={dag?.width + nodeCssSize * 3} height={"100%"}>
             {dagLinks.map((d) => {
               // bezier curve
               const source = d.source;
