@@ -55,6 +55,27 @@ Toolboxes = Base.classes.defog_toolboxes
 Tools = Base.classes.defog_tools
 Users = Base.classes.defog_users
 Feedback = Base.classes.defog_plans_feedback
+DbCreds = Base.classes.defog_db_creds
+
+
+def get_db_type_creds(api_key):
+    with engine.begin() as conn:
+        row = conn.execute(
+            select(DbCreds.db_type, DbCreds.db_creds).where(DbCreds.api_key == api_key)
+        ).fetchone()
+
+    return row
+
+
+def update_db_type_creds(api_key, db_type, db_creds):
+    with engine.begin() as conn:
+        conn.execute(
+            update(DbCreds)
+            .where(DbCreds.api_key == api_key)
+            .values(db_type=db_type, db_creds=db_creds)
+        )
+
+    return True
 
 
 def validate_user(token, user_type=None, get_username=False):
