@@ -237,7 +237,7 @@ export default function Table({
                 rootClassName="w-24"
                 options={allowedPageSizes.map((d) => ({ value: d, label: d }))}
                 defaultValue={pageSize}
-                onChange={(opt) => setPageSize(opt.value)}
+                onChange={(val) => setPageSize(val || 10)}
               />
             </div>
           </div>

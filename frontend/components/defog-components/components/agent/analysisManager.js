@@ -122,6 +122,7 @@ function AnalysisManager({
 
   async function deleteSteps(toolRunIds) {
     const res = await deleteToolRunIds(analysisId, toolRunIds);
+    console.log(res);
     if (res.success && res.new_steps) {
       let newAnalysisData = { ...analysisData };
       // if new steps are empty, delete the gen_steps key
@@ -388,6 +389,7 @@ function AnalysisManager({
       );
 
       if (idx > -1) {
+        console.log("here");
         newSteps[idx] = {
           ...newSteps[idx],
           error_message:

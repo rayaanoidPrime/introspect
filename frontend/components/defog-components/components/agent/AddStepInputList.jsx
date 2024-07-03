@@ -46,7 +46,7 @@ export const inputTypeToUI = {
           return (
             <span key={inputName}>
               <Input
-                defaultValue={val}
+                value={val}
                 size="small"
                 onChange={(ev) => {
                   // replace the value at i with the new value
@@ -75,7 +75,7 @@ export const inputTypeToUI = {
     if (!initialValue) initialValue = "";
     return (
       <Input
-        defaultValue={initialValue || ""}
+        value={initialValue || ""}
         size="small"
         onChange={(ev) => {
           onEdit(inputName, ev.target.value);
@@ -87,15 +87,14 @@ export const inputTypeToUI = {
     return (
       <SingleSelect
         placeholder="Select a value"
-        defaultValue={initialValue || null}
+        value={initialValue || null}
         size="small"
         popupClassName="tool-input-value-dropdown"
         options={[
           { label: "true", value: true },
           { label: "false", value: false },
         ]}
-        onChange={(opt) => {
-          const val = opt.value;
+        onChange={(val) => {
           onEdit(inputName, val);
         }}
       />
@@ -103,7 +102,7 @@ export const inputTypeToUI = {
   },
   int: (inputName, initialValue, onEdit, config = {}) => (
     <Input
-      defaultValue={initialValue || ""}
+      value={initialValue || ""}
       type="number"
       size="small"
       onChange={(ev) => {
@@ -115,7 +114,7 @@ export const inputTypeToUI = {
     <Input
       size="small"
       type="number"
-      defaultValue={initialValue}
+      value={initialValue}
       onChange={(ev) => {
         onEdit(inputName, parseFloat(ev.target.value));
       }}
@@ -140,15 +139,14 @@ export const inputTypeToUI = {
       <SingleSelect
         size="small"
         placeholder="Select a value"
-        onChange={(opt) => {
-          const val = opt.value;
+        onChange={(val) => {
           onEdit(inputName, val);
         }}
-        defaultValue={initialValue}
-        optionRenderer={(option) => {
+        value={initialValue}
+        optionRenderer={(option, focus, selected) => {
           return (
             <div
-              className="tool-input-data-value"
+              className="p-2 text-sm bg-white text-gray-500 rounded-md border-l-8 border-l-lime-400"
               onMouseOver={(ev) => onHover(ev, option.label, config.analysisId)}
               onMouseOut={(ev) =>
                 onHoverOut(ev, option.label, config.analysisId)
@@ -200,8 +198,7 @@ export const inputTypeToUI = {
         popupClassName="tool-input-value-dropdown"
         options={options}
         placeholder="Select a column name"
-        onChange={(opt) => {
-          const val = opt.value;
+        onChange={(val) => {
           onEdit(inputName, val);
         }}
       />
@@ -250,8 +247,7 @@ export const inputTypeToUI = {
                 placeholder="Select a column name"
                 popupClassName="tool-input-value-dropdown"
                 options={options}
-                onChange={(opt) => {
-                  const val = opt.value;
+                onChange={(val) => {
                   // replace the value at i with the new value
                   const newVal = initialValue.map((v, j) => {
                     if (i === j) {
@@ -327,8 +323,7 @@ export const inputTypeToUI = {
           return { label: option, value: option };
         })}
         placeholder="Select a value"
-        onChange={(opt) => {
-          const val = opt.value;
+        onChange={(val) => {
           onEdit(inputName, val);
         }}
       />
@@ -399,7 +394,7 @@ export function AddStepInputList({
   }, [inputs, parentNodeData, toolRunId]);
 
   return (
-    <div className="tool-input-list" key={toolRunId} ref={ctr}>
+    <div className="" key={toolRunId} ref={ctr}>
       {Object.keys(inputs).map((input_name, i) => {
         const sanitizedType = sanitizeInputType(inputMetadata[input_name].type);
         const input = inputs[input_name];

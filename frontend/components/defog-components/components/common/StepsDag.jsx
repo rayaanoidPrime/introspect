@@ -225,7 +225,7 @@ export default function StepsDag({
 
   return (
     <div
-      className="analysis-graph p-2 rounded-md max-w-60 overflow-scroll"
+      className="analysis-graph p-2 rounded-md overflow-scroll"
       key={steps?.length}
     >
       {dag ? (
@@ -309,7 +309,7 @@ export default function StepsDag({
                 </Popover>
               );
             })}
-          <svg width={dag?.width + nodeCssSize * 2} height={"100%"}>
+          <svg width={dag?.width + nodeCssSize * 3} height={"100%"}>
             {dagLinks.map((d) => {
               // bezier curve
               const source = d.source;

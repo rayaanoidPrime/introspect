@@ -17,7 +17,7 @@ import { ToolResults } from "./ToolResults";
 import StepsDag from "../common/StepsDag";
 import ErrorBoundary from "../common/ErrorBoundary";
 import { Context } from "$components/common/Context";
-import { toolShortNames } from "$utils/utils";
+import { toolShortNames, trimStringToLength } from "$utils/utils";
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
 import Input from "antd/es/input";
 import Clarify from "./analysis-gen/Clarify";
@@ -456,8 +456,12 @@ export const AnalysisAgent = ({
                       }}
                       toolIcon={(node) => (
                         <p className="text-sm truncate m-0">
-                          {toolShortNames[node?.data?.step?.tool_name] ||
-                            node?.data?.step?.tool_name}
+                          {trimStringToLength(
+                            toolShortNames[node?.data?.step?.tool_name] ||
+                              tools[node?.data?.step?.tool_name]["tool_name"] ||
+                              node?.data?.step?.tool_name,
+                            15
+                          )}
                         </p>
                       )}
                     />

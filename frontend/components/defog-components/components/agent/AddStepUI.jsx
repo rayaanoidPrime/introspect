@@ -1,12 +1,13 @@
 import { message } from "antd";
 
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { AddStepInputList } from "./AddStepInputList";
 import { ToolReRun } from "./ToolReRun";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { v4 } from "uuid";
 import { createInitialToolInputs } from "$utils/utils";
 import SingleSelect from "$components/tailwind/SingleSelect";
+import { MessageManagerContext } from "$components/tailwind/Message";
 
 const createNewStepEndpoint = setupBaseUrl("http", "create_new_step");
 
@@ -26,6 +27,8 @@ export function AddStepUI({
     activeNode?.data?.step?.tool_name
   );
 
+  const messageManager = useContext(MessageManagerContext);
+
   const [inputs, setInputs] = useState(activeNode?.data?.step?.inputs || {});
   const [outputs, setOutputs] = useState(["output_" + v4().split("-")[0]]);
   const [loading, setLoading] = useState(false);
@@ -40,8 +43,8 @@ export function AddStepUI({
     <>Something went wrong</>
   ) : (
     <div className="add-step-ctr">
-      <h1 className="tool-name">New step</h1>
-      <h1 className="inputs-header">TOOL</h1>
+      <h1 className="text-lg font-bold my-2">New step</h1>
+      <h1 className="my-2">TOOL</h1>
       <div className="tool-action-buttons">
         <ToolReRun
           text="Run"
@@ -91,7 +94,8 @@ export function AddStepUI({
                 });
               }
             } catch (e) {
-              console.log(e);
+              messageManager.error(e.message);
+              console.log(e.stack);
             } finally {
               setLoading(false);
             }
@@ -99,11 +103,10 @@ export function AddStepUI({
         />
       </div>
       <SingleSelect
-        rootClassName="my-2 mb-4 w-6/12 min-w-52"
+        rootClassName="w-6/12 min-w-52"
         options={toolOptions}
         value={selectedTool}
-        onChange={(option) => {
-          const value = option?.value;
+        onChange={(value) => {
           if (!activeNode.data?.step?.inputs) return;
           if (!value) {
             setSelectedTool(null);
@@ -111,6 +114,7 @@ export function AddStepUI({
             return;
           }
           const initialInputs = createInitialToolInputs(
+            tools,
             value,
             activeNode?.data?.parentIds
           );
@@ -128,7 +132,7 @@ export function AddStepUI({
         <></>
       ) : (
         <>
-          <h1 className="inputs-header">INPUTS</h1>
+          <h1 className="my-2 mb-4">INPUTS</h1>
           <AddStepInputList
             toolRunId={activeNode.data.id}
             toolMetadata={tools[selectedTool]}
@@ -140,7 +144,7 @@ export function AddStepUI({
             }}
             parentNodeData={parentNodeData}
           />
-          <h1 className="inputs-header">OUTPUTS</h1>
+          {/* <h1 className="inputs-header">OUTPUTS</h1> */}
           {/* a little kooky, but */}
           {/* just reuse AddStepInputList to store outputs */}
           {/* <AddStepInputList

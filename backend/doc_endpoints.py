@@ -13,7 +13,6 @@ import requests
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
 from agents.planner_executor.tool_helpers.rerun_step import rerun_step_and_dependents
 from agents.planner_executor.tool_helpers.core_functions import analyse_data
-from agents.planner_executor.tool_helpers.all_tools import tool_name_dict
 import pandas as pd
 from io import StringIO
 from agents.main_agent import execute
@@ -572,14 +571,15 @@ async def create_new_step(request: Request):
         inputs = data.get("inputs")
         outputs_storage_keys = data.get("outputs_storage_keys")
 
+        err, tools = get_all_tools()
+
+        if err:
+            return {"success": False, "error_message": err}
+
         if analysis_id is None or type(analysis_id) != str:
             return {"success": False, "error_message": "Invalid analysis id."}
 
-        if (
-            tool_name is None
-            or type(tool_name) != str
-            or tool_name not in tool_name_dict
-        ):
+        if tool_name is None or type(tool_name) != str or tool_name not in tools:
             return {"success": False, "error_message": "Invalid tool name."}
 
         if parent_step is None or type(parent_step) != dict:
@@ -619,10 +619,6 @@ async def create_new_step(request: Request):
                     else "No steps found for analysis"
                 ),
             }
-
-        err, tools = get_all_tools()
-        if err:
-            return {"success": False, "error_message": err}
 
         tool = tools[tool_name]
 

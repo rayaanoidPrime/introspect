@@ -2,7 +2,13 @@ import re
 import pandas as pd
 import traceback
 import inspect
-from utils import SqlExecutionError, error_str, warn_str
+from utils import (
+    SqlExecutionError,
+    error_str,
+    warn_str,
+    filter_function_inputs,
+    wrap_in_async,
+)
 from db_utils import get_all_tools
 import asyncio
 from tool_code_utilities import default_top_level_imports
@@ -103,18 +109,15 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
             exec(code, globals())
             fn = globals()[function_name]
 
-            validated_fn = fn
-            # if function isn't async, wrap it in an async function for create_Task to work
-            if not inspect.iscoroutinefunction(fn):
+            tool_function_inputs["global_dict"] = global_dict
 
-                async def async_fn(**kwargs):
-                    return fn(**kwargs)
+            filtered_inputs, _ = filter_function_inputs(fn, tool_function_inputs)
 
-                validated_fn = async_fn
+            print(filtered_inputs.keys(), flush=True)
 
-            task = asyncio.create_task(
-                validated_fn(**tool_function_inputs, global_dict=global_dict)
-            )
+            wrapped_fn = wrap_in_async(fn)
+
+            task = asyncio.create_task(wrapped_fn(**filtered_inputs))
             try:
                 # expand tool inputs
                 # if it takes more than 120 seconds, then timeout

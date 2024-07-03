@@ -6,8 +6,13 @@ import {
   ComboboxOptions,
   Label,
 } from "@headlessui/react";
-import { CheckIcon, ChevronUpDownIcon } from "@heroicons/react/20/solid";
-import React, { useEffect, useState } from "react";
+import {
+  CheckIcon,
+  ChevronUpDownIcon,
+  XCircleIcon,
+  XMarkIcon,
+} from "@heroicons/react/20/solid";
+import React, { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 // const options = [
@@ -42,9 +47,10 @@ export default function SingleSelect({
   optionRenderer = null,
   placeholder = "Select an option",
   size = "default",
-  optionRender = null,
+  allowClear = true,
 }) {
   const [query, setQuery] = useState("");
+  const ref = useRef(null);
 
   const filteredOptions =
     query === ""
@@ -57,12 +63,17 @@ export default function SingleSelect({
 
   // find the option matching the default value
   const [selectedOption, setSelectedOption] = useState(
-    options.find((option) => option.value === defaultValue)
+    options.find((option) => option.value === defaultValue) || null
   );
 
   useEffect(() => {
-    setSelectedOption(options.find((option) => option.value === value));
+    const opt = options.find((option) => option.value === value) || null;
+    setSelectedOption(opt);
   }, [value, options]);
+
+  useEffect(() => {
+    ref?.current?.blur?.();
+  }, [selectedOption]);
 
   return (
     <Combobox
@@ -73,10 +84,11 @@ export default function SingleSelect({
       defaultValue={defaultValue}
       disabled={disabled}
       onChange={(option) => {
-        setQuery("");
+        if (!option) return;
         setSelectedOption(option);
+
         if (option && onChange && typeof onChange === "function") {
-          onChange(option);
+          onChange(option.value, option);
         }
       }}
     >
@@ -87,17 +99,37 @@ export default function SingleSelect({
       )}
       <div className="relative">
         <ComboboxInput
+          ref={ref}
           placeholder={placeholder}
           className={twMerge(
-            "w-full rounded-md border-0 pr-10 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-400 sm:text-sm sm:leading-6",
+            "w-full rounded-md border-0 pr-12 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-400 sm:text-sm sm:leading-6",
             inputSizeClasses[size] || inputSizeClasses["default"],
             disabled ? "bg-gray-100 text-gray-400" : "bg-white text-gray-900"
           )}
-          onChange={(event) => setQuery(event.target.value)}
-          onBlur={() => setQuery("")}
-          displayValue={(option) => option?.label}
+          onChange={(event) => {
+            setQuery(event.target.value);
+          }}
+          onBlur={() => {
+            setQuery("");
+          }}
+          displayValue={(option) => option && option?.label}
         />
+
         <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
+          {allowClear && (
+            <XCircleIcon
+              className="w-4 fill-gray-200 hover:fill-gray-500"
+              onClick={(ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                setSelectedOption(null);
+                setQuery("");
+                if (onChange && typeof onChange === "function") {
+                  onChange(null, null);
+                }
+              }}
+            />
+          )}
           <ChevronUpDownIcon
             className="h-5 w-5 text-gray-400"
             aria-hidden="true"
@@ -126,34 +158,36 @@ export default function SingleSelect({
                   )
                 }
               >
-                {({ focus, selected }) => (
-                  <>
-                    {optionRenderer ? (
-                      optionRenderer(option, focus, selected)
-                    ) : (
-                      <>
+                {({ focus, selected }) => {
+                  return (
+                    <>
+                      {optionRenderer ? (
+                        optionRenderer(option, focus, selected)
+                      ) : (
+                        <>
+                          <span
+                            className={twMerge(
+                              "block truncate",
+                              selected && "font-semibold"
+                            )}
+                          >
+                            {option.label}
+                          </span>
+                        </>
+                      )}
+                      {selected && (
                         <span
                           className={twMerge(
-                            "block truncate",
-                            selected && "font-semibold"
+                            "absolute inset-y-0 right-0 flex items-center pr-4",
+                            focus ? "text-white" : "text-blue-400"
                           )}
                         >
-                          {option.label}
+                          <CheckIcon className="h-5 w-5" aria-hidden="true" />
                         </span>
-                      </>
-                    )}
-                    {selected && (
-                      <span
-                        className={twMerge(
-                          "absolute inset-y-0 right-0 flex items-center pr-4",
-                          focus ? "text-white" : "text-blue-400"
-                        )}
-                      >
-                        <CheckIcon className="h-5 w-5" aria-hidden="true" />
-                      </span>
-                    )}
-                  </>
-                )}
+                      )}
+                    </>
+                  );
+                }}
               </ComboboxOption>
             ))}
           </ComboboxOptions>

@@ -86,8 +86,7 @@ const inputTypeToUI = {
           { label: "true", value: true },
           { label: "false", value: false },
         ]}
-        onChange={(opt) => {
-          const val = opt.value;
+        onChange={(val) => {
           onEdit(inputName, val);
         }}
       />
@@ -202,8 +201,7 @@ const inputTypeToUI = {
         options={options}
         placeholder="Select a column name"
         allowClear
-        onChange={(opt) => {
-          const val = opt.value;
+        onChange={(val) => {
           onEdit(inputName, val);
         }}
       />
@@ -264,8 +262,7 @@ const inputTypeToUI = {
                 allowClear
                 popupClassName="tool-input-value-dropdown"
                 options={options}
-                onChange={(opt) => {
-                  const val = opt.value;
+                onChange={(val) => {
                   // replace the value at i with the new value
                   const newVal = initialValue.map((v, j) => {
                     if (i === j) {
@@ -351,8 +348,7 @@ const inputTypeToUI = {
         })}
         placeholder="Select a value"
         showSearch
-        onChange={(opt) => {
-          const val = opt.value;
+        onChange={(val) => {
           onEdit(inputName, val);
         }}
       />

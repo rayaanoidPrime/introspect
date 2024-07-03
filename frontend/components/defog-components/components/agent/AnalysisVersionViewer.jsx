@@ -8,6 +8,7 @@ import { AnalysisVersionViewerLinks } from "./AnalysisVersionViewerLinks";
 import { ArrowRightEndOnRectangleIcon } from "@heroicons/react/20/solid";
 import Sidebar from "$components/tailwind/Sidebar";
 import { MessageManagerContext } from "$components/tailwind/Message";
+import { sentenceCase } from "$utils/utils";
 
 function AnalysisVersionViewer({
   dashboards,
@@ -18,6 +19,9 @@ function AnalysisVersionViewer({
   // but not otherwise
   // the priority is to have the new analysis rendered to not lose the manager
   maxRenderedAnalysis = 2,
+  // array of strings
+  // each string is a question
+  predefinedQuestions = ["show me 5 rows", "what is the average of x column"],
 }) {
   const [activeAnalysisId, setActiveAnalysisId] = useState(null);
 
@@ -57,42 +61,42 @@ function AnalysisVersionViewer({
   const [addToDashboardSelection, setAddToDashboardSelection] = useState(false);
   const [selectedDashboards, setSelectedDashboards] = useState([]);
 
-  useEffect(() => {
-    if (!searchRef.current) return;
-    const placeholderQuestions = [
-      "A boxplot of ...",
-      "Show me the average of ...",
-      "What is the highest ...",
-    ];
+  // useEffect(() => {
+  //   if (!searchRef.current) return;
+  //   const placeholderQuestions = [
+  //     "A boxplot of ...",
+  //     "Show me the average of ...",
+  //     "What is the highest ...",
+  //   ];
 
-    let idx = 0;
-    let interval = null;
-    let timeout = null;
-    const showNextQuestion = () => {
-      // show one character at a time
-      let c = 0;
-      interval = setInterval(() => {
-        if (!searchRef.current) return;
-        searchRef.current.placeholder = placeholderQuestions[idx].slice(0, c);
-        c++;
-        if (c > placeholderQuestions[idx].length) {
-          clearInterval(interval);
-          idx = (idx + 1) % placeholderQuestions.length;
-          timeout = setTimeout(showNextQuestion, 2000);
-        }
-      }, 80);
-    };
+  //   let idx = 0;
+  //   let interval = null;
+  //   let timeout = null;
+  //   const showNextQuestion = () => {
+  //     // show one character at a time
+  //     let c = 0;
+  //     interval = setInterval(() => {
+  //       if (!searchRef.current) return;
+  //       searchRef.current.placeholder = placeholderQuestions[idx].slice(0, c);
+  //       c++;
+  //       if (c > placeholderQuestions[idx].length) {
+  //         clearInterval(interval);
+  //         idx = (idx + 1) % placeholderQuestions.length;
+  //         timeout = setTimeout(showNextQuestion, 2000);
+  //       }
+  //     }, 80);
+  //   };
 
-    showNextQuestion();
+  //   showNextQuestion();
 
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
-  });
+  //   return () => {
+  //     clearInterval(interval);
+  //     clearTimeout(timeout);
+  //   };
+  // });
 
   const handleSubmit = useCallback(
-    (rootAnalysisId, isRoot, directParentId) => {
+    (question, rootAnalysisId, isRoot, directParentId) => {
       try {
         setLoading(true);
 
@@ -103,7 +107,7 @@ function AnalysisVersionViewer({
           analysisId: newId,
           isRoot: isRoot,
           rootAnalysisId: isRoot ? newId : rootAnalysisId,
-          user_question: searchRef.current.value,
+          user_question: question,
         };
 
         newAnalysis.directParentId = directParentId;
@@ -111,7 +115,7 @@ function AnalysisVersionViewer({
         // this is extra stuff we will send to the backend when creating an entry
         // in the db
         let createAnalysisRequestExtraParams = {
-          user_question: searchRef.current.value,
+          user_question: question,
           is_root_analysis: isRoot,
           root_analysis_id: rootAnalysisId,
           direct_parent_id: directParentId,
@@ -145,11 +149,14 @@ function AnalysisVersionViewer({
         setSessionAnalyses(newSessionAnalyses);
         setActiveAnalysisId(newAnalysis.analysisId);
         setActiveRootAnalysisId(newAnalysis.rootAnalysisId);
-        searchRef.current.value = "";
+
+        searchRef.current.innerText = "";
+
         setAllAnalyses({
           ...allAnalyses,
           [newAnalysis.analysisId]: newAnalysis,
         });
+
         // remove the earliest one only if we have more than 10
         setLast10Analysis((prev) => {
           if (prev.length >= maxRenderedAnalysis) {
@@ -269,37 +276,68 @@ function AnalysisVersionViewer({
                 </div>
               );
             })}
+
             {!activeAnalysisId && (
-              <div className="w-full h-full place-content-center m-auto">
-                <p className="w-1/4 m-auto text-gray-400 text-center">
-                  Ask and press Enter
-                </p>
+              <div className="h-full flex flex-col place-content-center w-full m-auto relative z-[1]">
+                <div className="text-center">
+                  <p className="text-gray-400 cursor-default font-bold">
+                    Quickstart
+                  </p>
+
+                  <ul className="text-gray-400">
+                    {predefinedQuestions.map((question, i) => (
+                      <li
+                        className="cursor-pointer hover:underline"
+                        key={i}
+                        onClick={(ev) => {
+                          ev.preventDefault();
+                          ev.stopPropagation();
+
+                          handleSubmit(
+                            sentenceCase(question),
+                            activeRootAnalysisId,
+                            !activeRootAnalysisId,
+                            activeAnalysisId
+                          );
+                        }}
+                      >
+                        <span className="">{sentenceCase(question)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             )}
 
-            <div className="w-10/12 m-auto lg:w-3/4 sticky bottom-14 z-10 bg-white right-0 border-2 border-gray-400 p-2 rounded-lg h-16 shadow-custom hover:border-blue-500 focus:border-blue-500 flex">
-              <input
-                className="block w-full rounded-none rounded-l-md border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 sm:text-lg sm:leading-6"
-                type="text"
+            <div className="w-10/12 m-auto lg:w-3/4 sticky bottom-14 z-10 bg-white right-0 border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex">
+              <div
+                className="w-full rounded-none rounded-l-md border py-1.5 text-gray-900 p-1 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none"
                 ref={searchRef}
                 onKeyDown={(ev) => {
                   if (ev.key === "Enter") {
-                    if (!searchRef.current.value) return;
+                    ev.preventDefault();
+                    ev.stopPropagation();
+
+                    if (!searchRef.current.innerText) return;
+
                     handleSubmit(
+                      searchRef.current.innerText,
                       activeRootAnalysisId,
                       !activeRootAnalysisId,
                       activeAnalysisId
                     );
                   }
                 }}
-                placeholder="Show me 5 rows"
-                disabled={loading}
+                contentEditable="plaintext-only"
+                // placeholder="Show me 5 rows"
+                // disabled={loading}
               />
               <button
                 type="button"
                 className="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-blue-500 hover:bg-blue-500 hover:text-white"
                 onClick={() => {
                   handleSubmit(
+                    searchRef.current.innerText,
                     activeRootAnalysisId,
                     !activeRootAnalysisId,
                     activeAnalysisId

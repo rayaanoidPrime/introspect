@@ -84,6 +84,7 @@ export default function AddTool({ toolbox, onAddTool = (...args) => {} }) {
 
   const handleSubmit = async (userQuestion = null) => {
     setLoading(true);
+    // if this is first submit
     try {
       const response = await fetch(generateToolCodeEndpoint, {
         method: "POST",
@@ -228,6 +229,7 @@ export default function AddTool({ toolbox, onAddTool = (...args) => {} }) {
                   />
                 ) : (
                   <ToolCodeEditor
+                    className="w-full"
                     editable={!loading}
                     toolCode={tool.code}
                     onChange={(v) => handleChange("code", v)}
