@@ -289,6 +289,9 @@ $grid: repeating-linear-gradient(
 }
 
 .graph {
+  svg text {
+    text-anchor: middle;
+  }
   position: relative;
 
   .graph-node-loading {
@@ -819,7 +822,7 @@ $grid: repeating-linear-gradient(
         // somehow just giving it a width, any width (not max/min width) fixes the sidebars. ¯\_(ツ)_/¯
         // border: 1px solid $light-gray;
         border-radius: 4px;
-        box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.1);
+
         padding: 0.5em;
         .ant-tabs {
           flex-grow: 2;
@@ -987,7 +990,7 @@ $grid: repeating-linear-gradient(
               display: flex;
               justify-content: left;
               align-items: center;
-              font-size: 0.8em;
+              // font-size: 0.8em;
 
               .tool-input-type {
                 padding: 0px 3px;
@@ -1160,7 +1163,7 @@ $grid: repeating-linear-gradient(
         display: flex;
         flex-direction: row;
         .analysis-steps {
-          min-width: 50px;
+          // min-width: 50px;
           margin-left: 10px;
         }
         .analysis-graph {
@@ -1490,7 +1493,6 @@ $grid: repeating-linear-gradient(
 
 .tool-input-value-dropdown {
   font-family: $code;
-  width: auto !important;
 
   .ant-select-item-option-content {
     font-size: 1em;
@@ -1571,8 +1573,8 @@ $grid: repeating-linear-gradient(
     width: 100%;
   }
   .tool-input-data-value {
-    width: 100%;
     color: $text-medium;
+    background-color: white;
     * {
       font-family: $code;
       overflow-wrap: anywhere;
@@ -1582,7 +1584,6 @@ $grid: repeating-linear-gradient(
     font-size: 0.7em;
     // margin: 0 0 5px 0;
     padding: 0.5em;
-    // border: 1px solid $medium-gray;
     border-left: 8px solid $medium-green;
     border-radius: 4px;
     cursor: pointer;

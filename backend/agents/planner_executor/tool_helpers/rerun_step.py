@@ -7,10 +7,12 @@ from agents.planner_executor.execute_tool import execute_tool
 # from gcs_utils import file_exists_in_gcs, get_file_from_gcs
 from agents.planner_executor.tool_helpers.core_functions import *
 from utils import (
+    filter_function_inputs,
     log_str,
     log_msg,
     log_error,
     log_success,
+    wrap_in_async,
 )
 from agents.planner_executor.tool_helpers.core_functions import *
 import pandas as pd
@@ -318,11 +320,21 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
         result = tool_run_details
         new_data = None
         try:
+            print("Resoluved inputs", resolved_inputs.keys(), flush=True)
+
+            resolved_inputs["global_dict"] = global_dict
+
             exec(code_str, globals())
-            print(resolved_inputs)
-            exec_result = await globals()[f_nm](
-                **resolved_inputs, global_dict=global_dict
-            )
+
+            fn = globals()[f_nm]
+
+            filtered_inputs, _ = filter_function_inputs(fn, resolved_inputs)
+
+            fn = wrap_in_async(fn)
+
+            print("Filtered inputs", filtered_inputs.keys(), flush=True)
+
+            exec_result = await fn(**filtered_inputs)
             err = exec_result.get("error_message")
             result.update(exec_result)
 

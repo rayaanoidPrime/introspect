@@ -74,6 +74,35 @@ module.exports = {
         "90vw": "90vw",
         "100vw": "100vw",
       },
+      keyframes: {
+        "fade-in-down": {
+          // first opacity 0 to 1
+          // then display none
+          "0%": {
+            opacity: "0",
+            transform: "translateY(-20px)",
+          },
+          "20%": {
+            opacity: "1",
+            transform: "translateY(0)",
+          },
+        },
+        "fade-in": {
+          "0%": {
+            opacity: "0",
+          },
+          "100%": {
+            opacity: "1",
+          },
+        },
+      },
+      animation: {
+        "fade-in-down": "fade-in-down 1s",
+        "fade-in": "fade-in 0.2s",
+      },
+      fontFamily: {
+        platypi: ["Platypi, serif"],
+      },
     },
   },
 

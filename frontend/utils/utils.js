@@ -3,7 +3,6 @@ import setupBaseUrl from "$utils/setupBaseUrl";
 import { Annotation, EditorState, Transaction } from "@codemirror/state";
 import { Doc, XmlElement, applyUpdate, encodeStateAsUpdate } from "yjs";
 import { v4 } from "uuid";
-import { toolsMetadata } from "./tools_metadata";
 import { csvParse } from "d3";
 import { reFormatData } from "$components/defog-components/components/common/utils";
 
@@ -251,6 +250,13 @@ export const toolboxDisplayNames = {
   stats: "Stats",
 };
 
+export const trimStringToLength = (str, length) => {
+  if (str.length > length) {
+    return str.substring(0, length) + "...";
+  }
+  return str;
+};
+
 export const kebabCase = (str) => {
   return str
     .replace(/([a-z])([A-Z])/g, "$1-$2")
@@ -263,6 +269,10 @@ export const snakeCase = (str) => {
     .replace(/([a-z])([A-Z])/g, "$1_$2")
     .replace(/[\s-]+/g, "_")
     .toLowerCase();
+};
+
+export const sentenceCase = (str) => {
+  return str.charAt(0).toUpperCase() + str.slice(1);
 };
 
 // https://discuss.codemirror.net/t/how-to-make-certain-ranges-readonly-in-codemirror6/3400/5
@@ -401,16 +411,15 @@ export function appendAnalysisToYjsDoc(yjsDoc, analysisId) {
     const blockGroup = yjsDoc.getXmlFragment("document-store").firstChild;
 
     blockGroup.insert(blockGroup.length, [newBlock]);
-    console.log(tr);
   });
   return true;
 }
 
-export function createInitialToolInputs(toolName, parentIds) {
+export function createInitialToolInputs(tools, toolName, parentIds) {
   let initialInputs = {};
 
   // if there's a pandas dataframe type in the inputs, default that to the parent's output
-  Object.values(toolsMetadata[toolName].input_metadata).forEach((inp) => {
+  Object.values(tools[toolName].input_metadata).forEach((inp) => {
     if (inp.type === "pandas.core.frame.DataFrame") {
       try {
         initialInputs[inp.name] = "global_dict." + parentIds?.[0];
@@ -418,9 +427,11 @@ export function createInitialToolInputs(toolName, parentIds) {
         console.log(e);
       }
     } else {
-      initialInputs[inp.name] = Array.isArray(inp.default)
-        ? inp.default[0]
-        : inp.default;
+      // cannot be undefined and has to be null
+      // undefined stuff doesn't get sent to the backend at all.
+      // null goes as None
+      initialInputs[inp.name] =
+        (Array.isArray(inp.default) ? inp.default[0] : inp.default) || null;
     }
   });
   return initialInputs;
@@ -495,6 +506,10 @@ export const addTool = async ({
       body: JSON.stringify(payload),
     });
 
+    if (!res.ok) {
+      throw new Error("Failed to add tool");
+    }
+
     const json = await res.json();
     return json;
   } catch (e) {
@@ -515,9 +530,15 @@ export const deleteToolRunIds = async (analysisId, toolRunIds) => {
         analysis_id: analysisId,
         tool_run_ids: toolRunIds,
       }),
-    }).then((r) => r.json());
+    });
 
-    return res;
+    if (!res.ok) {
+      throw new Error("Failed to delete tool run ids");
+    }
+
+    const json = res.json();
+
+    return json;
   } catch (e) {
     console.error(e);
     return { success: false, error_message: e };

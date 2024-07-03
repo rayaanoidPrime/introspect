@@ -180,7 +180,7 @@ export default function Clarify({
   };
 
   return (
-    <div className="clarify-container">
+    <div className="clarify-container p-4 ">
       {success &&
         (clarification_questions.length ? (
           <>

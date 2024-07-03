@@ -1,10 +1,13 @@
-import { Select, message } from "antd";
-import { useEffect, useMemo, useState } from "react";
+import { message } from "antd";
+
+import { useContext, useEffect, useState } from "react";
 import { AddStepInputList } from "./AddStepInputList";
 import { ToolReRun } from "./ToolReRun";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { v4 } from "uuid";
 import { createInitialToolInputs } from "$utils/utils";
+import SingleSelect from "$components/tailwind/SingleSelect";
+import { MessageManagerContext } from "$components/tailwind/Message";
 
 const createNewStepEndpoint = setupBaseUrl("http", "create_new_step");
 
@@ -24,35 +27,15 @@ export function AddStepUI({
     activeNode?.data?.step?.tool_name
   );
 
-  // all the default inputs are null, except for pandas dataframes, which are the parent's output
-  const sanitizeInputs = (inputs) => {
-    return inputs;
-    // if none of the inputs start with "global_dict.", then add it to the first input that is a string
-    if (
-      inputs
-        .filter((i) => typeof i === "string")
-        .filter((i) => i.startsWith("global_dict.")).length === 0
-    ) {
-      const firstStringInputIdx = inputs.findIndex(
-        (i) => typeof i === "string"
-      );
-      if (firstStringInputIdx !== -1) {
-        inputs[firstStringInputIdx] =
-          "global_dict." + inputs[firstStringInputIdx];
-      }
-    }
-    return inputs;
-  };
+  const messageManager = useContext(MessageManagerContext);
 
-  const [inputs, setInputs] = useState(
-    sanitizeInputs(activeNode?.data?.step?.inputs || {})
-  );
+  const [inputs, setInputs] = useState(activeNode?.data?.step?.inputs || {});
   const [outputs, setOutputs] = useState(["output_" + v4().split("-")[0]]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setSelectedTool(activeNode?.data?.step?.tool_name);
-    setInputs(sanitizeInputs(activeNode?.data?.step?.inputs || {}));
+    setInputs(activeNode?.data?.step?.inputs || {});
     setLoading(activeNode?.data?.step?.loading || false);
   }, [activeNode?.data?.id]);
 
@@ -60,8 +43,8 @@ export function AddStepUI({
     <>Something went wrong</>
   ) : (
     <div className="add-step-ctr">
-      <h1 className="tool-name">New step</h1>
-      <h1 className="inputs-header">TOOL</h1>
+      <h1 className="text-lg font-bold my-2">New step</h1>
+      <h1 className="my-2">TOOL</h1>
       <div className="tool-action-buttons">
         <ToolReRun
           text="Run"
@@ -111,19 +94,18 @@ export function AddStepUI({
                 });
               }
             } catch (e) {
-              console.log(e);
+              messageManager.error(e.message);
+              console.log(e.stack);
             } finally {
               setLoading(false);
             }
           }}
         />
       </div>
-      <Select
-        rootClassName="add-step-select-tool-name"
+      <SingleSelect
+        rootClassName="w-6/12 min-w-52"
         options={toolOptions}
         value={selectedTool}
-        allowClear
-        showSearch
         onChange={(value) => {
           if (!activeNode.data?.step?.inputs) return;
           if (!value) {
@@ -132,6 +114,7 @@ export function AddStepUI({
             return;
           }
           const initialInputs = createInitialToolInputs(
+            tools,
             value,
             activeNode?.data?.parentIds
           );
@@ -149,7 +132,7 @@ export function AddStepUI({
         <></>
       ) : (
         <>
-          <h1 className="inputs-header">INPUTS</h1>
+          <h1 className="my-2 mb-4">INPUTS</h1>
           <AddStepInputList
             toolRunId={activeNode.data.id}
             toolMetadata={tools[selectedTool]}
@@ -161,10 +144,10 @@ export function AddStepUI({
             }}
             parentNodeData={parentNodeData}
           />
-          <h1 className="inputs-header">OUTPUTS</h1>
+          {/* <h1 className="inputs-header">OUTPUTS</h1> */}
           {/* a little kooky, but */}
           {/* just reuse AddStepInputList to store outputs */}
-          <AddStepInputList
+          {/* <AddStepInputList
             toolRunId={activeNode.data.id}
             toolMetadata={{
               input_metadata: [
@@ -183,7 +166,7 @@ export function AddStepUI({
               setOutputs(newVal);
             }}
             parentNodeData={parentNodeData}
-          />
+          /> */}
         </>
       )}
     </div>

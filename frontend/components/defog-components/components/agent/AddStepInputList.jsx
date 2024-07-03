@@ -1,13 +1,9 @@
-import { Input, Select, message } from "antd";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { message } from "antd";
+import React, { useCallback, useMemo } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
 import { easyToolInputTypes } from "$utils/utils";
+import Input from "$components/tailwind/Input";
+import SingleSelect from "$components/tailwind/SingleSelect";
 
 const onHover = (ev, label, analysisId) => {
   // get the closest .analysis-content to the mouseovered element
@@ -50,8 +46,7 @@ export const inputTypeToUI = {
           return (
             <span key={inputName}>
               <Input
-                defaultValue={val}
-                rootClassName="tool-input-value"
+                value={val}
                 size="small"
                 onChange={(ev) => {
                   // replace the value at i with the new value
@@ -80,8 +75,7 @@ export const inputTypeToUI = {
     if (!initialValue) initialValue = "";
     return (
       <Input
-        rootClassName="tool-input-value"
-        defaultValue={initialValue || ""}
+        value={initialValue || ""}
         size="small"
         onChange={(ev) => {
           onEdit(inputName, ev.target.value);
@@ -91,10 +85,9 @@ export const inputTypeToUI = {
   },
   bool: (inputName, initialValue, onEdit, config = {}) => {
     return (
-      <Select
-        rootClassName="tool-input-value"
+      <SingleSelect
         placeholder="Select a value"
-        defaultValue={initialValue || null}
+        value={initialValue || null}
         size="small"
         popupClassName="tool-input-value-dropdown"
         options={[
@@ -109,8 +102,7 @@ export const inputTypeToUI = {
   },
   int: (inputName, initialValue, onEdit, config = {}) => (
     <Input
-      rootClassName="tool-input-value"
-      defaultValue={initialValue || ""}
+      value={initialValue || ""}
       type="number"
       size="small"
       onChange={(ev) => {
@@ -122,8 +114,7 @@ export const inputTypeToUI = {
     <Input
       size="small"
       type="number"
-      defaultValue={initialValue}
-      rootClassName="tool-input-value"
+      value={initialValue}
       onChange={(ev) => {
         onEdit(inputName, parseFloat(ev.target.value));
       }}
@@ -145,18 +136,17 @@ export const inputTypeToUI = {
       }) || [];
 
     return (
-      <Select
-        showSearch
+      <SingleSelect
+        size="small"
         placeholder="Select a value"
-        rootClassName="add-step-df-select-ctr tool-input-value"
         onChange={(val) => {
           onEdit(inputName, val);
         }}
-        defaultValue={initialValue}
-        optionRender={(option) => {
+        value={initialValue}
+        optionRenderer={(option, focus, selected) => {
           return (
             <div
-              className="tool-input-data-value"
+              className="p-2 text-sm bg-white text-gray-500 rounded-md border-l-8 border-l-lime-400"
               onMouseOver={(ev) => onHover(ev, option.label, config.analysisId)}
               onMouseOut={(ev) =>
                 onHoverOut(ev, option.label, config.analysisId)
@@ -166,20 +156,19 @@ export const inputTypeToUI = {
             </div>
           );
         }}
-        tagRender={(option) => {
-          return (
-            <div
-              className="tool-input-data-value"
-              onMouseOver={(ev) => onHover(ev, option.label, config.analysisId)}
-              onMouseOut={(ev) =>
-                onHoverOut(ev, option.label, config.analysisId)
-              }
-            >
-              <span>{option?.label}</span>
-            </div>
-          );
-        }}
-        size="small"
+        // tagRender={(option) => {
+        //   return (
+        //     <div
+        //       className="tool-input-data-value"
+        //       onMouseOver={(ev) => onHover(ev, option.label, config.analysisId)}
+        //       onMouseOut={(ev) =>
+        //         onHoverOut(ev, option.label, config.analysisId)
+        //       }
+        //     >
+        //       <span>{option?.label}</span>
+        //     </div>
+        //   );
+        // }}
         popupClassName="add-step-df-dropdown"
         options={options}
       />
@@ -202,15 +191,13 @@ export const inputTypeToUI = {
 
     // return
     return (
-      <Select
+      <SingleSelect
         value={initialValue}
         key={config.toolRunId + "_" + inputName}
         size="small"
         popupClassName="tool-input-value-dropdown"
-        rootClassName="tool-input-value"
         options={options}
         placeholder="Select a column name"
-        allowClear
         onChange={(val) => {
           onEdit(inputName, val);
         }}
@@ -254,14 +241,11 @@ export const inputTypeToUI = {
         {initialValue.map((val, i) => {
           return (
             <span key={config.toolRunId + "_" + inputName + "_" + i}>
-              <Select
+              <SingleSelect
                 value={val}
-                showSearch
                 size="small"
                 placeholder="Select a column name"
-                allowClear
                 popupClassName="tool-input-value-dropdown"
-                rootClassName="tool-input-value"
                 options={options}
                 onChange={(val) => {
                   // replace the value at i with the new value
@@ -331,7 +315,7 @@ export const inputTypeToUI = {
     const options = config?.inputMetadata?.[inputName]?.default || [];
 
     return (
-      <Select
+      <SingleSelect
         value={initialValue}
         size="small"
         popupClassName="tool-input-value-dropdown"
@@ -339,8 +323,6 @@ export const inputTypeToUI = {
           return { label: option, value: option };
         })}
         placeholder="Select a value"
-        allowClear
-        showSearch
         onChange={(val) => {
           onEdit(inputName, val);
         }}
@@ -412,18 +394,23 @@ export function AddStepInputList({
   }, [inputs, parentNodeData, toolRunId]);
 
   return (
-    <div className="tool-input-list" key={toolRunId} ref={ctr}>
+    <div className="" key={toolRunId} ref={ctr}>
       {Object.keys(inputs).map((input_name, i) => {
         const sanitizedType = sanitizeInputType(inputMetadata[input_name].type);
         const input = inputs[input_name];
 
         return (
-          <div key={i + "_" + toolRunId} className="tool-input">
-            <span className="tool-input-type">
-              {easyToolInputTypes[sanitizedType] || sanitizedType}
-            </span>
-            <span className="tool-input-name">
-              {inputMetadata[input_name].name}
+          <div
+            key={i + "_" + toolRunId}
+            className="font-mono flex flex-row flex-wrap gap-3 items-center *:my-1 pb-4 text-xs"
+          >
+            <span className="">
+              <span className="rounded-md p-1 bg-gray-200 text-gray-400 mr-2">
+                {easyToolInputTypes[sanitizedType] || sanitizedType}
+              </span>
+              <span className="font-bold">
+                {inputMetadata[input_name].name}
+              </span>
             </span>
             {inputTypeToUI[sanitizedType] &&
               inputTypeToUI[sanitizedType](

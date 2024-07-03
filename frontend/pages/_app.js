@@ -10,12 +10,20 @@ import "../styles/view-notebooks.scss";
 import "../styles/doc-styles.scss";
 import "../styles/blocknote-styles.scss";
 import "../styles/query-data.scss";
+import MessageMonitor, {
+  MessageManagerContext,
+  MessageManager,
+} from "$components/tailwind/Message";
 
 export default function App({ Component, pageProps }) {
   const [context, setContext] = useState({});
+
   return (
     <Context.Provider value={[context, setContext]}>
-      <Component {...pageProps} />
+      <MessageManagerContext.Provider value={MessageManager()}>
+        <MessageMonitor />
+        <Component {...pageProps} />
+      </MessageManagerContext.Provider>
     </Context.Provider>
   );
 }

@@ -30,9 +30,16 @@ function AnalysisManager({
   let reRunningSteps = [];
   let wasNewAnalysisCreated = false;
   let listeners = [];
+  let destroyed = false;
+  let _onReRunData = onReRunData;
+  let _onNewData = onNewData;
 
   function getAnalysisData() {
     return analysisData;
+  }
+
+  function destroy() {
+    destroyed = true;
   }
 
   function setAnalysisData(newVal) {
@@ -115,6 +122,7 @@ function AnalysisManager({
 
   async function deleteSteps(toolRunIds) {
     const res = await deleteToolRunIds(analysisId, toolRunIds);
+    console.log(res);
     if (res.success && res.new_steps) {
       let newAnalysisData = { ...analysisData };
       // if new steps are empty, delete the gen_steps key
@@ -140,6 +148,9 @@ function AnalysisManager({
   }
 
   function submit(query, stageInput = {}, submitSourceStage = null) {
+    if (destroyed) {
+      throw new Error("Analysis Manager already destroyed.");
+    }
     if (!mainSocket || !mainSocket?.isConnected()) {
       throw new Error("Not connected to servers. Trying to reconnect.");
     }
@@ -195,20 +206,19 @@ function AnalysisManager({
     // if it's a pong request, skip
     try {
       if (!event.data) {
-        throw new Error(
-          "Something went wrong. Please try again or contact us if this persists."
-        );
+        console.log("No data in event");
+        return;
       }
 
       response = JSON.parse(event.data);
 
-      // if the response's analysis_id isn't this analysisId, ignore
-      if (response?.analysis_id !== analysisId) {
+      if (response.pong) {
         skip = true;
         return;
       }
 
-      if (response.pong) {
+      // if the response's analysis_id isn't this analysisId, ignore
+      if (response?.analysis_id !== analysisId) {
         skip = true;
         return;
       }
@@ -290,15 +300,16 @@ function AnalysisManager({
       if (skip) return;
 
       setAnalysisData(newAnalysisData);
-      if (onNewData && typeof onNewData === "function") {
-        onNewData(response, newAnalysisData);
+      if (_onNewData && typeof _onNewData === "function") {
+        _onNewData(response, newAnalysisData);
       }
     }
   }
 
   function initiateReRun(toolRunId, preRunActions) {
     if (!rerunSocket.isConnected()) {
-      throw new Error("Not connected to servers. Trying to reconnect.");
+      console.log("Not connected to servers. Trying to reconnect.");
+      return;
     }
 
     const newAnalysisData = { ...analysisData };
@@ -324,69 +335,83 @@ function AnalysisManager({
   }
 
   async function onReRunSocketMessage(event) {
-    const response = JSON.parse(event.data);
-
-    if (response?.analysis_id !== analysisId) return;
-
-    console.groupCollapsed("Analysis manager re run");
-    console.log(response);
-
-    let newReRunningSteps = reRunningSteps.slice();
-
-    // re run messages can be of two types:
-    // 1. which step is GOING TO BE RUN. this won't just be the step that was asked to be re run by the user.
-    // this can also be the step's parents and it's children.
-    // 2. the result of a re run of a step
-    if (response.pre_tool_run_message) {
-      // means this is just a notification that this step is going to be re run
-      // so add this step to rerunning steps
-      // this has better UX: lets us move and click around the dag on
-      // any node but the currently rerunning step
-      console.log("step re running started: ", response.pre_tool_run_message);
-
-      newReRunningSteps.push({
-        tool_run_id: response.pre_tool_run_message,
-      });
-    } else {
-      if (!response.success) {
-        throw new Error(response?.error_message);
+    let response;
+    let newAnalysisData = { ...analysisData };
+    let skip = false;
+    try {
+      if (!event.data) {
+        console.log("No data in event");
+        return;
       }
-      // remove the tool run id from rerunning steps and clear it's timeout
-      newReRunningSteps = newReRunningSteps.filter((d) => {
-        return d.tool_run_id !== response.tool_run_id;
-      });
-    }
+      response = JSON.parse(event.data);
 
-    let newToolRunDataCache = { ...toolRunDataCache };
-    if (response.success) {
-      newToolRunDataCache[response.tool_run_id] = Object.assign({}, response);
-    }
+      if (response?.analysis_id !== analysisId) {
+        skip = true;
+        return;
+      }
 
-    // if this re run has an error_message (or if it doesn't), update the analysisSteps
-    const newAnalysisData = { ...analysisData };
+      console.groupCollapsed("Analysis manager re run");
+      console.log(response);
 
-    const newSteps = newAnalysisData.gen_steps.steps.slice();
+      let newReRunningSteps = reRunningSteps.slice();
 
-    const idx = newSteps.findIndex(
-      (d) => d.tool_run_id === response.tool_run_id
-    );
-    if (idx > -1) {
-      newSteps[idx] = {
-        ...newSteps[idx],
-        error_message: response?.tool_run_data?.error_message,
-      };
-    }
+      // re run messages can be of two types:
+      // 1. which step is GOING TO BE RUN. this won't just be the step that was asked to be re run by the user.
+      // this can also be the step's parents and it's children.
+      // 2. the result of a re run of a step
+      if (response.pre_tool_run_message) {
+        // means this is just a notification that this step is going to be re run
+        // so add this step to rerunning steps
+        // this has better UX: lets us move and click around the dag on
+        // any node but the currently rerunning step
+        console.log("step re running started: ", response.pre_tool_run_message);
 
-    newAnalysisData.gen_steps.steps = newSteps;
+        newReRunningSteps.push({
+          tool_run_id: response.pre_tool_run_message,
+        });
+      } else {
+        // regardless of success or not, remove the tool run id from rerunning steps
+        newReRunningSteps = newReRunningSteps.filter((d) => {
+          return d.tool_run_id !== response.tool_run_id;
+        });
+      }
 
-    reRunningSteps = newReRunningSteps;
-    toolRunDataCache = newToolRunDataCache;
+      let newToolRunDataCache = { ...toolRunDataCache };
+      if (response.success) {
+        newToolRunDataCache[response.tool_run_id] = Object.assign({}, response);
+      }
 
-    setAnalysisData(newAnalysisData);
-    console.groupEnd();
+      // if this re run has an error_message (or if it doesn't), update the analysisSteps
+      const newSteps = newAnalysisData.gen_steps.steps.slice();
 
-    if (onReRunData && typeof onReRunData === "function") {
-      onReRunData(response);
+      const idx = newSteps.findIndex(
+        (d) => d.tool_run_id === response.tool_run_id
+      );
+
+      if (idx > -1) {
+        console.log("here");
+        newSteps[idx] = {
+          ...newSteps[idx],
+          error_message:
+            response?.tool_run_data?.error_message || response?.error_message,
+        };
+      }
+
+      newAnalysisData.gen_steps.steps = newSteps;
+
+      reRunningSteps = newReRunningSteps;
+      toolRunDataCache = newToolRunDataCache;
+    } catch (e) {
+      console.log(e);
+    } finally {
+      if (skip) return;
+
+      setAnalysisData(newAnalysisData);
+      console.groupEnd();
+
+      if (_onReRunData && typeof _onReRunData === "function") {
+        _onReRunData(response);
+      }
     }
   }
 
@@ -429,6 +454,14 @@ function AnalysisManager({
     listeners.forEach((l) => l());
   }
 
+  function setOnReRunDataCallback(callback) {
+    _onReRunData = callback;
+  }
+
+  function setOnNewDataCallback(callback) {
+    _onNewData = callback;
+  }
+
   return {
     init,
     get wasNewAnalysisCreated() {
@@ -464,6 +497,9 @@ function AnalysisManager({
     setMainSocket,
     setReRunSocket,
     deleteSteps,
+    destroy,
+    setOnReRunDataCallback,
+    setOnNewDataCallback,
   };
 }
 
