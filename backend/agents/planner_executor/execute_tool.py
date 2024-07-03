@@ -2,7 +2,13 @@ import re
 import pandas as pd
 import traceback
 import inspect
-from utils import SqlExecutionError, error_str, warn_str
+from utils import (
+    SqlExecutionError,
+    error_str,
+    warn_str,
+    filter_function_inputs,
+    wrap_in_async,
+)
 from db_utils import get_all_tools
 import asyncio
 from tool_code_utilities import default_top_level_imports
@@ -103,13 +109,20 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
             exec(code, globals())
             fn = globals()[function_name]
 
-            task = asyncio.create_task(
-                fn(**tool_function_inputs, global_dict=global_dict)
-            )
+            tool_function_inputs["global_dict"] = global_dict
+
+            filtered_inputs, _ = filter_function_inputs(fn, tool_function_inputs)
+
+            print(filtered_inputs.keys(), flush=True)
+
+            wrapped_fn = wrap_in_async(fn)
+
+            task = asyncio.create_task(wrapped_fn(**filtered_inputs))
             try:
                 # expand tool inputs
                 # if it takes more than 120 seconds, then timeout
                 result = await asyncio.wait_for(task, timeout=120)
+                print("result", result)
             except asyncio.TimeoutError:
                 print(error_str(f"Error for tool {function_name}: TimeoutError"))
                 result = {

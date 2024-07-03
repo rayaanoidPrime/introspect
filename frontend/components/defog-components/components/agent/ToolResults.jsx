@@ -415,7 +415,10 @@ export function ToolResults({
   return !activeNode || !activeNode.data || !toolRunData ? (
     <></>
   ) : (
-    <div className="tool-results-ctr" data-is-tool={activeNode.data.isTool}>
+    <div
+      className="tool-results-ctr w-full"
+      data-is-tool={activeNode.data.isTool}
+    >
       {/* create a translucent overlay if displayLoadingOverlay is true */}
       {displayLoadingOverlay && (
         <div

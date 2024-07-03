@@ -2,11 +2,15 @@ import httpx
 
 
 async def make_request(url, json):
+    print(url)
+    print(json, flush=True)
     async with httpx.AsyncClient() as client:
         r = await client.post(
             url,
             json=json,
         )
+
+    print(r.content, flush=True)
     return r.json()
 
 

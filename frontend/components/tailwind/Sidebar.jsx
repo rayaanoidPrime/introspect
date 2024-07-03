@@ -1,62 +1,76 @@
 // sidebar that can be toggled open and closed
 
-import { ArrowLeftStartOnRectangleIcon } from "@heroicons/react/20/solid";
+import {
+  ArrowLeftStartOnRectangleIcon,
+  ArrowRightStartOnRectangleIcon,
+} from "@heroicons/react/20/solid";
 import React, { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
-import { Collapse } from "./Collapse";
 
 export default function Sidebar({
   title = "Menu",
   children,
   rootClassNames = "",
   contentClassNames = "",
+  location = "left",
 }) {
   const [open, setOpen] = useState(true);
   const contentRef = useRef(null);
-  const containerRef = useRef(null);
+  const contentContainerRef = useRef(null);
 
   const handleClick = () => {
-    if (!containerRef.current || !contentRef.current) return;
+    if (!contentContainerRef.current || !contentRef.current) return;
     // if opening, set container width to children width
     if (open) {
-      // change the container width to 0
-      containerRef.current.style.width = `0px`;
       setOpen(false);
     } else {
-      containerRef.current.style.width = `${contentRef.current.clientWidth}px`;
       setOpen(true);
     }
   };
 
   useEffect(() => {
-    if (!containerRef.current || !contentRef.current) return;
-    containerRef.current.style.width = `${contentRef.current.clientWidth}px`;
+    if (!contentContainerRef.current || !contentRef.current) return;
+    if (open) {
+      contentContainerRef.current.style.width = `${contentRef.current.clientWidth}px`;
+    } else {
+      contentContainerRef.current.style.width = `0px`;
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!contentContainerRef.current || !contentRef.current) return;
+    contentContainerRef.current.style.width = `${contentRef.current.clientWidth}px`;
   }, []);
 
   return (
     <div className={twMerge("relative", rootClassNames)}>
-      <div className="hidden lg:block">
-        <button
-          className={`toggle-button absolute top-5 z-10 right-5 cursor-pointer`}
-          onClick={() => handleClick()}
-        >
+      <button
+        className={`toggle-button absolute z-10 ${location === "left" ? (open ? "right-5 top-5" : "-right-5 top-5") : open ? "-left-5 top-5" : "right-5 top-5"} cursor-pointer`}
+        onClick={() => handleClick()}
+      >
+        {location === "right" ? (
+          open ? (
+            <ArrowLeftStartOnRectangleIcon className="h-4 w-4" />
+          ) : (
+            <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
+          )
+        ) : open ? (
+          <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
+        ) : (
           <ArrowLeftStartOnRectangleIcon className="h-4 w-4" />
-        </button>
-        <div ref={containerRef} className="overflow-hidden transition-all">
-          <div
-            className={twMerge("content w-80 ", contentClassNames)}
-            ref={contentRef}
-          >
-            <h2 className="px-2 mb-3">{title}</h2>
-            {children}
-          </div>
-        </div>
-      </div>
-      <div className="lg:hidden">
-        {/* a collapse that opens from the top but still within the container*/}
-        <Collapse title={title} rootClassName="rounded-t-md p-2">
+        )}
+      </button>
+      <div
+        ref={contentContainerRef}
+        className="transition-all overflow-hidden pb-4"
+      >
+        <div
+          className={twMerge("content w-80 ", contentClassNames)}
+          ref={contentRef}
+        >
+          {title ? <h2 className="mb-3 font-sans">{title}</h2> : <></>}
           {children}
-        </Collapse>
+        </div>
       </div>
     </div>
   );

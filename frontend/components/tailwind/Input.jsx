@@ -1,8 +1,15 @@
 import { ExclamationCircleIcon } from "@heroicons/react/20/solid";
+import React from "react";
 import { twMerge } from "tailwind-merge";
 
-export function Input({
-  value = null,
+const inputSizeClasses = {
+  default: "py-1.5 pr-5 ",
+  small: "py-0 pr-5",
+};
+
+export default function Input({
+  value = undefined,
+  defaultValue = undefined,
   label = null,
   type = "text",
   status = null,
@@ -15,6 +22,7 @@ export function Input({
   onPressEnter = (...args) => {},
   inputHtmlProps = {},
   inputClassName = "",
+  size = "default",
 }) {
   return (
     <div className={twMerge("text-gray-600", rootClassName)}>
@@ -26,13 +34,13 @@ export function Input({
           {label}
         </label>
       )}
-      <div className="relative rounded-md shadow-sm">
+      <div className="relative rounded-md">
         <input
           type={type}
           name={name}
           id={id}
           className={twMerge(
-            "block w-full focus:shadow-sm rounded-md border-0 py-1.5 pr-10 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset",
+            "block w-full shadow-sm rounded-md border-0 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset",
             status !== "error"
               ? "focus:ring-blue-400"
               : "focus:ring-rose-400 ring-rose-400",
@@ -40,12 +48,12 @@ export function Input({
             disabled
               ? "bg-gray-100 text-gray-400  focus:ring-gray-100 cursor-not-allowed"
               : "bg-white",
+            inputSizeClasses[size] || inputSizeClasses["default"],
             inputClassName
           )}
           placeholder={placeholder}
           aria-invalid="true"
           aria-describedby="email-error"
-          value={value}
           disabled={disabled}
           onChange={(ev) => {
             if (disabled) return;
@@ -58,6 +66,7 @@ export function Input({
             }
           }}
           {...inputHtmlProps}
+          {...{ defaultValue, value }}
         />
         {status === "error" && (
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">

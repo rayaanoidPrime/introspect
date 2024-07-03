@@ -17,13 +17,14 @@ import { ToolResults } from "./ToolResults";
 import StepsDag from "../common/StepsDag";
 import ErrorBoundary from "../common/ErrorBoundary";
 import { Context } from "$components/common/Context";
-import { toolShortNames } from "$utils/utils";
+import { toolShortNames, trimStringToLength } from "$utils/utils";
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
 import Input from "antd/es/input";
 import Clarify from "./analysis-gen/Clarify";
 import AnalysisManager from "./analysisManager";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { AnalysisFeedback } from "./feedback/AnalysisFeedback";
+import { MessageManagerContext } from "$components/tailwind/Message";
 
 const getToolsEndpoint = setupBaseUrl("http", "get_user_tools");
 
@@ -36,8 +37,9 @@ export const AnalysisAgent = ({
   createAnalysisRequestBody = {},
   initiateAutoSubmit = false,
   searchRef = null,
-  setGlobalLoading = () => {},
-  managerCreatedHook = () => {},
+  setGlobalLoading = (...args) => {},
+  onManagerCreated = (...args) => {},
+  onManagerDestroyed = (...args) => {},
 }) => {
   // const [messageApi, contextHolder] = message.useMessage();
   const [pendingToolRunUpdates, setPendingToolRunUpdates] = useState({});
@@ -56,12 +58,15 @@ export const AnalysisAgent = ({
 
   const docContext = useContext(DocContext);
 
+  const messageManager = useContext(MessageManagerContext);
+
   const { mainManager, reRunManager, toolSocketManager } =
     docContext.val.socketManagers;
 
   function onMainSocketMessage(response, newAnalysisData) {
     try {
       if (response.error_message) {
+        // messageManager.error(response.error_message);
         throw new Error(response.error_message);
       }
       setToolRunDataCache(analysisManager.toolRunDataCache);
@@ -87,49 +92,66 @@ export const AnalysisAgent = ({
         }
       }
     } catch (e) {
-      // messageApi.error(e);
+      messageManager.error(e);
       console.log(e);
       setAnalysisBusy(false);
       setGlobalLoading(false);
     }
   }
 
-  async function onReRunMessage(response) {
-    try {
-      setRerunningSteps(analysisManager.reRunningSteps);
-      // remove all pending updates for this tool_run_id
-      // because all new data is already there in the received response
-      setPendingToolRunUpdates((prev) => {
-        const newUpdates = { ...prev };
-        delete newUpdates[response.tool_run_id];
-        return newUpdates;
-      });
-
-      setToolRunDataCache(analysisManager.toolRunDataCache);
-
-      // update reactive context
-      Object.keys(response?.tool_run_data?.outputs || {}).forEach((k, i) => {
-        if (!response?.tool_run_data?.outputs?.[k]?.reactive_vars) return;
-        const runId = response.tool_run_id;
-        reactiveContext.update((prev) => {
-          return {
-            ...prev,
-            [runId]: {
-              ...prev[runId],
-              [k]: response?.tool_run_data?.outputs?.[k]?.reactive_vars,
-            },
-          };
+  const onReRunMessage = useCallback(
+    (response) => {
+      try {
+        setRerunningSteps(analysisManager.reRunningSteps);
+        // remove all pending updates for this tool_run_id
+        // because all new data is already there in the received response
+        setPendingToolRunUpdates((prev) => {
+          const newUpdates = { ...prev };
+          delete newUpdates[response.tool_run_id];
+          return newUpdates;
         });
-      });
-    } catch (e) {
-      // messageApi.error(e);
-      console.log(e);
-      console.log(e.stack);
-    } finally {
-      setAnalysisBusy(false);
-      setGlobalLoading(false);
-    }
-  }
+
+        setToolRunDataCache(analysisManager.toolRunDataCache);
+
+        // and set active node to this one
+        const parentNodes = [...dag.nodes()].filter(
+          (d) =>
+            d.data.isOutput &&
+            d.data.parentIds.find((p) => p === response.tool_run_id)
+        );
+        if (parentNodes.length) {
+          setActiveNodePrivate(parentNodes[0]);
+        }
+
+        if (response.error_message) {
+          // messageManager.error(response.error_message);
+          throw new Error(response.error_message);
+        }
+
+        // update reactive context
+        Object.keys(response?.tool_run_data?.outputs || {}).forEach((k, i) => {
+          if (!response?.tool_run_data?.outputs?.[k]?.reactive_vars) return;
+          const runId = response.tool_run_id;
+          reactiveContext.update((prev) => {
+            return {
+              ...prev,
+              [runId]: {
+                ...prev[runId],
+                [k]: response?.tool_run_data?.outputs?.[k]?.reactive_vars,
+              },
+            };
+          });
+        });
+      } catch (e) {
+        messageManager.error(e);
+        console.log(e.stack);
+      } finally {
+        setAnalysisBusy(false);
+        setGlobalLoading(false);
+      }
+    },
+    [dag]
+  );
 
   const analysisManager = useMemo(() => {
     return AnalysisManager({
@@ -142,6 +164,8 @@ export const AnalysisAgent = ({
       createAnalysisRequestBody,
     });
   }, [analysisId]);
+
+  analysisManager.setOnReRunDataCallback(onReRunMessage);
 
   const [analysisBusy, setAnalysisBusy] = useState(initiateAutoSubmit);
 
@@ -219,7 +243,7 @@ export const AnalysisAgent = ({
           setAnalysisBusy(false);
         }
       } catch (e) {
-        console.log(e);
+        messageManager.error(e);
         console.log(e.stack);
       }
     }
@@ -228,7 +252,7 @@ export const AnalysisAgent = ({
 
   useEffect(() => {
     if (analysisManager) {
-      managerCreatedHook(analysisManager, analysisId);
+      onManagerCreated(analysisManager, analysisId);
       if (mainManager && reRunManager) {
         analysisManager.setMainSocket(mainManager);
         analysisManager.setReRunSocket(reRunManager);
@@ -249,12 +273,16 @@ export const AnalysisAgent = ({
         analysisManager.submit(query, stageInput, submitStage);
         setAnalysisBusy(true);
         setGlobalLoading(true);
-      } catch (err) {
-        // messageApi.error(err);
-        console.log(err);
-        console.log(err.stack);
+      } catch (e) {
+        messageManager.error(e);
+        console.log(e.stack);
         setAnalysisBusy(false);
         setGlobalLoading(false);
+        // if the current stage is null, just destroy this analysis
+        if (submitStage === null) {
+          analysisManager.destroy();
+          onManagerDestroyed(analysisManager, analysisId);
+        }
       }
     },
     [analysisManager, setGlobalLoading]
@@ -276,8 +304,7 @@ export const AnalysisAgent = ({
       try {
         analysisManager.initiateReRun(toolRunId, preRunActions);
       } catch (e) {
-        // messageApi.error(err);
-        console.log(e);
+        messageManager.error(e);
         console.log(e.stack);
       }
     },
@@ -286,7 +313,7 @@ export const AnalysisAgent = ({
 
   return (
     <ErrorBoundary>
-      <div className="analysis-agent-container min-h-96">
+      <div className="analysis-agent-container min-h-96 mr-4 p-4 border rounded-md">
         <ThemeContext.Provider
           value={{ theme: { type: "light", config: lightThemeColor } }}
           key="1"
@@ -341,43 +368,51 @@ export const AnalysisAgent = ({
               )}
 
               {analysisData.currentStage === "gen_steps" ? (
-                <div className="analysis-content flex flex-row max-w-full overflow-auto">
-                  <div className="analysis-results grow overflow-scroll relative">
+                <div className="analysis-content flex flex-row max-w-full">
+                  <div className="analysis-results flex flex-col grow basis-0 overflow-scroll relative">
                     <ErrorBoundary>
-                      {!analysisBusy && analysisData && (
-                        <div className="">
-                          <AnalysisFeedback
-                            analysisSteps={analysisData?.gen_steps?.steps || []}
-                            analysisId={analysisId}
-                            user_question={analysisData?.user_question}
-                            token={token}
-                          />
-                        </div>
-                      )}
                       {analysisData?.gen_steps?.steps.length ? (
-                        <ToolResults
-                          analysisId={analysisId}
-                          activeNode={activeNode}
-                          analysisData={analysisData}
-                          toolSocketManager={toolSocketManager}
-                          dag={dag}
-                          setActiveNode={setActiveNode}
-                          handleReRun={handleReRun}
-                          reRunningSteps={reRunningSteps}
-                          setPendingToolRunUpdates={setPendingToolRunUpdates}
-                          toolRunDataCache={toolRunDataCache}
-                          setToolRunDataCache={setToolRunDataCache}
-                          tools={tools}
-                          analysisBusy={analysisBusy}
-                          handleDeleteSteps={async (toolRunIds) => {
-                            try {
-                              await analysisManager.deleteSteps(toolRunIds);
-                            } catch (e) {
-                              console.log(e);
-                              console.log(e.stack);
-                            }
-                          }}
-                        ></ToolResults>
+                        <>
+                          {!analysisBusy && analysisData && (
+                            <div className="basis-0">
+                              <AnalysisFeedback
+                                analysisSteps={
+                                  analysisData?.gen_steps?.steps || []
+                                }
+                                analysisId={analysisId}
+                                user_question={analysisData?.user_question}
+                                token={token}
+                              />
+                            </div>
+                          )}
+                          <div className="basis-0 grow flex place-content-start">
+                            <ToolResults
+                              analysisId={analysisId}
+                              activeNode={activeNode}
+                              analysisData={analysisData}
+                              toolSocketManager={toolSocketManager}
+                              dag={dag}
+                              setActiveNode={setActiveNode}
+                              handleReRun={handleReRun}
+                              reRunningSteps={reRunningSteps}
+                              setPendingToolRunUpdates={
+                                setPendingToolRunUpdates
+                              }
+                              toolRunDataCache={toolRunDataCache}
+                              setToolRunDataCache={setToolRunDataCache}
+                              tools={tools}
+                              analysisBusy={analysisBusy}
+                              handleDeleteSteps={async (toolRunIds) => {
+                                try {
+                                  await analysisManager.deleteSteps(toolRunIds);
+                                } catch (e) {
+                                  messageManager.error(e);
+                                  console.log(e.stack);
+                                }
+                              }}
+                            ></ToolResults>
+                          </div>
+                        </>
                       ) : (
                         analysisBusy && (
                           <AgentLoader
@@ -397,7 +432,7 @@ export const AnalysisAgent = ({
                       )}
                     </ErrorBoundary>
                   </div>
-                  <div className="analysis-steps overflow-auto">
+                  <div className="analysis-steps basis-0">
                     <StepsDag
                       steps={analysisData?.gen_steps?.steps || []}
                       nodeSize={[40, 10]}
@@ -421,8 +456,12 @@ export const AnalysisAgent = ({
                       }}
                       toolIcon={(node) => (
                         <p className="text-sm truncate m-0">
-                          {toolShortNames[node?.data?.step?.tool_name] ||
-                            node?.data?.step?.tool_name}
+                          {trimStringToLength(
+                            toolShortNames[node?.data?.step?.tool_name] ||
+                              tools[node?.data?.step?.tool_name]["tool_name"] ||
+                              node?.data?.step?.tool_name,
+                            15
+                          )}
                         </p>
                       )}
                     />

@@ -1,11 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
-export default function Tabs({ tabs = [], defaultSelected = null }) {
+export default function Tabs({
+  tabs = [],
+  defaultSelected = null,
+  selected = null,
+}) {
   const [selectedTab, setSelectedTab] = useState(
     (defaultSelected && tabs.find((tab) => tab.name === defaultSelected)) ||
+      selected ||
       tabs[0]
   );
+
+  useEffect(() => {
+    if (selected !== selectedTab.name) {
+      setSelectedTab(tabs.find((tab) => tab.name === selected) || tabs[0]);
+    }
+  }, [selected]);
 
   return (
     <>

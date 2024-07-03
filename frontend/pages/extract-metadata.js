@@ -66,6 +66,50 @@ const ExtractMetadata = () => {
     }
   };
 
+  const desc = {
+    inning: "the inning number",
+    batting_team: "name of the batting team",
+    bowling_team: "name of the bowling team",
+    batsman: "the player id of the batsman",
+    bowler: "the player id of the bowler",
+    batsman_name: "name of the batsman",
+    non_striker: "name of the non-striker",
+    bowler_name: "name of the bowler",
+    bat_right_handed: "indicates whether the player is left or right handed",
+    ovr: "the over number as a float. 2.4 would mean this was the 4th ball of the 3rd over. 0.1 would mean this was the first ball of the first",
+    runs_batter: "the number of runs scored by the batsman on this ball",
+    runs_w_extras: "the number of runs scored on this ball including extras",
+    extras: "the number of extras scored on this ball",
+    x: "x coordinate of where the ball ended up after it was hit. is 0 when it reaches the left-most region of the ground (the point boundary for a right hander) and is 360 when it reaches the right-most region of the ground (the point boundary for a right hander)",
+    y: "y coordinate of where the ball ended up after it was hit. 'y' is 0 when the ball reaches the boundary straight down the ground (i.e., after a perfect straight drive), and is 360 when it reaches the boundary after going over the keeper's head",
+    z: "the zone in which a ball was hit. z=1 is the fine-leg zone, z=2 is the zone behind square leg, z=3 is the zone in front of square leg etc. This progress all the way until z=8, which is the third-man area",
+    landing_x:
+      "the distance (in meters) away from the centre of the pitch that the ball lands. A negative value indicates the ball landed outside off-stump for a right-hander and outside leg-stump for a left-hander",
+    landing_y:
+      "the distance (in meters) away from the batsman stumps that a ball lands. A negative value indicates a full toss.",
+    ended_x:
+      "the distance (in meters) away from the centre of the pitch that the ball ends up when it reaches the batsman. A negative value indicates the ball landed outside off-stump for a right-hander and outside leg-stump for a left-hander.",
+    ended_y:
+      "the height (in meters) above the pitch by the time it reaches the batsman.",
+    ball_speed: "the speed of the ball in miles per hour",
+    cumul_runs:
+      "the total number of runs scored by the batting team up to this point",
+    wicket: "whether or not a wicket fell on this ball",
+    wicket_method: "the method by which the wicket fell",
+    who_out: "the name of the player who was out",
+    control:
+      "whether or not the batsman middled the ball (1=middled, 0=not middled)",
+    extras_type: "the type of extras scored on this ball",
+    match_id: "the id of the match",
+    team1_name: "the name of the first team",
+    team2_name: "the name of the second team",
+    team1_id: "the id of the first team",
+    team2_id: "the id of the second team",
+    ground_name: "the name of the ground",
+    ground_id: "the id of the ground",
+    date: "the date of the match",
+  };
+
   const getMetadata = async () => {
     const token = localStorage.getItem("defogToken");
     setToken(token);
@@ -262,6 +306,12 @@ const ExtractMetadata = () => {
                           );
                           const data = await res.json();
                           setLoading(false);
+                          data.metadata.forEach((item) => {
+                            if (desc[item.column_name]) {
+                              item.column_description = desc[item.column_name];
+                            }
+                          });
+
                           setMetadata(data?.metadata || []);
                         } catch (e) {
                           console.log(e);
@@ -309,7 +359,7 @@ const ExtractMetadata = () => {
                     </Form>
                     <div className="my-10">
                       {metadata.length > 0 ? (
-                        <div className="mt-4 sticky top-0 py-4 z-50 shadow-md bg-white grid grid-cols-4 gap-4 font-bold">
+                        <div className="header mt-4 sticky top-0 py-4 z-50 shadow-md bg-white grid grid-cols-4 gap-4 font-bold">
                           <div className="border-r-2 p-2">
                             Table Name
                             <div className="table-filter">
@@ -350,16 +400,16 @@ const ExtractMetadata = () => {
                               }
                               key={item.table_name + "_" + item.column_name}
                             >
-                              <div className="p-2 border-r-2">
+                              <div className="table_name p-2 border-r-2">
                                 {item.table_name}
                               </div>
-                              <div className="p-2 border-r-2">
+                              <div className="column_name p-2 border-r-2">
                                 {item.column_name}
                               </div>
-                              <div className="p-2 border-r-2">
+                              <div className="data_type p-2 border-r-2">
                                 {item.data_type}
                               </div>
-                              <div className="p-2">
+                              <div className="column_description p-2">
                                 <Input.TextArea
                                   key={index}
                                   placeholder="Description of what this column does"

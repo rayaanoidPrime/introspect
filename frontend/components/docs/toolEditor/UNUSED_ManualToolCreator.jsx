@@ -1,6 +1,6 @@
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { Input, Modal, Select, message } from "antd";
-import { Button } from "$tailwind/Button";
+import Button from "$tailwind/Button";
 import {
   arrayOfObjectsToObject,
   breakLinesPretty,
@@ -26,13 +26,19 @@ const addToolEndpoint = setupBaseUrl("http", "add_tool");
 const generateToolCodeEndpoint = setupBaseUrl("http", "generate_tool_code");
 const skipImages = false;
 
-export default function _AddTool({ toolbox, onAddTool }) {
+export default function ManualToolCreator({ tool, onAddTool, handleChange }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [toolFunctionBody, setToolFunctionBody] = useState(
     "\n  #\n  # YOUR FUNCTION BODY HERE\n  #\n  pass\n"
   );
 
-  const [toolInputs, setToolInputs] = useState([]);
+  // for easier rendering of inputs in the code string, it's better to have it as an array
+  const toolInputs = Object.keys(tool.input_metadata).map(
+    (d) => tool.input_metadata[d]
+  );
+  const setToolInputs = (inputsArr) =>
+    handleChange("input_metadata", arrayOfObjectsToObject(inputsArr, "name"));
+
   const [toolDefStatement, setToolDefStatement] = useState("");
 
   const [toolReturnStatement, setToolReturnStatement] = useState("");
@@ -81,9 +87,13 @@ export default function _AddTool({ toolbox, onAddTool }) {
     [toolDefStatement, toolReturnStatement, toolFunctionBody]
   );
 
-  const [toolOutputs, setToolOutputs] = useState([]);
-  const [toolName, setToolName] = useState("New Tool");
-  const [toolDocString, setToolDocString] = useState("This tool does XX");
+  const toolOutputs = tool.output_metadata;
+  const setToolOutputs = (outputsArr) =>
+    handleChange("output_metadata", outputsArr);
+
+  const toolName = tool.tool_name;
+  const toolDocString = tool.description;
+  const setToolDocString = (val) => handleChange("description", val);
   const editor = useRef();
 
   const mandatoryInputs = [
@@ -113,7 +123,7 @@ export default function _AddTool({ toolbox, onAddTool }) {
       code: toolDefStatement + toolFunctionBody + toolReturnStatement,
       input_metadata: arrayOfObjectsToObject(toolInputs, "name"),
       output_metadata: toolOutputs,
-      toolbox: toolbox,
+      toolbox: tool.toolbox,
       no_code: false,
     };
 
