@@ -1,6 +1,6 @@
 import { message } from "antd";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AddStepInputList } from "./AddStepInputList";
 import { ToolReRun } from "./ToolReRun";
 import setupBaseUrl from "$utils/setupBaseUrl";
@@ -99,7 +99,7 @@ export function AddStepUI({
         />
       </div>
       <SingleSelect
-        rootClassName="add-step-select-tool-name"
+        rootClassName="my-2 mb-4 w-6/12 min-w-52"
         options={toolOptions}
         value={selectedTool}
         onChange={(option) => {

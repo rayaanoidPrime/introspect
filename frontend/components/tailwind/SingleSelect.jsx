@@ -15,6 +15,21 @@ import { twMerge } from "tailwind-merge";
 //   // More users...
 // ];
 
+const inputSizeClasses = {
+  default: "py-1.5 pl-3",
+  small: "py-0 pl-3",
+};
+
+const popupSizeClasses = {
+  default: "",
+  small: "",
+};
+
+const popupOptionSizeClasses = {
+  default: "py-2 pl-3 pr-9",
+  small: "py-1 pl-3 pr-9",
+};
+
 export default function SingleSelect({
   rootClassName = "",
   popupClassName = "",
@@ -26,6 +41,8 @@ export default function SingleSelect({
   label = null,
   optionRenderer = null,
   placeholder = "Select an option",
+  size = "default",
+  optionRender = null,
 }) {
   const [query, setQuery] = useState("");
 
@@ -72,7 +89,8 @@ export default function SingleSelect({
         <ComboboxInput
           placeholder={placeholder}
           className={twMerge(
-            "w-full rounded-md border-0 py-1.5 pl-3 pr-10  shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-400 sm:text-sm sm:leading-6",
+            "w-full rounded-md border-0 pr-10 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-400 sm:text-sm sm:leading-6",
+            inputSizeClasses[size] || inputSizeClasses["default"],
             disabled ? "bg-gray-100 text-gray-400" : "bg-white text-gray-900"
           )}
           onChange={(event) => setQuery(event.target.value)}
@@ -88,8 +106,10 @@ export default function SingleSelect({
 
         {filteredOptions.length > 0 && (
           <ComboboxOptions
+            anchor="bottom"
             className={twMerge(
-              "z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm absolute top-8",
+              "w-[var(--input-width)] z-10 mt-1 max-h-60 overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm absolute",
+              popupSizeClasses[size] || popupSizeClasses["default"],
               popupClassName
             )}
           >
@@ -99,7 +119,9 @@ export default function SingleSelect({
                 value={option}
                 className={({ focus }) =>
                   twMerge(
-                    "relative cursor-default select-none py-2 pl-3 pr-9",
+                    "relative cursor-default select-none",
+                    popupOptionSizeClasses[size] ||
+                      popupOptionSizeClasses["default"],
                     focus ? "bg-blue-400 text-white" : "text-gray-900"
                   )
                 }

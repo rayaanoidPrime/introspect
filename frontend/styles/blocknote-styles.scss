@@ -1493,7 +1493,6 @@ $grid: repeating-linear-gradient(
 
 .tool-input-value-dropdown {
   font-family: $code;
-  width: auto !important;
 
   .ant-select-item-option-content {
     font-size: 1em;
@@ -1574,8 +1573,8 @@ $grid: repeating-linear-gradient(
     width: 100%;
   }
   .tool-input-data-value {
-    width: 100%;
     color: $text-medium;
+    background-color: white;
     * {
       font-family: $code;
       overflow-wrap: anywhere;
@@ -1585,7 +1584,6 @@ $grid: repeating-linear-gradient(
     font-size: 0.7em;
     // margin: 0 0 5px 0;
     padding: 0.5em;
-    // border: 1px solid $medium-gray;
     border-left: 8px solid $medium-green;
     border-radius: 4px;
     cursor: pointer;

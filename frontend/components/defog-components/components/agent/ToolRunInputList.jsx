@@ -1,7 +1,9 @@
-import { Input, Select, message } from "antd";
+import { message } from "antd";
 import React, { useCallback, useEffect, useState } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
 import { easyToolInputTypes } from "$utils/utils";
+import Input from "$components/tailwind/Input";
+import SingleSelect from "$components/tailwind/SingleSelect";
 
 const inputTypeToUI = {
   list: (toolRunId, inputName, initialValue, onEdit) => {
@@ -72,7 +74,7 @@ const inputTypeToUI = {
   bool: (toolRunId, inputName, initialValue, onEdit) => {
     if (!initialValue) initialValue = false;
     return (
-      <Select
+      <SingleSelect
         showSearch
         allowClear
         rootClassName="tool-input-value"
@@ -84,7 +86,8 @@ const inputTypeToUI = {
           { label: "true", value: true },
           { label: "false", value: false },
         ]}
-        onChange={(val) => {
+        onChange={(opt) => {
+          const val = opt.value;
           onEdit(inputName, val);
         }}
       />
@@ -189,7 +192,7 @@ const inputTypeToUI = {
 
     // return
     return (
-      <Select
+      <SingleSelect
         showSearch
         rootClassName="tool-input-value"
         value={initialValue}
@@ -199,7 +202,8 @@ const inputTypeToUI = {
         options={options}
         placeholder="Select a column name"
         allowClear
-        onChange={(val) => {
+        onChange={(opt) => {
+          const val = opt.value;
           onEdit(inputName, val);
         }}
       />
@@ -251,7 +255,7 @@ const inputTypeToUI = {
         {initialValue.map((val, i) => {
           return (
             <span key={toolRunId + "_" + inputName + "_" + i}>
-              <Select
+              <SingleSelect
                 value={val}
                 showSearch
                 size="small"
@@ -260,7 +264,8 @@ const inputTypeToUI = {
                 allowClear
                 popupClassName="tool-input-value-dropdown"
                 options={options}
-                onChange={(val) => {
+                onChange={(opt) => {
+                  const val = opt.value;
                   // replace the value at i with the new value
                   const newVal = initialValue.map((v, j) => {
                     if (i === j) {
@@ -334,7 +339,7 @@ const inputTypeToUI = {
       )?.default || [];
 
     return (
-      <Select
+      <SingleSelect
         allowClear
         value={initialValue}
         key={toolRunId + "_" + inputName}
@@ -346,7 +351,8 @@ const inputTypeToUI = {
         })}
         placeholder="Select a value"
         showSearch
-        onChange={(val) => {
+        onChange={(opt) => {
+          const val = opt.value;
           onEdit(inputName, val);
         }}
       />
@@ -442,12 +448,17 @@ export function ToolRunInputList({
         const input = inputs[input_name];
 
         return (
-          <div key={i + "_" + toolRunId} className="tool-input">
-            <span className="tool-input-type">
-              {easyToolInputTypes[sanitizedType] || sanitizedType}
-            </span>
-            <span className="tool-input-name">
-              {inputMetadata[input_name].name}
+          <div
+            key={i + "_" + toolRunId}
+            className="font-mono flex flex-row flex-wrap gap-3 items-center *:my-1 pb-4 text-xs"
+          >
+            <span className="">
+              <span className="rounded-md p-1 bg-gray-200 text-gray-400 mr-2">
+                {easyToolInputTypes[sanitizedType] || sanitizedType}
+              </span>
+              <span className="font-bold">
+                {inputMetadata[input_name].name}
+              </span>
             </span>
 
             {inputTypeToUI[sanitizedType] ? (

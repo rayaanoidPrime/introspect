@@ -2,6 +2,11 @@ import { ExclamationCircleIcon } from "@heroicons/react/20/solid";
 import React from "react";
 import { twMerge } from "tailwind-merge";
 
+const inputSizeClasses = {
+  default: "py-1.5 pr-5 ",
+  small: "py-0 pr-5",
+};
+
 export default function Input({
   value = undefined,
   defaultValue = undefined,
@@ -17,6 +22,7 @@ export default function Input({
   onPressEnter = (...args) => {},
   inputHtmlProps = {},
   inputClassName = "",
+  size = "default",
 }) {
   return (
     <div className={twMerge("text-gray-600", rootClassName)}>
@@ -34,7 +40,7 @@ export default function Input({
           name={name}
           id={id}
           className={twMerge(
-            "block w-full shadow-sm rounded-md border-0 py-1.5 pr-10 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset",
+            "block w-full shadow-sm rounded-md border-0 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset",
             status !== "error"
               ? "focus:ring-blue-400"
               : "focus:ring-rose-400 ring-rose-400",
@@ -42,6 +48,7 @@ export default function Input({
             disabled
               ? "bg-gray-100 text-gray-400  focus:ring-gray-100 cursor-not-allowed"
               : "bg-white",
+            inputSizeClasses[size] || inputSizeClasses["default"],
             inputClassName
           )}
           placeholder={placeholder}

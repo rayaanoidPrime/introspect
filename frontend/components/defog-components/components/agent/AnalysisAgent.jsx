@@ -369,12 +369,12 @@ export const AnalysisAgent = ({
 
               {analysisData.currentStage === "gen_steps" ? (
                 <div className="analysis-content flex flex-row max-w-full">
-                  <div className="analysis-results grow basis-0 overflow-scroll relative">
+                  <div className="analysis-results flex flex-col grow basis-0 overflow-scroll relative">
                     <ErrorBoundary>
                       {analysisData?.gen_steps?.steps.length ? (
                         <>
                           {!analysisBusy && analysisData && (
-                            <div className="">
+                            <div className="basis-0">
                               <AnalysisFeedback
                                 analysisSteps={
                                   analysisData?.gen_steps?.steps || []
@@ -385,29 +385,33 @@ export const AnalysisAgent = ({
                               />
                             </div>
                           )}
-                          <ToolResults
-                            analysisId={analysisId}
-                            activeNode={activeNode}
-                            analysisData={analysisData}
-                            toolSocketManager={toolSocketManager}
-                            dag={dag}
-                            setActiveNode={setActiveNode}
-                            handleReRun={handleReRun}
-                            reRunningSteps={reRunningSteps}
-                            setPendingToolRunUpdates={setPendingToolRunUpdates}
-                            toolRunDataCache={toolRunDataCache}
-                            setToolRunDataCache={setToolRunDataCache}
-                            tools={tools}
-                            analysisBusy={analysisBusy}
-                            handleDeleteSteps={async (toolRunIds) => {
-                              try {
-                                await analysisManager.deleteSteps(toolRunIds);
-                              } catch (e) {
-                                messageManager.error(e);
-                                console.log(e.stack);
+                          <div className="basis-0 grow flex place-content-start">
+                            <ToolResults
+                              analysisId={analysisId}
+                              activeNode={activeNode}
+                              analysisData={analysisData}
+                              toolSocketManager={toolSocketManager}
+                              dag={dag}
+                              setActiveNode={setActiveNode}
+                              handleReRun={handleReRun}
+                              reRunningSteps={reRunningSteps}
+                              setPendingToolRunUpdates={
+                                setPendingToolRunUpdates
                               }
-                            }}
-                          ></ToolResults>
+                              toolRunDataCache={toolRunDataCache}
+                              setToolRunDataCache={setToolRunDataCache}
+                              tools={tools}
+                              analysisBusy={analysisBusy}
+                              handleDeleteSteps={async (toolRunIds) => {
+                                try {
+                                  await analysisManager.deleteSteps(toolRunIds);
+                                } catch (e) {
+                                  messageManager.error(e);
+                                  console.log(e.stack);
+                                }
+                              }}
+                            ></ToolResults>
+                          </div>
                         </>
                       ) : (
                         analysisBusy && (
