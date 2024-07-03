@@ -321,7 +321,8 @@ function AnalysisVersionViewer({
                 title="History"
                 rootClassNames="z-20 rounded-md lg:rounded-none lg:rounded-tr-md bg-gray-100"
                 contentClassNames={
-                  "px-2 pt-5 pb-14 rounded-tl-lg relative sm:block"
+                  // need to add pl-4 here to make the links visible
+                  "px-2 pt-5 pb-14 rounded-tl-lg relative sm:block pl-4"
                 }
               >
                 <div className="flex flex-col  relative history-list">

@@ -369,12 +369,10 @@ function AnalysisManager({
           tool_run_id: response.pre_tool_run_message,
         });
       } else {
-        if (response.success) {
-          // remove the tool run id from rerunning steps and clear it's timeout
-          newReRunningSteps = newReRunningSteps.filter((d) => {
-            return d.tool_run_id !== response.tool_run_id;
-          });
-        }
+        // regardless of success or not, remove the tool run id from rerunning steps
+        newReRunningSteps = newReRunningSteps.filter((d) => {
+          return d.tool_run_id !== response.tool_run_id;
+        });
       }
 
       let newToolRunDataCache = { ...toolRunDataCache };
@@ -388,10 +386,12 @@ function AnalysisManager({
       const idx = newSteps.findIndex(
         (d) => d.tool_run_id === response.tool_run_id
       );
+
       if (idx > -1) {
         newSteps[idx] = {
           ...newSteps[idx],
-          error_message: response?.tool_run_data?.error_message,
+          error_message:
+            response?.tool_run_data?.error_message || response?.error_message,
         };
       }
 

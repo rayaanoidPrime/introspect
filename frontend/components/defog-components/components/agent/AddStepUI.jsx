@@ -1,10 +1,12 @@
-import { Select, message } from "antd";
+import { message } from "antd";
+
 import { useEffect, useMemo, useState } from "react";
 import { AddStepInputList } from "./AddStepInputList";
 import { ToolReRun } from "./ToolReRun";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { v4 } from "uuid";
 import { createInitialToolInputs } from "$utils/utils";
+import SingleSelect from "$components/tailwind/SingleSelect";
 
 const createNewStepEndpoint = setupBaseUrl("http", "create_new_step");
 
@@ -24,35 +26,13 @@ export function AddStepUI({
     activeNode?.data?.step?.tool_name
   );
 
-  // all the default inputs are null, except for pandas dataframes, which are the parent's output
-  const sanitizeInputs = (inputs) => {
-    return inputs;
-    // if none of the inputs start with "global_dict.", then add it to the first input that is a string
-    if (
-      inputs
-        .filter((i) => typeof i === "string")
-        .filter((i) => i.startsWith("global_dict.")).length === 0
-    ) {
-      const firstStringInputIdx = inputs.findIndex(
-        (i) => typeof i === "string"
-      );
-      if (firstStringInputIdx !== -1) {
-        inputs[firstStringInputIdx] =
-          "global_dict." + inputs[firstStringInputIdx];
-      }
-    }
-    return inputs;
-  };
-
-  const [inputs, setInputs] = useState(
-    sanitizeInputs(activeNode?.data?.step?.inputs || {})
-  );
+  const [inputs, setInputs] = useState(activeNode?.data?.step?.inputs || {});
   const [outputs, setOutputs] = useState(["output_" + v4().split("-")[0]]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setSelectedTool(activeNode?.data?.step?.tool_name);
-    setInputs(sanitizeInputs(activeNode?.data?.step?.inputs || {}));
+    setInputs(activeNode?.data?.step?.inputs || {});
     setLoading(activeNode?.data?.step?.loading || false);
   }, [activeNode?.data?.id]);
 
@@ -118,13 +98,12 @@ export function AddStepUI({
           }}
         />
       </div>
-      <Select
+      <SingleSelect
         rootClassName="add-step-select-tool-name"
         options={toolOptions}
         value={selectedTool}
-        allowClear
-        showSearch
-        onChange={(value) => {
+        onChange={(option) => {
+          const value = option?.value;
           if (!activeNode.data?.step?.inputs) return;
           if (!value) {
             setSelectedTool(null);

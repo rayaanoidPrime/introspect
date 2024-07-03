@@ -19,11 +19,13 @@ export default function SingleSelect({
   rootClassName = "",
   popupClassName = "",
   onChange = null,
-  defaultValue = null,
+  defaultValue = undefined,
+  value = undefined,
   disabled = false,
   options = [],
   label = null,
   optionRenderer = null,
+  placeholder = "Select an option",
 }) {
   const [query, setQuery] = useState("");
 
@@ -42,8 +44,8 @@ export default function SingleSelect({
   );
 
   useEffect(() => {
-    setSelectedOption(options.find((option) => option.value === defaultValue));
-  }, [defaultValue]);
+    setSelectedOption(options.find((option) => option.value === value));
+  }, [value, options]);
 
   return (
     <Combobox
@@ -68,6 +70,7 @@ export default function SingleSelect({
       )}
       <div className="relative">
         <ComboboxInput
+          placeholder={placeholder}
           className={twMerge(
             "w-full rounded-md border-0 py-1.5 pl-3 pr-10  shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-400 sm:text-sm sm:leading-6",
             disabled ? "bg-gray-100 text-gray-400" : "bg-white text-gray-900"

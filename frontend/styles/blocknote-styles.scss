@@ -289,6 +289,9 @@ $grid: repeating-linear-gradient(
 }
 
 .graph {
+  svg text {
+    text-anchor: middle;
+  }
   position: relative;
 
   .graph-node-loading {
@@ -987,7 +990,7 @@ $grid: repeating-linear-gradient(
               display: flex;
               justify-content: left;
               align-items: center;
-              font-size: 0.8em;
+              // font-size: 0.8em;
 
               .tool-input-type {
                 padding: 0px 3px;
@@ -1160,7 +1163,7 @@ $grid: repeating-linear-gradient(
         display: flex;
         flex-direction: row;
         .analysis-steps {
-          min-width: 50px;
+          // min-width: 50px;
           margin-left: 10px;
         }
         .analysis-graph {

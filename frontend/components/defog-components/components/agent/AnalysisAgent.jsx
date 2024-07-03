@@ -37,9 +37,9 @@ export const AnalysisAgent = ({
   createAnalysisRequestBody = {},
   initiateAutoSubmit = false,
   searchRef = null,
-  setGlobalLoading = () => {},
-  onManagerCreated = () => {},
-  onManagerDestroyed = () => {},
+  setGlobalLoading = (...args) => {},
+  onManagerCreated = (...args) => {},
+  onManagerDestroyed = (...args) => {},
 }) => {
   // const [messageApi, contextHolder] = message.useMessage();
   const [pendingToolRunUpdates, setPendingToolRunUpdates] = useState({});
@@ -113,18 +113,19 @@ export const AnalysisAgent = ({
 
         setToolRunDataCache(analysisManager.toolRunDataCache);
 
-        console.log(dag, [...dag?.nodes?.()]);
-        // if this is success = true, then check tool_run_data.outputs
-        // and set active node to that one
-        if (response.success) {
-          const parentNodes = [...dag.nodes()].filter(
-            (d) =>
-              d.data.isOutput &&
-              d.data.parentIds.find((p) => p === response.tool_run_id)
-          );
-          if (parentNodes.length) {
-            setActiveNodePrivate(parentNodes[0]);
-          }
+        // and set active node to this one
+        const parentNodes = [...dag.nodes()].filter(
+          (d) =>
+            d.data.isOutput &&
+            d.data.parentIds.find((p) => p === response.tool_run_id)
+        );
+        if (parentNodes.length) {
+          setActiveNodePrivate(parentNodes[0]);
+        }
+
+        if (response.error_message) {
+          // messageManager.error(response.error_message);
+          throw new Error(response.error_message);
         }
 
         // update reactive context
@@ -143,7 +144,6 @@ export const AnalysisAgent = ({
         });
       } catch (e) {
         messageManager.error(e);
-        console.log(e);
         console.log(e.stack);
       } finally {
         setAnalysisBusy(false);
@@ -244,7 +244,6 @@ export const AnalysisAgent = ({
         }
       } catch (e) {
         messageManager.error(e);
-        console.log(e);
         console.log(e.stack);
       }
     }
@@ -274,9 +273,9 @@ export const AnalysisAgent = ({
         analysisManager.submit(query, stageInput, submitStage);
         setAnalysisBusy(true);
         setGlobalLoading(true);
-      } catch (err) {
-        messageManager.error(err);
-        console.log(err.stack);
+      } catch (e) {
+        messageManager.error(e);
+        console.log(e.stack);
         setAnalysisBusy(false);
         setGlobalLoading(false);
         // if the current stage is null, just destroy this analysis
@@ -305,8 +304,7 @@ export const AnalysisAgent = ({
       try {
         analysisManager.initiateReRun(toolRunId, preRunActions);
       } catch (e) {
-        messageManager.error(err);
-        console.log(e);
+        messageManager.error(e);
         console.log(e.stack);
       }
     },
@@ -371,43 +369,46 @@ export const AnalysisAgent = ({
 
               {analysisData.currentStage === "gen_steps" ? (
                 <div className="analysis-content flex flex-row max-w-full">
-                  <div className="analysis-results grow overflow-scroll relative">
+                  <div className="analysis-results grow basis-0 overflow-scroll relative">
                     <ErrorBoundary>
-                      {!analysisBusy && analysisData && (
-                        <div className="">
-                          <AnalysisFeedback
-                            analysisSteps={analysisData?.gen_steps?.steps || []}
-                            analysisId={analysisId}
-                            user_question={analysisData?.user_question}
-                            token={token}
-                          />
-                        </div>
-                      )}
                       {analysisData?.gen_steps?.steps.length ? (
-                        <ToolResults
-                          analysisId={analysisId}
-                          activeNode={activeNode}
-                          analysisData={analysisData}
-                          toolSocketManager={toolSocketManager}
-                          dag={dag}
-                          setActiveNode={setActiveNode}
-                          handleReRun={handleReRun}
-                          reRunningSteps={reRunningSteps}
-                          setPendingToolRunUpdates={setPendingToolRunUpdates}
-                          toolRunDataCache={toolRunDataCache}
-                          setToolRunDataCache={setToolRunDataCache}
-                          tools={tools}
-                          analysisBusy={analysisBusy}
-                          handleDeleteSteps={async (toolRunIds) => {
-                            try {
-                              await analysisManager.deleteSteps(toolRunIds);
-                            } catch (e) {
-                              messageManager.error(e);
-                              console.log(e);
-                              console.log(e.stack);
-                            }
-                          }}
-                        ></ToolResults>
+                        <>
+                          {!analysisBusy && analysisData && (
+                            <div className="">
+                              <AnalysisFeedback
+                                analysisSteps={
+                                  analysisData?.gen_steps?.steps || []
+                                }
+                                analysisId={analysisId}
+                                user_question={analysisData?.user_question}
+                                token={token}
+                              />
+                            </div>
+                          )}
+                          <ToolResults
+                            analysisId={analysisId}
+                            activeNode={activeNode}
+                            analysisData={analysisData}
+                            toolSocketManager={toolSocketManager}
+                            dag={dag}
+                            setActiveNode={setActiveNode}
+                            handleReRun={handleReRun}
+                            reRunningSteps={reRunningSteps}
+                            setPendingToolRunUpdates={setPendingToolRunUpdates}
+                            toolRunDataCache={toolRunDataCache}
+                            setToolRunDataCache={setToolRunDataCache}
+                            tools={tools}
+                            analysisBusy={analysisBusy}
+                            handleDeleteSteps={async (toolRunIds) => {
+                              try {
+                                await analysisManager.deleteSteps(toolRunIds);
+                              } catch (e) {
+                                messageManager.error(e);
+                                console.log(e.stack);
+                              }
+                            }}
+                          ></ToolResults>
+                        </>
                       ) : (
                         analysisBusy && (
                           <AgentLoader
@@ -427,7 +428,7 @@ export const AnalysisAgent = ({
                       )}
                     </ErrorBoundary>
                   </div>
-                  <div className="analysis-steps">
+                  <div className="analysis-steps basis-0">
                     <StepsDag
                       steps={analysisData?.gen_steps?.steps || []}
                       nodeSize={[40, 10]}
