@@ -28,7 +28,12 @@ export const getAnalysis = async (reportId) => {
 
 export const getReport = getAnalysis;
 
-export const createAnalysis = async (token, customId = null, bodyData = {}) => {
+export const createAnalysis = async (
+  token,
+  keyName,
+  customId = null,
+  bodyData = {}
+) => {
   const urlToConnect = setupBaseUrl("http", "create_analysis");
   let response;
   try {
@@ -40,6 +45,7 @@ export const createAnalysis = async (token, customId = null, bodyData = {}) => {
       body: JSON.stringify({
         custom_id: customId,
         token: token,
+        key_name: keyName,
         ...bodyData,
       }),
     });
@@ -52,7 +58,7 @@ export const createAnalysis = async (token, customId = null, bodyData = {}) => {
 
 export const createReport = createAnalysis;
 
-export const getAllDocs = async (token) => {
+export const getAllDocs = async (token, keyName) => {
   const urlToConnect = setupBaseUrl("http", "get_docs");
   let response;
   try {
@@ -63,6 +69,7 @@ export const getAllDocs = async (token) => {
       },
       body: JSON.stringify({
         token: token,
+        key_name: keyName,
       }),
     });
     return response.json();
@@ -92,7 +99,7 @@ export const getTableData = async (tableId) => {
   }
 };
 
-export const getAllAnalyses = async () => {
+export const getAllAnalyses = async (keyName) => {
   const urlToConnect = setupBaseUrl("http", "get_analyses");
   let response;
   try {
@@ -101,7 +108,9 @@ export const getAllAnalyses = async () => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({}),
+      body: JSON.stringify({
+        key_name: keyName,
+      }),
     });
     return response.json();
   } catch (e) {

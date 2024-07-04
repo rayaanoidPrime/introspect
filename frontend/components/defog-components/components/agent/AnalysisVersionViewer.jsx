@@ -14,6 +14,7 @@ function AnalysisVersionViewer({
   dashboards,
   token,
   devMode,
+  keyName,
   // this isn't always reinforced
   // we check for this only when we're creating a new analysis
   // but not otherwise
@@ -207,6 +208,7 @@ function AnalysisVersionViewer({
                           ).createAnalysisRequestBody
                     }
                     token={token}
+                    keyName={keyName}
                     initiateAutoSubmit={true}
                     searchRef={searchRef}
                     setGlobalLoading={setLoading}
@@ -233,6 +235,7 @@ function AnalysisVersionViewer({
                       analysis.createAnalysisRequestBody
                     }
                     token={token}
+                    keyName={keyName}
                     initiateAutoSubmit={true}
                     searchRef={searchRef}
                     setGlobalLoading={setLoading}
