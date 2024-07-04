@@ -11,9 +11,7 @@ from generic_utils import (
     get_api_key_from_key_name,
 )
 
-DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]  # replace with your DEFOG_API_KEY
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-print(DEFOG_API_KEY, flush=True)
 print(DEFOG_BASE_URL, flush=True)
 
 home_dir = os.path.expanduser("~")

@@ -25,11 +25,9 @@ prop_names = {
 
 import os
 
-dfg_api_key = os.environ["DEFOG_API_KEY"]
-
 
 class ReportDataManager:
-    def __init__(self, user_question, report_id):
+    def __init__(self, dfg_api_key, user_question, report_id):
         self.report_id = report_id
         self.report_data = None
         self.api_key = dfg_api_key

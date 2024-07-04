@@ -15,14 +15,13 @@ from agents.planner_executor.tool_helpers.rerun_step import rerun_step_and_depen
 from agents.planner_executor.tool_helpers.core_functions import analyse_data
 import pandas as pd
 from io import StringIO
-from agents.main_agent import execute
 from tool_code_utilities import add_default_imports, fix_savefig_calls
 from utils import execute_code, get_clean_plan, get_db_type, log_msg, snake_case
 import logging
+from generic_utils import get_api_key_from_key_name
+from db_utils import get_db_type_creds
 
 logging.basicConfig(level=logging.INFO)
-
-DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]
 
 from connection_manager import ConnectionManager
 from db_utils import (
@@ -54,7 +53,6 @@ router = APIRouter()
 
 manager = ConnectionManager()
 
-dfg_api_key = os.environ["DEFOG_API_KEY"]
 llm_calls_url = os.environ["LLM_CALLS_URL"]
 report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 
@@ -121,7 +119,9 @@ async def add_to_recently_viewed_docs_endpoint(request: Request):
     try:
         data = await request.json()
         token = data.get("token")
-        api_key = DEFOG_API_KEY
+        key_name = data.get("key_name")
+        api_key = get_api_key_from_key_name(key_name)
+
         doc_id = data.get("doc_id")
 
         if token is None or type(token) != str:
@@ -133,6 +133,7 @@ async def add_to_recently_viewed_docs_endpoint(request: Request):
         await add_to_recently_viewed_docs(
             token=token,
             doc_id=doc_id,
+            api_key=api_key,
             timestamp=str(datetime.datetime.now()),
         )
 
@@ -167,10 +168,11 @@ async def get_document(request: Request):
     If it doesn't exist, create one and return empty data.
     """
     data = await request.json()
-    api_key = DEFOG_API_KEY
+    key_name = data.get("key_name")
     doc_id = data.get("doc_id")
     token = data.get("token")
     col_name = data.get("col_name") or "doc_blocks"
+    api_key = get_api_key_from_key_name(key_name)
 
     if api_key is None or type(api_key) != str:
         return {"success": False, "error_message": "Invalid api key."}
@@ -178,7 +180,9 @@ async def get_document(request: Request):
     if doc_id is None or type(doc_id) != str:
         return {"success": False, "error_message": "Invalid document id."}
 
-    err, doc_data = await get_doc_data(doc_id, token, col_name)
+    err, doc_data = await get_doc_data(
+        api_key=api_key, doc_id=doc_id, token=token, col_name=col_name
+    )
 
     if err:
         return {"success": False, "error_message": err}
@@ -241,8 +245,11 @@ async def get_analyses(request: Request):
     """
     Get all analysis of a user using the api key.
     """
+    params = await request.json()
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
     try:
-        err, analyses = await get_all_analyses()
+        err, analyses = await get_all_analyses(api_key=api_key)
         if err:
             return {"success": False, "error_message": err}
 
@@ -908,6 +915,8 @@ async def add_tool_endpoint(request: Request):
         output_metadata = data.get("output_metadata")
         toolbox = data.get("toolbox")
         no_code = data.get("no_code", False)
+        key_name = data.get("key_name")
+        api_key = get_api_key_from_key_name(key_name)
 
         if (
             function_name is None
@@ -945,14 +954,15 @@ async def add_tool_endpoint(request: Request):
             return {"success": False, "error_message": "Invalid no code."}
 
         err = await add_tool(
-            tool_name,
-            function_name,
-            description,
-            code,
-            input_metadata,
-            output_metadata,
-            toolbox,
-            no_code,
+            api_key=api_key,
+            tool_name=tool_name,
+            function_name=function_name,
+            description=description,
+            code=code,
+            input_metadata=input_metadata,
+            output_metadata=output_metadata,
+            toolbox=toolbox,
+            no_code=no_code,
         )
 
         if err:
@@ -981,8 +991,10 @@ async def submit_feedback(request: Request):
         user_question = data.get("user_question")
         analysis_id = data.get("analysis_id")
         token = data.get("token")
-        api_key = DEFOG_API_KEY
-        db_type = get_db_type()
+        key_name = data.get("key_name")
+        api_key = get_api_key_from_key_name(key_name)
+        res = get_db_type_creds(api_key)
+        db_type = res[0]
 
         if analysis_id is None or type(analysis_id) != str:
             raise Exception("Invalid analysis id.")
@@ -997,130 +1009,18 @@ async def submit_feedback(request: Request):
 
         # store in the defog_plans_feedback table
         err, did_overwrite = await store_feedback(
-            user_question,
-            analysis_id,
-            is_correct,
-            comments,
-            db_type,
+            api_key=api_key,
+            user_question=user_question,
+            analysis_id=analysis_id,
+            is_correct=is_correct,
+            comments=comments,
+            db_type=db_type,
         )
 
         if err:
             raise Exception(err)
 
         return {"success": True, "did_overwrite": did_overwrite}
-
-        # cleaned_plan = get_clean_plan(analysis_data)
-        # generated_plan_yaml = yaml.dump(cleaned_plan)
-        # send the following to the defog server, and get feedback on how to improve it
-        # - user_question
-        # - comments
-        # - metadata
-        # - glossary
-        # - plan generated
-        # if not is_correct:
-        #     err, tools = get_all_tools()
-        #     tools = [
-        #         {
-        #             "function_name": tools[tool]["function_name"],
-        #             "description": tools[tool]["description"],
-        #             "input_metadata": tools[tool]["input_metadata"],
-        #             "output_metadata": tools[tool]["output_metadata"],
-        #         }
-        #         for tool in tools
-        #     ]
-
-        # tool_description_yaml = yaml.dump(tools)
-
-        # TODO: implement this on the defog server
-        # r = requests.post(
-        #     "https://api.defog.ai/reflect_on_agent_feedback",
-        #     json={
-        #         "question": user_question,
-        #         "comments": comments,
-        #         "plan_generated": generated_plan_yaml,
-        #         "api_key": DEFOG_API_KEY,
-        #         "tool_description": tool_description_yaml,
-        #     },
-        # )
-
-        # we will get back:
-        # - updated metadata
-        # - updated glossary
-        # - updated golden plan
-        # raw_response = r.json()["diagnosis"]
-
-        # # extract yaml from metadata
-        # initial_recommended_plan = (
-        #     raw_response.split("```yaml")[-1].split("```")[0].strip()
-        # )
-        # logging.info(initial_recommended_plan)
-        # new_analysis_id = str(uuid4())
-        # new_analysis_data = None
-        # try:
-        #     initial_recommended_plan = yaml.safe_load(initial_recommended_plan)
-        #     # give each tool a tool_run_id
-        #     # duplicate model_generated_inputs to inputs
-        #     for i, item in enumerate(initial_recommended_plan):
-        #         item["tool_run_id"] = str(uuid4())
-        #         item["inputs"] = item["model_generated_inputs"].copy()
-
-        #     # create a new analysis with these as steps
-        #     err, new_analysis_data = await initialise_report(
-        #         user_question,
-        #         token,
-        #         new_analysis_id,
-        #         {"gen_steps": [], "clarify": []},
-        #     )
-        #     if err:
-        #         raise Exception(err)
-
-        #     setup, post_process = await execute(
-        #         report_id=new_analysis_id,
-        #         user_question=user_question,
-        #         client_description=client_description,
-        #         toolboxes=[],
-        #         parent_analyses=[],
-        #         similar_plans=[],
-        #         predefined_steps=initial_recommended_plan,
-        #     )
-
-        #     if not setup.get("success"):
-        #         raise Exception(setup.get("error_message", ""))
-
-        #     final_executed_plan = []
-        #     # run the generator
-        #     if "generator" in setup:
-        #         g = setup["generator"]
-        #         async for step in g():
-        #             # step comes in as a list of 1 step
-        #             final_executed_plan += step
-        #             err = await update_report_data(
-        #                 new_analysis_id, "gen_steps", step
-        #             )
-        #             if err:
-        #                 raise Exception(err)
-
-        #     recommended_plan = final_executed_plan
-        # except Exception as e:
-        #     logging.info(e)
-        #     traceback.print_exc()
-        #     recommended_plan = None
-        #     new_analysis_data = None
-
-        # if err is not None:
-        #     raise Exception(err)
-
-        # return {
-        #     "success": True,
-        #     "did_overwrite": did_overwrite,
-        #     "suggested_improvements": raw_response,
-        #     "recommended_plan": recommended_plan,
-        #     "new_analysis_id": new_analysis_id,
-        #     "new_analysis_data": new_analysis_data,
-        # }
-        # else:
-        #     return {"success": True, "did_overwrite": did_overwrite}
-
     except Exception as e:
         logging.info(str(e))
         error = str(e)[:300]
@@ -1187,6 +1087,8 @@ async def generate_tool_code_endpoint(request: Request):
         tool_description = data.get("tool_description")
         user_question = data.get("user_question")
         current_code = data.get("current_code")
+        key_name = data.get("key_name")
+        api_key = get_api_key_from_key_name(key_name)
 
         if not tool_name:
             raise Exception("Invalid parameters.")
@@ -1200,7 +1102,7 @@ async def generate_tool_code_endpoint(request: Request):
             "tool_description": tool_description,
             "user_question": user_question,
             "current_code": current_code,
-            "api_key": DEFOG_API_KEY,
+            "api_key": api_key,
         }
 
         retries = 0
@@ -1278,7 +1180,7 @@ async def generate_tool_code_endpoint(request: Request):
                         "request_type": "fix_tool_code",
                         "error": error,
                         "messages": resp["messages"],
-                        "api_key": DEFOG_API_KEY,
+                        "api_key": api_key,
                     }
                 retries += 1
 

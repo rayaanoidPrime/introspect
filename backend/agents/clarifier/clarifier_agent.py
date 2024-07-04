@@ -54,6 +54,7 @@ class Clarifier:
 
     def __init__(
         self,
+        dfg_api_key,
         user_question,
         client_description,
         parent_analyses=[],
@@ -84,7 +85,7 @@ class Clarifier:
             payload = {
                 "request_type": "turn_into_statement",
                 "clarification_questions": clarification_questions,
-                "api_key": os.environ["DEFOG_API_KEY"],
+                "api_key": self.dfg_api_key,
             }
             r = await asyncio.to_thread(requests.post, url, json=payload)
             statements = r.json()["statements"]
@@ -109,7 +110,7 @@ class Clarifier:
                     if i["user_question"] is not None and i["user_question"] != ""
                 ],
                 "direct_parent_analysis": self.direct_parent_analysis,
-                "api_key": os.environ["DEFOG_API_KEY"],
+                "api_key": self.dfg_api_key,
             }
             r = await asyncio.to_thread(requests.post, url, json=payload)
             res = r.json()

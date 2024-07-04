@@ -122,11 +122,6 @@ def missing_param_error(param_name):
     )
 
 
-def get_db_type():
-    defog = Defog()
-    return defog.db_type
-
-
 def success_str(msg=""):
     return f"{Fore.GREEN}{Style.BRIGHT}{msg}{Style.RESET_ALL}"
 

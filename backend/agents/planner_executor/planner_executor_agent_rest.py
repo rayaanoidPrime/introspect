@@ -15,7 +15,6 @@ import pandas as pd
 import os
 
 
-dfg_api_key = os.environ["DEFOG_API_KEY"]
 llm_calls_url = os.environ["LLM_CALLS_URL"]
 report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 
@@ -29,6 +28,7 @@ class RESTExecutor:
 
     def __init__(
         self,
+        dfg_api_key,
         user_question,
         assignment_understanding,
         toolboxes=[],
