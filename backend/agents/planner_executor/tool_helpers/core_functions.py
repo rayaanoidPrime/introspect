@@ -84,27 +84,6 @@ async def fetch_query_into_df(api_key: str, sql_query: str) -> pd.DataFrame:
     return df
 
 
-async def execute_code(codestr):
-    """
-    Executes the code in a string. Returns the error or results.
-    """
-    err = None
-    analysis = None
-    full_data = None
-    try:
-        # add some imports to the codestr
-        exec(codestr, globals())
-        analysis, full_data = await globals()["exec_code"]()
-        full_data.code_str = codestr
-    except Exception as e:
-        traceback.print_exc()
-        err = e
-        analysis = None
-        full_data = None
-    finally:
-        return err, analysis, full_data
-
-
 def estimate_tokens_left(messages: List[Dict], model: str) -> int:
     """
     Returns an estimate of the number of tokens left for generation based on the

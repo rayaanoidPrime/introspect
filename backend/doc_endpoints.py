@@ -16,10 +16,10 @@ from agents.planner_executor.tool_helpers.core_functions import analyse_data
 import pandas as pd
 from io import StringIO
 from tool_code_utilities import add_default_imports, fix_savefig_calls
-from utils import execute_code, get_clean_plan, get_db_type, log_msg, snake_case
+from utils import log_msg, snake_case
 import logging
 from generic_utils import get_api_key_from_key_name
-from db_utils import get_db_type_creds
+from db_utils import execute_code, get_db_type_creds
 
 logging.basicConfig(level=logging.INFO)
 
@@ -247,7 +247,9 @@ async def get_analyses(request: Request):
     """
     params = await request.json()
     key_name = params.get("key_name")
+    print("TRYING TO DO THIS", flush=True)
     api_key = get_api_key_from_key_name(key_name)
+    print(api_key, flush=True)
     try:
         err, analyses = await get_all_analyses(api_key=api_key)
         if err:
@@ -417,6 +419,8 @@ async def rerun_step(websocket: WebSocket):
             tool_run_id = data.get("tool_run_id")
             analysis_id = data.get("analysis_id")
             dev = data.get("dev", False)
+            key_name = data.get("key_name")
+            api_key = get_api_key_from_key_name(key_name)
 
             if tool_run_id is None or type(tool_run_id) != str:
                 return {"success": False, "error_message": "Invalid tool run id."}
@@ -462,7 +466,11 @@ async def rerun_step(websocket: WebSocket):
 
             logging.info([s["inputs"] for s in steps])
             async for err, reran_id, new_data in rerun_step_and_dependents(
-                analysis_id, tool_run_id, steps, global_dict=global_dict
+                dfg_api_key=api_key,
+                analysis_id=analysis_id,
+                tool_run_id=tool_run_id,
+                steps=steps,
+                global_dict=global_dict,
             ):
                 if new_data and type(new_data) == dict:
                     if reran_id:
@@ -712,6 +720,8 @@ async def download_csv(request: Request):
         tool_run_id = data.get("tool_run_id")
         output_storage_key = data.get("output_storage_key")
         analysis_id = data.get("analysis_id")
+        key_name = data.get("key_name")
+        api_key = get_api_key_from_key_name(key_name)
 
         if tool_run_id is None or type(tool_run_id) != str:
             return {"success": False, "error_message": "Invalid tool run id."}
@@ -752,7 +762,11 @@ async def download_csv(request: Request):
                 return {"success": False, "error_message": steps["error_message"]}
 
             async for err, reran_id, new_data in rerun_step_and_dependents(
-                analysis_id, tool_run_id, steps, global_dict=global_dict
+                dfg_api_key=api_key,
+                analysis_id=analysis_id,
+                tool_run_id=tool_run_id,
+                steps=steps,
+                global_dict=global_dict,
             ):
                 # don't need to yield unless there's an error
                 # if error, then bail

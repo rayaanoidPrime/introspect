@@ -143,7 +143,7 @@ CREATE TABLE public.defog_plans_feedback (
 ALTER TABLE public.defog_plans_feedback OWNER TO postgres;
 
 CREATE TABLE public.defog_db_creds (
-    api_key text UNIQUE,
+    api_key text PRIMARY KEY,
     db_type text,
     db_creds jsonb
 );

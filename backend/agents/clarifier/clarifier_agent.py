@@ -64,9 +64,10 @@ class Clarifier:
         self.client_description = client_description
         self.parent_analyses = parent_analyses
         self.direct_parent_analysis = direct_parent_analysis
+        self.dfg_api_key = dfg_api_key
 
     @staticmethod
-    async def clarifier_post_process(self={}):
+    async def clarifier_post_process(self={}, dfg_api_key=""):
         """
         This function is called right before the understander stage.
         It takes in the user's answers to the clarification questions
@@ -85,7 +86,7 @@ class Clarifier:
             payload = {
                 "request_type": "turn_into_statement",
                 "clarification_questions": clarification_questions,
-                "api_key": self.dfg_api_key,
+                "api_key": dfg_api_key,
             }
             r = await asyncio.to_thread(requests.post, url, json=payload)
             statements = r.json()["statements"]
@@ -112,6 +113,7 @@ class Clarifier:
                 "direct_parent_analysis": self.direct_parent_analysis,
                 "api_key": self.dfg_api_key,
             }
+            print(payload)
             r = await asyncio.to_thread(requests.post, url, json=payload)
             res = r.json()
             print(res, flush=True)

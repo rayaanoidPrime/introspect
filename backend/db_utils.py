@@ -11,9 +11,6 @@ from sqlalchemy import (
     delete,
 )
 from sqlalchemy.ext.automap import automap_base
-from agents.planner_executor.tool_helpers.core_functions import (
-    execute_code,
-)
 
 import asyncio
 from utils import warn_str, YieldList, make_request
@@ -68,11 +65,23 @@ def get_db_type_creds(api_key):
 
 def update_db_type_creds(api_key, db_type, db_creds):
     with engine.begin() as conn:
-        conn.execute(
-            update(DbCreds)
-            .where(DbCreds.api_key == api_key)
-            .values(db_type=db_type, db_creds=db_creds)
-        )
+        # first, check if the record exists
+        record = conn.execute(
+            select(DbCreds).where(DbCreds.api_key == api_key)
+        ).fetchone()
+
+        if record:
+            conn.execute(
+                update(DbCreds)
+                .where(DbCreds.api_key == api_key)
+                .values(db_type=db_type, db_creds=db_creds)
+            )
+        else:
+            conn.execute(
+                insert(DbCreds).values(
+                    api_key=api_key, db_type=db_type, db_creds=db_creds
+                )
+            )
 
     return True
 
@@ -99,6 +108,27 @@ def validate_user(token, user_type=None, get_username=False):
                 return True
     else:
         return False
+
+
+async def execute_code(codestr):
+    """
+    Executes the code in a string. Returns the error or results.
+    """
+    err = None
+    analysis = None
+    full_data = None
+    try:
+        # add some imports to the codestr
+        exec(codestr, globals())
+        analysis, full_data = await globals()["exec_code"]()
+        full_data.code_str = codestr
+    except Exception as e:
+        traceback.print_exc()
+        err = e
+        analysis = None
+        full_data = None
+    finally:
+        return err, analysis, full_data
 
 
 async def initialise_report(

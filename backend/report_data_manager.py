@@ -13,6 +13,8 @@ from agents.main_agent import (
     get_clarification,
 )
 
+from functools import partial
+
 request_types = [
     "clarify",
     "gen_steps",
@@ -78,12 +80,14 @@ class ReportDataManager:
             self.report_id = report_data.get("report_id")
 
             self.agents = {
-                "clarify": get_clarification,
-                "gen_steps": execute,
+                "clarify": partial(get_clarification, dfg_api_key=self.api_key),
+                "gen_steps": partial(execute, dfg_api_key=self.api_key),
             }
 
             self.post_processes = {
-                "clarify": Clarifier.clarifier_post_process,
+                "clarify": partial(
+                    Clarifier.clarifier_post_process, dfg_api_key=self.api_key
+                ),
             }
 
     # have to call this separately because update_report_data is an async function

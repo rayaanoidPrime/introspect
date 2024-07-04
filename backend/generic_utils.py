@@ -35,5 +35,5 @@ def get_api_key_from_key_name(key_name):
         idx = DEFOG_API_KEY_NAMES.split(",").index(key_name)
         api_key = DEFOG_API_KEY.split(",")[idx]
     else:
-        api_key = DEFOG_API_KEY
+        api_key = DEFOG_API_KEY.split(",")[0]
     return api_key

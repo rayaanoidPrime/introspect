@@ -165,6 +165,7 @@ class Executor:
                             "llm_server_url": llm_server_url,
                             "model_name": os.environ.get("LLM_MODEL_NAME", None),
                         }
+                        print(payload)
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
 
                     print(ans.json())

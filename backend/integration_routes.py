@@ -116,7 +116,8 @@ async def update_db_creds(request: Request):
     if db_type == "bigquery":
         db_creds["json_key_path"] = "/backend/bq.json"
 
-    update_db_type_creds(api_key=api_key, db_type=db_type, db_creds=db_creds)
+    success = update_db_type_creds(api_key=api_key, db_type=db_type, db_creds=db_creds)
+    print(success)
 
     return {"success": True}
 
