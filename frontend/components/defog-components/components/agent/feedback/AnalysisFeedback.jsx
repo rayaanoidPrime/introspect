@@ -14,6 +14,7 @@ export function AnalysisFeedback({
   analysisSteps,
   user_question,
   token,
+  keyName,
 }) {
   const [modalVisible, setModalVisible] = useState(null);
 
@@ -28,6 +29,7 @@ export function AnalysisFeedback({
         analysis_id: analysisId,
         user_question: user_question,
         token: token,
+        key_name: keyName,
       }),
     });
 

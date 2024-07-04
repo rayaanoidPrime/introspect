@@ -20,6 +20,7 @@ from db_utils import (
     store_tool_run,
     validate_user,
 )
+from generic_utils import get_api_key_from_key_name
 import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes
 
 manager = ConnectionManager()
@@ -49,8 +50,6 @@ request_types = ["clarify", "understand", "gen_approaches", "gen_steps", "gen_re
 
 report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 
-DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]
-
 
 @app.get("/ping")
 async def root():
@@ -63,10 +62,10 @@ edit_request_types_and_prop_names = {
 }
 
 
-async def get_classification(question, debug=False):
+async def get_classification(question, api_key, debug=False):
     r = await make_request(
         url=f"{os.environ['DEFOG_BASE_URL']}/classify_question",
-        payload={"question": question, "api_key": DEFOG_API_KEY},
+        payload={"question": question, "api_key": api_key},
     )
     if r.status_code == 200:
         return r.json()
@@ -109,8 +108,11 @@ async def edit_report(request: Request):
 
 @app.post("/get_reports")
 async def all_reports(request: Request):
+    params = await request.json()
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
     try:
-        err, reports = get_all_reports()
+        err, reports = get_all_reports(api_key=api_key)
         if err is not None:
             return {"success": False, "error_message": err}
 
@@ -149,10 +151,17 @@ async def create_report(request: Request):
         params = await request.json()
         token = params.get("token")
 
+        key_name = params.get("key_name")
+        api_key = get_api_key_from_key_name(key_name)
+
         print("create_report", params)
 
         err, report_data = await initialise_report(
-            "", token, params.get("custom_id"), params.get("other_data")
+            user_question="",
+            token=token,
+            api_key=api_key,
+            custom_id=params.get("custom_id"),
+            other_data=params.get("other_data"),
         )
 
         if err is not None:
@@ -180,6 +189,9 @@ async def websocket_endpoint(websocket: WebSocket):
                         {"error_message": "No request type provided"}
                     )
                     continue
+
+                key_name = data.get("key_name")
+                api_key = get_api_key_from_key_name(key_name)
 
                 # find request type
                 request_type = data.get("request_type")
@@ -210,7 +222,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 # start a report data manager
                 # this fetches currently existing report data for this report
                 report_data_manager = ReportDataManager(
-                    data["user_question"], report_id
+                    dfg_api_key=api_key,
+                    user_question=data["user_question"],
+                    report_id=report_id,
                 )
 
                 await report_data_manager.async_init()
@@ -237,10 +251,12 @@ async def websocket_endpoint(websocket: WebSocket):
                     classification = {"prediction": "agent"}
                 else:
                     # check if the user question needs agents, or just sqlcoder is fine
-                    classification = await get_classification(data["user_question"])
+                    classification = await get_classification(
+                        question=data["user_question"], api_key=api_key
+                    )
 
                 print(classification, flush=True)
-                if False and classification["prediction"] == "sqlcoder":
+                if classification["prediction"] == "sqlcoder":
                     # first, send the clarifier result as done
                     if request_type == "clarify":
                         resp["output"] = {
@@ -260,7 +276,9 @@ async def websocket_endpoint(websocket: WebSocket):
                             "question": data["user_question"],
                         }
                         result, tool_input_metadata = await execute_tool(
-                            "data_fetcher_and_aggregator", inputs, {"dev": dev}
+                            function_name="data_fetcher_and_aggregator",
+                            tool_function_inputs=inputs,
+                            global_dict={"dfg_api_key": api_key, "dev": dev},
                         )
                         tool_run_id = str(uuid4())
                         step = {
@@ -434,8 +452,10 @@ async def plan_and_execute(request: Request):
     data = await request.json()
     question = data.get("question")
     dev = data.get("dev")
+    api_key = data.get("api_key")
     assignment_understanding = data.get("assignment_understanding", "")
     executor = RESTExecutor(
+        dfg_api_key=api_key,
         user_question=question,
         assignment_understanding=assignment_understanding,
         dev=dev,

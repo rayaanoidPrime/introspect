@@ -15,16 +15,21 @@ async def data_fetcher_and_aggregator(
     from tool_code_utilities import safe_sql, fetch_query_into_df
     from defog import Defog
     from utils import SqlExecutionError
+    from db_utils import get_db_type_creds
 
     if question == "" or question is None:
         raise ValueError("Question cannot be empty")
+
+    api_key = global_dict.get("dfg_api_key", "")
+    res = get_db_type_creds(api_key)
+    db_type, db_creds = res
 
     dev = global_dict.get("dev", False)
     print(f"Dev: {dev}")
     print(f"Global dict currently has keys: {list(global_dict.keys())}")
 
     # send the data to the Defog, and get a response from it
-    defog = Defog()
+    defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
     defog.base_url = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
     defog.generate_query_url = os.environ.get(
         "DEFOG_GENERATE_URL", defog.base_url + "/generate_query_chat"
@@ -55,7 +60,7 @@ async def data_fetcher_and_aggregator(
     print(f"Running query: {query}")
 
     try:
-        df = await fetch_query_into_df(query)
+        df = await fetch_query_into_df(api_key=api_key, sql_query=query)
     except Exception as e:
         print("Raising execution error", flush=True)
         raise SqlExecutionError(query, str(e))

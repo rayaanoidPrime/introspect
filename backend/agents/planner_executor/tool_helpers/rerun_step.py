@@ -27,9 +27,11 @@ report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 # if descendants of children depend on the children, it will keep going down the graph and re running
 # we will first re run the step with the given tool_run_id. re running all parents in the process
 # then we will run all steps that use the output of that step
-async def rerun_step_and_dependents(analysis_id, tool_run_id, steps, global_dict={}):
+async def rerun_step_and_dependents(
+    dfg_api_key, analysis_id, tool_run_id, steps, global_dict={}
+):
     async for err, parent_step_id, new_data in rerun_step_and_parents(
-        analysis_id, tool_run_id, steps, global_dict=global_dict
+        dfg_api_key, analysis_id, tool_run_id, steps, global_dict=global_dict
     ):
         yield err, parent_step_id, new_data
 
@@ -55,9 +57,10 @@ async def rerun_step_and_dependents(analysis_id, tool_run_id, steps, global_dict
                             dependent_run_id,
                             new_data,
                         ) in rerun_step_and_dependents(
-                            analysis_id,
-                            step["tool_run_id"],
-                            steps,
+                            dfg_api_key=dfg_api_key,
+                            analysis_id=analysis_id,
+                            tool_run_id=step["tool_run_id"],
+                            steps=steps,
                             global_dict=global_dict,
                         ):
                             yield err, dependent_run_id, new_data
@@ -65,7 +68,9 @@ async def rerun_step_and_dependents(analysis_id, tool_run_id, steps, global_dict
                     break
 
 
-async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}):
+async def rerun_step_and_parents(
+    dfg_api_key, analysis_id, tool_run_id, steps, global_dict={}
+):
     # function that will rerun a step
     # find the step with the tool_run_id and it's inputs
     # then it will need to iterate through all inputs of the step then for each input:
@@ -145,6 +150,7 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
                             parent_step_id,
                             new_data,
                         ) in rerun_step_and_parents(
+                            dfg_api_key,
                             analysis_id,
                             s["tool_run_id"],
                             steps,
@@ -211,7 +217,9 @@ async def rerun_step_and_parents(analysis_id, tool_run_id, steps, global_dict={}
             result = None
             new_data = None
             try:
-                result = await fetch_query_into_df(tool_run_details["sql"])
+                result = await fetch_query_into_df(
+                    api_key=dfg_api_key, sql_query=tool_run_details["sql"]
+                )
             except Exception as e:
                 err = str(e)
                 result = None

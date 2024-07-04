@@ -10,8 +10,8 @@ import re
 import json
 import pandas as pd
 import os
+from db_utils import get_db_type_creds
 
-DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]
 report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 
 
@@ -42,19 +42,18 @@ def safe_sql(query):
     return True
 
 
-async def fetch_query_into_df(sql_query: str) -> pd.DataFrame:
+async def fetch_query_into_df(api_key: str, sql_query: str) -> pd.DataFrame:
     """
     Runs a sql query and stores the results in a pandas dataframe.
     """
 
     # important note: this is currently a blocking call
     # TODO: add an option to the defog library to make this async
-    defog = Defog()
-    db_type = defog.db_type
-    db_creds = defog.db_creds
+    res = get_db_type_creds(api_key)
+    db_type, db_creds = res
 
     colnames, data, new_sql_query = await asyncio.to_thread(
-        execute_query, sql_query, DEFOG_API_KEY, db_type, db_creds, retries=0
+        execute_query, sql_query, api_key, db_type, db_creds, retries=0
     )
     df = pd.DataFrame(data, columns=colnames)
 

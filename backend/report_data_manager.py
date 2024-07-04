@@ -13,6 +13,8 @@ from agents.main_agent import (
     get_clarification,
 )
 
+from functools import partial
+
 request_types = [
     "clarify",
     "gen_steps",
@@ -25,11 +27,9 @@ prop_names = {
 
 import os
 
-dfg_api_key = os.environ["DEFOG_API_KEY"]
-
 
 class ReportDataManager:
-    def __init__(self, user_question, report_id):
+    def __init__(self, dfg_api_key, user_question, report_id):
         self.report_id = report_id
         self.report_data = None
         self.api_key = dfg_api_key
@@ -80,12 +80,14 @@ class ReportDataManager:
             self.report_id = report_data.get("report_id")
 
             self.agents = {
-                "clarify": get_clarification,
-                "gen_steps": execute,
+                "clarify": partial(get_clarification, dfg_api_key=self.api_key),
+                "gen_steps": partial(execute, dfg_api_key=self.api_key),
             }
 
             self.post_processes = {
-                "clarify": Clarifier.clarifier_post_process,
+                "clarify": partial(
+                    Clarifier.clarifier_post_process, dfg_api_key=self.api_key
+                ),
             }
 
     # have to call this separately because update_report_data is an async function

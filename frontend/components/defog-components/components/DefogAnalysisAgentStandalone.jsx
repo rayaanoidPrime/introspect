@@ -20,6 +20,7 @@ export default function DefogAnalysisAgentStandalone({
   analysisId,
   token,
   devMode,
+  keyName,
 }) {
   const [context, setContext] = useState({});
   const [id, setId] = useState(analysisId || "analysis-" + v4());
@@ -44,8 +45,8 @@ export default function DefogAnalysisAgentStandalone({
     async function setup() {
       // setup user items
       const items = docContext.userItems;
-      const analyses = await getAllAnalyses();
-      const dashboards = await getAllDashboards(token);
+      const analyses = await getAllAnalyses(keyName);
+      const dashboards = await getAllDashboards(token, keyName);
       if (dashboards?.success) {
         setDashboards(dashboards.docs);
       }
@@ -98,7 +99,7 @@ export default function DefogAnalysisAgentStandalone({
         toolSocketManager.clearSocketTimeout();
       }
     };
-  }, []);
+  }, [keyName]);
 
   const GlobalStyle = createGlobalStyle``;
 
@@ -130,6 +131,7 @@ export default function DefogAnalysisAgentStandalone({
                           token={token}
                           dashboards={dashboards}
                           devMode={devMode}
+                          keyName={keyName}
                         />
                       </div>
                     </div>

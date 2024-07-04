@@ -1,4 +1,8 @@
 import httpx
+import os
+
+DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]  # replace with your DEFOG_API_KEY
+DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
 
 
 async def make_request(url, json):
@@ -24,3 +28,12 @@ def convert_nested_dict_to_list(table_metadata):
                 item["column_description"] = ""
             metadata.append(item)
     return metadata
+
+
+def get_api_key_from_key_name(key_name):
+    if key_name and key_name in DEFOG_API_KEY_NAMES:
+        idx = DEFOG_API_KEY_NAMES.split(",").index(key_name)
+        api_key = DEFOG_API_KEY.split(",")[idx]
+    else:
+        api_key = DEFOG_API_KEY.split(",")[0]
+    return api_key
