@@ -101,6 +101,7 @@ export const getAllAnalyses = async () => {
       headers: {
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({}),
     });
     return response.json();
   } catch (e) {

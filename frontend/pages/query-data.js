@@ -18,10 +18,9 @@ const DefogAnalysisAgentStandalone = dynamic(
 );
 
 const QueryDatabase = () => {
-  const [selectedTables, setSelectedTables] = useState([]);
-  const [token, setToken] = useState();
-  const [user, setUser] = useState();
-  const [userType, setUserType] = useState();
+  const [token, setToken] = useState("");
+  const [user, setUser] = useState("");
+  const [userType, setUserType] = useState("");
   const [devMode, setDevMode] = useState(false);
   // const [queryMode, setQueryMode] = useState("agents");
 
@@ -32,19 +31,6 @@ const QueryDatabase = () => {
     setUser(user);
     setUserType(userType);
     setToken(token);
-    const res = fetch(setupBaseUrl("http", "integration/get_tables_db_creds"), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ token: token }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.selected_tables) {
-          setSelectedTables(data.selected_tables);
-        }
-      });
   }, []);
 
   return (
@@ -52,10 +38,6 @@ const QueryDatabase = () => {
       <Meta />
       <Scaffolding id={"query-data"} userType={userType}>
         <h1>Query your database</h1>
-        <p>
-          Ask Defog questions about your data. You have selected the following
-          tables: <code>{selectedTables.join(", ")}</code>
-        </p>
         {userType === "admin" ? (
           <Switch
             checkedChildren="Production"
