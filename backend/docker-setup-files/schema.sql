@@ -165,7 +165,7 @@ ALTER TABLE ONLY public.defog_reports
 ALTER TABLE ONLY public.defog_table_charts
     ADD CONSTRAINT defog_table_charts_pkey PRIMARY KEY (table_id);
 
-ALTER TABLE ONLY public.defog_toolboxes 
+ALTER TABLE ONLY public.defog_toolboxes
     ADD CONSTRAINT defog_toolboxes_pkey PRIMARY KEY (username, api_key);
 
 ALTER TABLE ONLY public.defog_users
