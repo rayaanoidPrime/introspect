@@ -37,11 +37,15 @@ import "prismjs/themes/prism.css";
 import { roundNumber } from "$utils/utils";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Table from "$components/tailwind/Table";
+import Heatmap from "./Charts/Heatmap";
+import LinePlot from "./Charts/LinePlot";
+import Boxplot from "./Charts/Boxplot";
 
 const downloadCsvEndpoint = setupBaseUrl("http", "download_csv");
 
 // tabBarLeftContent: extra content for the tab bar on the left side
 export function ToolResultsTable({
+  toolRunData,
   toolRunId,
   analysisId,
   nodeId,
@@ -244,6 +248,67 @@ export function ToolResultsTable({
             <TableOutlined />
           </div>
         ),
+      });
+    }
+
+    const inputs = toolRunData.step.inputs;
+
+    if (toolRunData.tool_name === "heatmap") {
+      tabs.push({
+        component: (
+          <ErrorBoundary>
+            <Heatmap
+              rows={tableData.data}
+              columns={tableData.columns}
+              xCol={inputs.x_column}
+              yCol={inputs.y_column}
+              colorCol={inputs.color_column}
+              aggregationType={inputs.aggregation_type || "sum"}
+              colorScaleName={inputs.color_scale || "viridis"}
+            />
+          </ErrorBoundary>
+        ),
+        tabLabel: "Heatmapss",
+      });
+    }
+    if (toolRunData.tool_name === "line_plot") {
+      tabs.push({
+        component: (
+          <ErrorBoundary>
+            <LinePlot
+              rows={tableData.data}
+              columns={tableData.columns}
+              xCol={inputs.x_column}
+              yCol={inputs.y_column}
+              facetCol={inputs.facet_column}
+              colorCol={inputs.color_column}
+              lineGroupColumn={inputs.line_group_column}
+              aggregationType={
+                inputs.aggregation_type === "None" ? null : inputs.estimator
+              }
+            />
+          </ErrorBoundary>
+        ),
+        tabLabel: "Line plotssss",
+      });
+    }
+    if (toolRunData.tool_name === "boxplot") {
+      tabs.push({
+        component: (
+          <ErrorBoundary>
+            <Boxplot
+              rows={tableData.data}
+              columns={tableData.columns}
+              xCol={inputs.x_column}
+              yCol={inputs.y_column}
+              facetCol={inputs.facet_column}
+              aggregationType={
+                inputs.aggregation_type === "None" ? null : inputs.estimator
+              }
+            />
+          </ErrorBoundary>
+        ),
+        tabLabel: "Line plotssss",
       });
     }
 

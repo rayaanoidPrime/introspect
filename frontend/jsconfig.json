@@ -8,6 +8,7 @@
       "$components/*": ["./components/*"],
       "$tailwind/*": ["./components/tailwind/*"]
     },
+
     "jsx": "react-jsx"
   }
 }

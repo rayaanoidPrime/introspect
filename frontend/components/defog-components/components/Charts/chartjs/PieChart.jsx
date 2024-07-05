@@ -1,10 +1,11 @@
 import React from "react";
 import { Row, Col } from "antd";
-import ErrorBoundary from "../common/ErrorBoundary";
+
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Pie } from "react-chartjs-2";
-import { setChartJSDefaults } from "../common/utils";
-import { chartColors } from "../../context/ThemeContext";
+import ErrorBoundary from "$components/common/ErrorBoundary";
+import { chartColors } from "$components/defog-components/context/ThemeContext";
+import { setChartJSDefaults } from "../../common/utils";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 

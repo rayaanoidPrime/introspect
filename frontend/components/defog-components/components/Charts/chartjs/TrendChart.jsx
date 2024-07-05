@@ -1,6 +1,5 @@
 import React from "react";
 import { Row, Col } from "antd";
-import ErrorBoundary from "../common/ErrorBoundary";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -12,7 +11,8 @@ import {
   Legend,
 } from "chart.js";
 import { Line } from "react-chartjs-2";
-import { setChartJSDefaults } from "../common/utils";
+import ErrorBoundary from "$components/common/ErrorBoundary";
+import { setChartJSDefaults } from "../../common/utils";
 
 ChartJS.register(
   CategoryScale,

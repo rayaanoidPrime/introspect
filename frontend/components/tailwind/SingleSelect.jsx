@@ -4,21 +4,14 @@ import {
   ComboboxInput,
   ComboboxOption,
   ComboboxOptions,
-  Label,
 } from "@headlessui/react";
 import {
   CheckIcon,
   ChevronUpDownIcon,
   XCircleIcon,
-  XMarkIcon,
 } from "@heroicons/react/20/solid";
 import React, { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
-
-// const options = [
-//   { id: 1, name: "Leslie Alexander" },
-//   // More users...
-// ];
 
 const inputSizeClasses = {
   default: "py-1.5 pl-3",
