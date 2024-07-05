@@ -437,54 +437,58 @@ export function ToolRunInputList({
   // we need to find all available db columns in that pd dataframe
   // check the cache if we have tool run data available
 
+  console.log(inputs);
+
   return (
     <div className="tool-input-list" key={toolRunId} ref={ctr}>
-      {Object.keys(inputs).map((input_name, i) => {
-        const sanitizedType = sanitizeInputType(
-          inputMetadata[input_name]?.type
-        );
-        const input = inputs[input_name];
+      {Object.keys(inputs)
+        .filter((i) => i !== "global_dict")
+        .map((input_name, i) => {
+          const sanitizedType = sanitizeInputType(
+            inputMetadata[input_name]?.type
+          );
+          const input = inputs[input_name];
 
-        return (
-          <div
-            key={i + "_" + toolRunId}
-            className="font-mono flex flex-row flex-wrap gap-3 items-center *:my-1 pb-4 text-xs"
-          >
-            <span className="">
-              <span className="rounded-md p-1 bg-gray-200 text-gray-400 mr-2">
-                {easyToolInputTypes[sanitizedType] || sanitizedType}
+          return (
+            <div
+              key={i + "_" + toolRunId}
+              className="font-mono flex flex-row flex-wrap gap-3 items-center *:my-1 pb-4 text-xs"
+            >
+              <span className="">
+                <span className="rounded-md p-1 bg-gray-200 text-gray-400 mr-2">
+                  {easyToolInputTypes[sanitizedType] || sanitizedType}
+                </span>
+                <span className="font-bold">
+                  {inputMetadata[input_name].name}
+                </span>
               </span>
-              <span className="font-bold">
-                {inputMetadata[input_name].name}
-              </span>
-            </span>
 
-            {inputTypeToUI[sanitizedType] ? (
-              inputTypeToUI[sanitizedType](
-                toolRunId,
-                inputMetadata[input_name].name,
-                input,
-                function (prop, newVal) {
-                  onEdit(prop, newVal);
-                },
-                {
-                  availableOutputNodes,
-                  setActiveNode,
-                  availableParentColumns,
-                  inputMetadata,
-                  type: inputMetadata[input_name].type,
-                }
-              )
-            ) : (
-              <span className="tool-input-value" contentEditable>
-                {step.inputs.length - 1 < i
-                  ? String(inputMetadata[input_name].default)
-                  : String(input)}
-              </span>
-            )}
-          </div>
-        );
-      })}
+              {inputTypeToUI[sanitizedType] ? (
+                inputTypeToUI[sanitizedType](
+                  toolRunId,
+                  inputMetadata[input_name].name,
+                  input,
+                  function (prop, newVal) {
+                    onEdit(prop, newVal);
+                  },
+                  {
+                    availableOutputNodes,
+                    setActiveNode,
+                    availableParentColumns,
+                    inputMetadata,
+                    type: inputMetadata[input_name].type,
+                  }
+                )
+              ) : (
+                <span className="tool-input-value" contentEditable>
+                  {step.inputs.length - 1 < i
+                    ? String(inputMetadata[input_name].default)
+                    : String(input)}
+                </span>
+              )}
+            </div>
+          );
+        })}
     </div>
   );
 }

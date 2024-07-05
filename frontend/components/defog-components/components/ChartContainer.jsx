@@ -6,9 +6,9 @@ import {
   getColValues,
   isEmpty,
 } from "./common/utils";
-import PieChart from "./Charts/PieChart";
-import ColumnChart from "./Charts/ColumnChart";
-import TrendChart from "./Charts/TrendChart";
+import PieChart from "./Charts/chartjs/PieChart";
+import ColumnChart from "./Charts/chartjs/ColumnChart";
+import TrendChart from "./Charts/chartjs/TrendChart";
 import styled from "styled-components";
 
 function arrToAntD(arr, labelProp = "key", valueProp = "key") {

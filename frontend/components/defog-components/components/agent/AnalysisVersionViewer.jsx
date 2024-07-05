@@ -24,7 +24,10 @@ function AnalysisVersionViewer({
   maxRenderedAnalysis = 2,
   // array of strings
   // each string is a question
-  predefinedQuestions = ["show me 5 rows", "what is the average of x column"],
+  predefinedQuestions = [
+    "show me 5 rows and create a heatmap",
+    "what is the average of x column",
+  ],
 }) {
   const [activeAnalysisId, setActiveAnalysisId] = useState(null);
 
@@ -146,7 +149,7 @@ function AnalysisVersionViewer({
         setActiveAnalysisId(newAnalysis.analysisId);
         setActiveRootAnalysisId(newAnalysis.rootAnalysisId);
 
-        searchRef.current.innerText = "";
+        searchRef.current.value = "";
 
         setAllAnalyses({
           ...allAnalyses,
@@ -312,7 +315,7 @@ function AnalysisVersionViewer({
                 <div className="mt-5 m-auto">
                   <label
                     className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
-                    for="file_input"
+                    htmlFor="file_input"
                   >
                     Upload file
                   </label>
@@ -361,34 +364,37 @@ function AnalysisVersionViewer({
             )}
 
             <div className="w-10/12 m-auto lg:w-3/4 sticky bottom-14 z-10 bg-white right-0 border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex">
-              <div
-                className="w-full rounded-none rounded-l-md border py-1.5 text-gray-900 p-1 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none"
+              <textarea
+                className="w-full rounded-none rounded-l-md border border-gray-300 py-1.5 text-gray-900 p-1 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none resize-none"
                 ref={searchRef}
+                rows={1}
+                onChange={(ev) => {
+                  ev.target.style.height = "auto";
+                  ev.target.style.height = ev.target.scrollHeight + "px";
+                }}
                 onKeyDown={(ev) => {
                   if (ev.key === "Enter") {
                     ev.preventDefault();
                     ev.stopPropagation();
 
-                    if (!searchRef.current.innerText) return;
+                    if (!searchRef.current.value) return;
 
                     handleSubmit(
-                      searchRef.current.innerText,
+                      searchRef.current.value,
                       activeRootAnalysisId,
                       !activeRootAnalysisId,
                       activeAnalysisId
                     );
                   }
                 }}
-                contentEditable="plaintext-only"
-                // placeholder="Show me 5 rows"
-                // disabled={loading}
+                placeholder="Type your question here"
               />
               <button
                 type="button"
                 className="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-blue-500 hover:bg-blue-500 hover:text-white"
                 onClick={() => {
                   handleSubmit(
-                    searchRef.current.innerText,
+                    searchRef.current.value,
                     activeRootAnalysisId,
                     !activeRootAnalysisId,
                     activeAnalysisId

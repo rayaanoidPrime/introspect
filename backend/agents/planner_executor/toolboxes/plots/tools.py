@@ -26,9 +26,10 @@ def validate_column(df, col_name):
 
 async def boxplot(
     full_data: pd.DataFrame,
-    boxplot_cols: db_column_list_type_creator(1, 2),
+    boxplot_x_column: DBColumn,
+    boxplot_y_column: DBColumn,
     facet: bool = False,
-    facet_col: DBColumn = None,
+    facet_column: DBColumn = None,
     color: DropdownSingleSelect = ListWithDefault(
         [
             "#000000",
@@ -53,6 +54,10 @@ async def boxplot(
     import matplotlib.pyplot as plt
     import pandas as pd
 
+    # if there's not an index column, create one
+    if "index" not in full_data.columns:
+        full_data["index"] = range(len(full_data))
+
     report_assets_dir = global_dict.get("report_assets_dir", "report_assets")
 
     if type(color) == ListWithDefault:
@@ -72,26 +77,32 @@ async def boxplot(
         # support for versions before we had the ListWithDefault class
         opacity = 0.3
 
-    if len(boxplot_cols) == 1:
-        if boxplot_cols[0] == "label":
-            new_col = "label_"
-        else:
-            new_col = "label"
-        boxplot_cols = [new_col, boxplot_cols[0]]
-        full_data[new_col] = ""
+    # if any of x or y column is None, set that to "label" and create a new column "label" with empty string
+    if boxplot_x_column is None:
+        boxplot_x_column = "label"
+        full_data["label"] = ""
+    if boxplot_y_column is None:
+        boxplot_y_column = "label"
+        # in this case, we don't want a label column to be on the y axis
+        # but on the x axis
+        # so we will swap the x and y columns
+        boxplot_x_column, boxplot_y_column = boxplot_y_column, boxplot_x_column
+        full_data["label"] = ""
 
     outputs = []
     boxplot_path = f"boxplots/boxplot-{uuid4()}.png"
     fig, ax = plt.subplots()
     plt.xticks(rotation=45)
     if facet:
-        full_data = full_data.dropna(subset=boxplot_cols + [facet_col], how="any")
+        full_data = full_data.dropna(
+            subset=[boxplot_x_column, boxplot_y_column] + [facet_column], how="any"
+        )
         # use catplot from seaborn
         g = sns.catplot(
-            x=boxplot_cols[0],
-            y=boxplot_cols[1],
+            x=boxplot_x_column,
+            y=boxplot_y_column,
             data=full_data,
-            col=facet_col,
+            col=facet_column,
             kind="box",
             col_wrap=4,
             fill=False,
@@ -99,8 +110,8 @@ async def boxplot(
         # boxplot with white boxes
         g.map(
             sns.boxplot,
-            boxplot_cols[0],
-            boxplot_cols[1],
+            boxplot_x_column,
+            boxplot_y_column,
             color=color,
             fill=False,
         )
@@ -109,8 +120,8 @@ async def boxplot(
         # small size dots
         g.map(
             sns.stripplot,
-            boxplot_cols[0],
-            boxplot_cols[1],
+            boxplot_x_column,
+            boxplot_y_column,
             color=color,
             alpha=opacity,
             s=2,
@@ -124,18 +135,20 @@ async def boxplot(
 
     else:
         # drop rows with missing values
-        full_data = full_data.dropna(subset=boxplot_cols, how="any")
+        full_data = full_data.dropna(
+            subset=[boxplot_x_column, boxplot_y_column], how="any"
+        )
         sns.boxplot(
-            x=boxplot_cols[0],
-            y=boxplot_cols[1],
+            x=boxplot_x_column,
+            y=boxplot_y_column,
             data=full_data,
             ax=ax,
             color=color,
             fill=False,
         )
         sns.stripplot(
-            x=boxplot_cols[0],
-            y=boxplot_cols[1],
+            x=boxplot_x_column,
+            y=boxplot_y_column,
             data=full_data,
             color=color,
             alpha=opacity,
@@ -164,8 +177,8 @@ async def boxplot(
 
 async def heatmap(
     full_data: pd.DataFrame,
-    x_position_column: DBColumn,
-    y_position_column: DBColumn,
+    x_column: DBColumn,
+    y_column: DBColumn,
     color_column: DBColumn,
     # can be mean, median, max, min, or sum
     aggregation_type: DropdownSingleSelect = ListWithDefault(
@@ -184,6 +197,10 @@ async def heatmap(
     import matplotlib.pyplot as plt
     import pandas as pd
 
+    # if there's not an index column, create one
+    if "index" not in full_data.columns:
+        full_data["index"] = range(len(full_data))
+
     outputs = []
     heatmap_path = f"heatmaps/heatmap-{uuid4()}.png"
     fig, ax = plt.subplots()
@@ -198,8 +215,8 @@ async def heatmap(
 
     sns.heatmap(
         full_data.pivot_table(
-            index=y_position_column,
-            columns=x_position_column,
+            index=y_column,
+            columns=x_column,
             values=color_column,
             aggfunc=aggregation_type,
         ),
@@ -232,16 +249,17 @@ async def line_plot(
     full_data: pd.DataFrame,
     x_column: DBColumn,
     y_column: DBColumn,
-    hue_column: DBColumn = None,
-    facet_col: DBColumn = None,
-    estimator: DropdownSingleSelect = ListWithDefault(
+    color_column: DBColumn = None,
+    facet_column: DBColumn = None,
+    line_group_column: DBColumn = None,
+    aggregation_type: DropdownSingleSelect = ListWithDefault(
         ["mean", "median", "max", "min", "sum", "None"], default_value=None
     ),
-    units: DBColumn = None,
     plot_average_line: DropdownSingleSelect = ListWithDefault(
         ["False", "True"], default_value=None
     ),
-    average_type: DropdownSingleSelect = ListWithDefault(
+    # the kind of value for the average line to have. Can be mean, median, max, min, or mode. None if no average line required"
+    average_line_type: DropdownSingleSelect = ListWithDefault(
         ["mean", "median", "max", "min", "mode"], default_value=None
     ),
     global_dict: dict = {},
@@ -255,24 +273,28 @@ async def line_plot(
     from uuid import uuid4
     import matplotlib.pyplot as plt
 
+    # if there's not an index column, create one
+    if "index" not in full_data.columns:
+        full_data["index"] = range(len(full_data))
+
     report_assets_dir = global_dict.get("report_assets_dir", "report_assets")
 
-    if type(average_type) == ListWithDefault:
-        average_type = average_type[0]
+    if type(average_line_type) == ListWithDefault:
+        average_line_type = average_line_type[0]
 
     if type(plot_average_line) == ListWithDefault:
         plot_average_line = plot_average_line[0]
 
-    if type(estimator) == ListWithDefault:
-        estimator = estimator[0]
+    if type(aggregation_type) == ListWithDefault:
+        aggregation_type = aggregation_type[0]
 
-    if estimator is None:
-        estimator = "None"
+    if aggregation_type is None:
+        aggregation_type = "None"
 
-    if facet_col == hue_column:
-        hue_column = None
+    if facet_column == color_column:
+        color_column = None
 
-    if estimator not in [
+    if aggregation_type not in [
         "mean",
         "median",
         "max",
@@ -281,30 +303,30 @@ async def line_plot(
         "None",
     ]:
         raise ValueError(
-            f"Estimator must was {estimator}, but it must be a string and one of mean, median, max, min, sum, None"
+            f"aggregation_type must was {aggregation_type}, but it must be a string and one of mean, median, max, min, sum, None"
         )
 
-    if estimator == "None":
-        estimator = None
+    if aggregation_type == "None":
+        aggregation_type = None
 
-    if units:
-        estimator = None
+    if line_group_column:
+        aggregation_type = None
 
     # if x_column is a numerical value and y_column is a string, swap them
     if full_data[x_column].dtype != "object" and full_data[y_column].dtype == "object":
         x_column, y_column = y_column, x_column
 
     relevant_columns = [x_column, y_column]
-    if hue_column:
-        relevant_columns.append(hue_column)
-    if facet_col:
-        relevant_columns.append(facet_col)
-    if units:
-        relevant_columns.append(units)
+    if color_column:
+        relevant_columns.append(color_column)
+    if facet_column:
+        relevant_columns.append(facet_column)
+    if line_group_column:
+        relevant_columns.append(line_group_column)
 
     df = full_data.dropna(subset=relevant_columns)[relevant_columns]
 
-    if units is not None:
+    if line_group_column is not None:
         df = (
             df.groupby([i for i in relevant_columns if i != y_column])[y_column]
             .mean()
@@ -312,38 +334,38 @@ async def line_plot(
         )
 
     # sort the dataframe by the x_column
-    df = natural_sort(df, x_column, units)
+    df = natural_sort(df, x_column, line_group_column)
 
     chart_path = f"linecharts/linechart-{uuid4()}.png"
     fig, ax = plt.subplots()
     plt.xticks(rotation=45)
 
-    if units:
+    if line_group_column:
         linewidth = 0.75
     else:
         linewidth = 1
 
     # create the plot
-    if facet_col is None:
+    if facet_column is None:
         plot = sns.lineplot(
             data=df[relevant_columns],
             x=x_column,
             y=y_column,
-            hue=hue_column,
-            estimator=estimator,
-            units=units,
+            hue=color_column,
+            estimator=aggregation_type,
+            line_group_column=line_group_column,
             linewidth=linewidth,
         )
         # Calculating the median value of 'y'
-        if average_type == "median":
+        if average_line_type == "median":
             value_to_plot = df[y_column].median()
-        elif average_type == "mean":
+        elif average_line_type == "mean":
             value_to_plot = df[y_column].mean()
-        elif average_type == "max":
+        elif average_line_type == "max":
             value_to_plot = df[y_column].max()
-        elif average_type == "min":
+        elif average_line_type == "min":
             value_to_plot = df[y_column].min()
-        elif average_type == "mode":
+        elif average_line_type == "mode":
             value_to_plot = df[y_column].mode()
 
         # Adding a horizontal line for the median value
@@ -352,7 +374,7 @@ async def line_plot(
                 y=value_to_plot,
                 color="k",
                 linestyle="--",
-                label=f"{average_type.title()}: {value_to_plot:.2f}",
+                label=f"{average_line_type.title()}: {value_to_plot:.2f}",
                 linewidth=2,
             )
 
@@ -362,32 +384,32 @@ async def line_plot(
             data=df[relevant_columns],
             x=x_column,
             y=y_column,
-            hue=hue_column,
+            hue=color_column,
             kind="line",
-            col=facet_col,
-            estimator=estimator,
-            units=units,
+            col=facet_column,
+            estimator=aggregation_type,
+            line_group_column=line_group_column,
             col_wrap=4,
             linewidth=linewidth,
         )
 
         for group, ax in plot.axes_dict.items():
-            if average_type == "median":
-                value_to_plot = df[df[facet_col] == group][y_column].median()
-            elif average_type == "mean":
-                value_to_plot = df[df[facet_col] == group][y_column].mean()
-            elif average_type == "max":
-                value_to_plot = df[df[facet_col] == group][y_column].max()
-            elif average_type == "min":
-                value_to_plot = df[df[facet_col] == group][y_column].min()
-            elif average_type == "mode":
-                value_to_plot = df[df[facet_col] == group][y_column].mode()
+            if average_line_type == "median":
+                value_to_plot = df[df[facet_column] == group][y_column].median()
+            elif average_line_type == "mean":
+                value_to_plot = df[df[facet_column] == group][y_column].mean()
+            elif average_line_type == "max":
+                value_to_plot = df[df[facet_column] == group][y_column].max()
+            elif average_line_type == "min":
+                value_to_plot = df[df[facet_column] == group][y_column].min()
+            elif average_line_type == "mode":
+                value_to_plot = df[df[facet_column] == group][y_column].mode()
             if plot_average_line == "True":
                 ax.axhline(
                     y=value_to_plot,
                     color="k",
                     linestyle="--",
-                    label=f"{average_type.title()}: {value_to_plot:.2f}",
+                    label=f"{average_line_type.title()}: {value_to_plot:.2f}",
                     linewidth=2,
                 )
             try:

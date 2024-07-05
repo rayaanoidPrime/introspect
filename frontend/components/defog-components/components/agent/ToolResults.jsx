@@ -440,7 +440,7 @@ export function ToolResults({
         >
           Continuing to execute the analysis and moving on to the next step...
           <br />
-          Last executed step: {toolRunData?.step?.tool_name}
+          Last executed step: {toolRunData?.tool_name}
         </div>
       )}
 
@@ -501,7 +501,7 @@ export function ToolResults({
               </Modal>
             </div>
             <h1 className="tool-name">
-              {toolDisplayNames[toolRunData.step.tool_name]}
+              {toolDisplayNames[toolRunData.tool_name]}
             </h1>
             <h1 className="inputs-header">INPUTS</h1>
             <ToolRunInputList
@@ -529,6 +529,7 @@ export function ToolResults({
       ) : toolRunData?.parsedOutputs[activeNode.data.id] ? (
         <>
           <ToolResultsTable
+            toolRunData={toolRunData}
             toolRunId={toolRunId}
             tableData={toolRunData?.parsedOutputs[activeNode.data.id]["data"]}
             chartImages={

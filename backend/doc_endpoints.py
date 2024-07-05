@@ -419,6 +419,7 @@ async def rerun_step(websocket: WebSocket):
             analysis_id = data.get("analysis_id")
             dev = data.get("dev", False)
             key_name = data.get("key_name")
+            temp = data.get("temp")
             api_key = get_api_key_from_key_name(key_name)
 
             if tool_run_id is None or type(tool_run_id) != str:
@@ -442,6 +443,8 @@ async def rerun_step(websocket: WebSocket):
                 "llm_calls_url": llm_calls_url,
                 "report_assets_dir": report_assets_dir,
                 "dev": dev,
+                "dfg_api_key": api_key,
+                "temp": temp,
             }
 
             if err:
@@ -749,6 +752,7 @@ async def download_csv(request: Request):
                 "user_question": analysis_data["user_question"],
                 "llm_calls_url": llm_calls_url,
                 "report_assets_dir": report_assets_dir,
+                "dfg_api_key": api_key,
             }
 
             if err:

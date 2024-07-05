@@ -317,6 +317,8 @@ export const AnalysisAgent = ({
     [analysisId, activeNode, reRunManager, dag, analysisManager]
   );
 
+  console.log(analysisData);
+
   return (
     <ErrorBoundary>
       <div className="analysis-agent-container min-h-96 mr-4 p-4 border rounded-md">

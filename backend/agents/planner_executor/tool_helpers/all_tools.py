@@ -291,28 +291,28 @@ tool_name_dict = tools = {
                 "description": "(exactly a single column - always a numerical value)",
                 "type": "DBColumn",
             },
-            "hue_column": {
-                "name": "hue_column",
+            "color_column": {
+                "name": "color_column",
                 "default": None,
-                "description": "column name to use for hue or None",
+                "description": "column name to use for line color or None",
                 "type": "DBColumn",
             },
-            "facet_col": {
-                "name": "facet_col",
+            "facet_column": {
+                "name": "facet_column",
                 "default": None,
                 "description": "column name to use for faceting or None",
                 "type": "DBColumn",
             },
-            "estimator": {
-                "name": "estimator",
+            "aggregation_type": {
+                "name": "aggregation_type",
                 "default": ["mean", "median", "max", "min", "sum", "None"],
                 "description": '"mean" if data must be aggregated, "None" if it is not aggregated',
                 "type": "DropdownSingleSelect",
             },
-            "units": {
-                "name": "units",
+            "line_group_column": {
+                "name": "line_group_column",
                 "default": None,
-                "description": "column name or None - refers to the column that contains individual data points, often some kind of id",
+                "description": "column name or None - if specified, the line plot will have a separate line for each value in this column",
                 "type": "DBColumn",
             },
             "plot_average_line": {
@@ -321,8 +321,8 @@ tool_name_dict = tools = {
                 "description": "True if the user wants to plot an average or median line",
                 "type": "DropdownSingleSelect",
             },
-            "average_type": {
-                "name": "average_type",
+            "average_line_type": {
+                "name": "average_line_type",
                 "default": ["mean", "median", "max", "min", "mode"],
                 "description": "the kind of value for the average line to have. Can be mean, median, max, min, or mode. None if no average line required",
                 "type": "DropdownSingleSelect",
@@ -350,11 +350,17 @@ tool_name_dict = tools = {
                 "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
-            "boxplot_cols": {
-                "name": "boxplot_cols",
+            "boxplot_x_column": {
+                "name": "boxplot_x_column",
                 "default": None,
-                "description": "Array of boxplot x column and boxplot y column",
-                "type": "DBColumnList_1_2",
+                "description": "boxplot x column",
+                "type": "DBColumn",
+            },
+            "boxplot_y_column": {
+                "name": "boxplot_y_column",
+                "default": None,
+                "description": "boxplot y column",
+                "type": "DBColumn",
             },
             "facet": {
                 "name": "facet",
@@ -410,14 +416,14 @@ tool_name_dict = tools = {
                 "description": '"global_dict.<input_df_name>"',
                 "type": "pandas.core.frame.DataFrame",
             },
-            "x_position_column": {
-                "name": "x_position_column",
+            "x_column": {
+                "name": "x_column",
                 "default": None,
                 "description": "heatmap_x_column",
                 "type": "DBColumn",
             },
-            "y_position_column": {
-                "name": "y_position_column",
+            "y_column": {
+                "name": "y_column",
                 "default": None,
                 "description": "heatmap_y_column",
                 "type": "DBColumn",

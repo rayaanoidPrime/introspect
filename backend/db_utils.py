@@ -73,6 +73,8 @@ def get_db_type_creds(api_key):
             select(DbCreds.db_type, DbCreds.db_creds).where(DbCreds.api_key == api_key)
         ).fetchone()
 
+    print(row)
+
     return row
 
 

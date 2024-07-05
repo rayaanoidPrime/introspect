@@ -246,6 +246,8 @@ def wrap_in_async(fn):
     """
     If a function isn't async, wrap it in an async function for create_Task to work
     """
+    print(fn, flush=True)
+    print("is corouting", inspect.iscoroutinefunction(fn), flush=True)
     wrapped_fn = fn
     if not inspect.iscoroutinefunction(fn):
 

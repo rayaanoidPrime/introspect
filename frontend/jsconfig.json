@@ -3,11 +3,11 @@
     "baseUrl": ".",
     "checkJs": true,
     "paths": {
-      // utils folder ./utils/
       "$utils/*": ["./utils/*"],
       "$components/*": ["./components/*"],
       "$tailwind/*": ["./components/tailwind/*"]
     },
+
     "jsx": "react-jsx"
   }
 }
