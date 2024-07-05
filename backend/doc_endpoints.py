@@ -442,6 +442,7 @@ async def rerun_step(websocket: WebSocket):
                 "llm_calls_url": llm_calls_url,
                 "report_assets_dir": report_assets_dir,
                 "dev": dev,
+                "dfg_api_key": api_key,
             }
 
             if err:
@@ -749,6 +750,7 @@ async def download_csv(request: Request):
                 "user_question": analysis_data["user_question"],
                 "llm_calls_url": llm_calls_url,
                 "report_assets_dir": report_assets_dir,
+                "dfg_api_key": api_key,
             }
 
             if err:

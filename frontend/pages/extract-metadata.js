@@ -365,7 +365,7 @@ const ExtractMetadata = () => {
                           console.log(e);
                           setLoading(false);
                           message.error(
-                            "Error fetching metadata - please look at your docker logs fo)r more information."
+                            "Error fetching metadata - please look at your docker logs for more information."
                           );
                         }
                       }}

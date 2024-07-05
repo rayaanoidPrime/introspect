@@ -1,5 +1,6 @@
 import inspect
 from agents.planner_executor.tool_helpers.all_tools import *
+from tool_code_utilities import fetch_query_into_df
 from db_utils import store_tool_run, get_tool_run, update_tool_run_data
 from colorama import Style
 from agents.planner_executor.execute_tool import execute_tool
@@ -14,7 +15,7 @@ from utils import (
     log_success,
     wrap_in_async,
 )
-from agents.planner_executor.tool_helpers.core_functions import *
+
 import pandas as pd
 import traceback
 import os
@@ -218,7 +219,9 @@ async def rerun_step_and_parents(
             new_data = None
             try:
                 result = await fetch_query_into_df(
-                    api_key=dfg_api_key, sql_query=tool_run_details["sql"]
+                    api_key=dfg_api_key,
+                    sql_query=tool_run_details["sql"],
+                    temp=resolved_inputs.get("global_dict", {}).get("temp", False),
                 )
             except Exception as e:
                 err = str(e)

@@ -109,11 +109,31 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
             exec(code, globals())
             fn = globals()[function_name]
 
-            tool_function_inputs["global_dict"] = global_dict
+            print(
+                "\n\nExisting global_Dict: ",
+                tool_function_inputs.get("global_dict"),
+                flush=True,
+            )
+
+            tool_function_inputs["global_dict"] = tool_function_inputs.get(
+                "global_dict", {}
+            )
+
+            tool_function_inputs["global_dict"].update(global_dict)
+
+            print(
+                "\n\nAfter updating global_Dict",
+                tool_function_inputs["global_dict"],
+                flush=True,
+            )
 
             filtered_inputs, _ = filter_function_inputs(fn, tool_function_inputs)
 
-            print(filtered_inputs.keys(), flush=True)
+            print("\n\n filtering function: ", _, flush=True)
+
+            print("\n\nAfter filtering inputs: ", filtered_inputs, flush=True)
+
+            print("\n\n\nfiltered inputs\n", filtered_inputs, flush=True)
 
             wrapped_fn = wrap_in_async(fn)
 
@@ -122,7 +142,7 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
                 # expand tool inputs
                 # if it takes more than 120 seconds, then timeout
                 result = await asyncio.wait_for(task, timeout=120)
-                print("result", result)
+                print("\n\nresult", result)
             except asyncio.TimeoutError:
                 print(error_str(f"Error for tool {function_name}: TimeoutError"))
                 result = {
@@ -134,7 +154,7 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
                     # Wait for the task cancellation to complete, catching any cancellation exceptions
                     await task
                 except asyncio.CancelledError:
-                    print("Task was successfully cancelled upon timeout")
+                    print("\n\nTask was successfully cancelled upon timeout")
 
             # if keyerror, then error string will not have "key error" in it but just the name of the key
             except KeyError as e:
@@ -154,7 +174,7 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
                     "error_message": f"IndexError: index not found {e}. This might be due to empty dataframes from columns in the generated data from earlier. You might need to run data fetcher again to make sure the query is correct."
                 }
             except SqlExecutionError as e:
-                print("HAD SQL ERROR\n", str(e), flush=True)
+                print("\n\nHAD SQL ERROR\n", str(e), flush=True)
                 result = {"sql": e.sql, "error_message": str(e)}
             except Exception as e:
                 print(error_str(f"Error for tool {function_name}: {e}"))

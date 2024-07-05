@@ -59,31 +59,6 @@ def safe_sql(query):
     return True
 
 
-async def fetch_query_into_df(api_key: str, sql_query: str) -> pd.DataFrame:
-    """
-    Runs a sql query and stores the results in a pandas dataframe.
-    """
-
-    # important note: this is currently a blocking call
-    # TODO: add an option to the defog library to make this async
-
-    res = get_db_type_creds(api_key)
-    db_type, db_creds = res
-
-    colnames, data, new_sql_query = await asyncio.to_thread(
-        execute_query, sql_query, api_key, db_type, db_creds, retries=2
-    )
-    df = pd.DataFrame(data, columns=colnames)
-
-    # if this df has any columns that have lists, remove those columns
-    for col in df.columns:
-        if df[col].apply(type).eq(list).any():
-            df = df.drop(col, axis=1)
-
-    df.sql_query = sql_query
-    return df
-
-
 def estimate_tokens_left(messages: List[Dict], model: str) -> int:
     """
     Returns an estimate of the number of tokens left for generation based on the
