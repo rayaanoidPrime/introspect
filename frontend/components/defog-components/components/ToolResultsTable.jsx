@@ -268,7 +268,7 @@ export function ToolResultsTable({
             />
           </ErrorBoundary>
         ),
-        tabLabel: "Heatmapss",
+        tabLabel: "Heatmap",
       });
     }
     if (toolRunData.tool_name === "line_plot") {
@@ -289,7 +289,7 @@ export function ToolResultsTable({
             />
           </ErrorBoundary>
         ),
-        tabLabel: "Line plotssss",
+        tabLabel: "Line Chart",
       });
     }
     if (toolRunData.tool_name === "boxplot") {
@@ -309,7 +309,7 @@ export function ToolResultsTable({
             />
           </ErrorBoundary>
         ),
-        tabLabel: "Box plotssss",
+        tabLabel: "Boxplot",
       });
     }
 

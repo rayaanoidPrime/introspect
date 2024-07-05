@@ -457,7 +457,7 @@ function AnalysisVersionViewer({
               </div>
             )}
 
-            <div className="w-10/12 m-auto lg:w-2/4 sticky bottom-14 z-10 bg-white right-0 border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex">
+            <div className="w-10/12 m-auto lg:w-2/4 sticky bottom-6 z-10 bg-white right-0 border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex">
               <textarea
                 className="w-full rounded-none rounded-l-md border border-gray-300 py-1.5 text-gray-900 p-1 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none resize-none"
                 ref={searchRef}

@@ -186,7 +186,7 @@ export default function Boxplot({
   );
 
   const xAxis = (
-    <div className="w-full h-full">
+    <div className="w-full h-12">
       {xScale.domain().map((d, i) => (
         <div
           key={i}

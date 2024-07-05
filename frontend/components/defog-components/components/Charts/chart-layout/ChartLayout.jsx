@@ -9,8 +9,8 @@
  */
 export function ChartLayout({ chartBody = null, yAxis = null, xAxis = null }) {
   return (
-    <div className="flex flex-col w-full h-full mb-20">
-      <div className="flex flex-row">
+    <div className="flex flex-col w-full h-full">
+      <div className="flex flex-row grow">
         <div className="relative w-28 grow">{yAxis}</div>
         <div className="h-full w-full relative ">{chartBody}</div>
       </div>

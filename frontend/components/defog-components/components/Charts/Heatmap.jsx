@@ -85,74 +85,90 @@ export default function Heatmap({
     colorScale = interpolateRgbBasis(colorScale);
   }
 
-  const xAxis = xScale.domain().map((d, i) => (
-    <div
-      className="tick absolute flex flex-col items-center justify-center"
-      key={i}
-      style={{
-        width: `${xScale.bandwidth()}%`,
-        left: `${xScale(d)}%`,
-      }}
-    >
-      <div className="w-[1px] h-[5px] bg-gray-800"></div>
-      {d}
+  const xBandwidth = xScale.bandwidth();
+  const yBandwidth = yScale.bandwidth();
+
+  const xAxis = (
+    <div className="w-full h-12">
+      {xScale.domain().map((d, i) => (
+        <div
+          key={i}
+          className="tick absolute flex flex-col items-center justify-center w-0 text-center"
+          style={{
+            left: `${xScale(d) + xBandwidth / 2}%`,
+          }}
+        >
+          <div className="w-[1px] h-[5px] bg-gray-800"></div>
+          {d}
+        </div>
+      ))}
     </div>
-  ));
+  );
 
-  const yAxis = yScale.domain().map((d, i) => (
-    <div
-      className="absolute text-center w-full flex items-center justify-center"
-      key={i}
-      style={{
-        height: `${yScale.bandwidth()}%`,
-        top: `${yScale(d)}%`,
-      }}
-    >
-      <p className="whitespace-nowrap text-ellipsis overflow-hidden">{d}</p>
+  const yAxis = (
+    <div className="w-full h-full">
+      {yScale.domain().map((d, i) => (
+        <div
+          className="absolute text-center w-full flex items-center justify-center h-0"
+          key={i}
+          style={{
+            width: "100%",
+            left: 0,
+            top: `${yScale(d) + yBandwidth / 2}%`,
+          }}
+        >
+          <p className="whitespace-nowrap text-ellipsis overflow-hidden">{d}</p>
+        </div>
+      ))}
     </div>
-  ));
+  );
 
-  const chartBody = yScale.domain().map((yCat, i) => {
-    return (
-      <>
-        {xScale.domain().map((xCat, j) => {
-          // get all the values that match this yCat and xCat
-          const matching = processedData.filter(
-            (d) => d.x === xCat && d.y === yCat
-          );
-          const w = xScale.bandwidth();
-          const h = yScale.bandwidth();
+  const chartBody = (
+    <div className="w-full h-full">
+      {yScale.domain().map((yCat, i) => {
+        return (
+          <>
+            {xScale.domain().map((xCat, j) => {
+              // get all the values that match this yCat and xCat
+              const matching = processedData.filter(
+                (d) => d.x === xCat && d.y === yCat
+              );
+              const w = xScale.bandwidth();
+              const h = yScale.bandwidth();
 
-          return (
-            <>
-              {matching.map((d) => {
-                const hasLabel = labelRects && labelFilter(w, h, matching[0]);
-                return (
-                  <div
-                    key={`${i}-${j}`}
-                    className="absolute flex items-center justify-center border border-transparent hover:border-gray-200 cursor-pointer"
-                    style={{
-                      left: `${xScale(xCat)}%`,
-                      top: `${yScale(yCat)}%`,
-                      width: `${w}%`,
-                      height: `${h}%`,
-                      backgroundColor: colorScale(d.value / colorMax),
-                    }}
-                  >
-                    {hasLabel && (
-                      <div className="text-white mix-blend-difference">
-                        {d.value}
+              return (
+                <>
+                  {matching.map((d) => {
+                    const hasLabel =
+                      labelRects && labelFilter(w, h, matching[0]);
+                    return (
+                      <div
+                        key={`${i}-${j}`}
+                        className="absolute flex items-center justify-center border border-transparent hover:border-gray-200 cursor-pointer"
+                        style={{
+                          left: `${xScale(xCat)}%`,
+                          top: `${yScale(yCat)}%`,
+                          width: `${w}%`,
+                          height: `${h}%`,
+                          backgroundColor: colorScale(d.value / colorMax),
+                        }}
+                      >
+                        {hasLabel && (
+                          <div className="text-white mix-blend-difference">
+                            {d.value}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </>
-          );
-        })}
-      </>
-    );
-  });
+                    );
+                  })}
+                </>
+              );
+            })}
+          </>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div
