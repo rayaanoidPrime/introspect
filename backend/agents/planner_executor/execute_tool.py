@@ -108,32 +108,13 @@ async def execute_tool(function_name, tool_function_inputs, global_dict={}):
 
             exec(code, globals())
             fn = globals()[function_name]
-
-            print(
-                "\n\nExisting global_Dict: ",
-                tool_function_inputs.get("global_dict"),
-                flush=True,
-            )
-
             tool_function_inputs["global_dict"] = tool_function_inputs.get(
                 "global_dict", {}
             )
 
             tool_function_inputs["global_dict"].update(global_dict)
 
-            print(
-                "\n\nAfter updating global_Dict",
-                tool_function_inputs["global_dict"],
-                flush=True,
-            )
-
             filtered_inputs, _ = filter_function_inputs(fn, tool_function_inputs)
-
-            print("\n\n filtering function: ", _, flush=True)
-
-            print("\n\nAfter filtering inputs: ", filtered_inputs, flush=True)
-
-            print("\n\n\nfiltered inputs\n", filtered_inputs, flush=True)
 
             wrapped_fn = wrap_in_async(fn)
 

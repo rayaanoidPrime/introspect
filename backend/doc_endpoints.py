@@ -419,6 +419,7 @@ async def rerun_step(websocket: WebSocket):
             analysis_id = data.get("analysis_id")
             dev = data.get("dev", False)
             key_name = data.get("key_name")
+            temp = data.get("temp")
             api_key = get_api_key_from_key_name(key_name)
 
             if tool_run_id is None or type(tool_run_id) != str:
@@ -443,6 +444,7 @@ async def rerun_step(websocket: WebSocket):
                 "report_assets_dir": report_assets_dir,
                 "dev": dev,
                 "dfg_api_key": api_key,
+                "temp": temp,
             }
 
             if err:

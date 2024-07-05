@@ -335,6 +335,7 @@ function AnalysisManager({
         tool_run_id: toolRunId,
         analysis_id: analysisId,
         dev: devMode,
+        temp: didUploadFile,
       });
     }
   }
