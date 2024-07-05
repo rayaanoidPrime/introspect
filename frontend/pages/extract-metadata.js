@@ -31,6 +31,10 @@ const ExtractMetadata = () => {
   const [token, setToken] = useState("");
   const [form] = Form.useForm();
   const [allowUpdates, setAllowUpdates] = useState("NO");
+  const apiKeyNames = (
+    process.env.NEXT_PUBLIC_API_KEY_NAMES || "REPLACE_WITH_API_KEY_NAMES"
+  ).split(",");
+  const [apiKeyName, setApiKeyName] = useState(apiKeyNames[0]);
 
   const getTables = async () => {
     // load from local storage and
@@ -48,7 +52,10 @@ const ExtractMetadata = () => {
       setupBaseUrl("http", `integration/get_tables_db_creds`),
       {
         method: "POST",
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({
+          token,
+          key_name: apiKeyName,
+        }),
       }
     );
     const data = await res.json();
@@ -62,6 +69,25 @@ const ExtractMetadata = () => {
         db_type: data["db_type"],
         ...data["db_creds"],
         db_tables: data["selected_tables"],
+      });
+    } else {
+      setDbCreds({});
+      setTables([]);
+      setSelectedTablesForIndexing([]);
+      form.setFieldsValue({
+        db_type: "",
+        db_tables: [],
+        host: "",
+        port: "",
+        user: "",
+        password: "",
+        database: "",
+        schema: "",
+        account: "",
+        warehouse: "",
+        access_token: "",
+        server_hostname: "",
+        http_path: "",
       });
     }
   };
@@ -115,7 +141,10 @@ const ExtractMetadata = () => {
     setToken(token);
     const res = await fetch(setupBaseUrl("http", `integration/get_metadata`), {
       method: "POST",
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({
+        token,
+        key_name: apiKeyName,
+      }),
     });
     const data = await res.json();
     if (!data.error) {
@@ -136,7 +165,7 @@ const ExtractMetadata = () => {
     });
 
     // get the current status
-  }, []);
+  }, [apiKeyName]);
 
   const dbCredOptions = {
     postgres: ["host", "port", "user", "password", "database"],
@@ -151,6 +180,23 @@ const ExtractMetadata = () => {
       <Meta />
       <Scaffolding id={"manage-database"} userType={"admin"}>
         <div className="w-10/12">
+          {apiKeyNames.length > 1 ? (
+            <Row type={"flex"} height={"100vh"}>
+              <Col span={24} style={{ paddingBottom: "1em" }}>
+                <Select
+                  style={{ width: "100%" }}
+                  onChange={(e) => {
+                    setApiKeyName(e);
+                  }}
+                  options={apiKeyNames.map((item) => {
+                    return { value: item, key: item, label: item };
+                  })}
+                  defaultValue={apiKeyName}
+                />
+              </Col>
+            </Row>
+          ) : null}
+
           <div className="pb-4 flex flex-row items-center mb-5">
             <h1 className="text-2xl font-bold">Extract Metadata</h1>
             <Switch
@@ -184,6 +230,7 @@ const ExtractMetadata = () => {
                           db_creds: values,
                           db_type: values["db_type"] || dbType,
                           token: token,
+                          key_name: apiKeyName,
                         };
                         try {
                           const res = await fetch(
@@ -301,6 +348,7 @@ const ExtractMetadata = () => {
                                 tables: values["tables"],
                                 token: token,
                                 dev: devMode,
+                                key_name: apiKeyName,
                               }),
                             }
                           );
@@ -447,6 +495,7 @@ const ExtractMetadata = () => {
                                   metadata: metadata,
                                   token: token,
                                   dev: devMode,
+                                  key_name: apiKeyName,
                                 }),
                               }
                             );

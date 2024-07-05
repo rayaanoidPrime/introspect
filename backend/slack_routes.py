@@ -10,6 +10,7 @@ router = APIRouter()
 from defog import Defog
 import pandas as pd
 import asyncio
+from db_utils import get_db_type_creds
 
 
 @router.post("/slack/events")
@@ -42,7 +43,10 @@ async def process_event(event):
                     text=f"You are not authorized to use this app. Please contact the administrator if you would like access, and ask for the email `{user_email}` to be added to the system.",
                 )
             else:
-                defog = Defog()
+                api_key = os.environ["DEFOG_API_KEY"].split(",")[0]
+                res = get_db_type_creds(api_key)
+                db_type, db_creds = res
+                defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
                 res = await asyncio.to_thread(defog.run_query, user_query)
                 df = pd.DataFrame(res["data"], columns=res["columns"])
 

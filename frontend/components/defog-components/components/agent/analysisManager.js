@@ -22,7 +22,9 @@ function AnalysisManager({
   onNewData = () => {},
   onReRunData = () => {},
   token,
+  keyName,
   devMode,
+  didUploadFile,
   createAnalysisRequestBody = {},
 }) {
   let analysisData = null;
@@ -63,6 +65,7 @@ function AnalysisManager({
       // create a new analysis
       fetchedAnalysisData = await createAnalysis(
         token,
+        keyName,
         analysisId,
         createAnalysisRequestBody
       );
@@ -169,6 +172,8 @@ function AnalysisManager({
       skip_extra_approaches: true,
       skip_text_gen: true,
       token: token,
+      temp: didUploadFile,
+      key_name: keyName,
       db_creds: null,
       dev: devMode,
     };

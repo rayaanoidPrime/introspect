@@ -3,13 +3,20 @@ import json
 import os
 from defog import Defog
 
-from db_utils import validate_user
+from db_utils import (
+    validate_user,
+    get_db_type_creds,
+    update_db_type_creds,
+    save_csv_to_db,
+)
 import asyncio
-from generic_utils import make_request, convert_nested_dict_to_list
+from generic_utils import (
+    make_request,
+    convert_nested_dict_to_list,
+    get_api_key_from_key_name,
+)
 
-DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]  # replace with your DEFOG_API_KEY
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-print(DEFOG_API_KEY, flush=True)
 print(DEFOG_BASE_URL, flush=True)
 
 home_dir = os.path.expanduser("~")
@@ -25,18 +32,22 @@ async def get_tables_db_creds(request: Request):
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
 
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+    res = get_db_type_creds(api_key)
+
+    if res:
+        db_type, db_creds = res
+    else:
+        return {"error": "no db creds found"}
+
     try:
-        defog = Defog()
+        defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
         defog.base_url = DEFOG_BASE_URL
     except:
         return {"error": "no defog instance found"}
 
     try:
-        # r = await make_request(
-        #     f"{DEFOG_BASE_URL}/get_metadata", {"api_key": DEFOG_API_KEY}
-        # )
-        # table_metadata = r["table_metadata"]
-        # table_names = list(table_metadata.keys())
         table_names = await asyncio.to_thread(
             defog.generate_db_schema,
             tables=[],
@@ -50,7 +61,9 @@ async def get_tables_db_creds(request: Request):
         table_names = []
 
     try:
-        with open(os.path.join(defog_path, "selected_tables.json"), "r") as f:
+        with open(
+            os.path.join(defog_path, f"selected_tables_{api_key}.json"), "r"
+        ) as f:
             selected_table_names = json.load(f)
     except:
         selected_table_names = table_names
@@ -75,10 +88,12 @@ async def get_metadata(request: Request):
     token = params.get("token")
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
+
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+
     try:
-        md = await make_request(
-            f"{DEFOG_BASE_URL}/get_metadata", {"api_key": DEFOG_API_KEY}
-        )
+        md = await make_request(f"{DEFOG_BASE_URL}/get_metadata", {"api_key": api_key})
         table_metadata = md["table_metadata"]
 
         metadata = convert_nested_dict_to_list(table_metadata)
@@ -93,6 +108,10 @@ async def update_db_creds(request: Request):
     token = params.get("token")
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
+
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+
     db_type = params.get("db_type")
     db_creds = params.get("db_creds")
     for k in ["api_key", "db_type"]:
@@ -102,7 +121,8 @@ async def update_db_creds(request: Request):
     if db_type == "bigquery":
         db_creds["json_key_path"] = "/backend/bq.json"
 
-    defog = Defog(DEFOG_API_KEY, db_type, db_creds)
+    success = update_db_type_creds(api_key=api_key, db_type=db_type, db_creds=db_creds)
+    print(success)
 
     return {"success": True}
 
@@ -115,15 +135,21 @@ async def generate_metadata(request: Request):
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
 
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+    res = get_db_type_creds(api_key)
+    if res:
+        db_type, db_creds = res
+    else:
+        return {"error": "no db creds found"}
+
     tables = params.get("tables")
     dev = params.get("dev", False)
 
-    with open(os.path.join(defog_path, "selected_tables.json"), "w") as f:
+    with open(os.path.join(defog_path, f"selected_tables_{api_key}.json"), "w") as f:
         json.dump(tables, f)
 
-    print("here 1")
-
-    defog = Defog()
+    defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
     defog.base_url = DEFOG_BASE_URL
 
     # ugly hack here for now
@@ -156,12 +182,8 @@ async def generate_metadata(request: Request):
             scan=False,
         )
 
-    print("DEFOG_BASE_URL= ", DEFOG_BASE_URL, flush=True)
-    print("here 2", DEFOG_API_KEY, dev, flush=True)
-    print(table_metadata, flush=True)
-
     md = await make_request(
-        f"{DEFOG_BASE_URL}/get_metadata", {"api_key": DEFOG_API_KEY, "dev": dev}
+        f"{DEFOG_BASE_URL}/get_metadata", {"api_key": api_key, "dev": dev}
     )
     print("here 3")
     try:
@@ -195,6 +217,14 @@ async def update_metadata(request: Request):
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
 
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+    res = get_db_type_creds(api_key)
+    if res:
+        db_type, db_creds = res
+    else:
+        return {"error": "no db creds found"}
+
     metadata = params.get("metadata")
     dev = params.get("dev", False)
 
@@ -212,16 +242,13 @@ async def update_metadata(request: Request):
             }
         )
 
-    defog = Defog()
-    defog.base_url = DEFOG_BASE_URL
-
     # update on API server
     r = await make_request(
-        defog.base_url + "/update_metadata",
+        DEFOG_BASE_URL + "/update_metadata",
         json={
-            "api_key": defog.api_key,
+            "api_key": api_key,
             "table_metadata": table_metadata,
-            "db_type": defog.db_type,
+            "db_type": db_type,
             "dev": dev,
         },
     )
@@ -235,9 +262,11 @@ async def copy_prod_to_dev(request: Request):
     token = params.get("token")
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
 
     r = await make_request(
-        DEFOG_BASE_URL + "/copy_prod_to_dev", json={"api_key": DEFOG_API_KEY}
+        DEFOG_BASE_URL + "/copy_prod_to_dev", json={"api_key": api_key}
     )
 
     return r
@@ -249,9 +278,11 @@ async def copy_prod_to_dev(request: Request):
     token = params.get("token")
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
 
     r = await make_request(
-        DEFOG_BASE_URL + "/copy_dev_to_prod", json={"api_key": DEFOG_API_KEY}
+        DEFOG_BASE_URL + "/copy_dev_to_prod", json={"api_key": api_key}
     )
 
     return r
@@ -265,7 +296,15 @@ async def get_glossary_golden_queries(request: Request):
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
 
-    defog = Defog()
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+    res = get_db_type_creds(api_key)
+    if res:
+        db_type, db_creds = res
+    else:
+        return {"error": "no db creds found"}
+
+    defog = Defog(api_key, db_type, db_creds)
     defog.base_url = DEFOG_BASE_URL
 
     # get glossary
@@ -283,10 +322,18 @@ async def update_glossary(request: Request):
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
 
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+    res = get_db_type_creds(api_key)
+    if res:
+        db_type, db_creds = res
+    else:
+        return {"error": "no db creds found"}
+
     glossary = params.get("glossary")
     dev = params.get("dev", False)
 
-    defog = Defog()
+    defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
     defog.base_url = DEFOG_BASE_URL
 
     # update glossary
@@ -301,10 +348,18 @@ async def update_golden_queries(request: Request):
     if not validate_user(token, user_type="admin"):
         return {"error": "unauthorized"}
 
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+    res = get_db_type_creds(api_key)
+    if res:
+        db_type, db_creds = res
+    else:
+        return {"error": "no db creds found"}
+
     golden_queries = params.get("golden_queries")
     dev = params.get("dev", False)
 
-    defog = Defog()
+    defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
     defog.base_url = DEFOG_BASE_URL
 
     # first, delete the existing golden queries
@@ -319,3 +374,53 @@ async def update_golden_queries(request: Request):
         defog.update_golden_queries, golden_queries, dev=dev, scrub=False
     )
     return r
+
+
+@router.post("/integration/upload_csv")
+async def upload_csv(request: Request):
+    params = await request.json()
+    token = params.get("token")
+    if not validate_user(token, user_type="admin"):
+        return {"error": "unauthorized"}
+
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+    res = get_db_type_creds(api_key)
+    if res:
+        db_type, db_creds = res
+    else:
+        return {"error": "no db creds found"}
+
+    data = params.get("data", [])
+
+    defog = Defog(
+        api_key=api_key,
+        db_type=db_type,
+        db_creds={
+            "host": "agents-postgres",
+            "port": 5432,
+            "database": "postgres",
+            "user": "postgres",
+            "password": "postgres",
+        },
+    )
+    defog.base_url = DEFOG_BASE_URL
+
+    # save the csv file as a table to the local database
+    save_csv_to_db(
+        table_name="temp_table",
+        data=data,
+    )
+
+    await asyncio.to_thread(
+        defog.generate_db_schema, tables=["temp_table"], upload=True, scan=False
+    )
+
+    resp = await asyncio.to_thread(
+        defog.update_db_schema,
+        path_to_csv="defog_metadata.csv",
+        temp=True,
+    )
+
+    print("reached the upload_csv route", flush=True)
+    return resp

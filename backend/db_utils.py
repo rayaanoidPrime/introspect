@@ -11,16 +11,12 @@ from sqlalchemy import (
     delete,
 )
 from sqlalchemy.ext.automap import automap_base
-from agents.planner_executor.tool_helpers.core_functions import (
-    execute_code,
-)
 
 import asyncio
 from utils import warn_str, YieldList, make_request
 import os
 
 report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
-DEFOG_API_KEY = os.environ["DEFOG_API_KEY"]
 
 if os.environ.get("INTERNAL_DB") == "sqlite":
     print("using sqlite as our internal db")
@@ -55,6 +51,52 @@ Toolboxes = Base.classes.defog_toolboxes
 Tools = Base.classes.defog_tools
 Users = Base.classes.defog_users
 Feedback = Base.classes.defog_plans_feedback
+DbCreds = Base.classes.defog_db_creds
+
+
+def save_csv_to_db(table_name, data):
+    df = pd.DataFrame(data[1:], columns=data[0])
+    if "" in df.columns:
+        del df[""]
+    print(df)
+    try:
+        df.to_sql(table_name, engine, if_exists="replace", index=False)
+        return True
+    except Exception as e:
+        print(e)
+        return False
+
+
+def get_db_type_creds(api_key):
+    with engine.begin() as conn:
+        row = conn.execute(
+            select(DbCreds.db_type, DbCreds.db_creds).where(DbCreds.api_key == api_key)
+        ).fetchone()
+
+    return row
+
+
+def update_db_type_creds(api_key, db_type, db_creds):
+    with engine.begin() as conn:
+        # first, check if the record exists
+        record = conn.execute(
+            select(DbCreds).where(DbCreds.api_key == api_key)
+        ).fetchone()
+
+        if record:
+            conn.execute(
+                update(DbCreds)
+                .where(DbCreds.api_key == api_key)
+                .values(db_type=db_type, db_creds=db_creds)
+            )
+        else:
+            conn.execute(
+                insert(DbCreds).values(
+                    api_key=api_key, db_type=db_type, db_creds=db_creds
+                )
+            )
+
+    return True
 
 
 def validate_user(token, user_type=None, get_username=False):
@@ -81,7 +123,30 @@ def validate_user(token, user_type=None, get_username=False):
         return False
 
 
-async def initialise_report(user_question, token, custom_id=None, other_data={}):
+async def execute_code(codestr):
+    """
+    Executes the code in a string. Returns the error or results.
+    """
+    err = None
+    analysis = None
+    full_data = None
+    try:
+        # add some imports to the codestr
+        exec(codestr, globals())
+        analysis, full_data = await globals()["exec_code"]()
+        full_data.code_str = codestr
+    except Exception as e:
+        traceback.print_exc()
+        err = e
+        analysis = None
+        full_data = None
+    finally:
+        return err, analysis, full_data
+
+
+async def initialise_report(
+    user_question, token, api_key, custom_id=None, other_data={}
+):
     username = validate_user(token, get_username=True)
     if not username:
         return {"success": False, "error_message": "Invalid token."}
@@ -92,10 +157,6 @@ async def initialise_report(user_question, token, custom_id=None, other_data={})
 
     try:
         """Create a new report in the defog_reports table"""
-        # err_validate = validate_user(DEFOG_API_KEY)
-
-        # if DEFOG_API_KEY == "" or DEFOG_API_KEY is None or not DEFOG_API_KEY or err_validate is not None:
-        #     err = err_validate or "Your API Key is invalid."
         with engine.begin() as conn:
             if not custom_id or custom_id == "":
                 report_id = str(uuid.uuid4())
@@ -106,7 +167,7 @@ async def initialise_report(user_question, token, custom_id=None, other_data={})
                 "user_question": user_question,
                 "timestamp": timestamp,
                 "report_id": report_id,
-                "api_key": DEFOG_API_KEY,
+                "api_key": api_key,
                 "username": username,
             }
             if other_data is not None and type(other_data) is dict:
@@ -151,28 +212,6 @@ async def initialise_report(user_question, token, custom_id=None, other_data={})
         new_report_data = None
     finally:
         return err, new_report_data
-
-
-def add_report_markdown(report_markdown, report_id):
-    """Add report's markdown to defog_reports table"""
-    try:
-        with engine.begin() as conn:
-            conn.execute(
-                update(Reports)
-                .where(
-                    Reports.report_id == report_id,
-                    Reports.api_key == DEFOG_API_KEY,
-                )
-                .values(report_markdown=report_markdown)
-            )
-
-        return {"success": True}
-    except Exception as e:
-        traceback.print_exc()
-        return {
-            "success": False,
-            "error_message": "Server error. Could not save report.",
-        }
 
 
 def get_report_data(report_id):
@@ -377,7 +416,7 @@ def report_data_from_row(row):
         return rpt
 
 
-def get_all_reports():
+def get_all_reports(api_key: str):
     # get reports from the reports table
     err = None
     reports = []
@@ -385,7 +424,7 @@ def get_all_reports():
         with engine.begin() as conn:
             # first get the data
             rows = conn.execute(
-                select(Reports).where(Reports.api_key == DEFOG_API_KEY)
+                select(Reports).where(Reports.api_key == api_key)
             ).fetchall()
             if len(rows) > 0:
                 # reshape with "success = true"
@@ -402,7 +441,7 @@ def get_all_reports():
         return err, reports
 
 
-async def add_to_recently_viewed_docs(token, doc_id, timestamp):
+async def add_to_recently_viewed_docs(token, doc_id, timestamp, api_key):
     username = validate_user(token, get_username=True)
     if not username:
         return {"success": False, "error_message": "Invalid token."}
@@ -414,7 +453,7 @@ async def add_to_recently_viewed_docs(token, doc_id, timestamp):
             row = conn.execute(
                 select(RecentlyViewedDocs)
                 .where(RecentlyViewedDocs.username == username)
-                .where(RecentlyViewedDocs.api_key == DEFOG_API_KEY)
+                .where(RecentlyViewedDocs.api_key == api_key)
             ).fetchone()
 
             if row:
@@ -440,7 +479,7 @@ async def add_to_recently_viewed_docs(token, doc_id, timestamp):
                 conn.execute(
                     update(RecentlyViewedDocs)
                     .where(RecentlyViewedDocs.username == username)
-                    .where(RecentlyViewedDocs.api_key == DEFOG_API_KEY)
+                    .where(RecentlyViewedDocs.api_key == api_key)
                     .values(recent_docs=recent_docs)
                 )
             else:
@@ -448,7 +487,7 @@ async def add_to_recently_viewed_docs(token, doc_id, timestamp):
                 conn.execute(
                     insert(RecentlyViewedDocs).values(
                         {
-                            "api_key": DEFOG_API_KEY,
+                            "api_key": api_key,
                             "username": username,
                             "recent_docs": [[doc_id, timestamp]],
                         }
@@ -460,7 +499,7 @@ async def add_to_recently_viewed_docs(token, doc_id, timestamp):
         print("Could not add to recently viewed docs\n")
 
 
-async def get_doc_data(doc_id, token, col_name="doc_blocks"):
+async def get_doc_data(api_key, doc_id, token, col_name="doc_blocks"):
     username = validate_user(token, get_username=True)
     if not username:
         return {"success": False, "error_message": "Invalid token."}
@@ -471,10 +510,6 @@ async def get_doc_data(doc_id, token, col_name="doc_blocks"):
     try:
         """Find the document with the id in the Docs table.
         If it doesn't exist, create one and return empty data."""
-        # err_validate = validate_user(DEFOG_API_KEY)
-
-        # if DEFOG_API_KEY == "" or DEFOG_API_KEY is None or not DEFOG_API_KEY or err_validate is not None:
-        #     err = err_validate or "Your API Key is invalid."
         with engine.begin() as conn:
             # check if document exists
             row = conn.execute(select(Docs).where(Docs.doc_id == doc_id)).fetchone()
@@ -502,7 +537,7 @@ async def get_doc_data(doc_id, token, col_name="doc_blocks"):
                     insert(Docs).values(
                         {
                             "doc_id": doc_id,
-                            "api_key": DEFOG_API_KEY,
+                            "api_key": api_key,
                             "doc_blocks": None,
                             "doc_xml": None,
                             "doc_uint8": None,
@@ -705,11 +740,6 @@ async def get_all_docs(token):
     recently_viewed_docs = []
     try:
         """Get docs for a user from the defog_docs table"""
-        # err_validate = validate_user(DEFOG_API_KEY)
-
-        # if DEFOG_API_KEY == "" or DEFOG_API_KEY is None or not DEFOG_API_KEY or err_validate is not None:
-        #     err = err_validate or "Your API Key is invalid."
-
         with engine.begin() as conn:
             # first get the data
             rows = conn.execute(
@@ -773,17 +803,12 @@ async def get_all_docs(token):
         return err, own_docs, recently_viewed_docs
 
 
-async def get_all_analyses():
+async def get_all_analyses(api_key: str):
     # get reports from the reports table
     err = None
     analyses = []
     try:
         """Create a new report in the defog_reports table"""
-        # err_validate = validate_user(DEFOG_API_KEY)
-
-        # if DEFOG_API_KEY == "" or DEFOG_API_KEY is None or not DEFOG_API_KEY or err_validate is not None:
-        #     err = err_validate or "Your API Key is invalid."
-
         with engine.begin() as conn:
             # first get the data
             rows = conn.execute(
@@ -793,7 +818,7 @@ async def get_all_analyses():
                         Reports.__table__.columns["user_question"],
                     ]
                 )
-                .where(Reports.api_key == DEFOG_API_KEY)
+                .where(Reports.api_key == api_key)
                 .where(Reports.report_id.contains("analysis"))
             ).fetchall()
 
@@ -1195,6 +1220,7 @@ def get_multiple_reports(report_ids=[], columns=["report_id", "user_question"]):
 
 
 async def store_feedback(
+    api_key,
     user_question,
     analysis_id,
     is_correct,
@@ -1208,7 +1234,7 @@ async def store_feedback(
         make_request(
             f"{os.environ['DEFOG_BASE_URL']}/update_agent_feedback",
             {
-                "api_key": DEFOG_API_KEY,
+                "api_key": api_key,
                 "user_question": user_question,
                 "analysis_id": analysis_id,
                 "is_correct": is_correct,
@@ -1257,6 +1283,7 @@ def get_all_tools():
 
 
 async def add_tool(
+    api_key,
     tool_name,
     function_name,
     description,
@@ -1313,7 +1340,7 @@ async def add_tool(
             make_request(
                 url=f"{os.environ['DEFOG_BASE_URL']}/update_tool",
                 payload={
-                    "api_key": DEFOG_API_KEY,
+                    "api_key": api_key,
                     "tool_name": tool_name,
                     "function_name": function_name,
                     "description": description,

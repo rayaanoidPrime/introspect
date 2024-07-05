@@ -6,11 +6,11 @@ import React, {
   useMemo,
 } from "react";
 import Context from "./common/Context";
+import "./standalone-fonts.module.css";
 import { v4 } from "uuid";
 import { DocContext, RelatedAnalysesContext } from "../../docs/DocContext";
 import { ReactiveVariablesContext } from "../../docs/ReactiveVariablesContext";
 import { getAllAnalyses, getAllDashboards } from "$utils/utils";
-import styled, { createGlobalStyle } from "styled-components";
 import ErrorBoundary from "./common/ErrorBoundary";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { setupWebsocketManager } from "$utils/websocket-manager";
@@ -20,6 +20,7 @@ export default function DefogAnalysisAgentStandalone({
   analysisId,
   token,
   devMode,
+  keyName,
 }) {
   const [context, setContext] = useState({});
   const [id, setId] = useState(analysisId || "analysis-" + v4());
@@ -44,8 +45,8 @@ export default function DefogAnalysisAgentStandalone({
     async function setup() {
       // setup user items
       const items = docContext.userItems;
-      const analyses = await getAllAnalyses();
-      const dashboards = await getAllDashboards(token);
+      const analyses = await getAllAnalyses(keyName);
+      const dashboards = await getAllDashboards(token, keyName);
       if (dashboards?.success) {
         setDashboards(dashboards.docs);
       }
@@ -98,9 +99,7 @@ export default function DefogAnalysisAgentStandalone({
         toolSocketManager.clearSocketTimeout();
       }
     };
-  }, []);
-
-  const GlobalStyle = createGlobalStyle``;
+  }, [keyName]);
 
   return (
     <ErrorBoundary>
@@ -117,25 +116,23 @@ export default function DefogAnalysisAgentStandalone({
             value={{ val: docContext, update: setDocContext }}
           >
             <Context.Provider value={[context, setContext]}>
-              <GlobalStyle />
-              <FontLoadCss>
-                <div className="content md:w-11/12">
-                  <div className="editor-container mt-4 mb-8 max-w-screen-xl w-full">
-                    <div className="defog-analysis-container">
-                      <div
-                        data-content-type="analysis"
-                        data-analysis-id={analysisId}
-                      >
-                        <AnalysisVersionViewer
-                          token={token}
-                          dashboards={dashboards}
-                          devMode={devMode}
-                        />
-                      </div>
+              <div className="content md:w-11/12">
+                <div className="editor-container mt-4 mb-8 max-w-screen-xl w-full">
+                  <div className="defog-analysis-container">
+                    <div
+                      data-content-type="analysis"
+                      data-analysis-id={analysisId}
+                    >
+                      <AnalysisVersionViewer
+                        token={token}
+                        dashboards={dashboards}
+                        devMode={devMode}
+                        keyName={keyName}
+                      />
                     </div>
                   </div>
                 </div>
-              </FontLoadCss>
+              </div>
             </Context.Provider>
           </DocContext.Provider>
         </ReactiveVariablesContext.Provider>
@@ -143,9 +140,3 @@ export default function DefogAnalysisAgentStandalone({
     </ErrorBoundary>
   );
 }
-
-// font loader
-const FontLoadCss = styled.div`
-  @import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900");
-  @import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap");
-`;

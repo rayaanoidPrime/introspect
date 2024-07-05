@@ -1,5 +1,5 @@
-import { Modal } from "antd";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { Modal, Spin } from "antd";
+import { useCallback, useContext, useRef, useState } from "react";
 import { v4 } from "uuid";
 import { AnalysisAgent } from "./AnalysisAgent";
 import { PlusOutlined } from "@ant-design/icons";
@@ -8,12 +8,15 @@ import { AnalysisVersionViewerLinks } from "./AnalysisVersionViewerLinks";
 import { ArrowRightEndOnRectangleIcon } from "@heroicons/react/20/solid";
 import Sidebar from "$components/tailwind/Sidebar";
 import { MessageManagerContext } from "$components/tailwind/Message";
+import Papa from "papaparse";
 import { sentenceCase } from "$utils/utils";
+import Table from "$components/tailwind/Table";
 
 function AnalysisVersionViewer({
   dashboards,
   token,
   devMode,
+  keyName,
   // this isn't always reinforced
   // we check for this only when we're creating a new analysis
   // but not otherwise
@@ -63,40 +66,33 @@ function AnalysisVersionViewer({
   const searchRef = useRef(null);
   const [addToDashboardSelection, setAddToDashboardSelection] = useState(false);
   const [selectedDashboards, setSelectedDashboards] = useState([]);
+  const [tableData, setTableData] = useState([]);
+  const [tableColumns, setTableColumns] = useState([]);
+  const [didUploadFile, setDidUploadFile] = useState(false);
 
-  // useEffect(() => {
-  //   if (!searchRef.current) return;
-  //   const placeholderQuestions = [
-  //     "A boxplot of ...",
-  //     "Show me the average of ...",
-  //     "What is the highest ...",
-  //   ];
-
-  //   let idx = 0;
-  //   let interval = null;
-  //   let timeout = null;
-  //   const showNextQuestion = () => {
-  //     // show one character at a time
-  //     let c = 0;
-  //     interval = setInterval(() => {
-  //       if (!searchRef.current) return;
-  //       searchRef.current.placeholder = placeholderQuestions[idx].slice(0, c);
-  //       c++;
-  //       if (c > placeholderQuestions[idx].length) {
-  //         clearInterval(interval);
-  //         idx = (idx + 1) % placeholderQuestions.length;
-  //         timeout = setTimeout(showNextQuestion, 2000);
-  //       }
-  //     }, 80);
-  //   };
-
-  //   showNextQuestion();
-
-  //   return () => {
-  //     clearInterval(interval);
-  //     clearTimeout(timeout);
-  //   };
-  // });
+  const uploadFileToServer = async (parsedData) => {
+    // upload the file to the server
+    setLoading(true);
+    console.log(parsedData);
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/integration/upload_csv`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          data: parsedData,
+          keyName: keyName,
+          token: token,
+        }),
+      }
+    );
+    const data = await response.json();
+    console.log(data);
+    setDidUploadFile(true);
+    setLoading(false);
+  };
 
   const handleSubmit = useCallback(
     (question, rootAnalysisId, isRoot, directParentId) => {
@@ -210,6 +206,7 @@ function AnalysisVersionViewer({
                           ).createAnalysisRequestBody
                     }
                     token={token}
+                    keyName={keyName}
                     initiateAutoSubmit={true}
                     searchRef={searchRef}
                     setGlobalLoading={setLoading}
@@ -217,6 +214,7 @@ function AnalysisVersionViewer({
                     onManagerDestroyed={(mgr, id) => {
                       console.log(mgr, id);
                     }}
+                    didUploadFile={didUploadFile}
                   />
                 </div>
               )}
@@ -236,10 +234,12 @@ function AnalysisVersionViewer({
                       analysis.createAnalysisRequestBody
                     }
                     token={token}
+                    keyName={keyName}
                     initiateAutoSubmit={true}
                     searchRef={searchRef}
                     setGlobalLoading={setLoading}
                     devMode={devMode}
+                    didUploadFile={didUploadFile}
                     onManagerDestroyed={(mgr, id) => {
                       const data = mgr.analysisData;
                       // remove the analysis from the sessionAnalyses
@@ -282,32 +282,83 @@ function AnalysisVersionViewer({
 
             {!activeAnalysisId && (
               <div className="h-full flex flex-col place-content-center w-full m-auto relative z-[1]">
-                <div className="m-auto">
-                  <p className="text-gray-400 cursor-default font-bold text-base">
-                    Quickstart
-                  </p>
+                {didUploadFile !== true ? (
+                  <div className="text-center">
+                    <p className="text-gray-400 cursor-default font-bold">
+                      Quickstart
+                    </p>
 
-                  <div className="text-gray-400 flex flex-col text-sm">
-                    {predefinedQuestions.map((question, i) => (
-                      <div
-                        className="cursor-pointer border-b w-max pr-1 mb-1 hover:text-gray-600"
-                        key={i}
-                        onClick={(ev) => {
-                          ev.preventDefault();
-                          ev.stopPropagation();
+                    <ul className="text-gray-400">
+                      {predefinedQuestions.map((question, i) => (
+                        <li
+                          className="cursor-pointer hover:underline"
+                          key={i}
+                          onClick={(ev) => {
+                            ev.preventDefault();
+                            ev.stopPropagation();
 
-                          handleSubmit(
-                            sentenceCase(question),
-                            activeRootAnalysisId,
-                            !activeRootAnalysisId,
-                            activeAnalysisId
-                          );
-                        }}
-                      >
-                        <span className="">{sentenceCase(question)}</span>
-                      </div>
-                    ))}
+                            handleSubmit(
+                              sentenceCase(question),
+                              activeRootAnalysisId,
+                              !activeRootAnalysisId,
+                              activeAnalysisId
+                            );
+                          }}
+                        >
+                          <span className="">{sentenceCase(question)}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
+                ) : null}
+
+                <div className="mt-5 m-auto">
+                  <label
+                    className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                    htmlFor="file_input"
+                  >
+                    Upload file
+                  </label>
+                  <input
+                    className="block w-52 text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+                    id="file_input"
+                    type="file"
+                    onChange={(ev) => {
+                      const file = ev.target.files[0];
+                      if (!file) return;
+
+                      // read file as CSV
+                      let parsedData = null;
+                      Papa.parse(file, {
+                        dynamicTyping: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                          parsedData = results.data;
+                          let columns = parsedData[0];
+                          // convert headers from a list of strings to a list of objects, where each object has a title and a dataIndex
+                          columns = columns.map((title, i) => ({
+                            title: title,
+                            dataIndex: i,
+                            key: title,
+                          }));
+                          let data = parsedData.slice(1);
+                          data = data.map((row, i) => ({
+                            key: i,
+                            ...Object.fromEntries(
+                              columns.map((col, j) => [col.dataIndex, row[j]])
+                            ),
+                          }));
+                          setTableColumns(columns);
+                          setTableData(data);
+
+                          uploadFileToServer(parsedData);
+                        },
+                      });
+                    }}
+                  />
+                  {didUploadFile === true ? (
+                    <Table rows={tableData} columns={tableColumns} />
+                  ) : null}
                 </div>
               </div>
             )}
@@ -360,13 +411,13 @@ function AnalysisVersionViewer({
           </div>
 
           {
-            <div className="flex flex-col mr-0">
+            <div className="flex flex-col mr-0 z-10">
               <Sidebar
                 title="History"
                 rootClassNames="z-20 rounded-md lg:rounded-none lg:rounded-tr-md bg-gray-100"
                 contentClassNames={
                   // need to add pl-4 here to make the links visible
-                  "px-2 pt-5 pb-14 rounded-tl-lg relative sm:block pl-4"
+                  "px-2 pt-5 pb-14 rounded-tl-lg relative sm:block pl-4 min-h-96 h-full overflow-y-auto"
                 }
               >
                 <div className="flex flex-col  relative history-list">

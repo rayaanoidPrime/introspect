@@ -2,6 +2,7 @@
 FROM nginx:latest
 
 ARG DEFOG_API_KEY
+ARG DEFOG_API_KEY_NAMES
 ARG GOOGLE_CLIENT_ID
 ARG BUTTON_TEXT
 ARG ALLOW_UPDATES
@@ -13,7 +14,7 @@ COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 COPY ./frontend/out /var/www/html
 
 # replace all instances of REPLACE_WITH_DEFOG_API_KEY with the actual API key inside all files in /var/www/html
-RUN find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_DEFOG_API_KEY/${DEFOG_API_KEY}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_GOOGLE_CLIENT_ID/${GOOGLE_CLIENT_ID}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_BUTTON_TEXT/${BUTTON_TEXT}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_ALLOW_UPDATES/${ALLOW_UPDATES}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_ALLOW_CACHING/${ALLOW_CACHING}/g" {} \;
+RUN find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_DEFOG_API_KEY/${DEFOG_API_KEY}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_API_KEY_NAMES/${DEFOG_API_KEY_NAMES}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_GOOGLE_CLIENT_ID/${GOOGLE_CLIENT_ID}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_BUTTON_TEXT/${BUTTON_TEXT}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_ALLOW_UPDATES/${ALLOW_UPDATES}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_ALLOW_CACHING/${ALLOW_CACHING}/g" {} \;
 
 # expose port
 EXPOSE ${PORT}
