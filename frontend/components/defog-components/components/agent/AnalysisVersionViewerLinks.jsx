@@ -60,7 +60,7 @@ export const AnalysisVersionViewerLinks = ({ analyses, activeAnalysisId }) => {
       const parentAnalysisRect = parentAnalysisEl.getBoundingClientRect();
 
       const currentAnalysisCenter = {
-        x: currentAnalysisRect.left - listCtrRect.left - 12,
+        x: currentAnalysisRect.left - listCtrRect.left - 8,
         y:
           currentAnalysisRect.top -
           listCtrRect.top +
@@ -68,7 +68,7 @@ export const AnalysisVersionViewerLinks = ({ analyses, activeAnalysisId }) => {
       };
 
       const parentAnalysisCenter = {
-        x: parentAnalysisRect.left - listCtrRect.left - 12,
+        x: parentAnalysisRect.left - listCtrRect.left - 8,
         y:
           parentAnalysisRect.top -
           listCtrRect.top +

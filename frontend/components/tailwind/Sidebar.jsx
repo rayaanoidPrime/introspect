@@ -1,8 +1,8 @@
 // sidebar that can be toggled open and closed
-
 import {
   ArrowLeftStartOnRectangleIcon,
   ArrowRightStartOnRectangleIcon,
+  QueueListIcon,
 } from "@heroicons/react/20/solid";
 import React, { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
@@ -12,49 +12,56 @@ export default function Sidebar({
   children,
   rootClassNames = "",
   contentClassNames = "",
+  openClassNames = "",
+  closedClassNames = "",
   location = "left",
+  open = null,
+  onChange = (...args) => {},
 }) {
-  const [open, setOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(open);
   const contentRef = useRef(null);
   const contentContainerRef = useRef(null);
 
   const handleClick = () => {
     if (!contentContainerRef.current || !contentRef.current) return;
     // if opening, set container width to children width
-    if (open) {
-      setOpen(false);
-    } else {
-      setOpen(true);
-    }
+    setSidebarOpen((prev) => !prev);
+    onChange(!sidebarOpen);
   };
 
   useEffect(() => {
-    if (!contentContainerRef.current || !contentRef.current) return;
-    if (open) {
-      contentContainerRef.current.style.width = `${contentRef.current.clientWidth}px`;
-    } else {
-      contentContainerRef.current.style.width = `0px`;
-    }
+    setSidebarOpen(open);
   }, [open]);
 
   useEffect(() => {
     if (!contentContainerRef.current || !contentRef.current) return;
-    contentContainerRef.current.style.width = `${contentRef.current.clientWidth}px`;
-  }, []);
+
+    if (sidebarOpen) {
+      contentContainerRef.current.style.width = `${contentRef.current.clientWidth}px`;
+    } else {
+      contentContainerRef.current.style.width = `0px`;
+    }
+  }, [sidebarOpen]);
 
   return (
-    <div className={twMerge("relative", rootClassNames)}>
+    <div
+      className={twMerge(
+        "relative",
+        rootClassNames,
+        sidebarOpen ? openClassNames : closedClassNames
+      )}
+    >
       <button
-        className={`toggle-button absolute z-10 ${location === "left" ? (open ? "right-5 top-5" : "-right-5 top-5") : open ? "-left-5 top-5" : "right-5 top-5"} cursor-pointer`}
+        className={`toggle-button absolute z-10 transition-all ${location === "left" ? (sidebarOpen ? "right-5 top-5" : "-right-5 top-5") : sidebarOpen ? "-left-5 top-5" : "right-5 top-5"} cursor-pointer`}
         onClick={() => handleClick()}
       >
-        {location === "right" ? (
-          open ? (
+        {location === "left" ? (
+          sidebarOpen ? (
             <ArrowLeftStartOnRectangleIcon className="h-4 w-4" />
           ) : (
             <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
           )
-        ) : open ? (
+        ) : sidebarOpen ? (
           <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
         ) : (
           <ArrowLeftStartOnRectangleIcon className="h-4 w-4" />

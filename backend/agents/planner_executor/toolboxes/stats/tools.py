@@ -330,7 +330,7 @@ async def fold_change(
         time_column,
         "fold_change",
         units=individual_id_column,
-        facet_col=group_column,
+        facet_column=group_column,
     )
     return {
         "outputs": [

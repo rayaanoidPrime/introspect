@@ -11,6 +11,7 @@ import { MessageManagerContext } from "$components/tailwind/Message";
 import Papa from "papaparse";
 import { sentenceCase } from "$utils/utils";
 import Table from "$components/tailwind/Table";
+import { twMerge } from "tailwind-merge";
 
 function AnalysisVersionViewer({
   dashboards,
@@ -69,6 +70,8 @@ function AnalysisVersionViewer({
   const [tableData, setTableData] = useState([]);
   const [tableColumns, setTableColumns] = useState([]);
   const [didUploadFile, setDidUploadFile] = useState(false);
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const uploadFileToServer = async (parsedData) => {
     // upload the file to the server
@@ -179,10 +182,101 @@ function AnalysisVersionViewer({
     <>
       <div className="relative">
         <div
-          className="max-w-full flex flex-col-reverse lg:flex-row bg-gray-50 min-h-96 rounded-md text-gray-600 border border-gray-300 w-full"
+          className="max-w-full flex flex-col-reverse  lg:flex-row bg-gray-50 min-h-96 rounded-md text-gray-600 border border-gray-300 w-full"
           id="analysis-version-viewer"
         >
-          <div className="grow rounded-tr-lg pb-14 pt-5 pl-5 relative min-w-0">
+          <div className="flex flex-col mr-0 z-10">
+            <Sidebar
+              location="left"
+              open={sidebarOpen}
+              onChange={(open) => {
+                setSidebarOpen(open);
+              }}
+              title={<span className="font-bold">History</span>}
+              rootClassNames={
+                "transition-all z-20 absolute left-0 top-2 h-[calc(100%-1rem)] rounded-md lg:rounded-none lg:rounded-tr-md bg-gray-100 border"
+              }
+              openClassNames={"border-gray-300 shadow-md"}
+              closedClassNames={"border-transparent bg-transparent shadow-none"}
+              contentClassNames={
+                // need to add pl-4 here to make the links visible
+                "w-72 px-2 pt-5 pb-14 rounded-tl-lg relative sm:block pl-4 min-h-96 h-full overflow-y-auto"
+              }
+            >
+              <div className="flex flex-col  relative history-list">
+                <AnalysisVersionViewerLinks
+                  analyses={allAnalyses}
+                  activeAnalysisId={activeAnalysisId}
+                />
+                {Object.keys(sessionAnalyses).map((rootAnalysisId, i) => {
+                  const root = sessionAnalyses[rootAnalysisId].root;
+                  const analysisVersionList =
+                    sessionAnalyses[rootAnalysisId].versionList;
+
+                  return (
+                    <div key={root.analysisId}>
+                      <AnalysisHistoryItem
+                        analysis={root}
+                        isActive={activeAnalysisId === root.analysisId}
+                        setActiveRootAnalysisId={setActiveRootAnalysisId}
+                        setActiveAnalysisId={setActiveAnalysisId}
+                        setAddToDashboardSelection={setAddToDashboardSelection}
+                      />
+                      {analysisVersionList.map((version, i) => {
+                        return (
+                          <AnalysisHistoryItem
+                            key={version.analysisId}
+                            analysis={version}
+                            isActive={activeAnalysisId === version.analysisId}
+                            setActiveRootAnalysisId={setActiveRootAnalysisId}
+                            setActiveAnalysisId={setActiveAnalysisId}
+                            setAddToDashboardSelection={
+                              setAddToDashboardSelection
+                            }
+                            extraClasses="ml-2 border-l-2"
+                          />
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+                {!activeRootAnalysisId ? (
+                  <AnalysisHistoryItem
+                    isDummy={true}
+                    setActiveRootAnalysisId={setActiveRootAnalysisId}
+                    setActiveAnalysisId={setActiveAnalysisId}
+                    isActive={!activeRootAnalysisId}
+                  />
+                ) : (
+                  <div className="w-full mt-5 sticky bottom-5">
+                    <div
+                      data-enabled={!loading}
+                      className={
+                        "cursor-pointer z-20 relative " +
+                        "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom " +
+                        "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
+                      }
+                      onClick={() => {
+                        if (loading) return;
+                        // start a new root analysis
+                        setActiveRootAnalysisId(null);
+                        setActiveAnalysisId(null);
+                      }}
+                    >
+                      New <PlusOutlined />
+                    </div>
+                    <div className="absolute w-full h-10 bg-gray-100 z-0"></div>
+                  </div>
+                )}
+              </div>
+            </Sidebar>
+          </div>
+          <div
+            className="grow rounded-tr-lg pb-14 pt-5 pl-5 relative min-w-0"
+            onClick={() => {
+              setSidebarOpen(false);
+            }}
+          >
             {activeAnalysisId &&
               !last10Analysis.some(
                 (analysis) => analysis.analysisId === activeAnalysisId
@@ -363,10 +457,11 @@ function AnalysisVersionViewer({
               </div>
             )}
 
-            <div className="w-10/12 m-auto lg:w-3/4 sticky bottom-14 z-10 bg-white right-0 border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex">
+            <div className="w-10/12 m-auto lg:w-2/4 sticky bottom-14 z-10 bg-white right-0 border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex">
               <textarea
                 className="w-full rounded-none rounded-l-md border border-gray-300 py-1.5 text-gray-900 p-1 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none resize-none"
                 ref={searchRef}
+                disabled={loading}
                 rows={1}
                 onChange={(ev) => {
                   ev.target.style.height = "auto";
@@ -409,88 +504,6 @@ function AnalysisVersionViewer({
               </button>
             </div>
           </div>
-
-          {
-            <div className="flex flex-col mr-0 z-10">
-              <Sidebar
-                title="History"
-                rootClassNames="z-20 rounded-md lg:rounded-none lg:rounded-tr-md bg-gray-100"
-                contentClassNames={
-                  // need to add pl-4 here to make the links visible
-                  "px-2 pt-5 pb-14 rounded-tl-lg relative sm:block pl-4 min-h-96 h-full overflow-y-auto"
-                }
-              >
-                <div className="flex flex-col  relative history-list">
-                  <AnalysisVersionViewerLinks
-                    analyses={allAnalyses}
-                    activeAnalysisId={activeAnalysisId}
-                  />
-                  {Object.keys(sessionAnalyses).map((rootAnalysisId, i) => {
-                    const root = sessionAnalyses[rootAnalysisId].root;
-                    const analysisVersionList =
-                      sessionAnalyses[rootAnalysisId].versionList;
-
-                    return (
-                      <div key={root.analysisId}>
-                        <AnalysisHistoryItem
-                          analysis={root}
-                          isActive={activeAnalysisId === root.analysisId}
-                          setActiveRootAnalysisId={setActiveRootAnalysisId}
-                          setActiveAnalysisId={setActiveAnalysisId}
-                          setAddToDashboardSelection={
-                            setAddToDashboardSelection
-                          }
-                        />
-                        {analysisVersionList.map((version, i) => {
-                          return (
-                            <AnalysisHistoryItem
-                              key={version.analysisId}
-                              analysis={version}
-                              isActive={activeAnalysisId === version.analysisId}
-                              setActiveRootAnalysisId={setActiveRootAnalysisId}
-                              setActiveAnalysisId={setActiveAnalysisId}
-                              setAddToDashboardSelection={
-                                setAddToDashboardSelection
-                              }
-                              extraClasses="ml-2 border-l-2"
-                            />
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                  {!activeRootAnalysisId ? (
-                    <AnalysisHistoryItem
-                      isDummy={true}
-                      setActiveRootAnalysisId={setActiveRootAnalysisId}
-                      setActiveAnalysisId={setActiveAnalysisId}
-                      isActive={!activeRootAnalysisId}
-                    />
-                  ) : (
-                    <div className="w-full mt-5 sticky bottom-5">
-                      <div
-                        data-enabled={!loading}
-                        className={
-                          "cursor-pointer z-20 relative " +
-                          "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom " +
-                          "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
-                        }
-                        onClick={() => {
-                          if (loading) return;
-                          // start a new root analysis
-                          setActiveRootAnalysisId(null);
-                          setActiveAnalysisId(null);
-                        }}
-                      >
-                        New <PlusOutlined />
-                      </div>
-                      <div className="absolute w-full h-10 bg-gray-100 z-0"></div>
-                    </div>
-                  )}
-                </div>
-              </Sidebar>
-            </div>
-          }
         </div>
       </div>
       <Modal
