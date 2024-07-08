@@ -319,7 +319,7 @@ export const AnalysisAgent = ({
 
   return (
     <ErrorBoundary>
-      <div className="analysis-agent-container min-h-96 mr-4 p-4 border rounded-md">
+      <div className="analysis-agent-container min-h-96">
         <ThemeContext.Provider
           value={{ theme: { type: "light", config: lightThemeColor } }}
           key="1"
@@ -332,7 +332,7 @@ export const AnalysisAgent = ({
               />
             </div>
           ) : (
-            <div className="analysis-ctr">
+            <>
               {!searchRef && !analysisData.currentStage ? (
                 <div className="">
                   <Input
@@ -343,7 +343,7 @@ export const AnalysisAgent = ({
                     }}
                     placeholder="Ask a question"
                     disabled={analysisBusy}
-                    rootClassName="bg-white mx-auto left-0 right-0 border-2 border-gray-400  p-2 rounded-lg w-full lg:w-6/12 mx-auto h-16 shadow-custom hover:border-blue-500 focus:border-blue-500"
+                    rootClassName="bg-white mx-auto left-0 right-0 border-2 border-gray-400 p-2 rounded-lg w-full lg:w-6/12 mx-auto h-16 shadow-custom hover:border-blue-500 focus:border-blue-500"
                   />
                 </div>
               ) : (
@@ -374,8 +374,8 @@ export const AnalysisAgent = ({
               )}
 
               {analysisData.currentStage === "gen_steps" ? (
-                <div className="analysis-content flex flex-row max-w-full">
-                  <div className="analysis-results flex flex-col grow basis-0 overflow-scroll relative">
+                <div className="analysis-content flex flex-row max-w-full border rounded-3xl bg-white">
+                  <div className="analysis-results p-6 flex flex-col grow basis-0 overflow-scroll relative border-r">
                     <ErrorBoundary>
                       {analysisData?.gen_steps?.steps.length ? (
                         <>
@@ -439,7 +439,7 @@ export const AnalysisAgent = ({
                       )}
                     </ErrorBoundary>
                   </div>
-                  <div className="analysis-steps basis-0">
+                  <div className="analysis-steps basis-0 rounded-r-3xl bg-gray-50">
                     <StepsDag
                       steps={analysisData?.gen_steps?.steps || []}
                       nodeSize={[40, 10]}
@@ -477,7 +477,7 @@ export const AnalysisAgent = ({
               ) : (
                 <></>
               )}
-            </div>
+            </>
           )}
         </ThemeContext.Provider>
       </div>

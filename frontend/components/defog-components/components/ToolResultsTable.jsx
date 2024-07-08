@@ -293,7 +293,6 @@ export function ToolResultsTable({
       });
     }
     if (toolRunData.tool_name === "boxplot") {
-      console.log(inputs);
       tabs.push({
         component: (
           <ErrorBoundary>

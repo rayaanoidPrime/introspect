@@ -821,7 +821,6 @@ $grid: repeating-linear-gradient(
         @include table-chart;
         // somehow just giving it a width, any width (not max/min width) fixes the sidebars. ¯\_(ツ)_/¯
         // border: 1px solid $light-gray;
-        border-radius: 4px;
 
         padding: 0.5em;
         .ant-tabs {
@@ -1156,21 +1155,6 @@ $grid: repeating-linear-gradient(
               padding: 10px 0;
             }
           }
-        }
-      }
-
-      .analysis-content {
-        display: flex;
-        flex-direction: row;
-        .analysis-steps {
-          // min-width: 50px;
-          margin-left: 10px;
-        }
-        .analysis-graph {
-          margin-top: 60px;
-        }
-        .analysis-results {
-          flex-grow: 2;
         }
       }
     }

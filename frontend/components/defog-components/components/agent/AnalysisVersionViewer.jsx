@@ -272,7 +272,7 @@ function AnalysisVersionViewer({
             </Sidebar>
           </div>
           <div
-            className="grow rounded-tr-lg pb-14 pt-5 pl-5 relative min-w-0"
+            className="grow rounded-tr-lg pb-14 p-2 md:p-4 relative min-w-0"
             onClick={() => {
               setSidebarOpen(false);
             }}
@@ -457,36 +457,38 @@ function AnalysisVersionViewer({
               </div>
             )}
 
-            <div className="w-10/12 m-auto lg:w-2/4 sticky bottom-6 z-10 bg-white right-0 border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex">
-              <textarea
-                className="w-full rounded-none rounded-l-md border border-gray-300 py-1.5 text-gray-900 p-1 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none resize-none"
-                ref={searchRef}
-                disabled={loading}
-                rows={1}
-                onChange={(ev) => {
-                  ev.target.style.height = "auto";
-                  ev.target.style.height = ev.target.scrollHeight + "px";
-                }}
-                onKeyDown={(ev) => {
-                  if (ev.key === "Enter") {
-                    ev.preventDefault();
-                    ev.stopPropagation();
+            <div className="w-10/12 m-auto lg:w-2/4 sticky bottom-6 z-10 bg-white right-0 border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex flex-row">
+              <div className="grow border border-gray-300 rounded-l-md flex items-center">
+                <textarea
+                  className="w-full border-none bg-transparent py-1.5 text-gray-900 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none resize-none"
+                  ref={searchRef}
+                  disabled={loading}
+                  rows={1}
+                  onChange={(ev) => {
+                    ev.target.style.height = "auto";
+                    ev.target.style.height = ev.target.scrollHeight + "px";
+                  }}
+                  onKeyDown={(ev) => {
+                    if (ev.key === "Enter") {
+                      ev.preventDefault();
+                      ev.stopPropagation();
 
-                    if (!searchRef.current.value) return;
+                      if (!searchRef.current.value) return;
 
-                    handleSubmit(
-                      searchRef.current.value,
-                      activeRootAnalysisId,
-                      !activeRootAnalysisId,
-                      activeAnalysisId
-                    );
-                  }
-                }}
-                placeholder="Type your question here"
-              />
+                      handleSubmit(
+                        searchRef.current.value,
+                        activeRootAnalysisId,
+                        !activeRootAnalysisId,
+                        activeAnalysisId
+                      );
+                    }
+                  }}
+                  placeholder="Type your question here"
+                />
+              </div>
               <button
                 type="button"
-                className="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-blue-500 hover:bg-blue-500 hover:text-white"
+                className="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 p-0 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-blue-500 hover:bg-blue-500 hover:text-white"
                 onClick={() => {
                   handleSubmit(
                     searchRef.current.value,
