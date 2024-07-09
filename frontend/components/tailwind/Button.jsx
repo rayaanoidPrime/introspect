@@ -3,6 +3,7 @@ import { twMerge } from "tailwind-merge";
 
 // a button component with onclick, className and children props
 export default function Button({
+  id = null,
   onClick = (...args) => {},
   className = "",
   children = null,
@@ -10,6 +11,7 @@ export default function Button({
 }) {
   return (
     <button
+      id={id}
       disabled={disabled}
       onClick={(ev) => {
         if (disabled) return;

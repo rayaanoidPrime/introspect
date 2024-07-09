@@ -175,10 +175,11 @@ class Executor:
                         print(payload)
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
 
-                    print(ans.json())
-
-                    ans = ans.json()["generated_step"]
-                    self.previous_responses.append(ans)
+                    try:
+                        ans = ans.json()["generated_step"]
+                        self.previous_responses.append(ans)
+                    except Exception as e:
+                        raise Exception(f"{ans.text}")
 
                     match = re.search("(?:```yaml)([\s\S]*?)(?=```)", ans)
 

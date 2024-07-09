@@ -1,9 +1,13 @@
-import { Button, Divider, Input, Select, Slider, Space } from "antd";
+import { Divider, Select, Slider, Space } from "antd";
 import React, { useState, useRef } from "react";
 import Lottie from "lottie-react";
 import LoadingLottie from "../../svg/loader.json";
 import AgentLoader from "../../common/AgentLoader";
 import Writer from "../Writer";
+import Search from "antd/es/input/Search";
+import Input from "$components/tailwind/Input";
+import Button from "$components/tailwind/Button";
+import { PlayIcon } from "@heroicons/react/20/solid";
 
 export default function Clarify({
   data,
@@ -12,7 +16,6 @@ export default function Clarify({
   stageDone = true,
   isCurrentStage = false,
 }) {
-  const { Search } = Input;
   const [submitted, setSubmitted] = useState(false);
   const answers = useRef(data?.clarification_questions);
 
@@ -153,7 +156,7 @@ export default function Clarify({
         <Input
           onChange={(ev) => updateAnswer(ev.target.value, i)}
           defaultValue={q.response}
-          placeholder="Enter your response here"
+          placeholder="Your response"
         ></Input>
       );
     },
@@ -180,53 +183,66 @@ export default function Clarify({
   };
 
   return (
-    <div className="clarify-container p-4 ">
-      {success &&
-        (clarification_questions.length ? (
-          <>
-            <ul>
+    <div>
+      <div
+        className="mb-4 p-4 text-sm bg-gray-100 rounded-t-3xl"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            onSubmit(true);
+          }
+        }}
+      >
+        {success &&
+          (clarification_questions.length ? (
+            <>
+              <p className="font-bold text-center">
+                Please answer these questions to proceed
+              </p>
               {clarification_questions.map((q, i) => (
-                <li key={q.question}>
+                <div
+                  key={q.question}
+                  className="w-full flex place-content-center"
+                >
                   <Writer s={q.question} animate={!stageDone}>
-                    <p className="q-desc writer-target"></p>
-                    <div className="writer-children">
-                      {UIs[q.ui_tool](q, i, q.ui_tool_options)}
+                    <div className="flex flex-row my-3">
+                      <p className="q-desc writer-target m-0 mr-4 w-1/2"></p>
+                      <div className="writer-children w-1/2 text-sm">
+                        {UIs[q.ui_tool](q, i, q.ui_tool_options)}
+                      </div>
                     </div>
                   </Writer>
-                </li>
+                </div>
               ))}
-            </ul>
-          </>
-        ) : (
-          !isCurrentStage && (
-            <>
-              Your question is clear and we do not need additional refinements.
-              Please click on the Run Analysis button to start running an
-              analysis that answers this question.
             </>
-          )
-        ))}
-      {stageDone ? (
-        <></>
-      ) : (
-        <AgentLoader
-          message={"Thinking about whether I need to clarify the question..."}
-          lottie={<Lottie animationData={LoadingLottie} loop={true} />}
-        />
-      )}
+          ) : (
+            !isCurrentStage && (
+              <>
+                Your question is clear and we do not need additional
+                refinements. Please click on the Run Analysis button to start
+                running an analysis that answers this question.
+              </>
+            )
+          ))}
+        {stageDone ? (
+          <></>
+        ) : (
+          <AgentLoader
+            message={"Thinking about whether I need to clarify the question..."}
+            lottie={<Lottie animationData={LoadingLottie} loop={true} />}
+          />
+        )}
+      </div>
       {!stageDone ? (
         <></>
       ) : (
-        <div className="agent-stage-submit-btn">
-          <Button
-            id="post-clarify-submit-btn"
+        <div className="text-center">
+          <button
+            className="underline text-gray-400 text-sm"
             onClick={() => onSubmit(true)}
             disabled={globalLoading}
-            type="primary"
-            size="medium"
           >
-            Run Analysis
-          </Button>
+            Press Enter or click here to submit
+          </button>
         </div>
       )}
     </div>

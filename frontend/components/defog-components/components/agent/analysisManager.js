@@ -103,6 +103,14 @@ function AnalysisManager({
     }
 
     wasNewAnalysisCreated = newAnalysisCreated;
+    console.log(fetchedAnalysisData);
+    // if this has steps but steps are empty, delete gen_steps key
+    if (
+      fetchedAnalysisData?.gen_steps &&
+      fetchedAnalysisData.gen_steps.steps.length === 0
+    ) {
+      delete fetchedAnalysisData.gen_steps;
+    }
     // update the analysis data
     setAnalysisData(fetchedAnalysisData);
   }

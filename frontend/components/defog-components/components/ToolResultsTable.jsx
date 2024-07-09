@@ -271,27 +271,27 @@ export function ToolResultsTable({
         tabLabel: "Heatmap",
       });
     }
-    if (toolRunData.tool_name === "line_plot") {
-      tabs.push({
-        component: (
-          <ErrorBoundary>
-            <LinePlot
-              rows={tableData.data}
-              columns={tableData.columns}
-              xCol={inputs.x_column}
-              yCol={inputs.y_column}
-              facetCol={inputs.facet_column}
-              colorCol={inputs.color_column}
-              lineGroupColumn={inputs.line_group_column}
-              aggregationType={
-                inputs.aggregation_type === "None" ? null : inputs.estimator
-              }
-            />
-          </ErrorBoundary>
-        ),
-        tabLabel: "Line Chart",
-      });
-    }
+    // if (toolRunData.tool_name === "line_plot") {
+    tabs.push({
+      component: (
+        <ErrorBoundary>
+          <LinePlot
+            rows={tableData.data}
+            columns={tableData.columns}
+            xCol={inputs.x_column}
+            yCol={inputs.y_column}
+            facetCol={inputs.facet_column}
+            colorCol={inputs.color_column}
+            lineGroupColumn={inputs.line_group_column}
+            aggregationType={
+              inputs.aggregation_type === "None" ? null : inputs.estimator
+            }
+          />
+        </ErrorBoundary>
+      ),
+      tabLabel: "Line Chart",
+    });
+    // }
     if (toolRunData.tool_name === "boxplot") {
       tabs.push({
         component: (

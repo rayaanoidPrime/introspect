@@ -208,7 +208,7 @@ function AnalysisVersionViewer({
                   "w-72 px-2 pt-5 pb-14 rounded-tl-lg relative sm:block pl-4 min-h-96 h-full overflow-y-auto"
                 }
               >
-                <div className="flex flex-col  relative history-list">
+                <div className="flex flex-col text-sm relative history-list">
                   <AnalysisVersionViewerLinks
                     analyses={allAnalyses}
                     activeAnalysisId={activeAnalysisId}
@@ -219,7 +219,7 @@ function AnalysisVersionViewer({
                       sessionAnalyses[rootAnalysisId].versionList;
 
                     return (
-                      <div key={root.analysisId} className="text-xs">
+                      <div key={root.analysisId} className="">
                         {analysisVersionList.map((version, i) => {
                           return (
                             <AnalysisHistoryItem
@@ -263,7 +263,7 @@ function AnalysisVersionViewer({
                       <div
                         data-enabled={!loading}
                         className={twMerge(
-                          "cursor-pointer z-20 relative text-xs ",
+                          "cursor-pointer z-20 relative",
                           "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom ",
                           "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
                         )}
@@ -323,7 +323,7 @@ function AnalysisVersionViewer({
                               block: "start",
                               inline: "nearest",
                             });
-                          }, 200);
+                          }, 100);
                         }}
                         onManagerDestroyed={(mgr, id) => {
                           const data = mgr.analysisData;
@@ -475,7 +475,11 @@ function AnalysisVersionViewer({
                       );
                     }
                   }}
-                  placeholder="Type your question here"
+                  placeholder={
+                    activeRootAnalysisId
+                      ? "Type your next question here"
+                      : "Type your question here"
+                  }
                 />
               </div>
               <button
