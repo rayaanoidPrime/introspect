@@ -116,11 +116,12 @@ export default function DefogAnalysisAgentStandalone({
             value={{ val: docContext, update: setDocContext }}
           >
             <Context.Provider value={[context, setContext]}>
-              <div className="content md:w-11/12">
-                <div className="editor-container mt-4 mb-8 max-w-screen-xl w-full">
-                  <div className="defog-analysis-container">
+              <div className="w-full h-full">
+                <div className="editor-container w-full h-full p-0">
+                  <div className="defog-analysis-container h-full">
                     <div
                       data-content-type="analysis"
+                      className="m-0 h-full"
                       data-analysis-id={analysisId}
                     >
                       <AnalysisVersionViewer

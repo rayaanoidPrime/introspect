@@ -14,7 +14,7 @@ export default function Input({
   type = "text",
   status = null,
   disabled = false,
-  rootClassName = "",
+  rootClassNames = "",
   placeholder = "Enter text here",
   id = "",
   name = "text-input",
@@ -25,7 +25,7 @@ export default function Input({
   size = "default",
 }) {
   return (
-    <div className={twMerge("text-gray-600", rootClassName)}>
+    <div className={twMerge("text-gray-600", rootClassNames)}>
       {label && (
         <label
           htmlFor={name}

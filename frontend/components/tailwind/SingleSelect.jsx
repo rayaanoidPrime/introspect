@@ -29,7 +29,7 @@ const popupOptionSizeClasses = {
 };
 
 export default function SingleSelect({
-  rootClassName = "",
+  rootClassNames = "",
   popupClassName = "",
   onChange = null,
   defaultValue = undefined,
@@ -72,7 +72,7 @@ export default function SingleSelect({
     <Combobox
       as="div"
       by="value"
-      className={rootClassName}
+      className={rootClassNames}
       value={selectedOption}
       defaultValue={defaultValue}
       disabled={disabled}

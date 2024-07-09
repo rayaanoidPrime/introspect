@@ -136,7 +136,7 @@ function AnalysisVersionViewer({
           setActiveRootAnalysisId(newAnalysis.analysisId);
           newSessionAnalyses[newAnalysis.analysisId] = {
             root: newAnalysis,
-            versionList: [],
+            versionList: [newAnalysis],
           };
         } else {
           const rootAnalysis = sessionAnalyses[rootAnalysisId].root;
@@ -180,202 +180,183 @@ function AnalysisVersionViewer({
   // w-0
   return (
     <>
-      <div className="relative">
+      <div className="relative h-full">
         <div
-          className="max-w-full flex flex-col-reverse  lg:flex-row bg-gray-50 min-h-96 rounded-md text-gray-600 border border-gray-300 w-full"
+          className="max-w-full h-full flex flex-col-reverse lg:flex-row bg-white text-gray-600 w-full"
           id="analysis-version-viewer"
         >
           <div className="flex flex-col mr-0 z-10">
-            <Sidebar
-              location="left"
-              open={sidebarOpen}
-              onChange={(open) => {
-                setSidebarOpen(open);
-              }}
-              title={<span className="font-bold">History</span>}
-              rootClassNames={
-                "transition-all z-20 absolute left-0 top-2 h-[calc(100%-1rem)] rounded-md lg:rounded-none lg:rounded-tr-md bg-gray-100 border"
-              }
-              openClassNames={"border-gray-300 shadow-md"}
-              closedClassNames={"border-transparent bg-transparent shadow-none"}
-              contentClassNames={
-                // need to add pl-4 here to make the links visible
-                "w-72 px-2 pt-5 pb-14 rounded-tl-lg relative sm:block pl-4 min-h-96 h-full overflow-y-auto"
-              }
-            >
-              <div className="flex flex-col  relative history-list">
-                <AnalysisVersionViewerLinks
-                  analyses={allAnalyses}
-                  activeAnalysisId={activeAnalysisId}
-                />
-                {Object.keys(sessionAnalyses).map((rootAnalysisId, i) => {
-                  const root = sessionAnalyses[rootAnalysisId].root;
-                  const analysisVersionList =
-                    sessionAnalyses[rootAnalysisId].versionList;
-
-                  return (
-                    <div key={root.analysisId}>
-                      <AnalysisHistoryItem
-                        analysis={root}
-                        isActive={activeAnalysisId === root.analysisId}
-                        setActiveRootAnalysisId={setActiveRootAnalysisId}
-                        setActiveAnalysisId={setActiveAnalysisId}
-                        setAddToDashboardSelection={setAddToDashboardSelection}
-                      />
-                      {analysisVersionList.map((version, i) => {
-                        return (
-                          <AnalysisHistoryItem
-                            key={version.analysisId}
-                            analysis={version}
-                            isActive={activeAnalysisId === version.analysisId}
-                            setActiveRootAnalysisId={setActiveRootAnalysisId}
-                            setActiveAnalysisId={setActiveAnalysisId}
-                            setAddToDashboardSelection={
-                              setAddToDashboardSelection
-                            }
-                            extraClasses="ml-2 border-l-2"
-                          />
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-                {!activeRootAnalysisId ? (
-                  <AnalysisHistoryItem
-                    isDummy={true}
-                    setActiveRootAnalysisId={setActiveRootAnalysisId}
-                    setActiveAnalysisId={setActiveAnalysisId}
-                    isActive={!activeRootAnalysisId}
+            <div className="sticky top-0 z-[10] h-screen">
+              <Sidebar
+                location="left"
+                open={sidebarOpen}
+                onChange={(open) => {
+                  setSidebarOpen(open);
+                }}
+                title={<span className="font-bold">History</span>}
+                rootClassNames={
+                  "transition-all z-20 sticky top-0 h-[calc(100%-1rem)] rounded-md lg:rounded-none lg:rounded-tr-md bg-gray-100 border"
+                }
+                iconClassNames={`${sidebarOpen ? "" : "text-white bg-primary-highlight"}`}
+                openClassNames={"border-gray-300 shadow-md"}
+                closedClassNames={
+                  "border-transparent bg-transparent shadow-none"
+                }
+                contentClassNames={
+                  // need to add pl-4 here to make the links visible
+                  "w-72 px-2 pt-5 pb-14 rounded-tl-lg relative sm:block pl-4 min-h-96 h-full overflow-y-auto"
+                }
+              >
+                <div className="flex flex-col  relative history-list">
+                  <AnalysisVersionViewerLinks
+                    analyses={allAnalyses}
+                    activeAnalysisId={activeAnalysisId}
                   />
-                ) : (
-                  <div className="w-full mt-5 sticky bottom-5">
-                    <div
-                      data-enabled={!loading}
-                      className={
-                        "cursor-pointer z-20 relative " +
-                        "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom " +
-                        "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
-                      }
-                      onClick={() => {
-                        if (loading) return;
-                        // start a new root analysis
-                        setActiveRootAnalysisId(null);
-                        setActiveAnalysisId(null);
-                      }}
-                    >
-                      New <PlusOutlined />
+                  {Object.keys(sessionAnalyses).map((rootAnalysisId, i) => {
+                    const root = sessionAnalyses[rootAnalysisId].root;
+                    const analysisVersionList =
+                      sessionAnalyses[rootAnalysisId].versionList;
+
+                    return (
+                      <div key={root.analysisId}>
+                        <AnalysisHistoryItem
+                          analysis={root}
+                          isActive={activeAnalysisId === root.analysisId}
+                          setActiveRootAnalysisId={setActiveRootAnalysisId}
+                          setActiveAnalysisId={setActiveAnalysisId}
+                          setAddToDashboardSelection={
+                            setAddToDashboardSelection
+                          }
+                        />
+                        {analysisVersionList.map((version, i) => {
+                          return (
+                            <AnalysisHistoryItem
+                              key={version.analysisId}
+                              analysis={version}
+                              isActive={activeAnalysisId === version.analysisId}
+                              setActiveRootAnalysisId={setActiveRootAnalysisId}
+                              setActiveAnalysisId={setActiveAnalysisId}
+                              setAddToDashboardSelection={
+                                setAddToDashboardSelection
+                              }
+                              extraClasses="ml-2 border-l-2"
+                            />
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                  {!activeRootAnalysisId ? (
+                    <AnalysisHistoryItem
+                      isDummy={true}
+                      setActiveRootAnalysisId={setActiveRootAnalysisId}
+                      setActiveAnalysisId={setActiveAnalysisId}
+                      isActive={!activeRootAnalysisId}
+                    />
+                  ) : (
+                    <div className="w-full mt-5 sticky bottom-5">
+                      <div
+                        data-enabled={!loading}
+                        className={
+                          "cursor-pointer z-20 relative " +
+                          "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom " +
+                          "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
+                        }
+                        onClick={() => {
+                          if (loading) return;
+                          // start a new root analysis
+                          setActiveRootAnalysisId(null);
+                          setActiveAnalysisId(null);
+                        }}
+                      >
+                        New <PlusOutlined />
+                      </div>
+                      <div className="absolute w-full h-10 bg-gray-100 z-0"></div>
                     </div>
-                    <div className="absolute w-full h-10 bg-gray-100 z-0"></div>
-                  </div>
-                )}
-              </div>
-            </Sidebar>
+                  )}
+                </div>
+              </Sidebar>
+            </div>
           </div>
           <div
-            className="grow rounded-tr-lg pb-14 p-2 md:p-4 relative min-w-0"
+            className="flex flex-col grow rounded-tr-lg pb-14 p-2 md:p-4 relative min-w-0 h-full overflow-scroll"
             onClick={() => {
               setSidebarOpen(false);
             }}
           >
-            {activeAnalysisId &&
-              !last10Analysis.some(
-                (analysis) => analysis.analysisId === activeAnalysisId
-              ) && (
-                // make sure we render the active analysis if clicked
-                <div
-                  key={activeAnalysisId}
-                  className={"relative z-2 overflow-auto"}
-                >
-                  <AnalysisAgent
-                    analysisId={activeAnalysisId}
-                    createAnalysisRequestBody={
-                      // just a little fucked.
-                      activeAnalysisId === activeRootAnalysisId
-                        ? sessionAnalyses[activeRootAnalysisId].root
-                            .createAnalysisRequestBody
-                        : sessionAnalyses[
-                            activeRootAnalysisId
-                          ].versionList.find(
-                            (item) => item.analysisId === activeAnalysisId
-                          ).createAnalysisRequestBody
-                    }
-                    token={token}
-                    keyName={keyName}
-                    initiateAutoSubmit={true}
-                    searchRef={searchRef}
-                    setGlobalLoading={setLoading}
-                    devMode={devMode}
-                    onManagerDestroyed={(mgr, id) => {
-                      console.log(mgr, id);
-                    }}
-                    didUploadFile={didUploadFile}
-                  />
-                </div>
-              )}
-            {last10Analysis.map((analysis) => {
-              return (
-                <div
-                  key={analysis.analysisId}
-                  className={
-                    activeAnalysisId === analysis.analysisId
-                      ? "relative z-2 w-full overflow-auto"
-                      : "absolute opacity-0"
-                  }
-                >
-                  <AnalysisAgent
-                    analysisId={analysis.analysisId}
-                    createAnalysisRequestBody={
-                      analysis.createAnalysisRequestBody
-                    }
-                    token={token}
-                    keyName={keyName}
-                    initiateAutoSubmit={true}
-                    searchRef={searchRef}
-                    setGlobalLoading={setLoading}
-                    devMode={devMode}
-                    didUploadFile={didUploadFile}
-                    onManagerDestroyed={(mgr, id) => {
-                      const data = mgr.analysisData;
-                      // remove the analysis from the sessionAnalyses
-                      setSessionAnalyses((prev) => {
-                        let newSessionAnalyses = { ...prev };
-                        if (newSessionAnalyses[id]) {
-                          delete newSessionAnalyses[id];
-                        } else {
-                          const rootAnalysisId = data.root_analysis_id;
-                          if (rootAnalysisId) {
-                            const rootAnalysis =
-                              newSessionAnalyses[rootAnalysisId];
-                            if (rootAnalysis) {
-                              rootAnalysis.versionList =
-                                rootAnalysis.versionList.filter(
-                                  (item) => item.analysisId !== id
-                                );
+            {activeRootAnalysisId &&
+              sessionAnalyses[activeRootAnalysisId].versionList.map(
+                (analysis) => {
+                  return (
+                    <div key={analysis.analysisId}>
+                      <AnalysisAgent
+                        rootClassNames={
+                          "mb-4 ml-3 shadow-md analysis-" + analysis.analysisId
+                        }
+                        analysisId={analysis.analysisId}
+                        createAnalysisRequestBody={
+                          analysis.createAnalysisRequestBody
+                        }
+                        token={token}
+                        keyName={keyName}
+                        initiateAutoSubmit={true}
+                        searchRef={searchRef}
+                        setGlobalLoading={setLoading}
+                        devMode={devMode}
+                        didUploadFile={didUploadFile}
+                        onManagerCreated={(mgr, id, ctr) => {
+                          // scroll to ctr
+                          setTimeout(() => {
+                            ctr.scrollIntoView({
+                              behavior: "smooth",
+                              block: "start",
+                              inline: "nearest",
+                            });
+                          }, 200);
+                        }}
+                        onManagerDestroyed={(mgr, id) => {
+                          const data = mgr.analysisData;
+                          // remove the analysis from the sessionAnalyses
+                          setSessionAnalyses((prev) => {
+                            let newSessionAnalyses = { ...prev };
+                            if (newSessionAnalyses[id]) {
+                              delete newSessionAnalyses[id];
+                            } else {
+                              const rootAnalysisId = data.root_analysis_id;
+                              if (rootAnalysisId) {
+                                const rootAnalysis =
+                                  newSessionAnalyses[rootAnalysisId];
+                                if (rootAnalysis) {
+                                  rootAnalysis.versionList =
+                                    rootAnalysis.versionList.filter(
+                                      (item) => item.analysisId !== id
+                                    );
+                                }
+                              }
                             }
-                          }
-                        }
 
-                        return newSessionAnalyses;
-                      });
-                      setAllAnalyses((prev) => {
-                        let newAllAnalyses = { ...prev };
-                        if (newAllAnalyses[id]) {
-                          delete newAllAnalyses[id];
-                        }
-                        return newAllAnalyses;
-                      });
-                      setActiveAnalysisId(null);
-                      if (activeRootAnalysisId === id) {
-                        setActiveRootAnalysisId(null);
-                      }
-                    }}
-                  />
-                </div>
-              );
-            })}
+                            return newSessionAnalyses;
+                          });
+                          setAllAnalyses((prev) => {
+                            let newAllAnalyses = { ...prev };
+                            if (newAllAnalyses[id]) {
+                              delete newAllAnalyses[id];
+                            }
+                            return newAllAnalyses;
+                          });
+                          setActiveAnalysisId(null);
+                          if (activeRootAnalysisId === id) {
+                            setActiveRootAnalysisId(null);
+                          }
+                        }}
+                      />
+                    </div>
+                  );
+                }
+              )}
 
             {!activeAnalysisId && (
-              <div className="h-full flex flex-col place-content-center w-full m-auto relative z-[1]">
+              <div className="grow flex flex-col place-content-center w-full m-auto relative z-[1]">
                 {didUploadFile !== true ? (
                   <div className="text-center">
                     <p className="text-gray-400 cursor-default font-bold">
@@ -384,22 +365,22 @@ function AnalysisVersionViewer({
 
                     <ul className="text-gray-400">
                       {predefinedQuestions.map((question, i) => (
-                        <li
-                          className="cursor-pointer hover:underline"
-                          key={i}
-                          onClick={(ev) => {
-                            ev.preventDefault();
-                            ev.stopPropagation();
+                        <li className="" key={i}>
+                          <span
+                            className="cursor-pointer hover:underline"
+                            onClick={(ev) => {
+                              ev.preventDefault();
 
-                            handleSubmit(
-                              sentenceCase(question),
-                              activeRootAnalysisId,
-                              !activeRootAnalysisId,
-                              activeAnalysisId
-                            );
-                          }}
-                        >
-                          <span className="">{sentenceCase(question)}</span>
+                              handleSubmit(
+                                sentenceCase(question),
+                                activeRootAnalysisId,
+                                !activeRootAnalysisId,
+                                activeAnalysisId
+                              );
+                            }}
+                          >
+                            {sentenceCase(question)}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -457,7 +438,7 @@ function AnalysisVersionViewer({
               </div>
             )}
 
-            <div className="w-10/12 m-auto lg:w-2/4 sticky bottom-6 z-10 bg-white right-0 border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex flex-row">
+            <div className="w-10/12 m-auto lg:w-2/4 fixed bottom-6 left-0 right-0 z-10 bg-white right-0 border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex flex-row">
               <div className="grow border border-gray-300 rounded-l-md flex items-center">
                 <textarea
                   className="w-full border-none bg-transparent py-1.5 text-gray-900 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none resize-none"
@@ -473,7 +454,7 @@ function AnalysisVersionViewer({
                       ev.preventDefault();
                       ev.stopPropagation();
 
-                      if (!searchRef.current.value) return;
+                      // if (!searchRef.current.value) return;
 
                       handleSubmit(
                         searchRef.current.value,

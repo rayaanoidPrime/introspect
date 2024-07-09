@@ -25,6 +25,7 @@ import AnalysisManager from "./analysisManager";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { AnalysisFeedback } from "./feedback/AnalysisFeedback";
 import { MessageManagerContext } from "$components/tailwind/Message";
+import { twMerge } from "tailwind-merge";
 
 const getToolsEndpoint = setupBaseUrl("http", "get_user_tools");
 
@@ -36,6 +37,7 @@ export const AnalysisAgent = ({
   didUploadFile,
   editor,
   block,
+  rootClassNames = "",
   createAnalysisRequestBody = {},
   initiateAutoSubmit = false,
   searchRef = null,
@@ -43,9 +45,8 @@ export const AnalysisAgent = ({
   onManagerCreated = (...args) => {},
   onManagerDestroyed = (...args) => {},
 }) => {
-  // const [messageApi, contextHolder] = message.useMessage();
-  console.log("Key name", keyName);
-  console.log("Did upload file", didUploadFile);
+  // console.log("Key name", keyName);
+  // console.log("Did upload file", didUploadFile);
   const [pendingToolRunUpdates, setPendingToolRunUpdates] = useState({});
   const [reRunningSteps, setRerunningSteps] = useState([]);
   const reactiveContext = useContext(ReactiveVariablesContext);
@@ -54,11 +55,14 @@ export const AnalysisAgent = ({
   const [activeNode, setActiveNodePrivate] = useState(null);
   const [dag, setDag] = useState(null);
   const [dagLinks, setDagLinks] = useState([]);
+
   // in case this isn't called from analysis version viewer (which has a central singular search bar)
   // we will have an independent search bar for each analysis as well
   const independentAnalysisSearchRef = useRef();
   const [toolRunDataCache, setToolRunDataCache] = useState({});
   const [tools, setTools] = useState({});
+
+  const ctr = useRef(null);
 
   const docContext = useContext(DocContext);
 
@@ -162,6 +166,7 @@ export const AnalysisAgent = ({
       analysisId,
       onNewData: onMainSocketMessage,
       onReRunData: onReRunMessage,
+      onManagerDestroyed: onManagerDestroyed,
       token,
       didUploadFile,
       keyName,
@@ -258,7 +263,7 @@ export const AnalysisAgent = ({
 
   useEffect(() => {
     if (analysisManager) {
-      onManagerCreated(analysisManager, analysisId);
+      onManagerCreated(analysisManager, analysisId, ctr.current);
       if (mainManager && reRunManager) {
         analysisManager.setMainSocket(mainManager);
         analysisManager.setReRunSocket(reRunManager);
@@ -284,10 +289,10 @@ export const AnalysisAgent = ({
         console.log(e.stack);
         setAnalysisBusy(false);
         setGlobalLoading(false);
+
         // if the current stage is null, just destroy this analysis
         if (submitStage === null) {
           analysisManager.destroy();
-          onManagerDestroyed(analysisManager, analysisId);
         }
       }
     },
@@ -319,7 +324,13 @@ export const AnalysisAgent = ({
 
   return (
     <ErrorBoundary>
-      <div className="analysis-agent-container min-h-96">
+      <div
+        ref={ctr}
+        className={twMerge(
+          "analysis-agent-container min-h-96 border rounded-3xl border-gray-300 bg-white",
+          rootClassNames
+        )}
+      >
         <ThemeContext.Provider
           value={{ theme: { type: "light", config: lightThemeColor } }}
           key="1"
@@ -374,8 +385,11 @@ export const AnalysisAgent = ({
               )}
 
               {analysisData.currentStage === "gen_steps" ? (
-                <div className="analysis-content flex flex-row max-w-full border rounded-3xl bg-white">
+                <div className="analysis-content min-h-96 flex flex-row max-w-full">
                   <div className="analysis-results p-6 flex flex-col grow basis-0 overflow-scroll relative border-r">
+                    <h1 className="font-bold text-lg mb-4 text-primary-text">
+                      {analysisData?.user_question}
+                    </h1>
                     <ErrorBoundary>
                       {analysisData?.gen_steps?.steps.length ? (
                         <>

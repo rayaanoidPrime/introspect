@@ -7,7 +7,7 @@ let timeout,
 export default function Collapse({
   children,
   title,
-  rootClassName = "",
+  rootClassNames = "",
   headerClassNames = "",
 }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -51,7 +51,7 @@ export default function Collapse({
       <div
         className={twMerge(
           "flex flex-col max-h-96 mb-2 pointer-events-auto cursor-pointer",
-          rootClassName
+          rootClassNames
         )}
       >
         <div

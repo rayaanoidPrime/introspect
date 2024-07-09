@@ -41,7 +41,7 @@ const QueryDatabase = () => {
     <>
       <Meta />
       <Scaffolding id={"query-data"} userType={userType}>
-        {apiKeyNames.length > 1 ? (
+        {/* {apiKeyNames.length > 1 ? (
           <Row type={"flex"} height={"100vh"}>
             <Col span={24} style={{ paddingBottom: "1em" }}>
               <Select
@@ -67,7 +67,7 @@ const QueryDatabase = () => {
               setDevMode(!e);
             }}
           />
-        ) : null}
+        ) : null} */}
         {/* <Switch
           checkedChildren="SQL"
           unCheckedChildren="Agents"

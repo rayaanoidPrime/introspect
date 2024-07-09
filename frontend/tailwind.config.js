@@ -46,6 +46,12 @@ module.exports = {
         "text-red": "#fca5a5",
         green: "#96c880",
         red: "#fc8e8e",
+        "primary-text": "#2B2B2B",
+        "primary-highlight": "#2B59FF",
+        "secondary-highlight-1": "#6E00A2",
+        "secondary-highlight-2": "#7891EE",
+        "secondary-highlight-3": "rgba(112, 0, 163, 0.2)",
+        "secondary-highlight-4": "hsla(37, 100%, 53%, 0.2)",
       },
       boxShadow: {
         custom: " rgba(0, 0, 0, 0.24) 0px 3px 8px",

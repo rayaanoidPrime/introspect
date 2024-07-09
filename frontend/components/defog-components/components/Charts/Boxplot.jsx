@@ -42,8 +42,6 @@ export default function Boxplot({
   const [processedData, setProcessedData] = useState([]);
   const ctr = useRef(null);
 
-  console.log(xCol, yCol, rows);
-
   useEffect(() => {
     // Process data based on aggregationType
     // because we want no aggregation here, we set aggregationType to null
@@ -59,8 +57,6 @@ export default function Boxplot({
     });
     setProcessedData(aggregatedData);
   }, [rows, xCol, yCol]);
-
-  console.log(processedData);
 
   // y is quantitative
   const yScale = createScaleBasedOnColumnType({

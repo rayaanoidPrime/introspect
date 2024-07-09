@@ -14,15 +14,23 @@ export default function Sidebar({
   contentClassNames = "",
   openClassNames = "",
   closedClassNames = "",
+  iconClassNames = "",
+  iconSize = 4,
   location = "left",
   open = null,
+  disableClose = false,
   onChange = (...args) => {},
 }) {
-  const [sidebarOpen, setSidebarOpen] = useState(open);
+  const [sidebarOpen, setSidebarOpen] = useState(disableClose ? true : open);
   const contentRef = useRef(null);
   const contentContainerRef = useRef(null);
 
   const handleClick = () => {
+    if (disableClose) {
+      if (!sidebarOpen) setSidebarOpen(true);
+      return;
+    }
+
     if (!contentContainerRef.current || !contentRef.current) return;
     // if opening, set container width to children width
     setSidebarOpen((prev) => !prev);
@@ -43,42 +51,54 @@ export default function Sidebar({
     }
   }, [sidebarOpen]);
 
+  const defaultIconClasses = `toggle-button absolute top-1 rounded-tr-md rounded-br-md bg-inherit p-2 pl-1  self-start z-10 transition-all cursor-pointer ${sidebarOpen ? "right-1" : "-right-7 border border-inherit border-l-0"}`;
+
   return (
     <div
       className={twMerge(
-        "relative",
+        "relative flex flex-row border-r",
         rootClassNames,
         sidebarOpen ? openClassNames : closedClassNames
       )}
     >
-      <button
-        className={`toggle-button absolute z-10 transition-all ${location === "left" ? (sidebarOpen ? "right-5 top-5" : "-right-5 top-5") : sidebarOpen ? "-left-5 top-5" : "right-5 top-5"} cursor-pointer`}
-        onClick={() => handleClick()}
-      >
-        {location === "left" ? (
-          sidebarOpen ? (
-            <ArrowLeftStartOnRectangleIcon className="h-4 w-4" />
-          ) : (
-            <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
-          )
-        ) : sidebarOpen ? (
-          <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
-        ) : (
-          <ArrowLeftStartOnRectangleIcon className="h-4 w-4" />
-        )}
-      </button>
       <div
         ref={contentContainerRef}
-        className="transition-all overflow-hidden pb-4"
+        className="transition-all overflow-hidden grow"
       >
         <div
-          className={twMerge("content w-80 ", contentClassNames)}
+          className={twMerge("content w-80 block", contentClassNames)}
           ref={contentRef}
         >
           {title ? <h2 className="mb-3 font-sans">{title}</h2> : <></>}
           {children}
         </div>
       </div>
+      {!disableClose && (
+        <button
+          className={twMerge(defaultIconClasses, iconClassNames)}
+          onClick={() => handleClick()}
+        >
+          {location === "left" ? (
+            sidebarOpen ? (
+              <ArrowLeftStartOnRectangleIcon
+                className={`h-${iconSize} w-${iconSize}`}
+              />
+            ) : (
+              <ArrowRightStartOnRectangleIcon
+                className={`h-${iconSize} w-${iconSize}`}
+              />
+            )
+          ) : sidebarOpen ? (
+            <ArrowRightStartOnRectangleIcon
+              className={`h-${iconSize} w-${iconSize}`}
+            />
+          ) : (
+            <ArrowLeftStartOnRectangleIcon
+              className={`h-${iconSize} w-${iconSize}`}
+            />
+          )}
+        </button>
+      )}
     </div>
   );
 }

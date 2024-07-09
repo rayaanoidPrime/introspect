@@ -19,7 +19,7 @@ export default function DefineTool({
           label="Tool name"
           type="text"
           disabled={disabled}
-          rootClassName="mb-4 text-gray-600"
+          rootClassNames="mb-4 text-gray-600"
           placeholder="Give your tool a name"
           status={toolName ? "" : "error"}
           onChange={(ev) => handleChange("tool_name", ev.target.value)}
@@ -28,7 +28,7 @@ export default function DefineTool({
       )}
       {!hideDescription && (
         <TextArea
-          rootClassName="mb-4 w-full "
+          rootClassNames="mb-4 w-full "
           label="Description"
           disabled={disabled}
           placeholder="What does this tool do?"

@@ -103,7 +103,7 @@ export function AddStepUI({
         />
       </div>
       <SingleSelect
-        rootClassName="w-6/12 min-w-52"
+        rootClassNames="w-6/12 min-w-52"
         options={toolOptions}
         value={selectedTool}
         onChange={(value) => {
