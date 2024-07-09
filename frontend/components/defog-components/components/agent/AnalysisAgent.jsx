@@ -17,7 +17,7 @@ import { ToolResults } from "./ToolResults";
 import StepsDag from "../common/StepsDag";
 import ErrorBoundary from "../common/ErrorBoundary";
 import { Context } from "$components/common/Context";
-import { toolShortNames, trimStringToLength } from "$utils/utils";
+import { sentenceCase, toolShortNames, trimStringToLength } from "$utils/utils";
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
 import Input from "antd/es/input";
 import Clarify from "./analysis-gen/Clarify";
@@ -322,12 +322,31 @@ export const AnalysisAgent = ({
     [analysisId, activeNode, reRunManager, dag, analysisManager]
   );
 
+  const titleDiv = (
+    <div className="flex flex-row p-6">
+      <h1 className="font-bold grow text-xl mb-2 text-gray-700">
+        {sentenceCase(analysisData?.user_question || "")}
+      </h1>
+      {!analysisBusy && analysisData && (
+        <div className="mb-4">
+          <AnalysisFeedback
+            analysisSteps={analysisData?.gen_steps?.steps || []}
+            analysisId={analysisId}
+            user_question={analysisData?.user_question}
+            token={token}
+            keyName={keyName}
+          />
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <ErrorBoundary>
       <div
         ref={ctr}
         className={twMerge(
-          "analysis-agent-container border rounded-3xl border-gray-300 bg-white",
+          "analysis-agent-container border rounded-3xl border-gray-300 bg-white max-w-full",
           rootClassNames
         )}
       >
@@ -361,7 +380,8 @@ export const AnalysisAgent = ({
                 <></>
               )}
               {analysisData.currentStage === "clarify" ? (
-                <div className="analysis-recipe w-full">
+                <div className="transition-all w-full bg-gray-50 rounded-t-3xl">
+                  {titleDiv}
                   <Clarify
                     data={analysisData.clarify}
                     handleSubmit={(stageInput, submitStage) => {
@@ -385,28 +405,13 @@ export const AnalysisAgent = ({
               )}
 
               {analysisData.currentStage === "gen_steps" ? (
-                <div className="analysis-content max-h-full overflow-scroll flex flex-row max-w-full">
-                  <div className="analysis-results p-6 flex flex-col grow basis-0 overflow-scroll relative border-r">
-                    <h1 className="font-bold text-lg mb-4 text-primary-text">
-                      {analysisData?.user_question}
-                    </h1>
+                <div className="analysis-content flex flex-row h-full">
+                  <div className="analysis-results w-full flex flex-col grow basis-0 relative border-r">
+                    {titleDiv}
                     <ErrorBoundary>
                       {analysisData?.gen_steps?.steps.length ? (
                         <>
-                          {!analysisBusy && analysisData && (
-                            <div className="basis-0">
-                              <AnalysisFeedback
-                                analysisSteps={
-                                  analysisData?.gen_steps?.steps || []
-                                }
-                                analysisId={analysisId}
-                                user_question={analysisData?.user_question}
-                                token={token}
-                                keyName={keyName}
-                              />
-                            </div>
-                          )}
-                          <div className="basis-0 grow flex place-content-start">
+                          <div className=" grow px-6 rounded-bl-3xl w-full bg-gray-50">
                             <ToolResults
                               analysisId={analysisId}
                               activeNode={activeNode}
@@ -453,7 +458,7 @@ export const AnalysisAgent = ({
                       )}
                     </ErrorBoundary>
                   </div>
-                  <div className="analysis-steps basis-0 rounded-r-3xl bg-gray-50">
+                  <div className="analysis-steps overflow-scroll rounded-r-3xl bg-gray-50">
                     <StepsDag
                       steps={analysisData?.gen_steps?.steps || []}
                       nodeSize={[40, 10]}

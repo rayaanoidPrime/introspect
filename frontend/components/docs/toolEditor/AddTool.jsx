@@ -238,7 +238,7 @@ export default function AddTool({ toolbox, onAddTool = (...args) => {} }) {
                 <Input
                   placeholder="What should we change?"
                   rootClassNames="sticky bottom-0 mt-4 w-full lg:w-6/12 shadow-lg rounded-md"
-                  inputClassName={twMerge(
+                  inputClassNames={twMerge(
                     "bg-white border mx-auto h-16 hover:border-blue-500 focus:border-blue-500",
                     loading ? "hover:border-gray-400 focus:border-gray-400" : ""
                   )}

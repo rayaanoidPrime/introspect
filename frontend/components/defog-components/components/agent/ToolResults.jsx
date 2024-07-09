@@ -416,7 +416,7 @@ export function ToolResults({
     <></>
   ) : (
     <div
-      className="tool-results-ctr w-full"
+      className="tool-results-ctr w-full h-full"
       data-is-tool={activeNode.data.isTool}
     >
       {/* create a translucent overlay if displayLoadingOverlay is true */}
@@ -500,30 +500,34 @@ export function ToolResults({
                 </p>
               </Modal>
             </div>
-            <h1 className="tool-name">
+            <h1 className="text-lg mt-4 mb-2">
               {toolDisplayNames[toolRunData.tool_name]}
             </h1>
-            <h1 className="inputs-header">INPUTS</h1>
-            <ToolRunInputList
-              analysisId={analysisId}
-              toolRunId={toolRunId}
-              step={toolRunData.step}
-              availableOutputNodes={availableOutputNodes}
-              setActiveNode={setActiveNode}
-              handleEdit={handleEdit}
-              parentNodeData={parentNodeData}
-            ></ToolRunInputList>
-            <h1 className="details-header">OUTPUTS</h1>
-            <ToolRunOutputList
-              analysisId={analysisId}
-              toolRunId={toolRunId}
-              step={toolRunData.step}
-              codeStr={toolRunData?.tool_run_details?.code_str}
-              sql={toolRunData?.tool_run_details?.sql}
-              handleEdit={handleEdit}
-              availableOutputNodes={availableOutputNodes}
-              setActiveNode={setActiveNode}
-            ></ToolRunOutputList>
+            <div className="my-4">
+              <h1 className="text-gray-400 mb-4">INPUTS</h1>
+              <ToolRunInputList
+                analysisId={analysisId}
+                toolRunId={toolRunId}
+                step={toolRunData.step}
+                availableOutputNodes={availableOutputNodes}
+                setActiveNode={setActiveNode}
+                handleEdit={handleEdit}
+                parentNodeData={parentNodeData}
+              ></ToolRunInputList>
+            </div>
+            <div className="my-4">
+              <h1 className="text-gray-400 mb-4">OUTPUTS</h1>
+              <ToolRunOutputList
+                analysisId={analysisId}
+                toolRunId={toolRunId}
+                step={toolRunData.step}
+                codeStr={toolRunData?.tool_run_details?.code_str}
+                sql={toolRunData?.tool_run_details?.sql}
+                handleEdit={handleEdit}
+                availableOutputNodes={availableOutputNodes}
+                setActiveNode={setActiveNode}
+              ></ToolRunOutputList>
+            </div>
           </ErrorBoundary>
         </>
       ) : toolRunData?.parsedOutputs[activeNode.data.id] ? (

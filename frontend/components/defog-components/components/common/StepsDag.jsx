@@ -1,15 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { HiWrenchScrewdriver } from "react-icons/hi2";
 import { Popover } from "antd";
 import { createDag } from "$utils/draw-dag";
-import {
-  PlusCircleFilled,
-  PlusOutlined,
-  PlusSquareFilled,
-  PlusSquareOutlined,
-  PlusSquareTwoTone,
-} from "@ant-design/icons";
-import { createInitialToolInputs, toolDisplayNames } from "$utils/utils";
+import { PlusSquareOutlined } from "@ant-design/icons";
+import { toolDisplayNames } from "$utils/utils";
+import { twMerge } from "tailwind-merge";
 
 const nodeCssSize = 15;
 
@@ -230,86 +225,11 @@ export default function StepsDag({
     >
       {dag ? (
         <div className="graph" style={{ height: dag.height + 100 + "px" }}>
-          {dag &&
-            dag.nodes &&
-            nodes.map((d) => {
-              const extraProps = {};
-              if (alwaysShowPopover) {
-                extraProps.open = activeNode?.data?.id === d.data.id;
-              }
-              return (
-                <Popover
-                  {...extraProps}
-                  onOpenChange={(visible) => onPopoverOpenChange(d, visible)}
-                  rootClassName={
-                    "graph-node-popover " +
-                    (d.data.isError ? "popover-error " : "")
-                  }
-                  placement="left"
-                  title={
-                    !disablePopovers &&
-                    (d?.data?.isAddStepNode
-                      ? ""
-                      : d?.data?.isTool
-                        ? toolDisplayNames[d?.data?.step?.tool_name] || null
-                        : `Output`)
-                  }
-                  content={
-                    !disablePopovers &&
-                    (d?.data?.isAddStepNode
-                      ? "Create new step"
-                      : d?.data?.isTool
-                        ? d?.data?.step?.description || d.data.id
-                        : null)
-                  }
-                  key={d.data.id}
-                >
-                  <div
-                    className={
-                      "graph-node" +
-                      " " +
-                      (d.data.isTool ? "tool" : "var") +
-                      " " +
-                      (d.data.isOutput ? " output" : "") +
-                      " " +
-                      (activeNode?.data?.id === d.data.id
-                        ? "graph-node-active "
-                        : "") +
-                      (d.data.isError ? "graph-node-error" : "") +
-                      " " +
-                      `tool-run-${d.data.id}` +
-                      " " +
-                      (d.data.isAddStepNode ? "graph-node-add" : "") +
-                      " " +
-                      (reRunningSteps.some((s) => s.tool_run_id === d.data.id)
-                        ? "graph-node-re-running"
-                        : "") +
-                      " " +
-                      extraNodeClasses(d)
-                    }
-                    style={{
-                      top: horizontal ? d.x : d.y,
-                      left: horizontal
-                        ? d.y
-                        : d.x - (!d.data.isTool ? 0 : nodeSize[0] / 2),
-                    }}
-                    key={d.data.id}
-                    onClick={() => {
-                      setActiveNode(d);
-                    }}
-                  >
-                    {d.data.isTool ? (
-                      toolIcon(d)
-                    ) : d.data.isAddStepNode ? (
-                      <PlusSquareOutlined />
-                    ) : (
-                      <div className="graph-node-circle rounded-full w-4 h-4"></div>
-                    )}
-                  </div>
-                </Popover>
-              );
-            })}
-          <svg width={dag?.width + nodeCssSize * 3} height={"100%"}>
+          <svg
+            width={dag?.width + nodeCssSize * 3}
+            height={"100%"}
+            xmlns="http://www.w3.org/1999/xhtml"
+          >
             {dagLinks.map((d) => {
               // bezier curve
               const source = d.source;
@@ -337,6 +257,95 @@ export default function StepsDag({
                 />
               );
             })}
+
+            {dag &&
+              dag.nodes &&
+              nodes.map((d) => {
+                const extraProps = {};
+                if (alwaysShowPopover) {
+                  extraProps.open = activeNode?.data?.id === d.data.id;
+                }
+
+                const style = {
+                  top: horizontal ? d.x : d.y,
+                  left: horizontal
+                    ? d.y
+                    : d.x - (!d.data.isTool ? 0 : nodeSize[0] / 2),
+                };
+
+                return (
+                  <foreignObject
+                    x={style.left}
+                    y={style.top}
+                    key={d.data.id}
+                    width={100}
+                    height={100}
+                    className="pointer-events-none"
+                  >
+                    <Popover
+                      {...extraProps}
+                      onOpenChange={(visible) =>
+                        onPopoverOpenChange(d, visible)
+                      }
+                      rootClassName={
+                        "graph-node-popover pointer-events-auto" +
+                        (d.data.isError ? "popover-error" : "")
+                      }
+                      placement="left"
+                      title={
+                        !disablePopovers &&
+                        (d?.data?.isAddStepNode
+                          ? ""
+                          : d?.data?.isTool
+                            ? toolDisplayNames[d?.data?.step?.tool_name] || null
+                            : `Output`)
+                      }
+                      content={
+                        !disablePopovers &&
+                        (d?.data?.isAddStepNode
+                          ? "Create new step"
+                          : d?.data?.isTool
+                            ? d?.data?.step?.description || d.data.id
+                            : null)
+                      }
+                    >
+                      <div
+                        className={twMerge(
+                          "graph-node bg-white pointer-events-auto max-w-[100px]",
+                          d.data.isTool ? "tool" : "var",
+                          d.data.isOutput ? " output" : "",
+                          activeNode?.data?.id === d.data.id
+                            ? "graph-node-active "
+                            : "",
+                          d.data.isError ? "graph-node-error" : "",
+                          `tool-run-${d.data.id}`,
+                          d.data.isAddStepNode ? "graph-node-add" : "",
+                          reRunningSteps.some(
+                            (s) => s.tool_run_id === d.data.id
+                          )
+                            ? "graph-node-re-running"
+                            : "",
+                          extraNodeClasses(d)
+                        )}
+                        key={d.data.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setActiveNode(d);
+                        }}
+                      >
+                        {d.data.isTool ? (
+                          <>{toolIcon(d)}</>
+                        ) : d.data.isAddStepNode ? (
+                          <PlusSquareOutlined />
+                        ) : (
+                          <div className="graph-node-circle rounded-full w-4 h-4"></div>
+                        )}
+                      </div>
+                    </Popover>
+                  </foreignObject>
+                );
+              })}
           </svg>
           {!stageDone ? (
             // get one of the leafs of the dag and place a loading icon 20 px below it

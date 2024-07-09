@@ -822,7 +822,6 @@ $grid: repeating-linear-gradient(
         // somehow just giving it a width, any width (not max/min width) fixes the sidebars. ¯\_(ツ)_/¯
         // border: 1px solid $light-gray;
 
-        padding: 0.5em;
         .ant-tabs {
           flex-grow: 2;
           // width: 90vw;
@@ -977,8 +976,6 @@ $grid: repeating-linear-gradient(
 
           .tool-input-list,
           .tool-output-list {
-            padding: 1em 0;
-
             .tool-input {
               * {
                 font-family: $code;
@@ -986,9 +983,6 @@ $grid: repeating-linear-gradient(
               font-size: 0.9em;
               margin: 0 0 1em 0;
               color: $text-dark;
-              display: flex;
-              justify-content: left;
-              align-items: center;
               // font-size: 0.8em;
 
               .tool-input-type {
@@ -1050,26 +1044,6 @@ $grid: repeating-linear-gradient(
             }
           }
           .tool-output-list {
-            display: flex;
-            .tool-output-data {
-              flex-grow: 1;
-              margin-right: 2em;
-              min-width: 0;
-              .tool-output-data-value {
-                color: $text-medium;
-                * {
-                  font-family: $code;
-                }
-                font-size: 0.7em;
-                margin: 0 0 5px 0;
-                padding: 0.5em;
-                border: 1px solid $medium-gray;
-                border-left: 8px solid $medium-green;
-                border-radius: 4px;
-                cursor: pointer;
-                width: fit-content;
-              }
-            }
             .ant-collapse {
               font-size: 16px;
             }
@@ -1103,10 +1077,6 @@ $grid: repeating-linear-gradient(
             }
 
             .tool-code {
-              flex-grow: 2;
-              margin-right: 1em;
-              min-width: 0;
-
               .tool-code-ctr {
                 background: $very-light-gray !important;
                 margin-bottom: 1em;
@@ -1465,7 +1435,7 @@ $grid: repeating-linear-gradient(
     color: $text-medium;
     box-shadow: 0px 0px 2px white;
     font-size: 0.9em;
-    margin-top: 8px;
+    margin-top: 0;
   }
   &.popover-error {
     border-left: 8px solid $medium-red;

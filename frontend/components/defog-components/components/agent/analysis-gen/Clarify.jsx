@@ -157,6 +157,7 @@ export default function Clarify({
           onChange={(ev) => updateAnswer(ev.target.value, i)}
           defaultValue={q.response}
           placeholder="Your response"
+          inputClassNames="ring-0 bg-transparent rounded-none border-b border-dotted border-gray-300 focus:border-blue-500 focus:ring-0 focus:border-b-primary-highlight focus:border-solid shadow-none pl-0"
         ></Input>
       );
     },
@@ -183,9 +184,9 @@ export default function Clarify({
   };
 
   return (
-    <div>
+    <div className="p-6">
       <div
-        className="mb-4 p-4 text-sm bg-gray-100 rounded-t-3xl"
+        className="mb-4 text-sm text-gray-500"
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             onSubmit(true);
@@ -195,23 +196,25 @@ export default function Clarify({
         {success &&
           (clarification_questions.length ? (
             <>
-              <p className="font-bold text-center">
+              {/* <p className="font-bold text-left mb-2">
                 Please answer these questions to proceed
-              </p>
+              </p> */}
               {clarification_questions.map((q, i) => (
-                <div
-                  key={q.question}
-                  className="w-full flex place-content-center"
-                >
-                  <Writer s={q.question} animate={!stageDone}>
-                    <div className="flex flex-row my-3">
-                      <p className="q-desc writer-target m-0 mr-4 w-1/2"></p>
-                      <div className="writer-children w-1/2 text-sm">
-                        {UIs[q.ui_tool](q, i, q.ui_tool_options)}
+                <>
+                  <div
+                    key={q.question}
+                    className="w-full flex place-content-start"
+                  >
+                    <Writer s={q.question} animate={!stageDone}>
+                      <div className="w-full mb-4">
+                        <p className="q-desc writer-target m-0 mb-2 text-primary-text"></p>
+                        <div className="writer-children">
+                          {UIs[q.ui_tool](q, i, q.ui_tool_options)}
+                        </div>
                       </div>
-                    </div>
-                  </Writer>
-                </div>
+                    </Writer>
+                  </div>
+                </>
               ))}
             </>
           ) : (
@@ -235,15 +238,13 @@ export default function Clarify({
       {!stageDone ? (
         <></>
       ) : (
-        <div className="text-center">
-          <button
-            className="underline text-gray-400 text-sm"
-            onClick={() => onSubmit(true)}
-            disabled={globalLoading}
-          >
-            Press Enter or click here to submit
-          </button>
-        </div>
+        <button
+          className="underline text-gray-400 text-sm mt-4"
+          onClick={() => onSubmit(true)}
+          disabled={globalLoading}
+        >
+          Press Enter or click here to submit
+        </button>
       )}
     </div>
   );

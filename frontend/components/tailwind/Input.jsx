@@ -21,7 +21,7 @@ export default function Input({
   onChange = (...args) => {},
   onPressEnter = (...args) => {},
   inputHtmlProps = {},
-  inputClassName = "",
+  inputClassNames = "",
   size = "default",
 }) {
   return (
@@ -49,7 +49,7 @@ export default function Input({
               ? "bg-gray-100 text-gray-400  focus:ring-gray-100 cursor-not-allowed"
               : "bg-white",
             inputSizeClasses[size] || inputSizeClasses["default"],
-            inputClassName
+            inputClassNames
           )}
           placeholder={placeholder}
           aria-invalid="true"

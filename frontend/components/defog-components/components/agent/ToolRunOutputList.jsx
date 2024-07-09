@@ -1,4 +1,4 @@
-import { CaretDownOutlined, CaretRightOutlined } from "@ant-design/icons";
+import { ArrowRightIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { CodeEditor } from "../CodeEditor";
 import { useRef, useState } from "react";
 
@@ -19,11 +19,54 @@ export function ToolRunOutputList({
   const [codeCollapsed, setCodeCollapsed] = useState(true);
 
   return (
-    <div className="tool-output-list">
-      <div className="tool-code">
+    <div className="tool-output-list text-xs font-mono">
+      <div className="tool-output-data">
+        <p className="mb-2 text-gray-400">Datasets</p>
+        <div className="flex flex-wrap my-2 gap-2">
+          {step.outputs_storage_keys.map((output, i) => {
+            return (
+              <div
+                key={i}
+                className="cursor-pointer bg-white p-2 border border-l-8 border-l-green rounded-md"
+                onClick={() => {
+                  const exists = availableOutputNodes.find(
+                    (node) => node.data.id === output
+                  );
+                  if (exists) {
+                    setActiveNode(exists);
+                  }
+                }}
+                onMouseOver={(ev) => {
+                  // get the closest .analysis-content to the mouseovered element
+                  const closest = ev.target.closest(".analysis-content");
+                  if (!closest) return;
+                  // now get the closest .graph-node with the class name output
+                  const node = closest.querySelector(`.graph-node.${output}`);
+                  if (!node) return;
+                  // add a class highlighted
+                  node.classList.add("highlighted");
+                }}
+                onMouseOut={(ev) => {
+                  // get the closest .analysis-content to the mouseovered element
+                  const closest = ev.target.closest(".analysis-content");
+                  if (!closest) return;
+                  // now get the closest .graph-node with the class name output
+                  const node = closest.querySelector(`.graph-node.${output}`);
+                  if (!node) return;
+                  // remove the class highlighted
+                  node.classList.remove("highlighted");
+                }}
+              >
+                {output}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="tool-code mt-4">
         {sql && (
           <>
-            <p className="tool-code-header">SQL</p>
+            <p className="mb-2 text-gray-400">SQL</p>
             <CodeEditor
               key={sql}
               className="tool-code-ctr"
@@ -39,7 +82,7 @@ export function ToolRunOutputList({
           <>
             <p
               style={{ pointerEvents: "all", cursor: "pointer" }}
-              className="tool-code-header"
+              className=""
               onClick={() => {
                 setCodeCollapsed(!codeCollapsed);
                 // get scroll height of tool-code-ctr inside codeCtrRef
@@ -54,21 +97,18 @@ export function ToolRunOutputList({
                 }
               }}
             >
-              <span>
-                {
-                  <CaretRightOutlined
-                    style={{
-                      transition: "transform 0.3s ease-in-out",
-                      marginRight: "3px",
-                      top: "1px",
-                      transform: codeCollapsed
-                        ? "rotate(0deg)"
-                        : "rotate(90deg)",
-                    }}
-                  />
-                }
-              </span>
-              Code
+              <div className="flex items-center mb-2 my-5 text-gray-400">
+                <ChevronRightIcon
+                  className="w-4 h-4 inline mr-1"
+                  style={{
+                    transition: "transform 0.3s ease-in-out",
+                    marginRight: "3px",
+                    top: "1px",
+                    transform: codeCollapsed ? "rotate(0deg)" : "rotate(90deg)",
+                  }}
+                />
+                Code
+              </div>
             </p>
             <div
               ref={codeCtrRef}
@@ -91,47 +131,6 @@ export function ToolRunOutputList({
             </div>
           </>
         )}
-      </div>
-      <div className="tool-output-data">
-        <p className="tool-output-data-header">Datasets</p>
-        {step.outputs_storage_keys.map((output, i) => {
-          return (
-            <div
-              key={i}
-              className="tool-output-data-value"
-              onClick={() => {
-                const exists = availableOutputNodes.find(
-                  (node) => node.data.id === output
-                );
-                if (exists) {
-                  setActiveNode(exists);
-                }
-              }}
-              onMouseOver={(ev) => {
-                // get the closest .analysis-content to the mouseovered element
-                const closest = ev.target.closest(".analysis-content");
-                if (!closest) return;
-                // now get the closest .graph-node with the class name output
-                const node = closest.querySelector(`.graph-node.${output}`);
-                if (!node) return;
-                // add a class highlighted
-                node.classList.add("highlighted");
-              }}
-              onMouseOut={(ev) => {
-                // get the closest .analysis-content to the mouseovered element
-                const closest = ev.target.closest(".analysis-content");
-                if (!closest) return;
-                // now get the closest .graph-node with the class name output
-                const node = closest.querySelector(`.graph-node.${output}`);
-                if (!node) return;
-                // remove the class highlighted
-                node.classList.remove("highlighted");
-              }}
-            >
-              <span>{output}</span>
-            </div>
-          );
-        })}
       </div>
     </div>
   );
