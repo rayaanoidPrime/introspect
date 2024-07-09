@@ -327,7 +327,7 @@ export const AnalysisAgent = ({
       <div
         ref={ctr}
         className={twMerge(
-          "analysis-agent-container min-h-96 border rounded-3xl border-gray-300 bg-white",
+          "analysis-agent-container border rounded-3xl border-gray-300 bg-white",
           rootClassNames
         )}
       >
@@ -385,7 +385,7 @@ export const AnalysisAgent = ({
               )}
 
               {analysisData.currentStage === "gen_steps" ? (
-                <div className="analysis-content min-h-96 flex flex-row max-w-full">
+                <div className="analysis-content max-h-full overflow-scroll flex flex-row max-w-full">
                   <div className="analysis-results p-6 flex flex-col grow basis-0 overflow-scroll relative border-r">
                     <h1 className="font-bold text-lg mb-4 text-primary-text">
                       {analysisData?.user_question}

@@ -9,11 +9,12 @@ export function AnalysisHistoryItem({
   setAddToDashboardSelection,
   extraClasses = "",
   isDummy = false,
+  onClick = () => {},
 }) {
   return (
     <div
       className={twMerge(
-        "flex flex-row items-center py-2 px-2 mb-2 hover:cursor-pointer hover:bg-gray-200 history-item",
+        "flex flex-row items-center py-1 px-2 mb-2 hover:cursor-pointer hover:bg-gray-200 history-item",
         isActive ? "font-bold bg-gray-200 " : "",
         isDummy ? "dummy-analysis" : analysis.analysisId,
         extraClasses
@@ -21,6 +22,7 @@ export function AnalysisHistoryItem({
       onClick={() => {
         setActiveRootAnalysisId(analysis?.rootAnalysisId);
         setActiveAnalysisId(analysis?.analysisId);
+        onClick();
       }}
     >
       <div className="grow">

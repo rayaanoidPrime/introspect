@@ -62,6 +62,7 @@ function AnalysisVersionViewer({
   const [sessionAnalyses, setSessionAnalyses] = useState({});
   // just a duplicate of the above but in a flat object
   const [allAnalyses, setAllAnalyses] = useState({});
+  const analysisDomRefs = useRef({});
 
   const [loading, setLoading] = useState(false);
   const searchRef = useRef(null);
@@ -186,7 +187,7 @@ function AnalysisVersionViewer({
           id="analysis-version-viewer"
         >
           <div className="flex flex-col mr-0 z-10">
-            <div className="sticky top-0 z-[10] h-screen">
+            <div className="sticky top-2 z-[10] h-screen">
               <Sidebar
                 location="left"
                 open={sidebarOpen}
@@ -195,7 +196,7 @@ function AnalysisVersionViewer({
                 }}
                 title={<span className="font-bold">History</span>}
                 rootClassNames={
-                  "transition-all z-20 sticky top-0 h-[calc(100%-1rem)] rounded-md lg:rounded-none lg:rounded-tr-md bg-gray-100 border"
+                  "transition-all z-20 sticky top-0 h-[calc(100%-1rem)] rounded-md lg:rounded-none lg:rounded-tr-md lg:rounded-br-md bg-gray-100 border"
                 }
                 iconClassNames={`${sidebarOpen ? "" : "text-white bg-primary-highlight"}`}
                 openClassNames={"border-gray-300 shadow-md"}
@@ -218,16 +219,7 @@ function AnalysisVersionViewer({
                       sessionAnalyses[rootAnalysisId].versionList;
 
                     return (
-                      <div key={root.analysisId}>
-                        <AnalysisHistoryItem
-                          analysis={root}
-                          isActive={activeAnalysisId === root.analysisId}
-                          setActiveRootAnalysisId={setActiveRootAnalysisId}
-                          setActiveAnalysisId={setActiveAnalysisId}
-                          setAddToDashboardSelection={
-                            setAddToDashboardSelection
-                          }
-                        />
+                      <div key={root.analysisId} className="text-xs">
                         {analysisVersionList.map((version, i) => {
                           return (
                             <AnalysisHistoryItem
@@ -239,7 +231,20 @@ function AnalysisVersionViewer({
                               setAddToDashboardSelection={
                                 setAddToDashboardSelection
                               }
-                              extraClasses="ml-2 border-l-2"
+                              onClick={() => {
+                                if (analysisDomRefs[version.analysisId].ctr) {
+                                  analysisDomRefs[
+                                    version.analysisId
+                                  ].ctr.scrollIntoView({
+                                    behavior: "smooth",
+                                    block: "start",
+                                    inline: "nearest",
+                                  });
+                                }
+                              }}
+                              extraClasses={
+                                version.isRoot ? "" : "ml-2 border-l-2"
+                              }
                             />
                           );
                         })}
@@ -257,11 +262,11 @@ function AnalysisVersionViewer({
                     <div className="w-full mt-5 sticky bottom-5">
                       <div
                         data-enabled={!loading}
-                        className={
-                          "cursor-pointer z-20 relative " +
-                          "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom " +
+                        className={twMerge(
+                          "cursor-pointer z-20 relative text-xs ",
+                          "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom ",
                           "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
-                        }
+                        )}
                         onClick={() => {
                           if (loading) return;
                           // start a new root analysis
@@ -279,7 +284,7 @@ function AnalysisVersionViewer({
             </div>
           </div>
           <div
-            className="flex flex-col grow rounded-tr-lg pb-14 p-2 md:p-4 relative min-w-0 h-full overflow-scroll"
+            className="grid grid-cols-1 md:grid-cols-1 grow rounded-tr-lg pb-14 p-2 md:p-4 relative min-w-0 h-full overflow-scroll"
             onClick={() => {
               setSidebarOpen(false);
             }}
@@ -291,7 +296,8 @@ function AnalysisVersionViewer({
                     <div key={analysis.analysisId}>
                       <AnalysisAgent
                         rootClassNames={
-                          "mb-4 ml-3 shadow-md analysis-" + analysis.analysisId
+                          "mb-4 ml-3 min-h-96 shadow-md analysis-" +
+                          analysis.analysisId
                         }
                         analysisId={analysis.analysisId}
                         createAnalysisRequestBody={
@@ -305,9 +311,14 @@ function AnalysisVersionViewer({
                         devMode={devMode}
                         didUploadFile={didUploadFile}
                         onManagerCreated={(mgr, id, ctr) => {
+                          analysisDomRefs[id] = {
+                            ctr,
+                            mgr,
+                            id,
+                          };
                           // scroll to ctr
                           setTimeout(() => {
-                            ctr.scrollIntoView({
+                            analysisDomRefs[id].ctr.scrollIntoView({
                               behavior: "smooth",
                               block: "start",
                               inline: "nearest",
