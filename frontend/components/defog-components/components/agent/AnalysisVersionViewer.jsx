@@ -196,7 +196,7 @@ function AnalysisVersionViewer({
       searchCtr.current.style.left = "0";
       searchCtr.current.style.right = "0";
       searchCtr.current.style.bottom =
-        window.innerHeight > 800 ? "30%" : "40px";
+        window.innerHeight > 800 ? "30%" : "20px";
     }
 
     setSearchBar();
@@ -213,105 +213,101 @@ function AnalysisVersionViewer({
     <>
       <div className="relative h-full">
         <div
-          className="max-w-full h-full flex flex-col-reverse lg:flex-row bg-white text-gray-600 w-full"
+          className="max-w-full h-full flex flex-row bg-white text-gray-600 w-full"
           id="analysis-version-viewer"
         >
-          <div className="flex flex-col mr-0 z-10">
-            <div className="sticky top-2 z-[10] h-screen">
-              <Sidebar
-                location="left"
-                open={sidebarOpen}
-                onChange={(open) => {
-                  setSidebarOpen(open);
-                }}
-                title={<span className="font-bold">History</span>}
-                rootClassNames={
-                  "transition-all z-20 sticky top-0 h-[calc(100%-1rem)] rounded-md lg:rounded-none lg:rounded-tr-md lg:rounded-br-md bg-gray-100 border"
-                }
-                iconClassNames={`${sidebarOpen ? "" : "text-white bg-primary-highlight"}`}
-                openClassNames={"border-gray-300 shadow-md"}
-                closedClassNames={
-                  "border-transparent bg-transparent shadow-none"
-                }
-                contentClassNames={
-                  // need to add pl-4 here to make the links visible
-                  "w-72 px-2 pt-5 pb-14 rounded-tl-lg relative sm:block pl-4 min-h-96 h-full overflow-y-auto"
-                }
-              >
-                <div className="flex flex-col text-sm relative history-list">
-                  <AnalysisVersionViewerLinks
-                    analyses={allAnalyses}
-                    activeAnalysisId={activeAnalysisId}
-                  />
-                  {Object.keys(sessionAnalyses).map((rootAnalysisId, i) => {
-                    const root = sessionAnalyses[rootAnalysisId].root;
-                    const analysisVersionList =
-                      sessionAnalyses[rootAnalysisId].versionList;
+          <div className="sticky top-2 z-[10] h-screen">
+            <Sidebar
+              location="left"
+              open={sidebarOpen}
+              onChange={(open) => {
+                setSidebarOpen(open);
+              }}
+              title={<span className="font-bold">History</span>}
+              rootClassNames={
+                "transition-all z-20 h-[calc(100%-1rem)] rounded-md lg:rounded-none lg:rounded-tr-md lg:rounded-br-md bg-gray-100 border"
+              }
+              iconClassNames={`${sidebarOpen ? "" : "text-white bg-primary-highlight"}`}
+              openClassNames={"border-gray-300 shadow-md"}
+              closedClassNames={"border-transparent bg-transparent shadow-none"}
+              contentClassNames={
+                // need to add pl-4 here to make the links visible
+                "w-72 px-2 pt-5 pb-14 rounded-tl-lg relative sm:block pl-4 min-h-96 h-full overflow-y-auto"
+              }
+            >
+              <div className="flex flex-col text-sm relative history-list">
+                <AnalysisVersionViewerLinks
+                  analyses={allAnalyses}
+                  activeAnalysisId={activeAnalysisId}
+                />
+                {Object.keys(sessionAnalyses).map((rootAnalysisId, i) => {
+                  const root = sessionAnalyses[rootAnalysisId].root;
+                  const analysisVersionList =
+                    sessionAnalyses[rootAnalysisId].versionList;
 
-                    return (
-                      <div key={root.analysisId} className="">
-                        {analysisVersionList.map((version, i) => {
-                          return (
-                            <AnalysisHistoryItem
-                              key={version.analysisId}
-                              analysis={version}
-                              isActive={activeAnalysisId === version.analysisId}
-                              setActiveRootAnalysisId={setActiveRootAnalysisId}
-                              setActiveAnalysisId={setActiveAnalysisId}
-                              setAddToDashboardSelection={
-                                setAddToDashboardSelection
+                  return (
+                    <div key={root.analysisId} className="">
+                      {analysisVersionList.map((version, i) => {
+                        return (
+                          <AnalysisHistoryItem
+                            key={version.analysisId}
+                            analysis={version}
+                            isActive={activeAnalysisId === version.analysisId}
+                            setActiveRootAnalysisId={setActiveRootAnalysisId}
+                            setActiveAnalysisId={setActiveAnalysisId}
+                            setAddToDashboardSelection={
+                              setAddToDashboardSelection
+                            }
+                            onClick={() => {
+                              if (analysisDomRefs[version.analysisId].ctr) {
+                                analysisDomRefs[
+                                  version.analysisId
+                                ].ctr.scrollIntoView({
+                                  behavior: "smooth",
+                                  block: "start",
+                                  inline: "nearest",
+                                });
                               }
-                              onClick={() => {
-                                if (analysisDomRefs[version.analysisId].ctr) {
-                                  analysisDomRefs[
-                                    version.analysisId
-                                  ].ctr.scrollIntoView({
-                                    behavior: "smooth",
-                                    block: "start",
-                                    inline: "nearest",
-                                  });
-                                }
-                              }}
-                              extraClasses={
-                                version.isRoot ? "" : "ml-2 border-l-2"
-                              }
-                            />
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                  {!activeRootAnalysisId ? (
-                    <AnalysisHistoryItem
-                      isDummy={true}
-                      setActiveRootAnalysisId={setActiveRootAnalysisId}
-                      setActiveAnalysisId={setActiveAnalysisId}
-                      isActive={!activeRootAnalysisId}
-                    />
-                  ) : (
-                    <div className="w-full mt-5 sticky bottom-5">
-                      <div
-                        data-enabled={!loading}
-                        className={twMerge(
-                          "cursor-pointer z-20 relative",
-                          "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom ",
-                          "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
-                        )}
-                        onClick={() => {
-                          if (loading) return;
-                          // start a new root analysis
-                          setActiveRootAnalysisId(null);
-                          setActiveAnalysisId(null);
-                        }}
-                      >
-                        New <PlusOutlined />
-                      </div>
-                      <div className="absolute w-full h-10 bg-gray-100 z-0"></div>
+                            }}
+                            extraClasses={
+                              version.isRoot ? "" : "ml-2 border-l-2"
+                            }
+                          />
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
-              </Sidebar>
-            </div>
+                  );
+                })}
+                {!activeRootAnalysisId ? (
+                  <AnalysisHistoryItem
+                    isDummy={true}
+                    setActiveRootAnalysisId={setActiveRootAnalysisId}
+                    setActiveAnalysisId={setActiveAnalysisId}
+                    isActive={!activeRootAnalysisId}
+                  />
+                ) : (
+                  <div className="w-full mt-5 sticky bottom-5">
+                    <div
+                      data-enabled={!loading}
+                      className={twMerge(
+                        "cursor-pointer z-20 relative",
+                        "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom ",
+                        "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
+                      )}
+                      onClick={() => {
+                        if (loading) return;
+                        // start a new root analysis
+                        setActiveRootAnalysisId(null);
+                        setActiveAnalysisId(null);
+                      }}
+                    >
+                      New <PlusOutlined />
+                    </div>
+                    <div className="absolute w-full h-10 bg-gray-100 z-0"></div>
+                  </div>
+                )}
+              </div>
+            </Sidebar>
           </div>
           <div
             className="grid grid-cols-1 md:grid-cols-1 grow rounded-tr-lg pb-14 p-2 md:p-4 relative min-w-0 h-full overflow-scroll"
@@ -485,7 +481,7 @@ function AnalysisVersionViewer({
               style={{
                 left: "0",
                 right: "0",
-                bottom: window.innerHeight > 800 ? "30%" : "40px",
+                bottom: window.innerHeight > 800 ? "30%" : "20px",
               }}
               ref={searchCtr}
             >
