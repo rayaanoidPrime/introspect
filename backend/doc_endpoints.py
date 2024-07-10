@@ -1196,7 +1196,7 @@ async def generate_tool_code_endpoint(request: Request):
                     payload = {
                         "request_type": "fix_tool_code",
                         "error": error,
-                        "messages": resp["messages"],
+                        "messages": None,
                         "api_key": api_key,
                     }
                 retries += 1

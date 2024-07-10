@@ -44,6 +44,7 @@ export const AnalysisAgent = ({
   setGlobalLoading = (...args) => {},
   onManagerCreated = (...args) => {},
   onManagerDestroyed = (...args) => {},
+  sqlOnly,
 }) => {
   // console.log("Key name", keyName);
   // console.log("Did upload file", didUploadFile);
@@ -55,7 +56,6 @@ export const AnalysisAgent = ({
   const [activeNode, setActiveNodePrivate] = useState(null);
   const [dag, setDag] = useState(null);
   const [dagLinks, setDagLinks] = useState([]);
-  const [sqlOnly, setSqlOnly] = useState(false);
 
   // in case this isn't called from analysis version viewer (which has a central singular search bar)
   // we will have an independent search bar for each analysis as well
@@ -282,7 +282,12 @@ export const AnalysisAgent = ({
     (query, stageInput = {}, submitStage = null) => {
       try {
         if (!query) throw new Error("Query is empty");
-        analysisManager.submit(query, stageInput, submitStage);
+        console.log("sql_only", sqlOnly);
+        analysisManager.submit(
+          query,
+          { ...stageInput, sql_only: sqlOnly },
+          submitStage
+        );
         setAnalysisBusy(true);
         setGlobalLoading(true);
       } catch (e) {
@@ -297,8 +302,9 @@ export const AnalysisAgent = ({
         }
       }
     },
-    [analysisManager, setGlobalLoading]
+    [analysisManager, setGlobalLoading, messageManager, sqlOnly]
   );
+
   const handleReRun = useCallback(
     (toolRunId, preRunActions = {}) => {
       if (
@@ -406,7 +412,7 @@ export const AnalysisAgent = ({
               )}
 
               {analysisData.currentStage === "gen_steps" ? (
-                <div className="analysis-content flex flex-col md:flex-row h-full">
+                <div className="analysis-content flex flex-col-reverse md:flex-row h-full">
                   <div className="analysis-results w-full flex flex-col grow basis-0 relative border-r">
                     {titleDiv}
                     <ErrorBoundary>

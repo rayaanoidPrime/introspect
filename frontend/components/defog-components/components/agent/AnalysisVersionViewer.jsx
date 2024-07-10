@@ -12,6 +12,7 @@ import Papa from "papaparse";
 import { sentenceCase } from "$utils/utils";
 import Table from "$components/tailwind/Table";
 import { twMerge } from "tailwind-merge";
+import Toggle from "$components/tailwind/Toggle";
 
 function AnalysisVersionViewer({
   dashboards,
@@ -39,6 +40,8 @@ function AnalysisVersionViewer({
   // we render these in the history panel and don't unmount them
   // for faster switching between them
   const [last10Analysis, setLast10Analysis] = useState([]); // this is the last 10 analysis
+
+  const [sqlOnly, setSqlOnly] = useState(false);
 
   // an object that stores all analysis in this "session"
   // structure:
@@ -310,6 +313,7 @@ function AnalysisVersionViewer({
                         setGlobalLoading={setLoading}
                         devMode={devMode}
                         didUploadFile={didUploadFile}
+                        sqlOnly={sqlOnly}
                         onManagerCreated={(mgr, id, ctr) => {
                           analysisDomRefs[id] = {
                             ctr,
@@ -449,10 +453,19 @@ function AnalysisVersionViewer({
               </div>
             )}
 
-            <div className="w-10/12 m-auto lg:w-2/4 fixed bottom-6 left-0 right-0 z-10 bg-white right-0 border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex flex-row">
+            <div className="w-10/12 m-auto lg:w-2/4 fixed bottom-6 left-0 right-0 z-10 bg-white border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex flex-row">
               <div className="grow border border-gray-300 rounded-l-md flex items-center">
+                <Toggle
+                  titleClassNames="font-bold text-gray-400"
+                  onToggle={(v) => setSqlOnly(v)}
+                  defaultOn={sqlOnly}
+                  offLabel="SQL/Agents"
+                  onLabel={"SQL only"}
+                  rootClassNames="items-center md:items-start border-r px-2 w-36"
+                />
+
                 <textarea
-                  className="w-full border-none bg-transparent py-1.5 text-gray-900 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none resize-none"
+                  className="border-none bg-transparent py-1.5 text-gray-900 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none resize-none"
                   ref={searchRef}
                   disabled={loading}
                   rows={1}
