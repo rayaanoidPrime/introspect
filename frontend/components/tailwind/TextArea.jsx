@@ -1,19 +1,27 @@
 import { ExclamationCircleIcon } from "@heroicons/react/20/solid";
+import { forwardRef } from "react";
 import { twMerge } from "tailwind-merge";
 
-export default function TextArea({
-  value = undefined,
-  defaultValue = undefined,
-  status = null,
-  label = null,
-  disabled = false,
-  rootClassNames = "",
-  placeholder = "Enter text here",
-  id = "",
-  name = "text-input",
-  onChange = () => {},
-  textAreaHtmlProps = {},
-}) {
+function TextArea(
+  {
+    value = undefined,
+    defaultValue = undefined,
+    status = null,
+    label = null,
+    disabled = false,
+    defaultRows = 4,
+    rootClassNames = "",
+    textAreaClassNames = "",
+    placeholder = "Enter text here",
+    id = "",
+    name = "text-input",
+    onChange = (...args) => {},
+    onKeyDown = (...args) => {},
+    textAreaHtmlProps = {},
+    autoResize = true,
+  },
+  ref
+) {
   return (
     <div className={twMerge("text-gray-600", rootClassNames)}>
       {label && (
@@ -24,22 +32,31 @@ export default function TextArea({
       <div className="relative rounded-md shadow-sm">
         <div className="">
           <textarea
+            ref={ref}
             disabled={disabled}
-            rows={4}
+            rows={defaultRows}
             name={name}
             id={id}
             placeholder={placeholder}
+            onKeyDown={onKeyDown}
             className={twMerge(
               "block w-full rounded-md border-0 py-1.5 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-1 focus:ring-inset",
-              "sm:text-sm sm:leading-6",
+              "text-sm leading-6",
               status !== "error"
                 ? "focus:ring-blue-400"
                 : "focus:ring-rose-400 ring-rose-400",
               disabled
                 ? "bg-gray-100 text-gray-400  focus:ring-gray-100 cursor-not-allowed"
-                : "bg-white"
+                : "bg-white",
+              textAreaClassNames
             )}
-            onChange={onChange}
+            onChange={(ev) => {
+              if (autoResize) {
+                ev.target.style.height = "auto";
+                ev.target.style.height = ev.target.scrollHeight + "px";
+              }
+              onChange(ev);
+            }}
             {...textAreaHtmlProps}
             {...{ defaultValue, value }}
           />
@@ -56,3 +73,5 @@ export default function TextArea({
     </div>
   );
 }
+
+export default forwardRef(TextArea);

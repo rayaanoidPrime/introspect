@@ -1,18 +1,23 @@
 import { Modal, Spin } from "antd";
-import { useCallback, useContext, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { v4 } from "uuid";
 import { AnalysisAgent } from "./AnalysisAgent";
 import { PlusOutlined } from "@ant-design/icons";
 import { AnalysisHistoryItem } from "./AnalysisHistoryItem";
 import { AnalysisVersionViewerLinks } from "./AnalysisVersionViewerLinks";
-import { ArrowRightEndOnRectangleIcon } from "@heroicons/react/20/solid";
+import {
+  ArrowRightEndOnRectangleIcon,
+  ArrowsPointingOutIcon,
+  ArrowsRightLeftIcon,
+} from "@heroicons/react/20/solid";
 import Sidebar from "$components/tailwind/Sidebar";
 import { MessageManagerContext } from "$components/tailwind/Message";
 import Papa from "papaparse";
-import { sentenceCase } from "$utils/utils";
+import { sentenceCase, useGhostImage } from "$utils/utils";
 import Table from "$components/tailwind/Table";
 import { twMerge } from "tailwind-merge";
 import Toggle from "$components/tailwind/Toggle";
+import TextArea from "$components/tailwind/TextArea";
 
 function AnalysisVersionViewer({
   dashboards,
@@ -43,6 +48,8 @@ function AnalysisVersionViewer({
 
   const [sqlOnly, setSqlOnly] = useState(false);
 
+  const ghostImage = useGhostImage();
+
   // an object that stores all analysis in this "session"
   // structure:
   // {
@@ -68,6 +75,7 @@ function AnalysisVersionViewer({
   const analysisDomRefs = useRef({});
 
   const [loading, setLoading] = useState(false);
+  const searchCtr = useRef(null);
   const searchRef = useRef(null);
   const [addToDashboardSelection, setAddToDashboardSelection] = useState(false);
   const [selectedDashboards, setSelectedDashboards] = useState([]);
@@ -181,6 +189,25 @@ function AnalysisVersionViewer({
     [sessionAnalyses, allAnalyses]
   );
 
+  useEffect(() => {
+    function setSearchBar() {
+      if (!searchCtr.current) return;
+
+      searchCtr.current.style.left = "0";
+      searchCtr.current.style.right = "0";
+      searchCtr.current.style.bottom =
+        window.innerHeight > 800 ? "30%" : "40px";
+    }
+
+    setSearchBar();
+
+    window.addEventListener("resize", setSearchBar);
+
+    return () => {
+      window.removeEventListener("resize", setSearchBar);
+    };
+  }, []);
+
   // w-0
   return (
     <>
@@ -288,9 +315,9 @@ function AnalysisVersionViewer({
           </div>
           <div
             className="grid grid-cols-1 md:grid-cols-1 grow rounded-tr-lg pb-14 p-2 md:p-4 relative min-w-0 h-full overflow-scroll"
-            onClick={() => {
-              setSidebarOpen(false);
-            }}
+            // onClick={() => {
+            //   setSidebarOpen(false);
+            // }}
           >
             {activeRootAnalysisId &&
               sessionAnalyses[activeRootAnalysisId].versionList.map(
@@ -453,66 +480,121 @@ function AnalysisVersionViewer({
               </div>
             )}
 
-            <div className="w-10/12 m-auto lg:w-2/4 fixed bottom-6 left-0 right-0 z-10 bg-white border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex flex-row">
-              <div className="grow border border-gray-300 rounded-l-md flex items-center">
-                <Toggle
-                  titleClassNames="font-bold text-gray-400"
-                  onToggle={(v) => setSqlOnly(v)}
-                  defaultOn={sqlOnly}
-                  offLabel="SQL/Agents"
-                  onLabel={"SQL only"}
-                  rootClassNames="items-center md:items-start border-r px-2 w-36"
-                />
+            <div
+              className="w-10/12 m-auto lg:w-2/4 fixed z-10 bg-white rounded-lg shadow-custom border border-gray-400 hover:border-blue-500 focus:border-blue-500 flex flex-row"
+              style={{
+                left: "0",
+                right: "0",
+                bottom: window.innerHeight > 800 ? "30%" : "40px",
+              }}
+              ref={searchCtr}
+            >
+              <div
+                className="cursor-move min-h-full w-3 flex items-center ml-1 group"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setDragImage(ghostImage, 0, 0);
+                }}
+                onDrag={(e) => {
+                  if (!e.clientX || !e.clientY || !searchCtr.current) return;
 
-                <textarea
-                  className="border-none bg-transparent py-1.5 text-gray-900 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none resize-none"
-                  ref={searchRef}
-                  disabled={loading}
-                  rows={1}
-                  onChange={(ev) => {
-                    ev.target.style.height = "auto";
-                    ev.target.style.height = ev.target.scrollHeight + "px";
-                  }}
-                  onKeyDown={(ev) => {
-                    if (ev.key === "Enter") {
-                      ev.preventDefault();
-                      ev.stopPropagation();
+                  const eBottom =
+                    window.innerHeight -
+                    e.clientY -
+                    searchCtr.current.clientHeight;
+                  const eLeft = e.clientX;
 
-                      // if (!searchRef.current.value) return;
+                  const minBottom = 20;
 
+                  const maxBottom =
+                    window.innerHeight - 20 - searchCtr.current.clientHeight;
+
+                  if (eBottom < minBottom) {
+                    searchCtr.current.style.bottom = minBottom + "px";
+                  } else if (eBottom > maxBottom) {
+                    searchCtr.current.style.bottom = maxBottom + "px";
+                  } else {
+                    searchCtr.current.style.bottom = eBottom + "px";
+                  }
+
+                  const maxLeft =
+                    window.innerWidth - searchCtr.current.clientWidth - 20;
+
+                  const minLeft = 20;
+
+                  searchCtr.current.style.right = "auto";
+
+                  if (eLeft < minLeft) {
+                    searchCtr.current.style.left = minLeft + "px";
+                  } else if (eLeft > maxLeft) {
+                    searchCtr.current.style.left = maxLeft + "px";
+                  } else {
+                    searchCtr.current.style.left = eLeft + "px";
+                  }
+                }}
+              >
+                <ArrowsPointingOutIcon className="h-3 w-3 text-gray-400 group-hover:text-primary-text" />
+              </div>
+              <div className="grow rounded-md md:items-center flex flex-col-reverse md:flex-row">
+                <div className="flex flex-row grow">
+                  <div className="flex md:flex-row-reverse md:items-center flex-col grow">
+                    <TextArea
+                      rootClassNames="grow border-none bg-transparent py-1.5 text-gray-900 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none"
+                      textAreaClassNames="resize-none"
+                      ref={searchRef}
+                      disabled={loading}
+                      defaultRows={1}
+                      onKeyDown={(ev) => {
+                        if (ev.key === "Enter") {
+                          ev.preventDefault();
+                          ev.stopPropagation();
+
+                          // if (!searchRef.current.value) return;
+
+                          handleSubmit(
+                            searchRef.current.value,
+                            activeRootAnalysisId,
+                            !activeRootAnalysisId,
+                            activeAnalysisId
+                          );
+                        }
+                      }}
+                      placeholder={
+                        activeRootAnalysisId
+                          ? "Type your next question here"
+                          : "Type your question here"
+                      }
+                    />
+                    <Toggle
+                      disabled={loading}
+                      titleClassNames="font-bold text-gray-400"
+                      onToggle={(v) => setSqlOnly(v)}
+                      defaultOn={sqlOnly}
+                      offLabel="SQL/Agents"
+                      onLabel={"SQL only"}
+                      rootClassNames="items-start md:border-r py-2 md:py-0 px-2 w-36"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 p-0 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-blue-500 hover:bg-blue-500 hover:text-white"
+                    onClick={() => {
                       handleSubmit(
                         searchRef.current.value,
                         activeRootAnalysisId,
                         !activeRootAnalysisId,
                         activeAnalysisId
                       );
-                    }
-                  }}
-                  placeholder={
-                    activeRootAnalysisId
-                      ? "Type your next question here"
-                      : "Type your question here"
-                  }
-                />
+                    }}
+                  >
+                    <ArrowRightEndOnRectangleIcon
+                      className="-ml-0.5 h-5 w-5 text-gray-400"
+                      aria-hidden="true"
+                    />
+                    Ask
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                className="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 p-0 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-blue-500 hover:bg-blue-500 hover:text-white"
-                onClick={() => {
-                  handleSubmit(
-                    searchRef.current.value,
-                    activeRootAnalysisId,
-                    !activeRootAnalysisId,
-                    activeAnalysisId
-                  );
-                }}
-              >
-                <ArrowRightEndOnRectangleIcon
-                  className="-ml-0.5 h-5 w-5 text-gray-400"
-                  aria-hidden="true"
-                />
-                Ask
-              </button>
             </div>
           </div>
         </div>

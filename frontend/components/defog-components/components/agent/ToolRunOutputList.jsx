@@ -21,7 +21,7 @@ export function ToolRunOutputList({
   return (
     <div className="tool-output-list text-xs font-mono">
       <div className="tool-output-data">
-        <p className="mb-2 text-gray-400">Datasets</p>
+        {/* <p className="mb-2 text-gray-400">Datasets</p> */}
         <div className="flex flex-wrap my-2 gap-2">
           {step.outputs_storage_keys.map((output, i) => {
             return (
