@@ -1,8 +1,8 @@
 // sidebar that can be toggled open and closed
-
 import {
   ArrowLeftStartOnRectangleIcon,
   ArrowRightStartOnRectangleIcon,
+  QueueListIcon,
 } from "@heroicons/react/20/solid";
 import React, { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
@@ -12,66 +12,93 @@ export default function Sidebar({
   children,
   rootClassNames = "",
   contentClassNames = "",
+  openClassNames = "",
+  closedClassNames = "",
+  iconClassNames = "",
+  iconSize = 4,
   location = "left",
+  open = null,
+  disableClose = false,
+  onChange = (...args) => {},
 }) {
-  const [open, setOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(disableClose ? true : open);
   const contentRef = useRef(null);
   const contentContainerRef = useRef(null);
 
   const handleClick = () => {
+    if (disableClose) {
+      if (!sidebarOpen) setSidebarOpen(true);
+      return;
+    }
+
     if (!contentContainerRef.current || !contentRef.current) return;
     // if opening, set container width to children width
-    if (open) {
-      setOpen(false);
-    } else {
-      setOpen(true);
-    }
+    setSidebarOpen((prev) => !prev);
+    onChange(!sidebarOpen);
   };
 
   useEffect(() => {
-    if (!contentContainerRef.current || !contentRef.current) return;
-    if (open) {
-      contentContainerRef.current.style.width = `${contentRef.current.clientWidth}px`;
-    } else {
-      contentContainerRef.current.style.width = `0px`;
-    }
+    setSidebarOpen(open);
   }, [open]);
 
   useEffect(() => {
     if (!contentContainerRef.current || !contentRef.current) return;
-    contentContainerRef.current.style.width = `${contentRef.current.clientWidth}px`;
-  }, []);
+
+    if (sidebarOpen) {
+      contentContainerRef.current.style.width = `${contentRef.current.clientWidth}px`;
+    } else {
+      contentContainerRef.current.style.width = `0px`;
+    }
+  }, [sidebarOpen]);
+
+  const defaultIconClasses = `toggle-button absolute top-1 rounded-tr-md rounded-br-md bg-inherit p-2 pl-1  self-start z-10 transition-all cursor-pointer ${sidebarOpen ? "right-1" : "-right-7 border border-inherit border-l-0"}`;
 
   return (
-    <div className={twMerge("relative", rootClassNames)}>
-      <button
-        className={`toggle-button absolute z-10 ${location === "left" ? (open ? "right-5 top-5" : "-right-5 top-5") : open ? "-left-5 top-5" : "right-5 top-5"} cursor-pointer`}
-        onClick={() => handleClick()}
-      >
-        {location === "right" ? (
-          open ? (
-            <ArrowLeftStartOnRectangleIcon className="h-4 w-4" />
-          ) : (
-            <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
-          )
-        ) : open ? (
-          <ArrowRightStartOnRectangleIcon className="h-4 w-4" />
-        ) : (
-          <ArrowLeftStartOnRectangleIcon className="h-4 w-4" />
-        )}
-      </button>
+    <div
+      className={twMerge(
+        "relative flex flex-row border-r",
+        rootClassNames,
+        sidebarOpen ? openClassNames : closedClassNames
+      )}
+    >
       <div
         ref={contentContainerRef}
-        className="transition-all overflow-hidden pb-4"
+        className="transition-all overflow-hidden grow"
       >
         <div
-          className={twMerge("content w-80 ", contentClassNames)}
+          className={twMerge("content w-80 block", contentClassNames)}
           ref={contentRef}
         >
           {title ? <h2 className="mb-3 font-sans">{title}</h2> : <></>}
           {children}
         </div>
       </div>
+      {!disableClose && (
+        <button
+          className={twMerge(defaultIconClasses, iconClassNames)}
+          onClick={() => handleClick()}
+        >
+          {location === "left" ? (
+            sidebarOpen ? (
+              <ArrowLeftStartOnRectangleIcon
+                className={`h-${iconSize} w-${iconSize}`}
+              />
+            ) : (
+              <ArrowRightStartOnRectangleIcon
+                className={`h-${iconSize} w-${iconSize}`}
+              />
+            )
+          ) : sidebarOpen ? (
+            <ArrowRightStartOnRectangleIcon
+              className={`h-${iconSize} w-${iconSize}`}
+            />
+          ) : (
+            <ArrowLeftStartOnRectangleIcon
+              className={`h-${iconSize} w-${iconSize}`}
+            />
+          )}
+        </button>
+      )}
     </div>
   );
 }

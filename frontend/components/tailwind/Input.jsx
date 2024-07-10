@@ -14,18 +14,18 @@ export default function Input({
   type = "text",
   status = null,
   disabled = false,
-  rootClassName = "",
+  rootClassNames = "",
   placeholder = "Enter text here",
   id = "",
   name = "text-input",
   onChange = (...args) => {},
   onPressEnter = (...args) => {},
   inputHtmlProps = {},
-  inputClassName = "",
+  inputClassNames = "",
   size = "default",
 }) {
   return (
-    <div className={twMerge("text-gray-600", rootClassName)}>
+    <div className={twMerge("text-gray-600", rootClassNames)}>
       {label && (
         <label
           htmlFor={name}
@@ -49,7 +49,7 @@ export default function Input({
               ? "bg-gray-100 text-gray-400  focus:ring-gray-100 cursor-not-allowed"
               : "bg-white",
             inputSizeClasses[size] || inputSizeClasses["default"],
-            inputClassName
+            inputClassNames
           )}
           placeholder={placeholder}
           aria-invalid="true"

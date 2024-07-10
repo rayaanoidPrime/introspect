@@ -1,3 +1,4 @@
+import { isNumber } from "$utils/utils";
 import {
   Combobox,
   ComboboxButton,
@@ -28,8 +29,15 @@ const popupOptionSizeClasses = {
   small: "py-1 pl-3 pr-9",
 };
 
+const createNewOption = (val) => {
+  return {
+    label: val,
+    value: isNumber(val) ? +val : val,
+  };
+};
+
 export default function SingleSelect({
-  rootClassName = "",
+  rootClassNames = "",
   popupClassName = "",
   onChange = null,
   defaultValue = undefined,
@@ -41,28 +49,54 @@ export default function SingleSelect({
   placeholder = "Select an option",
   size = "default",
   allowClear = true,
+  allowCreateNewOption = true,
 }) {
   const [query, setQuery] = useState("");
   const ref = useRef(null);
+  const [internalOptions, setInternalOptions] = useState(options);
 
   const filteredOptions =
     query === ""
-      ? options
-      : options.filter((option) => {
+      ? internalOptions
+      : internalOptions.filter((option) => {
           return (option.label + "")
             .toLowerCase()
             .includes(query.toLowerCase());
         });
 
+  // if there's no matching option
+  // or if there's no exact match
+  // create a new option
+  if (
+    allowCreateNewOption &&
+    query !== "" &&
+    (filteredOptions.length === 0 ||
+      !filteredOptions.find(
+        (option) => option.label === (isNumber(query) ? +query : query)
+      ))
+  ) {
+    filteredOptions.push({
+      label: query,
+      value: isNumber(query) ? +query : query,
+    });
+  }
+
   // find the option matching the default value
   const [selectedOption, setSelectedOption] = useState(
-    options.find((option) => option.value === defaultValue) || null
+    internalOptions.find((option) => option.value === defaultValue) || null
   );
 
   useEffect(() => {
-    const opt = options.find((option) => option.value === value) || null;
+    const opt =
+      internalOptions.find((option) => option.value === value) || null;
+
+    // if option doesn't exist, create a new one
+    if (!opt && allowCreateNewOption && value !== null) {
+      setInternalOptions([...internalOptions, createNewOption(value)]);
+    }
+
     setSelectedOption(opt);
-  }, [value, options]);
+  }, [value, allowCreateNewOption, internalOptions]);
 
   useEffect(() => {
     ref?.current?.blur?.();
@@ -72,7 +106,7 @@ export default function SingleSelect({
     <Combobox
       as="div"
       by="value"
-      className={rootClassName}
+      className={rootClassNames}
       value={selectedOption}
       defaultValue={defaultValue}
       disabled={disabled}

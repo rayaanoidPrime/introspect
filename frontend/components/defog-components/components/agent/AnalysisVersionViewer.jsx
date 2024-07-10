@@ -11,6 +11,8 @@ import { MessageManagerContext } from "$components/tailwind/Message";
 import Papa from "papaparse";
 import { sentenceCase } from "$utils/utils";
 import Table from "$components/tailwind/Table";
+import { twMerge } from "tailwind-merge";
+import Toggle from "$components/tailwind/Toggle";
 
 function AnalysisVersionViewer({
   dashboards,
@@ -39,6 +41,8 @@ function AnalysisVersionViewer({
   // for faster switching between them
   const [last10Analysis, setLast10Analysis] = useState([]); // this is the last 10 analysis
 
+  const [sqlOnly, setSqlOnly] = useState(false);
+
   // an object that stores all analysis in this "session"
   // structure:
   // {
@@ -61,6 +65,7 @@ function AnalysisVersionViewer({
   const [sessionAnalyses, setSessionAnalyses] = useState({});
   // just a duplicate of the above but in a flat object
   const [allAnalyses, setAllAnalyses] = useState({});
+  const analysisDomRefs = useRef({});
 
   const [loading, setLoading] = useState(false);
   const searchRef = useRef(null);
@@ -69,6 +74,8 @@ function AnalysisVersionViewer({
   const [tableData, setTableData] = useState([]);
   const [tableColumns, setTableColumns] = useState([]);
   const [didUploadFile, setDidUploadFile] = useState(false);
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const uploadFileToServer = async (parsedData) => {
     // upload the file to the server
@@ -133,7 +140,7 @@ function AnalysisVersionViewer({
           setActiveRootAnalysisId(newAnalysis.analysisId);
           newSessionAnalyses[newAnalysis.analysisId] = {
             root: newAnalysis,
-            versionList: [],
+            versionList: [newAnalysis],
           };
         } else {
           const rootAnalysis = sessionAnalyses[rootAnalysisId].root;
@@ -177,111 +184,194 @@ function AnalysisVersionViewer({
   // w-0
   return (
     <>
-      <div className="relative">
+      <div className="relative h-full">
         <div
-          className="max-w-full flex flex-col-reverse lg:flex-row bg-gray-50 min-h-96 rounded-md text-gray-600 border border-gray-300 w-full"
+          className="max-w-full h-full flex flex-col-reverse lg:flex-row bg-white text-gray-600 w-full"
           id="analysis-version-viewer"
         >
-          <div className="grow rounded-tr-lg pb-14 pt-5 pl-5 relative min-w-0">
-            {activeAnalysisId &&
-              !last10Analysis.some(
-                (analysis) => analysis.analysisId === activeAnalysisId
-              ) && (
-                // make sure we render the active analysis if clicked
-                <div
-                  key={activeAnalysisId}
-                  className={"relative z-2 overflow-auto"}
-                >
-                  <AnalysisAgent
-                    analysisId={activeAnalysisId}
-                    createAnalysisRequestBody={
-                      // just a little fucked.
-                      activeAnalysisId === activeRootAnalysisId
-                        ? sessionAnalyses[activeRootAnalysisId].root
-                            .createAnalysisRequestBody
-                        : sessionAnalyses[
-                            activeRootAnalysisId
-                          ].versionList.find(
-                            (item) => item.analysisId === activeAnalysisId
-                          ).createAnalysisRequestBody
-                    }
-                    token={token}
-                    keyName={keyName}
-                    initiateAutoSubmit={true}
-                    searchRef={searchRef}
-                    setGlobalLoading={setLoading}
-                    devMode={devMode}
-                    onManagerDestroyed={(mgr, id) => {
-                      console.log(mgr, id);
-                    }}
-                    didUploadFile={didUploadFile}
+          <div className="flex flex-col mr-0 z-10">
+            <div className="sticky top-2 z-[10] h-screen">
+              <Sidebar
+                location="left"
+                open={sidebarOpen}
+                onChange={(open) => {
+                  setSidebarOpen(open);
+                }}
+                title={<span className="font-bold">History</span>}
+                rootClassNames={
+                  "transition-all z-20 sticky top-0 h-[calc(100%-1rem)] rounded-md lg:rounded-none lg:rounded-tr-md lg:rounded-br-md bg-gray-100 border"
+                }
+                iconClassNames={`${sidebarOpen ? "" : "text-white bg-primary-highlight"}`}
+                openClassNames={"border-gray-300 shadow-md"}
+                closedClassNames={
+                  "border-transparent bg-transparent shadow-none"
+                }
+                contentClassNames={
+                  // need to add pl-4 here to make the links visible
+                  "w-72 px-2 pt-5 pb-14 rounded-tl-lg relative sm:block pl-4 min-h-96 h-full overflow-y-auto"
+                }
+              >
+                <div className="flex flex-col text-sm relative history-list">
+                  <AnalysisVersionViewerLinks
+                    analyses={allAnalyses}
+                    activeAnalysisId={activeAnalysisId}
                   />
-                </div>
-              )}
-            {last10Analysis.map((analysis) => {
-              return (
-                <div
-                  key={analysis.analysisId}
-                  className={
-                    activeAnalysisId === analysis.analysisId
-                      ? "relative z-2 w-full overflow-auto"
-                      : "absolute opacity-0"
-                  }
-                >
-                  <AnalysisAgent
-                    analysisId={analysis.analysisId}
-                    createAnalysisRequestBody={
-                      analysis.createAnalysisRequestBody
-                    }
-                    token={token}
-                    keyName={keyName}
-                    initiateAutoSubmit={true}
-                    searchRef={searchRef}
-                    setGlobalLoading={setLoading}
-                    devMode={devMode}
-                    didUploadFile={didUploadFile}
-                    onManagerDestroyed={(mgr, id) => {
-                      const data = mgr.analysisData;
-                      // remove the analysis from the sessionAnalyses
-                      setSessionAnalyses((prev) => {
-                        let newSessionAnalyses = { ...prev };
-                        if (newSessionAnalyses[id]) {
-                          delete newSessionAnalyses[id];
-                        } else {
-                          const rootAnalysisId = data.root_analysis_id;
-                          if (rootAnalysisId) {
-                            const rootAnalysis =
-                              newSessionAnalyses[rootAnalysisId];
-                            if (rootAnalysis) {
-                              rootAnalysis.versionList =
-                                rootAnalysis.versionList.filter(
-                                  (item) => item.analysisId !== id
-                                );
-                            }
-                          }
-                        }
+                  {Object.keys(sessionAnalyses).map((rootAnalysisId, i) => {
+                    const root = sessionAnalyses[rootAnalysisId].root;
+                    const analysisVersionList =
+                      sessionAnalyses[rootAnalysisId].versionList;
 
-                        return newSessionAnalyses;
-                      });
-                      setAllAnalyses((prev) => {
-                        let newAllAnalyses = { ...prev };
-                        if (newAllAnalyses[id]) {
-                          delete newAllAnalyses[id];
-                        }
-                        return newAllAnalyses;
-                      });
-                      setActiveAnalysisId(null);
-                      if (activeRootAnalysisId === id) {
-                        setActiveRootAnalysisId(null);
-                      }
-                    }}
-                  />
+                    return (
+                      <div key={root.analysisId} className="">
+                        {analysisVersionList.map((version, i) => {
+                          return (
+                            <AnalysisHistoryItem
+                              key={version.analysisId}
+                              analysis={version}
+                              isActive={activeAnalysisId === version.analysisId}
+                              setActiveRootAnalysisId={setActiveRootAnalysisId}
+                              setActiveAnalysisId={setActiveAnalysisId}
+                              setAddToDashboardSelection={
+                                setAddToDashboardSelection
+                              }
+                              onClick={() => {
+                                if (analysisDomRefs[version.analysisId].ctr) {
+                                  analysisDomRefs[
+                                    version.analysisId
+                                  ].ctr.scrollIntoView({
+                                    behavior: "smooth",
+                                    block: "start",
+                                    inline: "nearest",
+                                  });
+                                }
+                              }}
+                              extraClasses={
+                                version.isRoot ? "" : "ml-2 border-l-2"
+                              }
+                            />
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                  {!activeRootAnalysisId ? (
+                    <AnalysisHistoryItem
+                      isDummy={true}
+                      setActiveRootAnalysisId={setActiveRootAnalysisId}
+                      setActiveAnalysisId={setActiveAnalysisId}
+                      isActive={!activeRootAnalysisId}
+                    />
+                  ) : (
+                    <div className="w-full mt-5 sticky bottom-5">
+                      <div
+                        data-enabled={!loading}
+                        className={twMerge(
+                          "cursor-pointer z-20 relative",
+                          "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom ",
+                          "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
+                        )}
+                        onClick={() => {
+                          if (loading) return;
+                          // start a new root analysis
+                          setActiveRootAnalysisId(null);
+                          setActiveAnalysisId(null);
+                        }}
+                      >
+                        New <PlusOutlined />
+                      </div>
+                      <div className="absolute w-full h-10 bg-gray-100 z-0"></div>
+                    </div>
+                  )}
                 </div>
-              );
-            })}
+              </Sidebar>
+            </div>
+          </div>
+          <div
+            className="grid grid-cols-1 md:grid-cols-1 grow rounded-tr-lg pb-14 p-2 md:p-4 relative min-w-0 h-full overflow-scroll"
+            onClick={() => {
+              setSidebarOpen(false);
+            }}
+          >
+            {activeRootAnalysisId &&
+              sessionAnalyses[activeRootAnalysisId].versionList.map(
+                (analysis) => {
+                  return (
+                    <div key={analysis.analysisId}>
+                      <AnalysisAgent
+                        rootClassNames={
+                          "mb-4 ml-3 min-h-96 [&_.analysis-content]:min-h-96 shadow-md analysis-" +
+                          analysis.analysisId
+                        }
+                        analysisId={analysis.analysisId}
+                        createAnalysisRequestBody={
+                          analysis.createAnalysisRequestBody
+                        }
+                        token={token}
+                        keyName={keyName}
+                        initiateAutoSubmit={true}
+                        searchRef={searchRef}
+                        setGlobalLoading={setLoading}
+                        devMode={devMode}
+                        didUploadFile={didUploadFile}
+                        sqlOnly={sqlOnly}
+                        onManagerCreated={(mgr, id, ctr) => {
+                          analysisDomRefs[id] = {
+                            ctr,
+                            mgr,
+                            id,
+                          };
+                          // scroll to ctr
+                          setTimeout(() => {
+                            analysisDomRefs[id].ctr.scrollIntoView({
+                              behavior: "smooth",
+                              block: "start",
+                              inline: "nearest",
+                            });
+                          }, 100);
+                        }}
+                        onManagerDestroyed={(mgr, id) => {
+                          const data = mgr.analysisData;
+                          // remove the analysis from the sessionAnalyses
+                          setSessionAnalyses((prev) => {
+                            let newSessionAnalyses = { ...prev };
+                            if (newSessionAnalyses[id]) {
+                              delete newSessionAnalyses[id];
+                            } else {
+                              const rootAnalysisId = data.root_analysis_id;
+                              if (rootAnalysisId) {
+                                const rootAnalysis =
+                                  newSessionAnalyses[rootAnalysisId];
+                                if (rootAnalysis) {
+                                  rootAnalysis.versionList =
+                                    rootAnalysis.versionList.filter(
+                                      (item) => item.analysisId !== id
+                                    );
+                                }
+                              }
+                            }
+
+                            return newSessionAnalyses;
+                          });
+                          setAllAnalyses((prev) => {
+                            let newAllAnalyses = { ...prev };
+                            if (newAllAnalyses[id]) {
+                              delete newAllAnalyses[id];
+                            }
+                            return newAllAnalyses;
+                          });
+                          setActiveAnalysisId(null);
+                          if (activeRootAnalysisId === id) {
+                            setActiveRootAnalysisId(null);
+                          }
+                        }}
+                      />
+                    </div>
+                  );
+                }
+              )}
 
             {!activeAnalysisId && (
-              <div className="h-full flex flex-col place-content-center w-full m-auto relative z-[1]">
+              <div className="grow flex flex-col place-content-center w-full m-auto relative z-[1]">
                 {didUploadFile !== true ? (
                   <div className="text-center">
                     <p className="text-gray-400 cursor-default font-bold">
@@ -290,22 +380,22 @@ function AnalysisVersionViewer({
 
                     <ul className="text-gray-400">
                       {predefinedQuestions.map((question, i) => (
-                        <li
-                          className="cursor-pointer hover:underline"
-                          key={i}
-                          onClick={(ev) => {
-                            ev.preventDefault();
-                            ev.stopPropagation();
+                        <li className="" key={i}>
+                          <span
+                            className="cursor-pointer hover:underline"
+                            onClick={(ev) => {
+                              ev.preventDefault();
 
-                            handleSubmit(
-                              sentenceCase(question),
-                              activeRootAnalysisId,
-                              !activeRootAnalysisId,
-                              activeAnalysisId
-                            );
-                          }}
-                        >
-                          <span className="">{sentenceCase(question)}</span>
+                              handleSubmit(
+                                sentenceCase(question),
+                                activeRootAnalysisId,
+                                !activeRootAnalysisId,
+                                activeAnalysisId
+                              );
+                            }}
+                          >
+                            {sentenceCase(question)}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -363,35 +453,51 @@ function AnalysisVersionViewer({
               </div>
             )}
 
-            <div className="w-10/12 m-auto lg:w-3/4 sticky bottom-14 z-10 bg-white right-0 border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex">
-              <textarea
-                className="w-full rounded-none rounded-l-md border border-gray-300 py-1.5 text-gray-900 p-1 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none resize-none"
-                ref={searchRef}
-                rows={1}
-                onChange={(ev) => {
-                  ev.target.style.height = "auto";
-                  ev.target.style.height = ev.target.scrollHeight + "px";
-                }}
-                onKeyDown={(ev) => {
-                  if (ev.key === "Enter") {
-                    ev.preventDefault();
-                    ev.stopPropagation();
+            <div className="w-10/12 m-auto lg:w-2/4 fixed bottom-6 left-0 right-0 z-10 bg-white border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex flex-row">
+              <div className="grow border border-gray-300 rounded-l-md flex items-center">
+                <Toggle
+                  titleClassNames="font-bold text-gray-400"
+                  onToggle={(v) => setSqlOnly(v)}
+                  defaultOn={sqlOnly}
+                  offLabel="SQL/Agents"
+                  onLabel={"SQL only"}
+                  rootClassNames="items-center md:items-start border-r px-2 w-36"
+                />
 
-                    if (!searchRef.current.value) return;
+                <textarea
+                  className="border-none bg-transparent py-1.5 text-gray-900 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none resize-none"
+                  ref={searchRef}
+                  disabled={loading}
+                  rows={1}
+                  onChange={(ev) => {
+                    ev.target.style.height = "auto";
+                    ev.target.style.height = ev.target.scrollHeight + "px";
+                  }}
+                  onKeyDown={(ev) => {
+                    if (ev.key === "Enter") {
+                      ev.preventDefault();
+                      ev.stopPropagation();
 
-                    handleSubmit(
-                      searchRef.current.value,
-                      activeRootAnalysisId,
-                      !activeRootAnalysisId,
-                      activeAnalysisId
-                    );
+                      // if (!searchRef.current.value) return;
+
+                      handleSubmit(
+                        searchRef.current.value,
+                        activeRootAnalysisId,
+                        !activeRootAnalysisId,
+                        activeAnalysisId
+                      );
+                    }
+                  }}
+                  placeholder={
+                    activeRootAnalysisId
+                      ? "Type your next question here"
+                      : "Type your question here"
                   }
-                }}
-                placeholder="Type your question here"
-              />
+                />
+              </div>
               <button
                 type="button"
-                className="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-blue-500 hover:bg-blue-500 hover:text-white"
+                className="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 p-0 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-blue-500 hover:bg-blue-500 hover:text-white"
                 onClick={() => {
                   handleSubmit(
                     searchRef.current.value,
@@ -409,88 +515,6 @@ function AnalysisVersionViewer({
               </button>
             </div>
           </div>
-
-          {
-            <div className="flex flex-col mr-0 z-10">
-              <Sidebar
-                title="History"
-                rootClassNames="z-20 rounded-md lg:rounded-none lg:rounded-tr-md bg-gray-100"
-                contentClassNames={
-                  // need to add pl-4 here to make the links visible
-                  "px-2 pt-5 pb-14 rounded-tl-lg relative sm:block pl-4 min-h-96 h-full overflow-y-auto"
-                }
-              >
-                <div className="flex flex-col  relative history-list">
-                  <AnalysisVersionViewerLinks
-                    analyses={allAnalyses}
-                    activeAnalysisId={activeAnalysisId}
-                  />
-                  {Object.keys(sessionAnalyses).map((rootAnalysisId, i) => {
-                    const root = sessionAnalyses[rootAnalysisId].root;
-                    const analysisVersionList =
-                      sessionAnalyses[rootAnalysisId].versionList;
-
-                    return (
-                      <div key={root.analysisId}>
-                        <AnalysisHistoryItem
-                          analysis={root}
-                          isActive={activeAnalysisId === root.analysisId}
-                          setActiveRootAnalysisId={setActiveRootAnalysisId}
-                          setActiveAnalysisId={setActiveAnalysisId}
-                          setAddToDashboardSelection={
-                            setAddToDashboardSelection
-                          }
-                        />
-                        {analysisVersionList.map((version, i) => {
-                          return (
-                            <AnalysisHistoryItem
-                              key={version.analysisId}
-                              analysis={version}
-                              isActive={activeAnalysisId === version.analysisId}
-                              setActiveRootAnalysisId={setActiveRootAnalysisId}
-                              setActiveAnalysisId={setActiveAnalysisId}
-                              setAddToDashboardSelection={
-                                setAddToDashboardSelection
-                              }
-                              extraClasses="ml-2 border-l-2"
-                            />
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                  {!activeRootAnalysisId ? (
-                    <AnalysisHistoryItem
-                      isDummy={true}
-                      setActiveRootAnalysisId={setActiveRootAnalysisId}
-                      setActiveAnalysisId={setActiveAnalysisId}
-                      isActive={!activeRootAnalysisId}
-                    />
-                  ) : (
-                    <div className="w-full mt-5 sticky bottom-5">
-                      <div
-                        data-enabled={!loading}
-                        className={
-                          "cursor-pointer z-20 relative " +
-                          "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom " +
-                          "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
-                        }
-                        onClick={() => {
-                          if (loading) return;
-                          // start a new root analysis
-                          setActiveRootAnalysisId(null);
-                          setActiveAnalysisId(null);
-                        }}
-                      >
-                        New <PlusOutlined />
-                      </div>
-                      <div className="absolute w-full h-10 bg-gray-100 z-0"></div>
-                    </div>
-                  )}
-                </div>
-              </Sidebar>
-            </div>
-          }
         </div>
       </div>
       <Modal

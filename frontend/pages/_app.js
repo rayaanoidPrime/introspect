@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import { Context } from "$components/common/Context";
 import "../styles/base-styles.scss";
 import "../styles/agent-loader.scss";
-import "../styles/clarify.scss";
 import "../styles/writer.scss";
 import "../styles/doc-icon.scss";
 import "../styles/view-notebooks.scss";

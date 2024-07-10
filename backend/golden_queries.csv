@@ -1,1 +1,4 @@
-
+question,sql,user_validated,valid_db
+how many accounts does customer_id=123 have,SELECT COUNT(account_id) as num_accounts FROM accounts WHERE customer_id=123,False,
+How many customers do we have,SELECT COUNT(c.customer_id) FROM customers c;,False,
+How many valid transactions did mary have?,SELECT COUNT(ft.transaction_id) FROM financial_transactions ft JOIN accounts a ON ft.account_id = a.account_id JOIN customers c ON a.customer_id = c.customer_id WHERE c.customer_first_name ILIKE '%mary%';,True,

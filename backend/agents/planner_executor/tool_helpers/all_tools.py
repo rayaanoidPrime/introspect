@@ -368,8 +368,8 @@ tool_name_dict = tools = {
                 "description": "True if the user wants to facet the boxplot else False",
                 "type": "bool",
             },
-            "facet_col": {
-                "name": "facet_col",
+            "facet_column": {
+                "name": "facet_column",
                 "default": None,
                 "description": "column name to use for faceting or None",
                 "type": "DBColumn",

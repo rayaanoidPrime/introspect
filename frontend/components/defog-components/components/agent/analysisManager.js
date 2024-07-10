@@ -21,6 +21,7 @@ function AnalysisManager({
   rerunSocket,
   onNewData = () => {},
   onReRunData = () => {},
+  onManagerDestroyed = (...args) => {},
   token,
   keyName,
   devMode,
@@ -42,6 +43,7 @@ function AnalysisManager({
 
   function destroy() {
     destroyed = true;
+    onManagerDestroyed(this, analysisId);
   }
 
   function setAnalysisData(newVal) {
@@ -101,6 +103,14 @@ function AnalysisManager({
     }
 
     wasNewAnalysisCreated = newAnalysisCreated;
+    console.log(fetchedAnalysisData);
+    // if this has steps but steps are empty, delete gen_steps key
+    if (
+      fetchedAnalysisData?.gen_steps &&
+      fetchedAnalysisData.gen_steps.steps.length === 0
+    ) {
+      delete fetchedAnalysisData.gen_steps;
+    }
     // update the analysis data
     setAnalysisData(fetchedAnalysisData);
   }
@@ -125,13 +135,17 @@ function AnalysisManager({
 
   async function deleteSteps(toolRunIds) {
     const res = await deleteToolRunIds(analysisId, toolRunIds);
-    console.log(res);
+
     if (res.success && res.new_steps) {
       let newAnalysisData = { ...analysisData };
       // if new steps are empty, delete the gen_steps key
       // else update the steps
       if (res.new_steps.length === 0) {
         delete newAnalysisData.gen_steps;
+        // if clarification is also empty, destroy
+        if (!newAnalysisData?.clarify?.clarification_questions?.length) {
+          this.destroy();
+        }
       } else {
         newAnalysisData = {
           ...newAnalysisData,
@@ -141,7 +155,6 @@ function AnalysisManager({
           },
         };
       }
-      console.log(res, newAnalysisData);
       setAnalysisData(newAnalysisData);
     } else {
       throw new Error(

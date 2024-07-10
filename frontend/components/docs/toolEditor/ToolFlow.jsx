@@ -124,7 +124,7 @@ export function ToolFlow({
               rows={activeInput.data}
               columns={activeInput.columns}
               skipColumns={["index"]}
-              rootClassName="w-full h-96 border border-gray-200 px-1"
+              rootClassNames="w-full h-96 border border-gray-200 px-1"
             />
           )}
           {/* render base64 data of the image using input.data */}

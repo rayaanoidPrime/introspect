@@ -53,7 +53,6 @@ export function MessageManager() {
 
   function warning(message) {
     addMessage("warning", message);
-
     emitChange();
   }
 
@@ -87,12 +86,6 @@ export function MessageManager() {
     // for ssr purposes
     getServerSnapshot: function () {
       return list;
-    },
-    get gg() {
-      return {
-        list: list.slice(),
-        listeners: listeners.slice(),
-      };
     },
   };
 }

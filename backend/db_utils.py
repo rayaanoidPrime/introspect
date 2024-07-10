@@ -1496,10 +1496,22 @@ async def get_analysis_question_context(analysis_id, max_n=5):
             if err:
                 raise Exception(err)
 
-            question_context = analysis_data["user_question"] + " " + question_context
             if analysis_data["direct_parent_id"] and count <= max_n:
                 curr_analysis_id = analysis_data["direct_parent_id"]
                 count += 1
+
+                # skip if analysis was not fully completed
+                # aka has no steps
+                if (
+                    not analysis_data["gen_steps"]
+                    or len(analysis_data["gen_steps"]) == 0
+                ):
+                    continue
+
+                # else add this q to context
+                question_context = (
+                    analysis_data["user_question"] + " " + question_context
+                )
             else:
                 break
 

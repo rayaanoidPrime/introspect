@@ -61,7 +61,7 @@ const inputTypeToUI = {
     if (!initialValue) initialValue = "";
     return (
       <Input
-        rootClassName="tool-input-value"
+        rootClassNames="tool-input-value"
         value={initialValue}
         key={toolRunId + "_" + inputName}
         size="small"
@@ -75,9 +75,8 @@ const inputTypeToUI = {
     if (!initialValue) initialValue = false;
     return (
       <SingleSelect
-        showSearch
         allowClear
-        rootClassName="tool-input-value"
+        rootClassNames="tool-input-value"
         value={String(initialValue)}
         key={toolRunId + "_" + inputName}
         size="small"
@@ -97,7 +96,7 @@ const inputTypeToUI = {
 
     return (
       <Input
-        rootClassName="tool-input-value"
+        rootClassNames="tool-input-value"
         key={toolRunId + "_" + inputName}
         value={initialValue}
         type="number"
@@ -114,7 +113,7 @@ const inputTypeToUI = {
       <Input
         value={initialValue}
         key={toolRunId + "_" + inputName}
-        rootClassName="tool-input-value"
+        rootClassNames="tool-input-value"
         size="small"
         type="number"
         onChange={(ev) => {
@@ -193,7 +192,7 @@ const inputTypeToUI = {
     return (
       <SingleSelect
         showSearch
-        rootClassName="tool-input-value"
+        rootClassNames="tool-input-value"
         value={initialValue}
         key={toolRunId + "_" + inputName}
         size="small"
@@ -257,7 +256,7 @@ const inputTypeToUI = {
                 value={val}
                 showSearch
                 size="small"
-                rootClassName="tool-input-value"
+                rootClassNames="tool-input-value"
                 placeholder="Select a column name"
                 allowClear
                 popupClassName="tool-input-value-dropdown"
@@ -341,7 +340,7 @@ const inputTypeToUI = {
         value={initialValue}
         key={toolRunId + "_" + inputName}
         size="small"
-        rootClassName="tool-input-value"
+        rootClassNames="tool-input-value"
         popupClassName="tool-input-value-dropdown"
         options={options.map((opt) => {
           return { label: opt, value: opt };
@@ -436,8 +435,6 @@ export function ToolRunInputList({
   // in case any input is a pd dataframe, and one of the inputs is either DBColumn or list[DBColumn]
   // we need to find all available db columns in that pd dataframe
   // check the cache if we have tool run data available
-
-  console.log(inputs);
 
   return (
     <div className="tool-input-list" key={toolRunId} ref={ctr}>

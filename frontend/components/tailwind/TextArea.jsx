@@ -7,7 +7,7 @@ export default function TextArea({
   status = null,
   label = null,
   disabled = false,
-  rootClassName = "",
+  rootClassNames = "",
   placeholder = "Enter text here",
   id = "",
   name = "text-input",
@@ -15,7 +15,7 @@ export default function TextArea({
   textAreaHtmlProps = {},
 }) {
   return (
-    <div className={twMerge("text-gray-600", rootClassName)}>
+    <div className={twMerge("text-gray-600", rootClassNames)}>
       {label && (
         <label htmlFor={name} className="block text-xs mb-2 font-light">
           {label}

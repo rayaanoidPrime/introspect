@@ -1,21 +1,3 @@
-// async def line_plot(
-//     full_data: pd.DataFrame,
-//     x_column: DBColumn,
-//     y_column: DBColumn,
-//     color_column: DBColumn = None,
-//     facet_col: DBColumn = None,
-//     aggregationType: DropdownSingleSelect = ListWithDefault(
-//         ["mean", "median", "max", "min", "sum", "None"], default_value=None
-//     ),
-//     units: DBColumn = None,
-//     plot_average_line: DropdownSingleSelect = ListWithDefault(
-//         ["False", "True"], default_value=None
-//     ),
-//     average_type: DropdownSingleSelect = ListWithDefault(
-//         ["mean", "median", "max", "min", "mode"], default_value=None
-//     ),
-// ):
-
 import { useState, useEffect, useRef } from "react";
 import { aggregateData, createScaleBasedOnColumnType } from "./utils";
 import { line } from "d3";

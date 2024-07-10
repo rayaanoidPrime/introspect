@@ -7,6 +7,7 @@ import {
   parseChartDim,
 } from "./utils";
 import { interpolateRgbBasis } from "d3";
+import { ChartLayout } from "./chart-layout/ChartLayout";
 
 /**
  * Creates heatmaps
@@ -61,6 +62,7 @@ export default function Heatmap({
   const colorMax = max(processedData, (d) => d.value);
 
   // Define scales
+  // for a heatmap we always have categorical scales
   const yScale = createScaleBasedOnColumnType({
     columnType: "categorical",
     rows: processedData,
@@ -83,6 +85,91 @@ export default function Heatmap({
     colorScale = interpolateRgbBasis(colorScale);
   }
 
+  const xBandwidth = xScale.bandwidth();
+  const yBandwidth = yScale.bandwidth();
+
+  const xAxis = (
+    <div className="w-full h-12">
+      {xScale.domain().map((d, i) => (
+        <div
+          key={i}
+          className="tick absolute flex flex-col items-center justify-center w-0 text-center"
+          style={{
+            left: `${xScale(d) + xBandwidth / 2}%`,
+          }}
+        >
+          <div className="w-[1px] h-[5px] bg-gray-800"></div>
+          {d}
+        </div>
+      ))}
+    </div>
+  );
+
+  const yAxis = (
+    <div className="w-full h-full">
+      {yScale.domain().map((d, i) => (
+        <div
+          className="absolute text-center w-full flex items-center justify-center h-0"
+          key={i}
+          style={{
+            width: "100%",
+            left: 0,
+            top: `${yScale(d) + yBandwidth / 2}%`,
+          }}
+        >
+          <p className="whitespace-nowrap text-ellipsis overflow-hidden">{d}</p>
+        </div>
+      ))}
+    </div>
+  );
+
+  const chartBody = (
+    <div className="w-full h-full">
+      {yScale.domain().map((yCat, i) => {
+        return (
+          <>
+            {xScale.domain().map((xCat, j) => {
+              // get all the values that match this yCat and xCat
+              const matching = processedData.filter(
+                (d) => d.x === xCat && d.y === yCat
+              );
+              const w = xScale.bandwidth();
+              const h = yScale.bandwidth();
+
+              return (
+                <>
+                  {matching.map((d) => {
+                    const hasLabel =
+                      labelRects && labelFilter(w, h, matching[0]);
+                    return (
+                      <div
+                        key={`${i}-${j}`}
+                        className="absolute flex items-center justify-center border border-transparent hover:border-gray-200 cursor-pointer"
+                        style={{
+                          left: `${xScale(xCat)}%`,
+                          top: `${yScale(yCat)}%`,
+                          width: `${w}%`,
+                          height: `${h}%`,
+                          backgroundColor: colorScale(d.value / colorMax),
+                        }}
+                      >
+                        {hasLabel && (
+                          <div className="text-white mix-blend-difference">
+                            {d.value}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </>
+              );
+            })}
+          </>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div
       className="relative bg-white p-2"
@@ -92,92 +179,7 @@ export default function Heatmap({
         height: parseChartDim(height),
       }}
     >
-      <div className="flex flex-row w-full h-full ">
-        <div className="flex flex-col basis-0 w-28">
-          {/* the y axis */}
-          <div className="relative grow">
-            {yScale.domain().map((d, i) => (
-              <div
-                className="absolute text-center w-full flex items-center justify-center"
-                key={i}
-                style={{
-                  height: `${yScale.bandwidth()}%`,
-                  top: `${yScale(d)}%`,
-                }}
-              >
-                <p className="whitespace-nowrap text-ellipsis overflow-hidden">
-                  {d}
-                </p>
-              </div>
-            ))}
-          </div>
-          {/* this to offset the x axis (which is the next "row" of this flexbox) so that it aligns with the chart */}
-          <div className="w-40 relative h-10"></div>
-        </div>
-
-        {/* these are the boxes + the x axis */}
-        <div className="flex flex-col grow basis-0">
-          <div className="w-full h-full relative">
-            {yScale.domain().map((yCat, i) => {
-              return (
-                <>
-                  {xScale.domain().map((xCat, j) => {
-                    // get all the values that match this yCat and xCat
-                    const matching = processedData.filter(
-                      (d) => d.x === xCat && d.y === yCat
-                    );
-                    const w = xScale.bandwidth();
-                    const h = yScale.bandwidth();
-
-                    return (
-                      <>
-                        {matching.map((d) => {
-                          const hasLabel =
-                            labelRects && labelFilter(w, h, matching[0]);
-                          return (
-                            <div
-                              key={`${i}-${j}`}
-                              className="absolute flex items-center justify-center border border-transparent hover:border-gray-200 cursor-pointer"
-                              style={{
-                                left: `${xScale(xCat)}%`,
-                                top: `${yScale(yCat)}%`,
-                                width: `${w}%`,
-                                height: `${h}%`,
-                                backgroundColor: colorScale(d.value / colorMax),
-                              }}
-                            >
-                              {hasLabel && (
-                                <div className="text-white mix-blend-difference">
-                                  {d.value}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </>
-                    );
-                  })}
-                </>
-              );
-            })}
-          </div>
-          <div className="w-full relative h-12 pt-2">
-            {xScale.domain().map((d, i) => (
-              <div
-                className="tick absolute flex flex-col items-center justify-center"
-                key={i}
-                style={{
-                  width: `${xScale.bandwidth()}%`,
-                  left: `${xScale(d)}%`,
-                }}
-              >
-                <div className="w-[1px] h-[5px] bg-gray-800"></div>
-                {d}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <ChartLayout chartBody={chartBody} yAxis={yAxis} xAxis={xAxis} />
     </div>
   );
 }

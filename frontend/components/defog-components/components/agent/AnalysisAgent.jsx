@@ -17,7 +17,7 @@ import { ToolResults } from "./ToolResults";
 import StepsDag from "../common/StepsDag";
 import ErrorBoundary from "../common/ErrorBoundary";
 import { Context } from "$components/common/Context";
-import { toolShortNames, trimStringToLength } from "$utils/utils";
+import { sentenceCase, toolShortNames, trimStringToLength } from "$utils/utils";
 import { ReactiveVariablesContext } from "../../../docs/ReactiveVariablesContext";
 import Input from "antd/es/input";
 import Clarify from "./analysis-gen/Clarify";
@@ -25,6 +25,7 @@ import AnalysisManager from "./analysisManager";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { AnalysisFeedback } from "./feedback/AnalysisFeedback";
 import { MessageManagerContext } from "$components/tailwind/Message";
+import { twMerge } from "tailwind-merge";
 
 const getToolsEndpoint = setupBaseUrl("http", "get_user_tools");
 
@@ -36,16 +37,17 @@ export const AnalysisAgent = ({
   didUploadFile,
   editor,
   block,
+  rootClassNames = "",
   createAnalysisRequestBody = {},
   initiateAutoSubmit = false,
   searchRef = null,
   setGlobalLoading = (...args) => {},
   onManagerCreated = (...args) => {},
   onManagerDestroyed = (...args) => {},
+  sqlOnly,
 }) => {
-  // const [messageApi, contextHolder] = message.useMessage();
-  console.log("Key name", keyName);
-  console.log("Did upload file", didUploadFile);
+  // console.log("Key name", keyName);
+  // console.log("Did upload file", didUploadFile);
   const [pendingToolRunUpdates, setPendingToolRunUpdates] = useState({});
   const [reRunningSteps, setRerunningSteps] = useState([]);
   const reactiveContext = useContext(ReactiveVariablesContext);
@@ -54,11 +56,14 @@ export const AnalysisAgent = ({
   const [activeNode, setActiveNodePrivate] = useState(null);
   const [dag, setDag] = useState(null);
   const [dagLinks, setDagLinks] = useState([]);
+
   // in case this isn't called from analysis version viewer (which has a central singular search bar)
   // we will have an independent search bar for each analysis as well
   const independentAnalysisSearchRef = useRef();
   const [toolRunDataCache, setToolRunDataCache] = useState({});
   const [tools, setTools] = useState({});
+
+  const ctr = useRef(null);
 
   const docContext = useContext(DocContext);
 
@@ -162,6 +167,7 @@ export const AnalysisAgent = ({
       analysisId,
       onNewData: onMainSocketMessage,
       onReRunData: onReRunMessage,
+      onManagerDestroyed: onManagerDestroyed,
       token,
       didUploadFile,
       keyName,
@@ -258,7 +264,7 @@ export const AnalysisAgent = ({
 
   useEffect(() => {
     if (analysisManager) {
-      onManagerCreated(analysisManager, analysisId);
+      onManagerCreated(analysisManager, analysisId, ctr.current);
       if (mainManager && reRunManager) {
         analysisManager.setMainSocket(mainManager);
         analysisManager.setReRunSocket(reRunManager);
@@ -276,7 +282,12 @@ export const AnalysisAgent = ({
     (query, stageInput = {}, submitStage = null) => {
       try {
         if (!query) throw new Error("Query is empty");
-        analysisManager.submit(query, stageInput, submitStage);
+        console.log("sql_only", sqlOnly);
+        analysisManager.submit(
+          query,
+          { ...stageInput, sql_only: sqlOnly },
+          submitStage
+        );
         setAnalysisBusy(true);
         setGlobalLoading(true);
       } catch (e) {
@@ -284,15 +295,16 @@ export const AnalysisAgent = ({
         console.log(e.stack);
         setAnalysisBusy(false);
         setGlobalLoading(false);
+
         // if the current stage is null, just destroy this analysis
         if (submitStage === null) {
           analysisManager.destroy();
-          onManagerDestroyed(analysisManager, analysisId);
         }
       }
     },
-    [analysisManager, setGlobalLoading]
+    [analysisManager, setGlobalLoading, messageManager, sqlOnly]
   );
+
   const handleReRun = useCallback(
     (toolRunId, preRunActions = {}) => {
       if (
@@ -317,11 +329,34 @@ export const AnalysisAgent = ({
     [analysisId, activeNode, reRunManager, dag, analysisManager]
   );
 
-  console.log(analysisData);
+  const titleDiv = (
+    <div className="flex flex-row p-6">
+      <h1 className="font-bold grow text-xl mb-2 text-gray-700">
+        {sentenceCase(analysisData?.user_question || "")}
+      </h1>
+      {!analysisBusy && analysisData && (
+        <div className="mb-4">
+          <AnalysisFeedback
+            analysisSteps={analysisData?.gen_steps?.steps || []}
+            analysisId={analysisId}
+            user_question={analysisData?.user_question}
+            token={token}
+            keyName={keyName}
+          />
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <ErrorBoundary>
-      <div className="analysis-agent-container min-h-96 mr-4 p-4 border rounded-md">
+      <div
+        ref={ctr}
+        className={twMerge(
+          "analysis-agent-container border rounded-3xl border-gray-300 bg-white max-w-full",
+          rootClassNames
+        )}
+      >
         <ThemeContext.Provider
           value={{ theme: { type: "light", config: lightThemeColor } }}
           key="1"
@@ -334,7 +369,7 @@ export const AnalysisAgent = ({
               />
             </div>
           ) : (
-            <div className="analysis-ctr">
+            <>
               {!searchRef && !analysisData.currentStage ? (
                 <div className="">
                   <Input
@@ -345,14 +380,15 @@ export const AnalysisAgent = ({
                     }}
                     placeholder="Ask a question"
                     disabled={analysisBusy}
-                    rootClassName="bg-white mx-auto left-0 right-0 border-2 border-gray-400  p-2 rounded-lg w-full lg:w-6/12 mx-auto h-16 shadow-custom hover:border-blue-500 focus:border-blue-500"
+                    rootClassName="bg-white mx-auto left-0 right-0 border-2 border-gray-400 p-2 rounded-lg w-full lg:w-6/12 mx-auto h-16 shadow-custom hover:border-blue-500 focus:border-blue-500"
                   />
                 </div>
               ) : (
                 <></>
               )}
               {analysisData.currentStage === "clarify" ? (
-                <div className="analysis-recipe w-full">
+                <div className="transition-all w-full bg-gray-50 rounded-t-3xl">
+                  {titleDiv}
                   <Clarify
                     data={analysisData.clarify}
                     handleSubmit={(stageInput, submitStage) => {
@@ -376,25 +412,13 @@ export const AnalysisAgent = ({
               )}
 
               {analysisData.currentStage === "gen_steps" ? (
-                <div className="analysis-content flex flex-row max-w-full">
-                  <div className="analysis-results flex flex-col grow basis-0 overflow-scroll relative">
+                <div className="analysis-content flex flex-col-reverse md:flex-row h-full">
+                  <div className="analysis-results w-full flex flex-col grow basis-0 relative border-r">
+                    {titleDiv}
                     <ErrorBoundary>
                       {analysisData?.gen_steps?.steps.length ? (
                         <>
-                          {!analysisBusy && analysisData && (
-                            <div className="basis-0">
-                              <AnalysisFeedback
-                                analysisSteps={
-                                  analysisData?.gen_steps?.steps || []
-                                }
-                                analysisId={analysisId}
-                                user_question={analysisData?.user_question}
-                                token={token}
-                                keyName={keyName}
-                              />
-                            </div>
-                          )}
-                          <div className="basis-0 grow flex place-content-start">
+                          <div className=" grow px-6 rounded-bl-3xl w-full bg-gray-50">
                             <ToolResults
                               analysisId={analysisId}
                               activeNode={activeNode}
@@ -441,7 +465,7 @@ export const AnalysisAgent = ({
                       )}
                     </ErrorBoundary>
                   </div>
-                  <div className="analysis-steps basis-0">
+                  <div className="analysis-steps overflow-scroll rounded-t-3xl md:rounded-r-3xl md:rounded-tl-none bg-gray-50">
                     <StepsDag
                       steps={analysisData?.gen_steps?.steps || []}
                       nodeSize={[40, 10]}
@@ -479,7 +503,7 @@ export const AnalysisAgent = ({
               ) : (
                 <></>
               )}
-            </div>
+            </>
           )}
         </ThemeContext.Provider>
       </div>

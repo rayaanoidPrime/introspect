@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 import SingleSelect from "./SingleSelect";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import { RangeSlider } from "./RangeSlider";
 
 const allowedPageSizes = [5, 10, 20, 50, 100];
 
@@ -19,7 +20,7 @@ const defaultColumnHeaderRender = ({
       scope="col"
       className={twMerge(
         i === 0 ? "pl-4" : "px-3",
-        "py-3.5 text-left text-sm font-semibold text-gray-900",
+        "text-left text-sm font-semibold text-gray-900",
         i === allColumns.length - 1 ? "pr-4 sm:pr-6 lg:pr-8" : ""
       )}
     >
@@ -74,7 +75,7 @@ const defaultRowCellRender = ({
     key={row.key + "-" + dataIndex}
     className={twMerge(
       i === 0 ? "pl-4" : "px-3",
-      "py-4 text-sm text-gray-500",
+      "py-2 text-sm text-gray-500",
       i === dataIndexes.length - 1 ? "pr-4 sm:pr-6 lg:pr-8" : ""
     )}
   >
@@ -89,7 +90,7 @@ const defaultSorter = (a, b) => {
 export default function Table({
   columns,
   rows,
-  rootClassName = "",
+  rootClassNames = "",
   pagination = { defaultPageSize: 10, showSizeChanger: true },
   skipColumns = [],
   rowCellRender = (...args) => null,
@@ -145,60 +146,70 @@ export default function Table({
   }, [sortColumn, rows, sortOrder]);
 
   return (
-    <div className={twMerge("overflow-auto", rootClassName)}>
-      <div className="overflow-auto max-w-6xl">
-        <div className="py-2">
-          <table className="divide-y w-full divide-gray-300">
-            <thead className="bg-gray-50">
-              <tr>
-                {columnsToDisplay.map((column, i) => {
-                  return column.cellRender({
-                    column,
-                    i,
-                    allColumns: columnsToDisplay,
-                    toggleSort,
-                    sortOrder,
-                    sortColumn,
-                  });
-                })}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {sortedRows
-                .slice((currentPage - 1) * pageSize, currentPage * pageSize)
-                .map((row) => (
-                  <tr key={row.key}>
-                    {dataIndexes.map(
-                      (dataIndex, i) =>
-                        rowCellRender({
-                          cellValue: row[dataIndex],
-                          i,
-                          row,
-                          dataIndex,
-                          column: dataIndexToColumnMap[dataIndex],
-                          dataIndexes,
-                          allColumns: columnsToDisplay,
-                          dataIndexToColumnMap,
-                        }) ||
-                        defaultRowCellRender({
-                          cellValue: row[dataIndex],
-                          i,
-                          row,
-                          dataIndex,
-                          column: dataIndexToColumnMap[dataIndex],
-                          dataIndexes,
-                          allColumns: columnsToDisplay,
-                          dataIndexToColumnMap,
-                        })
-                    )}
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
+    <div className={twMerge("overflow-auto", rootClassNames)}>
+      <div className="overflow-auto max-w-6xl py-2 flex flex-row">
+        {/* <RangeSlider
+          rootClassNames="h-48"
+          step={1}
+          range={[1, sortedRows.length]}
+          vertical
+          onChange={([min, max]) => {
+            console.log(min, max);
+            setCurrentPage(min);
+            setPageSize(max - min);
+          }}
+        /> */}
+        <table className="divide-y w-full divide-gray-300">
+          <thead className="bg-gray-50">
+            <tr>
+              {columnsToDisplay.map((column, i) => {
+                return column.cellRender({
+                  column,
+                  i,
+                  allColumns: columnsToDisplay,
+                  toggleSort,
+                  sortOrder,
+                  sortColumn,
+                });
+              })}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200 bg-white">
+            {sortedRows
+              .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+              .map((row) => (
+                <tr key={row.key}>
+                  {dataIndexes.map(
+                    (dataIndex, i) =>
+                      rowCellRender({
+                        cellValue: row[dataIndex],
+                        i,
+                        row,
+                        dataIndex,
+                        column: dataIndexToColumnMap[dataIndex],
+                        dataIndexes,
+                        allColumns: columnsToDisplay,
+                        dataIndexToColumnMap,
+                      }) ||
+                      defaultRowCellRender({
+                        cellValue: row[dataIndex],
+                        i,
+                        row,
+                        dataIndex,
+                        column: dataIndexToColumnMap[dataIndex],
+                        dataIndexes,
+                        allColumns: columnsToDisplay,
+                        dataIndexToColumnMap,
+                      })
+                  )}
+                </tr>
+              ))}
+          </tbody>
+        </table>
       </div>
-      {rows.length > allowedPageSizes[0] && (
-        <div className="pl-4 pager mt-3 text-center bg-white">
+
+      {
+        <div className="pl-4 pager text-center bg-white">
           <div className="w-full flex flex-row justify-end items-center">
             <div className="flex flex-row w-50 items-center">
               <div className="text-gray-600">
@@ -233,15 +244,15 @@ export default function Table({
             </div>
             <div className="w-full flex">
               <SingleSelect
-                rootClassName="w-24"
+                rootClassNames="w-24"
                 options={allowedPageSizes.map((d) => ({ value: d, label: d }))}
-                defaultValue={pageSize}
+                value={pageSize}
                 onChange={(val) => setPageSize(val || 10)}
               />
             </div>
           </div>
         </div>
-      )}
+      }
     </div>
   );
 }

@@ -1,9 +1,13 @@
-import { Button, Divider, Input, Select, Slider, Space } from "antd";
+import { Divider, Select, Slider, Space } from "antd";
 import React, { useState, useRef } from "react";
 import Lottie from "lottie-react";
 import LoadingLottie from "../../svg/loader.json";
 import AgentLoader from "../../common/AgentLoader";
 import Writer from "../Writer";
+import Search from "antd/es/input/Search";
+import Input from "$components/tailwind/Input";
+import Button from "$components/tailwind/Button";
+import { PlayIcon } from "@heroicons/react/20/solid";
 
 export default function Clarify({
   data,
@@ -12,7 +16,6 @@ export default function Clarify({
   stageDone = true,
   isCurrentStage = false,
 }) {
-  const { Search } = Input;
   const [submitted, setSubmitted] = useState(false);
   const answers = useRef(data?.clarification_questions);
 
@@ -153,7 +156,8 @@ export default function Clarify({
         <Input
           onChange={(ev) => updateAnswer(ev.target.value, i)}
           defaultValue={q.response}
-          placeholder="Enter your response here"
+          placeholder="Your response"
+          inputClassNames="ring-0 bg-transparent rounded-none border-b border-dotted border-gray-300 focus:border-blue-500 focus:ring-0 focus:border-b-primary-highlight focus:border-solid shadow-none pl-0"
         ></Input>
       );
     },
@@ -180,54 +184,67 @@ export default function Clarify({
   };
 
   return (
-    <div className="clarify-container p-4 ">
-      {success &&
-        (clarification_questions.length ? (
-          <>
-            <ul>
-              {clarification_questions.map((q, i) => (
-                <li key={q.question}>
-                  <Writer s={q.question} animate={!stageDone}>
-                    <p className="q-desc writer-target"></p>
-                    <div className="writer-children">
-                      {UIs[q.ui_tool](q, i, q.ui_tool_options)}
-                    </div>
-                  </Writer>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : (
-          !isCurrentStage && (
+    <div className="p-6">
+      <div
+        className="mb-4 text-sm text-gray-500"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            onSubmit(true);
+          }
+        }}
+      >
+        {success &&
+          (clarification_questions.length ? (
             <>
-              Your question is clear and we do not need additional refinements.
-              Please click on the Run Analysis button to start running an
-              analysis that answers this question.
+              {/* <p className="font-bold text-left mb-2">
+                Please answer these questions to proceed
+              </p> */}
+              {clarification_questions.map((q, i) => (
+                <>
+                  <div
+                    key={q.question}
+                    className="w-full flex place-content-start"
+                  >
+                    <Writer s={q.question} animate={!stageDone}>
+                      <div className="w-full mb-4">
+                        <p className="q-desc writer-target m-0 mb-2 text-primary-text"></p>
+                        <div className="writer-children">
+                          {UIs[q.ui_tool](q, i, q.ui_tool_options)}
+                        </div>
+                      </div>
+                    </Writer>
+                  </div>
+                </>
+              ))}
             </>
-          )
-        ))}
-      {stageDone ? (
-        <></>
-      ) : (
-        <AgentLoader
-          message={"Thinking about whether I need to clarify the question..."}
-          lottie={<Lottie animationData={LoadingLottie} loop={true} />}
-        />
-      )}
+          ) : (
+            !isCurrentStage && (
+              <>
+                Your question is clear and we do not need additional
+                refinements. Please click on the Run Analysis button to start
+                running an analysis that answers this question.
+              </>
+            )
+          ))}
+        {stageDone ? (
+          <></>
+        ) : (
+          <AgentLoader
+            message={"Thinking about whether I need to clarify the question..."}
+            lottie={<Lottie animationData={LoadingLottie} loop={true} />}
+          />
+        )}
+      </div>
       {!stageDone ? (
         <></>
       ) : (
-        <div className="agent-stage-submit-btn">
-          <Button
-            id="post-clarify-submit-btn"
-            onClick={() => onSubmit(true)}
-            disabled={globalLoading}
-            type="primary"
-            size="medium"
-          >
-            Run Analysis
-          </Button>
-        </div>
+        <button
+          className="underline text-gray-400 text-sm mt-4"
+          onClick={() => onSubmit(true)}
+          disabled={globalLoading}
+        >
+          Press Enter or click here to submit
+        </button>
       )}
     </div>
   );

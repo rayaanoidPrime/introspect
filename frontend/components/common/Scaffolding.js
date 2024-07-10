@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useContext } from "react";
 import { Context } from "./Context";
-import { Layout, Menu } from "antd/lib";
+import { Layout } from "antd/lib";
 import { useRouter } from "next/router";
-import { HiWrenchScrewdriver } from "react-icons/hi2";
 import Link from "next/link";
+import { NavBar } from "$components/tailwind/NavBar";
 
 const Scaffolding = ({ id, userType, children }) => {
   const { Content, Sider } = Layout;
@@ -37,40 +37,27 @@ const Scaffolding = ({ id, userType, children }) => {
           key: "manage-database",
           title: "Manage Database",
           icon: (
-            <a onClick={() => redirect("/extract-metadata")}>
-              <p className="mr-2">💾</p>Manage DB
-            </a>
+            <a onClick={() => redirect("/extract-metadata")}>💾 Manage DB</a>
           ),
         },
         {
           key: "manage-users",
           title: "Manage Users",
           icon: (
-            <a onClick={() => redirect("/manage-users")}>
-              <p className="mr-2">🔐</p>Manage Users
-            </a>
+            <a onClick={() => redirect("/manage-users")}>🔐 Manage Users</a>
           ),
         },
         {
           key: "view-notebooks",
           title: "View your notebook",
           icon: (
-            <a onClick={() => redirect("/view-notebooks")}>
-              <p className="mr-2">📒</p>Your Notebooks
-            </a>
+            <a onClick={() => redirect("/view-notebooks")}>📒 Your Notebooks</a>
           ),
         },
         {
           key: "manage-tools",
           title: "Manage tools",
-          icon: (
-            <a onClick={() => redirect("/manage-tools")}>
-              <p className="mr-2">
-                <HiWrenchScrewdriver />
-              </p>
-              Manage tools
-            </a>
-          ),
+          icon: <a onClick={() => redirect("/manage-tools")}>Manage tools</a>,
         },
         {
           key: "check-readiness",
@@ -90,11 +77,7 @@ const Scaffolding = ({ id, userType, children }) => {
         {
           key: "logout",
           title: "Logout",
-          icon: (
-            <a onClick={logout}>
-              <p className="mr-2">↪</p> Logout
-            </a>
-          ),
+          icon: <a onClick={logout}>↪ Logout</a>,
         },
       ];
     } else if (!userType) {
@@ -123,37 +106,40 @@ const Scaffolding = ({ id, userType, children }) => {
     setItems(items);
   }, [userType]);
 
+  const logoutItem = items.find((item) => item.key === "logout");
+  const navItemClasses =
+    "text-sm text-gray-500 py-2 m-2 rounded-md flex items-center cursor-pointer hover:bg-gray-300 hover:text-gray-600 px-2";
+
   return (
-    <Layout style={{ height: "100vh" }}>
-      <Content>
-        {items.length ? (
-          <Sider
-            style={{
-              height: "100vh",
-              position: "fixed",
-            }}
-          >
-            <Menu
-              style={{ width: 200, paddingTop: "2em", paddingBottom: "2em" }}
-              mode="inline"
-              selectedKeys={[id]}
-              items={items}
-            />
-          </Sider>
-        ) : (
-          <></>
-        )}
-        <div
-          style={{
-            paddingLeft: 240,
-            paddingTop: 30,
-            backgroundColor: "#f5f5f5",
-          }}
-        >
-          {children}
-        </div>
-      </Content>
-    </Layout>
+    <div className="flex flex-col md:min-h-screen relative">
+      {items.length ? (
+        <NavBar rootClassNames="bg-gray-100">
+          <div className="flex flex-row px-4 border-b">
+            <div className="grow self-start flex flex-row">
+              {items
+                .filter((d) => d.key !== "logout")
+                .map((item) => {
+                  return (
+                    <div key={item.key} className={navItemClasses}>
+                      {item.icon}
+                    </div>
+                  );
+                })}
+            </div>
+            {logoutItem && (
+              <div className="self-end">
+                <div key="logout" className={navItemClasses}>
+                  {logoutItem.icon}
+                </div>
+              </div>
+            )}
+          </div>
+        </NavBar>
+      ) : (
+        <></>
+      )}
+      <div className="grow">{children}</div>
+    </div>
   );
 };
 

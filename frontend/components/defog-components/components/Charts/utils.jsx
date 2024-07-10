@@ -1,17 +1,3 @@
-// script that has functions that will convert data coming from the backend to
-// a format that visx charts can consume
-
-// backend charts are python functions that take in the following parameters
-// async def boxplot(
-// full_data: pd.DataFrame,
-// boxplot_cols: db_column_list_type_creator(1, 2),
-// facet: bool = False,
-// facet_col: DBColumn = None,
-// color:
-// opacity
-
-//
-
 import {
   interpolateBlues,
   interpolateBrBG,
@@ -62,9 +48,19 @@ import {
 } from "d3-scale-chromatic";
 
 import { scaleBand, scaleLinear } from "d3-scale";
-import { extent } from "d3-array";
-import { group, mean, median, max, min, sum } from "d3-array";
-import { flatGroup } from "d3";
+import {
+  extent,
+  mean,
+  median,
+  max,
+  min,
+  sum,
+  flatGroup,
+  mode,
+  quantile,
+} from "d3-array";
+import { useLayoutEffect, useState } from "react";
+import { useEffect } from "react";
 
 // Helper function to get the appropriate D3 aggregation function
 function getAggregateFunction(type) {
@@ -80,7 +76,7 @@ function getAggregateFunction(type) {
     case "sum":
       return sum;
     default:
-      return null;
+      return type;
   }
 }
 
@@ -93,6 +89,7 @@ function getAggregateFunction(type) {
 export function createScaleBasedOnColumnType({
   columnType,
   rows,
+  domain = null,
   valAccessor = (d) => d,
   range,
   padding = 0.2,
@@ -100,7 +97,10 @@ export function createScaleBasedOnColumnType({
   // if quantitative, return scaleLinear
   // if categorical, return scaleBand
   if (columnType === "quantitative") {
-    const domain = extent(rows, valAccessor);
+    if (!domain) {
+      domain = extent(rows, valAccessor);
+    }
+
     return scaleLinear().domain(domain).range(range);
   } else if (columnType === "categorical") {
     return scaleBand()
@@ -114,16 +114,33 @@ export function createScaleBasedOnColumnType({
 }
 
 export function aggregateData({
+  // rows of data: array of objects
   data,
   // keys is an object that contains the keys to group by
   // example: {x: "xCol", y: "yCol", facet: "facetCol", group: "groupCol"}...
+  // the keys can be any names
+  // example: {apple: "xCol", banana: "yCol", orange: "facetCol", pineapple: "groupCol"}...
+  // the values are the column names to group by
+  // the return value will look like:
+  // [{apple: "xVal", banana: "yVal", orange: "facetVal", pineapple: "groupVal", value: aggregatedValue, dataEntries: [originalValues]}]
   groupByKeys = {},
+  // this is the final value you want in each group
+  // this is what will be agregated
   valueAccessor = (d) => d,
+  // can be ["mean", "median", "max", "min", "sum"]
+  // or a custom function
   aggregationType = null,
+  // whether you want to return stats about the values in each group or not
+  // will return mean, median, mode, max, min, sum, count, 3 quantiles, interquartile range
+  returnStats = false,
 }) {
   const keyNames = Object.keys(groupByKeys);
 
-  const keyAccessors = keyNames.filter((d) => d).map((k) => (d) => d[k]);
+  const keyAccessors = keyNames
+    .filter((d) => d)
+    .map((k) => (d) => {
+      return d[groupByKeys[k]];
+    });
 
   // Group data by x and y keys and facet key
   const groupedData = flatGroup(data, ...keyAccessors);
@@ -133,6 +150,7 @@ export function aggregateData({
 
   const aggregatedData = groupedData.map((group) => {
     // flatGroup has the format: [key1, key2, key3,..., keyN, values]
+    // the values are the last element. get them.
     const values = group.slice(-1)[0];
 
     // create an object with keyName: keyValue pairs
@@ -151,10 +169,26 @@ export function aggregateData({
       aggregated = values.map(valueAccessor);
     }
 
+    const stats = {};
+    if (returnStats) {
+      stats.mean = mean(values.map(valueAccessor));
+      stats.median = median(values.map(valueAccessor));
+      stats.mode = mode(values.map(valueAccessor));
+      stats.max = max(values.map(valueAccessor));
+      stats.min = min(values.map(valueAccessor));
+      stats.sum = sum(values.map(valueAccessor));
+      stats.count = values.length;
+      stats.q1 = quantile(values.map(valueAccessor), 0.25);
+      stats.q2 = quantile(values.map(valueAccessor), 0.5);
+      stats.q3 = quantile(values.map(valueAccessor), 0.75);
+      stats.iqr = stats.q3 - stats.q1;
+    }
+
     return {
       ...keyValues,
       value: aggregated,
-      values,
+      dataEntries: values,
+      stats,
     };
   });
 
@@ -191,6 +225,48 @@ export const parseChartDim = (dim) => {
   }
   return dim;
 };
+
+export function useWindowSize() {
+  const [size, setSize] = useState([0, 0]);
+  useEffect(() => {
+    function updateSize() {
+      setSize([window.innerWidth, window.innerHeight]);
+    }
+    window.addEventListener("resize", updateSize);
+    updateSize();
+    return () => window.removeEventListener("resize", updateSize);
+  }, []);
+  return size;
+}
+
+const breakpoints = {
+  xs: 0,
+  sm: 640,
+  md: 768,
+  lg: 1024,
+  xl: 1280,
+};
+
+export function useBreakPoint() {
+  const [breakpoint, setBreakpoint] = useState("lg");
+  const [width] = useWindowSize();
+
+  useEffect(() => {
+    if (width < breakpoints.sm) {
+      setBreakpoint("xs");
+    } else if (width < breakpoints.md) {
+      setBreakpoint("sm");
+    } else if (width < breakpoints.lg) {
+      setBreakpoint("md");
+    } else if (width < breakpoints.xl) {
+      setBreakpoint("lg");
+    } else {
+      setBreakpoint("xl");
+    }
+  }, [width]);
+
+  return breakpoint;
+}
 
 export const mplColorsToD3 = {
   magma: interpolateMagma,
