@@ -226,6 +226,7 @@ export default function StepsDag({
       {dag ? (
         <div className="graph" style={{ height: dag.height + 100 + "px" }}>
           <svg
+            className="mx-auto"
             width={dag?.width + nodeCssSize * 3}
             height={"100%"}
             xmlns="http://www.w3.org/1999/xhtml"

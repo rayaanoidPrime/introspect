@@ -55,6 +55,7 @@ export const AnalysisAgent = ({
   const [activeNode, setActiveNodePrivate] = useState(null);
   const [dag, setDag] = useState(null);
   const [dagLinks, setDagLinks] = useState([]);
+  const [sqlOnly, setSqlOnly] = useState(false);
 
   // in case this isn't called from analysis version viewer (which has a central singular search bar)
   // we will have an independent search bar for each analysis as well
@@ -405,7 +406,7 @@ export const AnalysisAgent = ({
               )}
 
               {analysisData.currentStage === "gen_steps" ? (
-                <div className="analysis-content flex flex-row h-full">
+                <div className="analysis-content flex flex-col md:flex-row h-full">
                   <div className="analysis-results w-full flex flex-col grow basis-0 relative border-r">
                     {titleDiv}
                     <ErrorBoundary>
@@ -458,7 +459,7 @@ export const AnalysisAgent = ({
                       )}
                     </ErrorBoundary>
                   </div>
-                  <div className="analysis-steps overflow-scroll rounded-r-3xl bg-gray-50">
+                  <div className="analysis-steps overflow-scroll rounded-t-3xl md:rounded-r-3xl md:rounded-tl-none bg-gray-50">
                     <StepsDag
                       steps={analysisData?.gen_steps?.steps || []}
                       nodeSize={[40, 10]}

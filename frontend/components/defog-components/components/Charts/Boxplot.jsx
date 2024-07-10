@@ -174,7 +174,7 @@ export default function Boxplot({
             top: `${yScale(tick)}%`,
           }}
         >
-          {tick}
+          {tick || "label"}
           <div className="w-[5px] h-[1px] bg-gray-800 ml-2"></div>
         </div>
       ))}
@@ -192,7 +192,7 @@ export default function Boxplot({
           }}
         >
           <div className="w-[1px] h-[5px] bg-gray-800"></div>
-          {d}
+          {d || "label"}
         </div>
       ))}
     </div>

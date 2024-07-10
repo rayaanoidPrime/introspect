@@ -64,8 +64,17 @@ export default function SingleSelect({
             .includes(query.toLowerCase());
         });
 
-  console.log(filteredOptions, query, value, allowCreateNewOption);
-  if (filteredOptions.length === 0 && query !== "" && allowCreateNewOption) {
+  // if there's no matching option
+  // or if there's no exact match
+  // create a new option
+  if (
+    allowCreateNewOption &&
+    query !== "" &&
+    (filteredOptions.length === 0 ||
+      !filteredOptions.find(
+        (option) => option.label === (isNumber(query) ? +query : query)
+      ))
+  ) {
     filteredOptions.push({
       label: query,
       value: isNumber(query) ? +query : query,
