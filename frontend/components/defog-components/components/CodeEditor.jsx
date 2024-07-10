@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import ErrorBoundary from "./common/ErrorBoundary";
 
-import CodeMirror from "@uiw/react-codemirror";
+import CodeMirror, { EditorView } from "@uiw/react-codemirror";
 import { python } from "@codemirror/lang-python";
 import { sql } from "@codemirror/lang-sql";
 import { twMerge } from "tailwind-merge";
@@ -41,7 +41,10 @@ export function CodeEditor({
       <>
         <CodeMirror
           // language={language}
-          extensions={[language === "python" ? python() : sql()]}
+          extensions={[
+            language === "python" ? python() : sql(),
+            EditorView.lineWrapping,
+          ]}
           basicSetup={{
             lineNumbers: false,
           }}

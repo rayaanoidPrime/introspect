@@ -1,3 +1,4 @@
+import { isNumber } from "$utils/utils";
 import {
   Combobox,
   ComboboxButton,
@@ -28,6 +29,13 @@ const popupOptionSizeClasses = {
   small: "py-1 pl-3 pr-9",
 };
 
+const createNewOption = (val) => {
+  return {
+    label: val,
+    value: isNumber(val) ? +val : val,
+  };
+};
+
 export default function SingleSelect({
   rootClassNames = "",
   popupClassName = "",
@@ -41,28 +49,45 @@ export default function SingleSelect({
   placeholder = "Select an option",
   size = "default",
   allowClear = true,
+  allowCreateNewOption = true,
 }) {
   const [query, setQuery] = useState("");
   const ref = useRef(null);
+  const [internalOptions, setInternalOptions] = useState(options);
 
   const filteredOptions =
     query === ""
-      ? options
-      : options.filter((option) => {
+      ? internalOptions
+      : internalOptions.filter((option) => {
           return (option.label + "")
             .toLowerCase()
             .includes(query.toLowerCase());
         });
 
+  console.log(filteredOptions, query, value, allowCreateNewOption);
+  if (filteredOptions.length === 0 && query !== "" && allowCreateNewOption) {
+    filteredOptions.push({
+      label: query,
+      value: isNumber(query) ? +query : query,
+    });
+  }
+
   // find the option matching the default value
   const [selectedOption, setSelectedOption] = useState(
-    options.find((option) => option.value === defaultValue) || null
+    internalOptions.find((option) => option.value === defaultValue) || null
   );
 
   useEffect(() => {
-    const opt = options.find((option) => option.value === value) || null;
+    const opt =
+      internalOptions.find((option) => option.value === value) || null;
+
+    // if option doesn't exist, create a new one
+    if (!opt && allowCreateNewOption && value !== null) {
+      setInternalOptions([...internalOptions, createNewOption(value)]);
+    }
+
     setSelectedOption(opt);
-  }, [value, options]);
+  }, [value, allowCreateNewOption, internalOptions]);
 
   useEffect(() => {
     ref?.current?.blur?.();

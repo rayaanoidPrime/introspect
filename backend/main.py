@@ -212,6 +212,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
                 report_id = data.get("report_id")
                 token = data.get("token")
+                sql_only = data.get("sql_only")
+
                 if validate_user(token) is False:
                     await websocket.send_json(
                         {"success": False, "error_message": "Invalid token"}
@@ -248,7 +250,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 if "sqlcoder" in data["user_question"]:
                     print("sqlcoder word found in question")
                     classification = {"prediction": "sqlcoder"}
-
+                elif sql_only:
+                    print("sql_only flag passed")
+                    classification = {"prediction": "sqlcoder"}
                 elif "agent" in data["user_question"]:
                     print("agent word found in question")
                     classification = {"prediction": "agent"}
