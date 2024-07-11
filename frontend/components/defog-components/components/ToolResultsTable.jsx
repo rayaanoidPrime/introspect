@@ -36,7 +36,7 @@ import "prismjs/components/prism-python";
 import "prismjs/themes/prism.css";
 import { roundNumber } from "$utils/utils";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import Table from "$components/tailwind/Table";
+import { Table } from "$ui-components";
 import Heatmap from "./Charts/Heatmap";
 import LinePlot from "./Charts/LinePlot";
 import Boxplot from "./Charts/Boxplot";

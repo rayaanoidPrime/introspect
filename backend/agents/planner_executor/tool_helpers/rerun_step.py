@@ -218,7 +218,7 @@ async def rerun_step_and_parents(
             result = None
             new_data = None
             try:
-                result = await fetch_query_into_df(
+                result, _ = await fetch_query_into_df(
                     api_key=dfg_api_key,
                     sql_query=tool_run_details["sql"],
                     temp=global_dict.get("temp", False),

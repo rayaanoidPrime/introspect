@@ -9,10 +9,11 @@ import "../styles/view-notebooks.scss";
 import "../styles/doc-styles.scss";
 import "../styles/blocknote-styles.scss";
 import "../styles/query-data.scss";
-import MessageMonitor, {
+import {
+  MessageMonitor,
   MessageManagerContext,
   MessageManager,
-} from "$components/tailwind/Message";
+} from "$ui-components";
 
 export default function App({ Component, pageProps }) {
   const [context, setContext] = useState({});

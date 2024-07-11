@@ -2,9 +2,7 @@ import { message } from "antd";
 import React, { useCallback, useMemo } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
 import { easyToolInputTypes } from "$utils/utils";
-import Input from "$components/tailwind/Input";
-import SingleSelect from "$components/tailwind/SingleSelect";
-import TextArea from "$components/tailwind/TextArea";
+import { TextArea, SingleSelect, Input } from "$ui-components";
 
 const onHover = (ev, label, analysisId) => {
   // get the closest .analysis-content to the mouseovered element

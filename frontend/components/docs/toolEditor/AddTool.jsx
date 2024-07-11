@@ -6,19 +6,20 @@ import {
 } from "$utils/utils";
 import { useCallback, useContext, useState } from "react";
 import ToolCreatorAssistant from "./ToolCreatorAssistant";
-import Modal from "$components/tailwind/Modal";
-import Toggle from "$components/tailwind/Toggle";
 import { SparklesIcon } from "@heroicons/react/20/solid";
-import { MessageManagerContext } from "$components/tailwind/Message";
-import Tabs from "$components/tailwind/Tabs";
 import DefineTool from "./DefineTool";
 import SpinningLoader from "$components/icons/SpinningLoader";
-import Sidebar from "$components/tailwind/Sidebar";
 import ToolCodeEditor from "./ToolCodeEditor";
 import { twMerge } from "tailwind-merge";
-import Input from "$components/tailwind/Input";
-import Button from "$components/tailwind/Button";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import {
+  MessageManagerContext,
+  Modal,
+  Toggle,
+  Sidebar,
+  Input,
+  Button,
+} from "$ui-components";
 
 const generateToolCodeEndpoint = setupBaseUrl("http", "generate_tool_code");
 

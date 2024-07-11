@@ -3,8 +3,8 @@
 
 import { useMemo } from "react";
 import { createChartData } from "./utils";
-import SingleSelect from "$components/tailwind/SingleSelect";
-import MultiSelect from "$components/tailwind/MultiSelect";
+import { MultiSelect } from "$ui-components";
+import { SingleSelect } from "$ui-components";
 
 /**
  * Lays out the chart body, x and y axis in a nice flexbox layout.

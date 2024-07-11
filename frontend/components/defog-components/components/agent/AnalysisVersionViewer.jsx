@@ -10,14 +10,16 @@ import {
   ArrowsPointingOutIcon,
   ArrowsRightLeftIcon,
 } from "@heroicons/react/20/solid";
-import Sidebar from "$components/tailwind/Sidebar";
-import { MessageManagerContext } from "$components/tailwind/Message";
 import Papa from "papaparse";
 import { sentenceCase, useGhostImage } from "$utils/utils";
-import Table from "$components/tailwind/Table";
 import { twMerge } from "tailwind-merge";
-import Toggle from "$components/tailwind/Toggle";
-import TextArea from "$components/tailwind/TextArea";
+import {
+  Sidebar,
+  Table,
+  Toggle,
+  TextArea,
+  MessageManagerContext,
+} from "$ui-components";
 
 function AnalysisVersionViewer({
   dashboards,

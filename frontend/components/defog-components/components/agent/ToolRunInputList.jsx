@@ -2,9 +2,7 @@ import { message } from "antd";
 import React, { useCallback, useEffect, useState } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
 import { easyToolInputTypes } from "$utils/utils";
-import Input from "$components/tailwind/Input";
-import SingleSelect from "$components/tailwind/SingleSelect";
-import TextArea from "$components/tailwind/TextArea";
+import { Input, SingleSelect, TextArea } from "$ui-components";
 
 const inputTypeToUI = {
   list: (toolRunId, inputName, initialValue, onEdit) => {

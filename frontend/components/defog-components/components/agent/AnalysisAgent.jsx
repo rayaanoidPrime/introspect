@@ -24,7 +24,7 @@ import Clarify from "./analysis-gen/Clarify";
 import AnalysisManager from "./analysisManager";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { AnalysisFeedback } from "./feedback/AnalysisFeedback";
-import { MessageManagerContext } from "$components/tailwind/Message";
+import { MessageManagerContext } from "$ui-components";
 import { twMerge } from "tailwind-merge";
 
 const getToolsEndpoint = setupBaseUrl("http", "get_user_tools");

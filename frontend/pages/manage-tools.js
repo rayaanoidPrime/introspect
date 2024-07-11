@@ -1,4 +1,3 @@
-import Button from "$tailwind/Button";
 import Meta from "$components/common/Meta";
 import Scaffolding from "$components/common/Scaffolding";
 import { addTool, toolboxDisplayNames } from "$utils/utils";
@@ -12,8 +11,7 @@ import {
 } from "react";
 import AddTool from "$components/docs/toolEditor/AddTool";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { MessageManagerContext } from "$components/tailwind/Message";
-import Modal from "$components/tailwind/Modal";
+import { MessageManagerContext, Button, Modal } from "$ui-components";
 import DefineTool from "$components/docs/toolEditor/DefineTool";
 
 const toggleDisableToolEndpoint = setupBaseUrl("http", "toggle_disable_tool");

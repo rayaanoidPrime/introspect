@@ -1,6 +1,6 @@
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { Input, Modal, Select, message } from "antd";
-import Button from "$tailwind/Button";
+import { Button } from "$ui-components";
 import {
   arrayOfObjectsToObject,
   breakLinesPretty,
