@@ -1,18 +1,25 @@
 import { Modal, Spin } from "antd";
-import { useCallback, useContext, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { v4 } from "uuid";
 import { AnalysisAgent } from "./AnalysisAgent";
 import { PlusOutlined } from "@ant-design/icons";
 import { AnalysisHistoryItem } from "./AnalysisHistoryItem";
 import { AnalysisVersionViewerLinks } from "./AnalysisVersionViewerLinks";
-import { ArrowRightEndOnRectangleIcon } from "@heroicons/react/20/solid";
-import Sidebar from "$components/tailwind/Sidebar";
-import { MessageManagerContext } from "$components/tailwind/Message";
+import {
+  ArrowRightEndOnRectangleIcon,
+  ArrowsPointingOutIcon,
+  ArrowsRightLeftIcon,
+} from "@heroicons/react/20/solid";
 import Papa from "papaparse";
-import { sentenceCase } from "$utils/utils";
-import Table from "$components/tailwind/Table";
+import { sentenceCase, useGhostImage } from "$utils/utils";
 import { twMerge } from "tailwind-merge";
-import Toggle from "$components/tailwind/Toggle";
+import {
+  Sidebar,
+  Table,
+  Toggle,
+  TextArea,
+  MessageManagerContext,
+} from "$ui-components";
 
 function AnalysisVersionViewer({
   dashboards,
@@ -43,6 +50,8 @@ function AnalysisVersionViewer({
 
   const [sqlOnly, setSqlOnly] = useState(false);
 
+  const ghostImage = useGhostImage();
+
   // an object that stores all analysis in this "session"
   // structure:
   // {
@@ -68,6 +77,7 @@ function AnalysisVersionViewer({
   const analysisDomRefs = useRef({});
 
   const [loading, setLoading] = useState(false);
+  const searchCtr = useRef(null);
   const searchRef = useRef(null);
   const [addToDashboardSelection, setAddToDashboardSelection] = useState(false);
   const [selectedDashboards, setSelectedDashboards] = useState([]);
@@ -181,117 +191,140 @@ function AnalysisVersionViewer({
     [sessionAnalyses, allAnalyses]
   );
 
+  useEffect(() => {
+    function setSearchBar() {
+      if (!searchCtr.current) return;
+
+      searchCtr.current.style.left = "0";
+      searchCtr.current.style.right = "0";
+      searchCtr.current.style.bottom =
+        window.innerHeight > 800 ? "30%" : "20px";
+    }
+
+    setSearchBar();
+
+    window.addEventListener("resize", setSearchBar);
+
+    return () => {
+      window.removeEventListener("resize", setSearchBar);
+    };
+  }, []);
+
   // w-0
   return (
     <>
       <div className="relative h-full">
         <div
-          className="max-w-full h-full flex flex-col-reverse lg:flex-row bg-white text-gray-600 w-full"
+          className="max-w-full h-full flex flex-row bg-white text-gray-600 w-full"
           id="analysis-version-viewer"
         >
-          <div className="flex flex-col mr-0 z-10">
-            <div className="sticky top-2 z-[10] h-screen">
-              <Sidebar
-                location="left"
-                open={sidebarOpen}
-                onChange={(open) => {
-                  setSidebarOpen(open);
-                }}
-                title={<span className="font-bold">History</span>}
-                rootClassNames={
-                  "transition-all z-20 sticky top-0 h-[calc(100%-1rem)] rounded-md lg:rounded-none lg:rounded-tr-md lg:rounded-br-md bg-gray-100 border"
-                }
-                iconClassNames={`${sidebarOpen ? "" : "text-white bg-primary-highlight"}`}
-                openClassNames={"border-gray-300 shadow-md"}
-                closedClassNames={
-                  "border-transparent bg-transparent shadow-none"
-                }
-                contentClassNames={
-                  // need to add pl-4 here to make the links visible
-                  "w-72 px-2 pt-5 pb-14 rounded-tl-lg relative sm:block pl-4 min-h-96 h-full overflow-y-auto"
-                }
-              >
-                <div className="flex flex-col text-sm relative history-list">
-                  <AnalysisVersionViewerLinks
-                    analyses={allAnalyses}
-                    activeAnalysisId={activeAnalysisId}
-                  />
-                  {Object.keys(sessionAnalyses).map((rootAnalysisId, i) => {
-                    const root = sessionAnalyses[rootAnalysisId].root;
-                    const analysisVersionList =
-                      sessionAnalyses[rootAnalysisId].versionList;
+          <div className="absolute h-full left-0 top-2 z-[10] md:sticky md:h-screen">
+            <Sidebar
+              location="left"
+              open={sidebarOpen}
+              onChange={(open) => {
+                setSidebarOpen(open);
+              }}
+              title={<span className="font-bold">History</span>}
+              rootClassNames={
+                "transition-all z-20 h-[calc(100%-1rem)] rounded-md lg:rounded-none lg:rounded-tr-md lg:rounded-br-md bg-gray-100 border h-screen md:h-full sticky top-0 md:relative"
+              }
+              iconClassNames={`${sidebarOpen ? "" : "text-white bg-primary-highlight"}`}
+              openClassNames={"border-gray-300 shadow-md"}
+              closedClassNames={"border-transparent bg-transparent shadow-none"}
+              contentClassNames={
+                // need to add pl-4 here to make the links visible
+                "w-72 px-2 pt-5 pb-14 rounded-tl-lg relative sm:block pl-4 min-h-96 h-full overflow-y-auto"
+              }
+            >
+              <div className="flex flex-col text-sm relative history-list">
+                <AnalysisVersionViewerLinks
+                  analyses={allAnalyses}
+                  activeAnalysisId={activeAnalysisId}
+                />
+                {Object.keys(sessionAnalyses).map((rootAnalysisId, i) => {
+                  const root = sessionAnalyses[rootAnalysisId].root;
+                  const analysisVersionList =
+                    sessionAnalyses[rootAnalysisId].versionList;
 
-                    return (
-                      <div key={root.analysisId} className="">
-                        {analysisVersionList.map((version, i) => {
-                          return (
-                            <AnalysisHistoryItem
-                              key={version.analysisId}
-                              analysis={version}
-                              isActive={activeAnalysisId === version.analysisId}
-                              setActiveRootAnalysisId={setActiveRootAnalysisId}
-                              setActiveAnalysisId={setActiveAnalysisId}
-                              setAddToDashboardSelection={
-                                setAddToDashboardSelection
+                  return (
+                    <div key={root.analysisId} className="">
+                      {analysisVersionList.map((version, i) => {
+                        return (
+                          <AnalysisHistoryItem
+                            key={version.analysisId}
+                            analysis={version}
+                            isActive={activeAnalysisId === version.analysisId}
+                            setActiveRootAnalysisId={setActiveRootAnalysisId}
+                            setActiveAnalysisId={setActiveAnalysisId}
+                            setAddToDashboardSelection={
+                              setAddToDashboardSelection
+                            }
+                            onClick={() => {
+                              if (analysisDomRefs[version.analysisId].ctr) {
+                                analysisDomRefs[
+                                  version.analysisId
+                                ].ctr.scrollIntoView({
+                                  behavior: "smooth",
+                                  block: "start",
+                                  inline: "nearest",
+                                });
                               }
-                              onClick={() => {
-                                if (analysisDomRefs[version.analysisId].ctr) {
-                                  analysisDomRefs[
-                                    version.analysisId
-                                  ].ctr.scrollIntoView({
-                                    behavior: "smooth",
-                                    block: "start",
-                                    inline: "nearest",
-                                  });
-                                }
-                              }}
-                              extraClasses={
-                                version.isRoot ? "" : "ml-2 border-l-2"
-                              }
-                            />
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                  {!activeRootAnalysisId ? (
-                    <AnalysisHistoryItem
-                      isDummy={true}
-                      setActiveRootAnalysisId={setActiveRootAnalysisId}
-                      setActiveAnalysisId={setActiveAnalysisId}
-                      isActive={!activeRootAnalysisId}
-                    />
-                  ) : (
-                    <div className="w-full mt-5 sticky bottom-5">
-                      <div
-                        data-enabled={!loading}
-                        className={twMerge(
-                          "cursor-pointer z-20 relative",
-                          "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom ",
-                          "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
-                        )}
-                        onClick={() => {
-                          if (loading) return;
-                          // start a new root analysis
-                          setActiveRootAnalysisId(null);
-                          setActiveAnalysisId(null);
-                        }}
-                      >
-                        New <PlusOutlined />
-                      </div>
-                      <div className="absolute w-full h-10 bg-gray-100 z-0"></div>
+                            }}
+                            extraClasses={
+                              version.isRoot ? "" : "ml-2 border-l-2"
+                            }
+                          />
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
-              </Sidebar>
-            </div>
+                  );
+                })}
+                {!activeRootAnalysisId ? (
+                  <AnalysisHistoryItem
+                    isDummy={true}
+                    setActiveRootAnalysisId={setActiveRootAnalysisId}
+                    setActiveAnalysisId={setActiveAnalysisId}
+                    isActive={!activeRootAnalysisId}
+                  />
+                ) : (
+                  <div className="w-full mt-5 sticky bottom-5">
+                    <div
+                      data-enabled={!loading}
+                      className={twMerge(
+                        "cursor-pointer z-20 relative",
+                        "data-[enabled=true]:bg-blue-200 data-[enabled=true]:hover:bg-blue-500 data-[enabled=true]:hover:text-white p-2 data-[enabled=true]:text-blue-400 data-[enabled=true]:shadow-custom ",
+                        "data-[enabled=false]:bg-gray-100 data-[enabled=false]:hover:bg-gray-100 data-[enabled=false]:hover:text-gray-400 data-[enabled=false]:text-gray-400 data-[enabled=false]:cursor-not-allowed"
+                      )}
+                      onClick={() => {
+                        if (loading) return;
+                        // start a new root analysis
+                        setActiveRootAnalysisId(null);
+                        setActiveAnalysisId(null);
+                      }}
+                    >
+                      New <PlusOutlined />
+                    </div>
+                    <div className="absolute w-full h-10 bg-gray-100 z-0"></div>
+                  </div>
+                )}
+              </div>
+            </Sidebar>
           </div>
           <div
-            className="grid grid-cols-1 md:grid-cols-1 grow rounded-tr-lg pb-14 p-2 md:p-4 relative min-w-0 h-full overflow-scroll"
-            onClick={() => {
-              setSidebarOpen(false);
-            }}
+            className="grid grid-cols-1 md:grid-cols-1 grow rounded-tr-lg pb-14 p-2 md:p-4 relative min-w-0 h-full overflow-scroll "
+            // onClick={() => {
+            //   setSidebarOpen(false);
+            // }}
           >
+            <div
+              className={twMerge(
+                "absolute left-0 top-0 h-full w-full overlay md:hidden bg-gray-800 z-[1] transition-all",
+                sidebarOpen
+                  ? "opacity-30 block"
+                  : "opacity-0 pointer-events-none"
+              )}
+            ></div>
             {activeRootAnalysisId &&
               sessionAnalyses[activeRootAnalysisId].versionList.map(
                 (analysis) => {
@@ -453,66 +486,121 @@ function AnalysisVersionViewer({
               </div>
             )}
 
-            <div className="w-10/12 m-auto lg:w-2/4 fixed bottom-6 left-0 right-0 z-10 bg-white border-2 border-gray-400 p-2 rounded-lg shadow-custom hover:border-blue-500 focus:border-blue-500 flex flex-row">
-              <div className="grow border border-gray-300 rounded-l-md flex items-center">
-                <Toggle
-                  titleClassNames="font-bold text-gray-400"
-                  onToggle={(v) => setSqlOnly(v)}
-                  defaultOn={sqlOnly}
-                  offLabel="SQL/Agents"
-                  onLabel={"SQL only"}
-                  rootClassNames="items-center md:items-start border-r px-2 w-36"
-                />
+            <div
+              className="w-10/12 m-auto lg:w-2/4 fixed z-10 bg-white rounded-lg shadow-custom border border-gray-400 hover:border-blue-500 focus:border-blue-500 flex flex-row"
+              style={{
+                left: "0",
+                right: "0",
+                bottom: window.innerHeight > 800 ? "30%" : "20px",
+              }}
+              ref={searchCtr}
+            >
+              <div
+                className="cursor-move min-h-full w-3 flex items-center ml-1 group"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setDragImage(ghostImage, 0, 0);
+                }}
+                onDrag={(e) => {
+                  if (!e.clientX || !e.clientY || !searchCtr.current) return;
 
-                <textarea
-                  className="border-none bg-transparent py-1.5 text-gray-900 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none resize-none"
-                  ref={searchRef}
-                  disabled={loading}
-                  rows={1}
-                  onChange={(ev) => {
-                    ev.target.style.height = "auto";
-                    ev.target.style.height = ev.target.scrollHeight + "px";
-                  }}
-                  onKeyDown={(ev) => {
-                    if (ev.key === "Enter") {
-                      ev.preventDefault();
-                      ev.stopPropagation();
+                  const eBottom =
+                    window.innerHeight -
+                    e.clientY -
+                    searchCtr.current.clientHeight;
+                  const eLeft = e.clientX;
 
-                      // if (!searchRef.current.value) return;
+                  const minBottom = 20;
 
+                  const maxBottom =
+                    window.innerHeight - 20 - searchCtr.current.clientHeight;
+
+                  if (eBottom < minBottom) {
+                    searchCtr.current.style.bottom = minBottom + "px";
+                  } else if (eBottom > maxBottom) {
+                    searchCtr.current.style.bottom = maxBottom + "px";
+                  } else {
+                    searchCtr.current.style.bottom = eBottom + "px";
+                  }
+
+                  const maxLeft =
+                    window.innerWidth - searchCtr.current.clientWidth - 20;
+
+                  const minLeft = 20;
+
+                  searchCtr.current.style.right = "auto";
+
+                  if (eLeft < minLeft) {
+                    searchCtr.current.style.left = minLeft + "px";
+                  } else if (eLeft > maxLeft) {
+                    searchCtr.current.style.left = maxLeft + "px";
+                  } else {
+                    searchCtr.current.style.left = eLeft + "px";
+                  }
+                }}
+              >
+                <ArrowsPointingOutIcon className="h-3 w-3 text-gray-400 group-hover:text-primary-text" />
+              </div>
+              <div className="grow rounded-md md:items-center flex flex-col-reverse md:flex-row">
+                <div className="flex flex-row grow">
+                  <div className="flex md:flex-row-reverse md:items-center flex-col grow">
+                    <TextArea
+                      rootClassNames="grow border-none bg-transparent py-1.5 text-gray-900 px-2 placeholder:text-gray-400 sm:leading-6 text-sm break-all focus:ring-0 focus:outline-none"
+                      textAreaClassNames="resize-none"
+                      ref={searchRef}
+                      disabled={loading}
+                      defaultRows={1}
+                      onKeyDown={(ev) => {
+                        if (ev.key === "Enter") {
+                          ev.preventDefault();
+                          ev.stopPropagation();
+
+                          // if (!searchRef.current.value) return;
+
+                          handleSubmit(
+                            searchRef.current.value,
+                            activeRootAnalysisId,
+                            !activeRootAnalysisId,
+                            activeAnalysisId
+                          );
+                        }
+                      }}
+                      placeholder={
+                        activeRootAnalysisId
+                          ? "Type your next question here"
+                          : "Type your question here"
+                      }
+                    />
+                    <Toggle
+                      disabled={loading}
+                      titleClassNames="font-bold text-gray-400"
+                      onToggle={(v) => setSqlOnly(v)}
+                      defaultOn={sqlOnly}
+                      offLabel="SQL/Agents"
+                      onLabel={"SQL only"}
+                      rootClassNames="items-start md:border-r py-2 md:py-0 px-2 w-36"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 p-0 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-blue-500 hover:bg-blue-500 hover:text-white"
+                    onClick={() => {
                       handleSubmit(
                         searchRef.current.value,
                         activeRootAnalysisId,
                         !activeRootAnalysisId,
                         activeAnalysisId
                       );
-                    }
-                  }}
-                  placeholder={
-                    activeRootAnalysisId
-                      ? "Type your next question here"
-                      : "Type your question here"
-                  }
-                />
+                    }}
+                  >
+                    <ArrowRightEndOnRectangleIcon
+                      className="-ml-0.5 h-5 w-5 text-gray-400"
+                      aria-hidden="true"
+                    />
+                    Ask
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                className="relative -ml-px inline-flex items-center gap-x-1.5 rounded-r-md px-3 p-0 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-blue-500 hover:bg-blue-500 hover:text-white"
-                onClick={() => {
-                  handleSubmit(
-                    searchRef.current.value,
-                    activeRootAnalysisId,
-                    !activeRootAnalysisId,
-                    activeAnalysisId
-                  );
-                }}
-              >
-                <ArrowRightEndOnRectangleIcon
-                  className="-ml-0.5 h-5 w-5 text-gray-400"
-                  aria-hidden="true"
-                />
-                Ask
-              </button>
             </div>
           </div>
         </div>

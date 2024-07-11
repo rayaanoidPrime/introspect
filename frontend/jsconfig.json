@@ -4,8 +4,8 @@
     "checkJs": true,
     "paths": {
       "$utils/*": ["./utils/*"],
-      "$components/*": ["./components/*"],
-      "$tailwind/*": ["./components/tailwind/*"]
+      "$ui-components": ["./components/ui-components/lib/main.js"],
+      "$components/*": ["./components/*"]
     },
 
     "jsx": "react-jsx"

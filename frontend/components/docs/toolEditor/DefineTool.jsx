@@ -1,5 +1,4 @@
-import Input from "$components/tailwind/Input";
-import TextArea from "$components/tailwind/TextArea";
+import { Input, TextArea } from "$ui-components";
 import ToolCodeEditor from "./ToolCodeEditor";
 
 export default function DefineTool({

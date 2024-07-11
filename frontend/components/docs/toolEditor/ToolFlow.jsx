@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ToolEditorInput } from "./ToolEditorInput";
-import Table from "$components/tailwind/Table";
+import { Table, Modal } from "$ui-components";
 import { CodeBracketSquareIcon } from "@heroicons/react/20/solid";
 import ToolCodeEditor from "./ToolCodeEditor";
-import Modal from "$components/tailwind/Modal";
 
 export function ToolFlow({
   toolName,

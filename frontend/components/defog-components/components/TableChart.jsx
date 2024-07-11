@@ -9,7 +9,7 @@ import React, {
   useCallback,
 } from "react";
 import { Tabs, Table, Button, message, Popover } from "antd";
-import ChartContainer from "./ChartContainer";
+import ChartContainer from "./Charts/chartjs/ChartJSContainer";
 import {
   chartNames,
   processData,

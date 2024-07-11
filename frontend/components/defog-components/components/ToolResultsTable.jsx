@@ -9,7 +9,7 @@ import React, {
   useCallback,
 } from "react";
 import { Tabs, Button, message, Popover } from "antd";
-import ChartContainer from "./ChartContainer";
+import ChartJSContainer from "./Charts/chartjs/ChartJSContainer";
 import {
   chartNames,
   processData,
@@ -36,10 +36,11 @@ import "prismjs/components/prism-python";
 import "prismjs/themes/prism.css";
 import { roundNumber } from "$utils/utils";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import Table from "$components/tailwind/Table";
+import { Table } from "$ui-components";
 import Heatmap from "./Charts/Heatmap";
 import LinePlot from "./Charts/LinePlot";
 import Boxplot from "./Charts/Boxplot";
+import { ChartContainer } from "./Charts/ChartContainer";
 
 const downloadCsvEndpoint = setupBaseUrl("http", "download_csv");
 
@@ -271,27 +272,16 @@ export function ToolResultsTable({
         tabLabel: "Heatmap",
       });
     }
-    // if (toolRunData.tool_name === "line_plot") {
+
     tabs.push({
       component: (
         <ErrorBoundary>
-          <LinePlot
-            rows={tableData.data}
-            columns={tableData.columns}
-            xCol={inputs.x_column}
-            yCol={inputs.y_column}
-            facetCol={inputs.facet_column}
-            colorCol={inputs.color_column}
-            lineGroupColumn={inputs.line_group_column}
-            aggregationType={
-              inputs.aggregation_type === "None" ? null : inputs.estimator
-            }
-          />
+          <ChartContainer rows={tableData.data} columns={tableData.columns} />
         </ErrorBoundary>
       ),
       tabLabel: "Line Chart",
     });
-    // }
+
     if (toolRunData.tool_name === "boxplot") {
       tabs.push({
         component: (
@@ -324,7 +314,7 @@ export function ToolResultsTable({
         tabs.push({
           component: (
             <ErrorBoundary>
-              <ChartContainer
+              <ChartJSContainer
                 xAxisColumns={xAxisColumns}
                 dateColumns={dateColumns}
                 categoricalColumns={categoricalColumns}
@@ -335,7 +325,7 @@ export function ToolResultsTable({
                 title={tableData.query}
                 key="1"
                 vizType={"Bar Chart"}
-              ></ChartContainer>
+              ></ChartJSContainer>
             </ErrorBoundary>
           ),
           tabLabel: "Chart",

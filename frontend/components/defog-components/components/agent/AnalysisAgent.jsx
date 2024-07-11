@@ -24,7 +24,7 @@ import Clarify from "./analysis-gen/Clarify";
 import AnalysisManager from "./analysisManager";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { AnalysisFeedback } from "./feedback/AnalysisFeedback";
-import { MessageManagerContext } from "$components/tailwind/Message";
+import { MessageManagerContext } from "$ui-components";
 import { twMerge } from "tailwind-merge";
 
 const getToolsEndpoint = setupBaseUrl("http", "get_user_tools");
@@ -330,12 +330,12 @@ export const AnalysisAgent = ({
   );
 
   const titleDiv = (
-    <div className="flex flex-row p-6">
-      <h1 className="font-bold grow text-xl mb-2 text-gray-700">
+    <div className="flex flex-row p-6 items-center md:items-start">
+      <h1 className="font-bold text-xl text-gray-700 basis-0 grow">
         {sentenceCase(analysisData?.user_question || "")}
       </h1>
       {!analysisBusy && analysisData && (
-        <div className="mb-4">
+        <div className="ml-4 basis-0 text-nowrap whitespace-nowrap">
           <AnalysisFeedback
             analysisSteps={analysisData?.gen_steps?.steps || []}
             analysisId={analysisId}

@@ -3,7 +3,7 @@ import { Context } from "./Context";
 import { Layout } from "antd/lib";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { NavBar } from "$components/tailwind/NavBar";
+import { NavBar } from "$ui-components";
 
 const Scaffolding = ({ id, userType, children }) => {
   const { Content, Sider } = Layout;

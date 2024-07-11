@@ -2,8 +2,7 @@ import { message } from "antd";
 import React, { useCallback, useEffect, useState } from "react";
 import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
 import { easyToolInputTypes } from "$utils/utils";
-import Input from "$components/tailwind/Input";
-import SingleSelect from "$components/tailwind/SingleSelect";
+import { Input, SingleSelect, TextArea } from "$ui-components";
 
 const inputTypeToUI = {
   list: (toolRunId, inputName, initialValue, onEdit) => {
@@ -60,11 +59,12 @@ const inputTypeToUI = {
   str: (toolRunId, inputName, initialValue, onEdit) => {
     if (!initialValue) initialValue = "";
     return (
-      <Input
-        rootClassNames="tool-input-value"
+      <TextArea
+        rootClassNames="tool-input-value md:w-80"
+        textAreaClassNames="resize-none"
         value={initialValue}
         key={toolRunId + "_" + inputName}
-        size="small"
+        defaultRows={1}
         onChange={(ev) => {
           onEdit(inputName, ev.target.value);
         }}
@@ -95,12 +95,11 @@ const inputTypeToUI = {
     if (!initialValue) initialValue = 0;
 
     return (
-      <Input
-        rootClassNames="tool-input-value"
+      <TextArea
+        rootClassNames="tool-input-value md:w-80"
         key={toolRunId + "_" + inputName}
         value={initialValue}
-        type="number"
-        size="small"
+        textAreaClassNames="resize-none"
         onChange={(ev) => {
           onEdit(inputName, parseFloat(ev.target.value));
         }}
@@ -110,12 +109,11 @@ const inputTypeToUI = {
   float: (toolRunId, inputName, initialValue, onEdit) => {
     if (!initialValue) initialValue = 0.0;
     return (
-      <Input
+      <TextArea
+        rootClassNames="tool-input-value md:w-80"
         value={initialValue}
         key={toolRunId + "_" + inputName}
-        rootClassNames="tool-input-value"
-        size="small"
-        type="number"
+        defaultRows={1}
         onChange={(ev) => {
           onEdit(inputName, parseFloat(ev.target.value));
         }}
