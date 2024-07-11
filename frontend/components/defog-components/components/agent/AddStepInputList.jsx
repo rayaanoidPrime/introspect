@@ -4,6 +4,7 @@ import { MdDeleteOutline, MdOutlineAddBox } from "react-icons/md";
 import { easyToolInputTypes } from "$utils/utils";
 import Input from "$components/tailwind/Input";
 import SingleSelect from "$components/tailwind/SingleSelect";
+import TextArea from "$components/tailwind/TextArea";
 
 const onHover = (ev, label, analysisId) => {
   // get the closest .analysis-content to the mouseovered element
@@ -74,9 +75,11 @@ export const inputTypeToUI = {
   str: (inputName, initialValue, onEdit, config = {}) => {
     if (!initialValue) initialValue = "";
     return (
-      <Input
+      <TextArea
+        rootClassNames="tool-input-value md:w-80"
+        textAreaClassNames="resize-none"
+        defaultRows={1}
         value={initialValue || ""}
-        size="small"
         onChange={(ev) => {
           onEdit(inputName, ev.target.value);
         }}
@@ -101,19 +104,21 @@ export const inputTypeToUI = {
     );
   },
   int: (inputName, initialValue, onEdit, config = {}) => (
-    <Input
+    <TextArea
+      rootClassNames="tool-input-value md:w-80"
+      textAreaClassNames="resize-none"
+      defaultRows={1}
       value={initialValue || ""}
-      type="number"
-      size="small"
       onChange={(ev) => {
         onEdit(inputName, parseFloat(ev.target.value));
       }}
     />
   ),
   float: (inputName, initialValue, onEdit, config = {}) => (
-    <Input
-      size="small"
-      type="number"
+    <TextArea
+      rootClassNames="tool-input-value md:w-80"
+      textAreaClassNames="resize-none"
+      defaultRows={1}
       value={initialValue}
       onChange={(ev) => {
         onEdit(inputName, parseFloat(ev.target.value));
@@ -137,6 +142,7 @@ export const inputTypeToUI = {
 
     return (
       <SingleSelect
+        allowCreateNewOption={false}
         size="small"
         placeholder="Select a value"
         onChange={(val) => {

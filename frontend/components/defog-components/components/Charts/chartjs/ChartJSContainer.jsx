@@ -5,10 +5,10 @@ import {
   createChartConfig,
   getColValues,
   isEmpty,
-} from "./common/utils";
-import PieChart from "./Charts/chartjs/PieChart";
-import ColumnChart from "./Charts/chartjs/ColumnChart";
-import TrendChart from "./Charts/chartjs/TrendChart";
+} from "../../common/utils";
+import PieChart from "./PieChart";
+import ColumnChart from "./ColumnChart";
+import TrendChart from "./TrendChart";
 import styled from "styled-components";
 
 function arrToAntD(arr, labelProp = "key", valueProp = "key") {
@@ -22,7 +22,7 @@ function arrToAntD(arr, labelProp = "key", valueProp = "key") {
 const nullChartConfig = { chartLabels: [], chartData: [] };
 const sizeThresh = 400;
 
-export default function ChartContainer({
+export default function ChartJSContainer({
   xAxisColumns,
   dateColumns,
   yAxisColumns,

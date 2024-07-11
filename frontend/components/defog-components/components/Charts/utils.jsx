@@ -247,6 +247,89 @@ const breakpoints = {
   xl: 1280,
 };
 
+export function sanitiseData(data, chart = false) {
+  // check if it's not an array or undefined
+  if (!Array.isArray(data) || !data) {
+    return [];
+  }
+
+  // filter out null elements from data array
+  // for the remaining rows, check if the whole row is null
+  let cleanData;
+  if (!chart) {
+    cleanData = data
+      .filter((d) => d)
+      .filter((d) => !d.every((val) => val === null));
+  } else {
+    cleanData = data;
+
+    // remove percentage signs from data
+    cleanData.forEach((d) => {
+      Object.entries(d).forEach(([key, value]) => {
+        if (typeof value === "string" && value.endsWith("%")) {
+          d[key] = +value.slice(0, -1);
+        }
+      });
+    });
+  }
+  return cleanData;
+}
+
+export function getColValues(data = [], columns = []) {
+  if (!columns.length || !data || !data.length) return [];
+
+  // if single column, just return that column value
+  // if multiple, join the column values with separator
+  const vals = new Set();
+  data.forEach((d) => {
+    const val = columns.reduce((acc, c, i) => {
+      if (i > 0) {
+        acc += "-";
+      }
+      acc += d[c];
+      return acc;
+    }, "");
+
+    vals.add(val);
+  });
+
+  return Array.from(vals);
+}
+
+export function createChartData(data, columns) {
+  // find if there's a date column
+  const dateColumns = columns?.filter((d) => d.colType === "date");
+  // date comes in as categorical column, but we use that for the x axis, so filter that out also
+  const categoricalColumns = columns?.filter(
+    (d) => d?.variableType?.[0] === "c" && d.colType !== "date"
+  );
+
+  // y axis columns are only numeric non date columns
+  const yAxisColumns = columns?.filter(
+    (d) => d?.variableType?.[0] !== "c" && d.colType !== "date"
+  );
+
+  const xAxisColumns = columns?.slice();
+
+  // find unique values for each of the x axis columns for the dropdowns
+  // this we'll use for "labels" prop for chartjs
+  const xAxisColumnValues = {};
+  xAxisColumns?.forEach((c) => {
+    xAxisColumnValues[c.key] = getColValues(data, [c.key]);
+  });
+
+  const cleanedData = sanitiseData(data, true);
+
+  return {
+    xAxisColumns: xAxisColumns ? xAxisColumns : [],
+    categoricalColumns: categoricalColumns ? categoricalColumns : [],
+    yAxisColumns: yAxisColumns ? yAxisColumns : [],
+    dateColumns: dateColumns ? dateColumns : [],
+    xAxisColumnValues,
+    cleanedData: cleanedData,
+  };
+}
+
 export function useBreakPoint() {
   const [breakpoint, setBreakpoint] = useState("lg");
   const [width] = useWindowSize();

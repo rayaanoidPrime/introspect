@@ -10,6 +10,7 @@ import {
   CheckIcon,
   ChevronUpDownIcon,
   XCircleIcon,
+  XMarkIcon,
 } from "@heroicons/react/20/solid";
 import React, { useEffect, useRef, useState } from "react";
 import { twMerge } from "tailwind-merge";
@@ -36,16 +37,17 @@ const createNewOption = (val) => {
   };
 };
 
-export default function SingleSelect({
+export default function MultiSelect({
   rootClassNames = "",
   popupClassName = "",
   onChange = null,
-  defaultValue = undefined,
-  value = undefined,
+  defaultValue = [],
+  value = [],
   disabled = false,
   options = [],
   label = null,
   optionRenderer = null,
+  tagRenderer = null,
   placeholder = "Select an option",
   size = "default",
   allowClear = true,
@@ -66,7 +68,7 @@ export default function SingleSelect({
 
   // if there's no matching option
   // or if there's no exact match
-  // create a new option
+  //   create a new option
   if (
     allowCreateNewOption &&
     query !== "" &&
@@ -81,58 +83,88 @@ export default function SingleSelect({
     });
   }
 
-  // find the option matching the default value
-  const [selectedOption, setSelectedOption] = useState(
-    internalOptions.find((option) => option.value === defaultValue) || null
+  // find the option matching the default values
+  const [selectedOptions, setSelectedOptions] = useState(
+    defaultValue
+      .map((val) => internalOptions.find((option) => option.value === val))
+      .filter((opt) => opt)
   );
 
   useEffect(() => {
-    // if the option in the value doesn't exist,
-    // create a new option and add to internal options
-    let opt = internalOptions.find((option) => option.value === value) || null;
+    const newInternalOptions = [...internalOptions];
+    const newSelectedOptions = [];
 
-    if (
-      !opt &&
-      allowCreateNewOption &&
-      value !== null &&
-      typeof value !== "undefined"
-    ) {
-      opt = createNewOption(value);
-      setInternalOptions([...internalOptions, opt]);
-      setSelectedOption(opt);
+    let missing = false;
+
+    value.forEach((val) => {
+      let opt = internalOptions.find((option) => option.value === val) || null;
+
+      // if option doesn't exist, create a new one
+      if (
+        !opt &&
+        allowCreateNewOption &&
+        val !== null &&
+        typeof val !== "undefined"
+      ) {
+        missing = true;
+        opt = createNewOption(val);
+        newInternalOptions.push(opt);
+      }
+      newSelectedOptions.push(opt);
+    });
+
+    if (missing) {
+      setInternalOptions(newInternalOptions);
     }
-  }, [value, allowCreateNewOption, internalOptions, selectedOption]);
+
+    if (newSelectedOptions.length && value.length) {
+      setSelectedOptions(newSelectedOptions);
+    }
+  }, [value, allowCreateNewOption, internalOptions, selectedOptions]);
 
   useEffect(() => {
     ref?.current?.blur?.();
     // if the selected option doesn't exist
     // in our internal options (this can happen if a newly created option was selected)
     // create a new options and add to internal options
-    if (
-      selectedOption &&
-      allowCreateNewOption &&
-      typeof selectedOption !== "undefined" &&
-      !internalOptions.find((option) => option.value === selectedOption?.value)
-    ) {
-      const newOption = createNewOption(selectedOption?.value);
-      setInternalOptions([...internalOptions, newOption]);
-    }
-  }, [selectedOption, internalOptions, allowCreateNewOption]);
+    const newInternalOptions = [...internalOptions];
+    let missing = false;
+    selectedOptions.forEach((selectedOption) => {
+      if (
+        selectedOption.length &&
+        allowCreateNewOption &&
+        typeof selectedOption !== "undefined" &&
+        !newInternalOptions.find(
+          (option) => option.value === selectedOption?.value
+        )
+      ) {
+        missing = true;
+        const newOption = createNewOption(selectedOption?.value);
+        newInternalOptions.push(newOption);
+      }
+      if (missing) {
+        setInternalOptions(newInternalOptions);
+      }
+    });
+  }, [selectedOptions, internalOptions, allowCreateNewOption]);
+
+  console.log(selectedOptions);
 
   return (
     <Combobox
       as="div"
       by="value"
+      multiple
       className={rootClassNames}
-      value={selectedOption}
+      value={selectedOptions}
       defaultValue={defaultValue}
       disabled={disabled}
-      onChange={(option) => {
-        if (!option) return;
-        setSelectedOption(option);
+      onChange={(newSelectedOptions) => {
+        if (!newSelectedOptions) return;
+        setSelectedOptions(newSelectedOptions);
 
-        if (option && onChange && typeof onChange === "function") {
-          onChange(option.value, option);
+        if (newSelectedOptions && onChange && typeof onChange === "function") {
+          onChange(newSelectedOptions);
         }
       }}
     >
@@ -141,25 +173,29 @@ export default function SingleSelect({
           {label}
         </label>
       )}
+
       <div className="relative">
-        <ComboboxInput
-          ref={ref}
-          placeholder={placeholder}
+        <div
           className={twMerge(
-            "w-full rounded-md border-0 pr-12 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-400 sm:text-sm sm:leading-6",
+            "flex flex-row items-start w-full rounded-md border-0 pr-12 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-400 sm:text-sm sm:leading-6",
             inputSizeClasses[size] || inputSizeClasses["default"],
             disabled ? "bg-gray-100 text-gray-400" : "bg-white text-gray-900"
           )}
-          onChange={(event) => {
-            setQuery(event.target.value);
-          }}
-          onBlur={() => {
-            setQuery("");
-          }}
-          displayValue={(option) => {
-            return option && option?.label;
-          }}
-        />
+        >
+          <ComboboxInput
+            ref={ref}
+            className={
+              "py-1 grow h-full rounded-md border-0 pr-12 ring-0 focus:ring-0 sm:text-sm sm:leading-6"
+            }
+            placeholder={placeholder}
+            onChange={(event) => {
+              setQuery(event.target.value);
+            }}
+            onBlur={() => {
+              setQuery("");
+            }}
+          />
+        </div>
 
         <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none">
           {allowClear && (
@@ -168,10 +204,10 @@ export default function SingleSelect({
               onClick={(ev) => {
                 ev.preventDefault();
                 ev.stopPropagation();
-                setSelectedOption(null);
+                setSelectedOptions([]);
                 setQuery("");
                 if (onChange && typeof onChange === "function") {
-                  onChange(null, null);
+                  onChange([]);
                 }
               }}
             />
@@ -238,6 +274,38 @@ export default function SingleSelect({
             ))}
           </ComboboxOptions>
         )}
+      </div>
+      <div className="flex flex-row gap-1 flex-wrap mt-2">
+        {selectedOptions.map((opt) => {
+          return tagRenderer ? (
+            tagRenderer(opt)
+          ) : (
+            <div className="border border-gray-300 shadow-sm flex h-6 flex-row mr-1 bg-gray-200 text-gray-500 items-center rounded-md cursor-default">
+              <span className="pl-2" key={opt.value}>
+                {opt.value}
+              </span>
+              <div
+                className="ml-2 w-4 rounded-r-md hover:bg-gray-400 hover:text-white h-full flex items-center justify-center cursor-pointer"
+                onClick={() => {
+                  setSelectedOptions(
+                    selectedOptions.filter(
+                      (selectedOption) => selectedOption.value !== opt.value
+                    )
+                  );
+                  if (onChange && typeof onChange === "function") {
+                    onChange(
+                      selectedOptions.filter(
+                        (selectedOption) => selectedOption.value !== opt.value
+                      )
+                    );
+                  }
+                }}
+              >
+                <XMarkIcon className="w-3 h-3" />
+              </div>
+            </div>
+          );
+        })}
       </div>
     </Combobox>
   );

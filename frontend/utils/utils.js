@@ -5,6 +5,7 @@ import { Doc, XmlElement, applyUpdate, encodeStateAsUpdate } from "yjs";
 import { v4 } from "uuid";
 import { csvParse } from "d3";
 import { reFormatData } from "$components/defog-components/components/common/utils";
+import { useEffect, useState } from "react";
 
 export const getAnalysis = async (reportId) => {
   const urlToConnect = setupBaseUrl("http", "get_report");
@@ -473,6 +474,20 @@ export function isNumber(input) {
   const endsWithDigitOrPercent = /\d%?$/.test(input);
 
   return regex.test(input) && endsWithDigitOrPercent;
+}
+
+export function useGhostImage() {
+  const [ghostImage, setGhostImage] = useState(null);
+
+  useEffect(() => {
+    var img = document.createElement("img");
+    img.src =
+      "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
+    setGhostImage(img);
+  }, []);
+
+  return ghostImage;
 }
 
 export function parseData(data_csv) {

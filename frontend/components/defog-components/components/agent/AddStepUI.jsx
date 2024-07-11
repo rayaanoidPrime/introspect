@@ -127,6 +127,7 @@ export function AddStepUI({
           activeNode.data.step.inputs = initialInputs;
         }}
         placeholder="Select a tool"
+        allowCreateNewOption={false}
       />
       {!selectedTool ? (
         <></>
