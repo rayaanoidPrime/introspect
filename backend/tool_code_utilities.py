@@ -74,6 +74,11 @@ async def fetch_query_into_df(
         if df[col].apply(type).eq(list).any():
             df = df.drop(col, axis=1)
 
+    if new_sql_query:
+        sql_query = new_sql_query
+    else:
+        sql_query = sql_query
+
     df.sql_query = sql_query
     return df
 
