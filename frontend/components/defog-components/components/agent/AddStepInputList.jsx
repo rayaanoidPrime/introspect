@@ -142,6 +142,7 @@ export const inputTypeToUI = {
 
     return (
       <SingleSelect
+        allowCreateNewOption={false}
         size="small"
         placeholder="Select a value"
         onChange={(val) => {

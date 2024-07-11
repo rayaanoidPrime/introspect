@@ -216,7 +216,7 @@ function AnalysisVersionViewer({
           className="max-w-full h-full flex flex-row bg-white text-gray-600 w-full"
           id="analysis-version-viewer"
         >
-          <div className="sticky top-2 z-[10] h-screen">
+          <div className="absolute h-full left-0 top-2 z-[10] md:sticky md:h-screen">
             <Sidebar
               location="left"
               open={sidebarOpen}
@@ -225,7 +225,7 @@ function AnalysisVersionViewer({
               }}
               title={<span className="font-bold">History</span>}
               rootClassNames={
-                "transition-all z-20 h-[calc(100%-1rem)] rounded-md lg:rounded-none lg:rounded-tr-md lg:rounded-br-md bg-gray-100 border"
+                "transition-all z-20 h-[calc(100%-1rem)] rounded-md lg:rounded-none lg:rounded-tr-md lg:rounded-br-md bg-gray-100 border h-screen md:h-full sticky top-0 md:relative"
               }
               iconClassNames={`${sidebarOpen ? "" : "text-white bg-primary-highlight"}`}
               openClassNames={"border-gray-300 shadow-md"}
@@ -310,11 +310,19 @@ function AnalysisVersionViewer({
             </Sidebar>
           </div>
           <div
-            className="grid grid-cols-1 md:grid-cols-1 grow rounded-tr-lg pb-14 p-2 md:p-4 relative min-w-0 h-full overflow-scroll"
+            className="grid grid-cols-1 md:grid-cols-1 grow rounded-tr-lg pb-14 p-2 md:p-4 relative min-w-0 h-full overflow-scroll "
             // onClick={() => {
             //   setSidebarOpen(false);
             // }}
           >
+            <div
+              className={twMerge(
+                "absolute left-0 top-0 h-full w-full overlay md:hidden bg-gray-800 z-[1] transition-all",
+                sidebarOpen
+                  ? "opacity-30 block"
+                  : "opacity-0 pointer-events-none"
+              )}
+            ></div>
             {activeRootAnalysisId &&
               sessionAnalyses[activeRootAnalysisId].versionList.map(
                 (analysis) => {
