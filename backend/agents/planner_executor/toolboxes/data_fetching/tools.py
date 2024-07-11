@@ -61,7 +61,9 @@ async def data_fetcher_and_aggregator(
     print(f"Running query: {query}")
 
     try:
-        df = await fetch_query_into_df(api_key=api_key, sql_query=query, temp=temp)
+        df, sql_query = await fetch_query_into_df(
+            api_key=api_key, sql_query=query, temp=temp
+        )
     except Exception as e:
         print("Raising execution error", flush=True)
         raise SqlExecutionError(query, str(e))
@@ -69,7 +71,7 @@ async def data_fetcher_and_aggregator(
     analysis = ""
     return {
         "outputs": [{"data": df, "analysis": analysis}],
-        "sql": df.query.strip(),
+        "sql": sql_query.strip(),
     }
 
 

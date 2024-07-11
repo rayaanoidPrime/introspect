@@ -80,7 +80,7 @@ async def fetch_query_into_df(
         sql_query = sql_query
 
     df.sql_query = sql_query
-    return df
+    return df, sql_query
 
 
 def natural_sort_function(l, ascending=True):
