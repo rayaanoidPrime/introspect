@@ -8,6 +8,9 @@ This contains the self-hosted agents front-end and back-end that we have created
 2. Let admin users add and manage general users
 3. Let admin users connect to a data warehouse and add tables
 
+## Running without a security certificate
+If you are running this locally or on the intranet, you should modify `dockerfile.agents-nginx` so that it uses `nginx/nginx_local.conf` as its nginx config. You should also comment out the lines that attempt to copy the certificate and private key.
+
 ## Docker
 
 To build the docker containers, make sure you have docker running on your system.
