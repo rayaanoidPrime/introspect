@@ -12,7 +12,7 @@ import "@blocknote/mantine/style.css";
 
 const Doc = dynamic(
   () =>
-    import("$agents-ui-components").then((module) => {
+    import("$agents-doc").then((module) => {
       return module.Doc;
     }),
   {
