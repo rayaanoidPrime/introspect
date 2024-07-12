@@ -80,7 +80,7 @@ const QueryDatabase = () => {
           <DefogAnalysisAgentStandalone
             analysisId={null}
             token={token}
-            apiEndpoint={""}
+            apiEndpoint={process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}
             devMode={devMode}
             keyName={apiKeyName}
           />
