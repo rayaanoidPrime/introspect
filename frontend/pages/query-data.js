@@ -80,6 +80,7 @@ const QueryDatabase = () => {
           <DefogAnalysisAgentStandalone
             analysisId={null}
             token={token}
+            apiEndpoint={""}
             user={user}
             devMode={devMode}
             keyName={apiKeyName}
