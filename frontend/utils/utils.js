@@ -215,7 +215,6 @@ export const deleteDoc = async (docId) => {
 
 export const toolDisplayNames = {
   data_fetcher_and_aggregator: "Fetch data from db",
-  global_dict_data_fetcher_and_aggregator: "Query data",
   line_plot: "Line Plot",
   kaplan_meier_curve: "Kaplan Meier Curve",
   hazard_ratio: "Hazard Ratio",
@@ -229,7 +228,6 @@ export const toolDisplayNames = {
 
 export const toolShortNames = {
   data_fetcher_and_aggregator: "Fetch ",
-  global_dict_data_fetcher_and_aggregator: "Query ",
   line_plot: "Line",
   kaplan_meier_curve: "KM Curve",
   hazard_ratio: "Hazard Ratio",

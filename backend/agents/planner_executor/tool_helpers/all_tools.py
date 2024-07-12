@@ -31,36 +31,6 @@ tool_name_dict = tools = {
             }
         ],
     },
-    "global_dict_data_fetcher_and_aggregator": {
-        "function_name": "global_dict_data_fetcher_and_aggregator",
-        "tool_name": "Query data from a pandas dataframe",
-        "fn": global_dict_data_fetcher_and_aggregator,
-        "code": inspect.getsource(global_dict_data_fetcher_and_aggregator),
-        "description": "Converting a natural language question into a SQL query, that then runs on a database that is stored in global_dict. Fetches, filters, aggregates, and performs arithmetic computations on data. This tool has access to all of global_dict. This will only run on the data that is stored in global_dict. For external databases, use the data_fetcher_and_aggregator tool.",
-        "input_metadata": {
-            "question": {
-                "name": "question",
-                "default": None,
-                "description": "Natural language description of the data required as a string",
-                "type": "str",
-            },
-            "input_dfs": {
-                "name": "input_dfs",
-                "default": None,
-                "meta_": "global_dict.<input_df_name>",
-                "description": "A list of dataframes stored in global_dict. [global_dict.<input_df_name>, global_dict.<input_df_name> ...]",
-                "type": "list",
-            },
-        },
-        "toolbox": "data_fetching",
-        "output_metadata": [
-            {
-                "name": "output_df",
-                "description": "pandas dataframe",
-                "type": "pandas.core.frame.DataFrame",
-            }
-        ],
-    },
     "send_email": {
         "function_name": "send_email",
         "tool_name": "Send Email",

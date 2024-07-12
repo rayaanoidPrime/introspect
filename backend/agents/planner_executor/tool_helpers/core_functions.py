@@ -1,12 +1,7 @@
 from typing import Dict, List
 import tiktoken
 from datetime import date
-import traceback
 import pandas as pd
-from defog import Defog
-from defog.query import execute_query
-from db_utils import get_db_type_creds
-import asyncio
 import base64
 import os
 
@@ -53,6 +48,7 @@ def safe_sql(query):
         or "append" in query
         or "insert" in query
         or "update" in query
+        or "create" in query
     ):
         return False
 
