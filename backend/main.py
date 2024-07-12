@@ -43,11 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-test_resp = {"test": "test"}
-
 request_types = ["clarify", "understand", "gen_approaches", "gen_steps", "gen_report"]
-
-
 report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
 
 
