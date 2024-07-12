@@ -31,4 +31,3 @@ sqlalchemy
 statsmodels
 tabulate
 tiktoken
-torch
