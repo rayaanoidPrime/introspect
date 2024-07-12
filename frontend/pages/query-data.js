@@ -81,7 +81,6 @@ const QueryDatabase = () => {
             analysisId={null}
             token={token}
             apiEndpoint={""}
-            user={user}
             devMode={devMode}
             keyName={apiKeyName}
           />
