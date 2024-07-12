@@ -10,7 +10,7 @@ import dynamic from "next/dynamic";
 
 const DocIcon = dynamic(
   () =>
-    import("$agents-ui-components").then((module) => {
+    import("$agents-doc").then((module) => {
       return module.DocIcon;
     }),
   {

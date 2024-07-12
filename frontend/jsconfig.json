@@ -10,6 +10,7 @@
       "$agents-ui-components": [
         "./components/agents-ui-components/lib/main.jsx"
       ],
+      "$agents-doc": ["./components/agents-ui-components/lib/doc.jsx"],
       "$agents-ui-styles": [
         "./components/agents-ui-components/lib/styles/index.scss"
       ],
