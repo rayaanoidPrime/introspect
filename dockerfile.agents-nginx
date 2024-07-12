@@ -17,8 +17,8 @@ COPY ./frontend/out /var/www/html
 RUN find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_DEFOG_API_KEY/${DEFOG_API_KEY}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_API_KEY_NAMES/${DEFOG_API_KEY_NAMES}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_GOOGLE_CLIENT_ID/${GOOGLE_CLIENT_ID}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_BUTTON_TEXT/${BUTTON_TEXT}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_ALLOW_UPDATES/${ALLOW_UPDATES}/g" {} \; && find /var/www/html -type f -exec sed -i "s/REPLACE_WITH_ALLOW_CACHING/${ALLOW_CACHING}/g" {} \;
 
 # copy the SSL certificate and key, if they exist
-COPY /etc/ssl/certs/defogcert.pem /etc/ssl/certs/defogcert.pem
-COPY /etc/ssl/private/defogkey.pem /etc/ssl/private/defogkey.pem
+COPY ./defogcert.pem /etc/ssl/certs/defogcert.pem
+COPY ./defogkey.pem /etc/ssl/private/defogkey.pem
 
 # run nginx
 CMD ["nginx", "-g", "daemon off;"]
