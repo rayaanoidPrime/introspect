@@ -380,7 +380,7 @@ async def update_golden_queries(request: Request):
 async def upload_csv(request: Request):
     params = await request.json()
     token = params.get("token")
-    if not validate_user(token, user_type="admin"):
+    if not validate_user(token):
         return {"error": "unauthorized"}
 
     key_name = params.get("key_name")
