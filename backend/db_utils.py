@@ -735,7 +735,7 @@ async def get_table_data(table_id):
 async def get_all_docs(token):
     username = validate_user(token, get_username=True)
     if not username:
-        return {"success": False, "error_message": "Invalid token."}
+        return {"success": False, "error_message": "Invalid token."}, None, None
     # get reports from the reports table
     err = None
     own_docs = []
