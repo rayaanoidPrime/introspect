@@ -437,6 +437,7 @@ async def preview_table(request: Request):
     """
     Preview the first 10 rows of a table, given the table name and standard parameters of token, key_name, and temp
     Also sanitizes the table name to prevent SQL injection
+    KNOWN ISSUE: Does not work if the table name has a double quote in it
     """
     params = await request.json()
     token = params.get("token")
@@ -482,6 +483,9 @@ async def preview_table(request: Request):
         sql_query = f'SELECT * FROM "{table_name}" LIMIT 10'
     else:
         sql_query = f'SELECT TOP 10 * FROM "{table_name}"'
+
+    print("Executing preview table query", flush=True)
+    print(sql_query, flush=True)
 
     try:
         colnames, data, _ = await asyncio.to_thread(
