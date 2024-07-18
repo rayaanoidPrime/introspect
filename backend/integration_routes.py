@@ -94,12 +94,9 @@ async def get_metadata(request: Request):
 
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
-
-    if is_temp:
-        api_key = f"{api_key}-temp"
-
+    
     try:
-        md = await make_request(f"{DEFOG_BASE_URL}/get_metadata", {"api_key": api_key})
+        md = await make_request(f"{DEFOG_BASE_URL}/get_metadata", {"api_key": api_key, "temp": is_temp})
         table_metadata = md["table_metadata"]
 
         metadata = convert_nested_dict_to_list(table_metadata)
