@@ -483,8 +483,11 @@ async def preview_table(request: Request):
     else:
         sql_query = f'SELECT TOP 10 * FROM "{table_name}"'
 
-    colnames, data, _ = await asyncio.to_thread(
-        execute_query, sql_query, api_key, db_type, db_creds, retries=2, temp=temp
-    )
+    try:
+        colnames, data, _ = await asyncio.to_thread(
+            execute_query, sql_query, api_key, db_type, db_creds, retries=0, temp=temp
+        )
+    except:
+        return {"error": "error executing query"}
 
     return {"data": data, "columns": colnames}
