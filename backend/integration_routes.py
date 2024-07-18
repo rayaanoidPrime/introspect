@@ -2,6 +2,8 @@ from fastapi import APIRouter, Request
 import json
 import os
 from defog import Defog
+from defog.query import execute_query
+import re
 
 from db_utils import (
     validate_user,
@@ -428,3 +430,68 @@ async def upload_csv(request: Request):
 
     print("reached the upload_csv route", flush=True)
     return resp
+
+
+@router.post("/integration/preview_table")
+async def preview_table(request: Request):
+    """
+    Preview the first 10 rows of a table, given the table name and standard parameters of token, key_name, and temp
+    Also sanitizes the table name to prevent SQL injection
+    KNOWN ISSUE: Does not work if the table name has a double quote in it
+    """
+    params = await request.json()
+    token = params.get("token")
+    if not validate_user(token):
+        return {"error": "unauthorized"}
+
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+    temp = params.get("temp", False)
+    if temp:
+        db_type = "postgres"
+        table_name = "temp_table"
+        db_creds = {
+            "host": "agents-postgres",
+            "port": 5432,
+            "database": "postgres",
+            "user": "postgres",
+            "password": "postgres",
+        }
+    else:
+        res = get_db_type_creds(api_key)
+        if res:
+            db_type, db_creds = res
+        else:
+            return {"error": "no db creds found"}
+
+        table_name = params.get("table_name")
+
+    # we need to sanitize the table name to prevent SQL injection
+    # for example, if table_name is `table1; DROP TABLE table2`, and we are just doing `SELECT * FROM {table_name} LIMIT 10`, the query would be "SELECT * FROM table1; DROP TABLE table2 LIMIT 10"
+    # to prevent this, we need to check that the table name only has alphanumeric characters, underscores, or spaces
+    # further, we will also add quotes around the table name to prevent SQL injection using a space in the table name
+
+    # check that the table name only has alphanumeric characters, underscores, spaces, or periods
+    # use regex for this
+    if not re.match(r"^[\w .]+$", table_name):
+        # \w: Matches any word character. A word character is defined as any alphanumeric character plus the underscore (a-z, A-Z, 0-9, _).
+        # the space after \w is intentional, to allow spaces in the table name
+        return {"error": "invalid table name"}
+
+    # in these select statements, add quotes around the table name to prevent SQL injection using a space in the table name
+    if db_type != "sqlserver":
+        sql_query = f'SELECT * FROM "{table_name}" LIMIT 10'
+    else:
+        sql_query = f'SELECT TOP 10 * FROM "{table_name}"'
+
+    print("Executing preview table query", flush=True)
+    print(sql_query, flush=True)
+
+    try:
+        colnames, data, _ = await asyncio.to_thread(
+            execute_query, sql_query, api_key, db_type, db_creds, retries=0, temp=temp
+        )
+    except:
+        return {"error": "error executing query"}
+
+    return {"data": data, "columns": colnames}
