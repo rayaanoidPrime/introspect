@@ -470,9 +470,9 @@ async def preview_table(request: Request):
     # to prevent this, we need to check that the table name only has alphanumeric characters, underscores, or spaces
     # further, we will also add quotes around the table name to prevent SQL injection using a space in the table name
 
-    # check that the table name only has alphanumeric characters, underscores, or spaces
+    # check that the table name only has alphanumeric characters, underscores, spaces, or periods
     # use regex for this
-    if not re.match(r"^[\w ]+$", table_name):
+    if not re.match(r"^[\w .]+$", table_name):
         # \w: Matches any word character. A word character is defined as any alphanumeric character plus the underscore (a-z, A-Z, 0-9, _).
         # the space after \w is intentional, to allow spaces in the table name
         return {"error": "invalid table name"}
