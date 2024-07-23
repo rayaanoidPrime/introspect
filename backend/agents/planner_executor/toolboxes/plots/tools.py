@@ -353,7 +353,7 @@ async def line_plot(
             y=y_column,
             hue=color_column,
             estimator=aggregation_type,
-            line_group_column=line_group_column,
+            # line_group_column=line_group_column,
             linewidth=linewidth,
         )
         # Calculating the median value of 'y'
@@ -388,7 +388,7 @@ async def line_plot(
             kind="line",
             col=facet_column,
             estimator=aggregation_type,
-            line_group_column=line_group_column,
+            # line_group_column=line_group_column,
             col_wrap=4,
             linewidth=linewidth,
         )
