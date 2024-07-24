@@ -301,7 +301,13 @@ export default function ManageTools() {
                           );
                         })}
 
-                        <AddTool toolbox={toolbox} onAddTool={onAddTool} />
+                        <AddTool
+                          toolbox={toolbox}
+                          onAddTool={onAddTool}
+                          apiEndpoint={
+                            process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""
+                          }
+                        />
                       </div>
                     </div>
                   );
