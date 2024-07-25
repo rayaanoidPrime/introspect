@@ -953,7 +953,7 @@ async def store_tool_run(analysis_id, step, run_result, skip_step_update=False):
 
                     # de-duplicate column names
                     # if the same column name exists more than once, add a suffix
-                    columns = data.columns
+                    columns = data.columns.tolist()
                     seen = {}
                     for i, item in enumerate(columns):
                         if item in seen:
