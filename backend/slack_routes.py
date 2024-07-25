@@ -98,7 +98,8 @@ async def process_event(event):
                 )
 
             # first, get the default API key
-            defog_api_key = get_api_key_from_key_name(None)
+            key_name = "Slack"  # if this key name does not exist, the function below default to the first key
+            defog_api_key = get_api_key_from_key_name(key_name)
 
             # then, get the db type and db creds associated with the API key
             res = get_db_type_creds(defog_api_key)
