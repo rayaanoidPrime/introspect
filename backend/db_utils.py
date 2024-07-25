@@ -951,6 +951,19 @@ async def store_tool_run(analysis_id, step, run_result, skip_step_update=False):
                         float_format="%.3f", index=False
                     )
 
+                    # de-duplicate column names
+                    # if the same column name exists more than once, add a suffix
+                    columns = data.columns
+                    seen = {}
+                    for i, item in enumerate(columns):
+                        if item in seen:
+                            columns[i] = f"{item}_{seen[item]}"
+                            seen[item] += 1
+                        else:
+                            seen[item] = 1
+
+                    data.columns = columns
+
                     # have to reset index for feather to work
                     data.reset_index(drop=True).to_feather(
                         report_assets_dir + "/datasets/" + db_path
