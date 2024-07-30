@@ -2,18 +2,9 @@
   "compilerOptions": {
     "baseUrl": "./",
     "checkJs": true,
+    "module": "nodenext",
     "paths": {
       "$utils/*": ["./utils/*"],
-      "$ui-components": [
-        "./components/agents-ui-components/lib/ui-components/lib/main.js"
-      ],
-      "$agents-ui-components": [
-        "./components/agents-ui-components/lib/main.jsx"
-      ],
-      "$agents-doc": ["./components/agents-ui-components/lib/doc.jsx"],
-      "$agents-ui-styles": [
-        "./components/agents-ui-components/lib/styles/index.scss"
-      ],
       "$components/*": ["./components/*"]
     },
     "jsx": "react-jsx"

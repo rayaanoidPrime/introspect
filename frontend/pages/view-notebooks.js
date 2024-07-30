@@ -7,16 +7,7 @@ import setupBaseUrl from "$utils/setupBaseUrl";
 import Scaffolding from "$components/layout/Scaffolding";
 import { UserContext } from "$components/context/UserContext";
 import dynamic from "next/dynamic";
-
-const DocIcon = dynamic(
-  () =>
-    import("$agents-doc").then((module) => {
-      return module.DocIcon;
-    }),
-  {
-    ssr: false,
-  }
-);
+import { DocIcon } from "@defogdotai/agents-ui-components";
 
 const ViewNotebooks = () => {
   const [loading, setLoading] = useState(false);

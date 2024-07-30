@@ -1,11 +1,12 @@
+"use-client";
 import React, { useState } from "react";
-import '../styles/globals.css';
-import "$agents-ui-styles";
+import "../styles/globals.css";
+import "@defogdotai/agents-ui-components/css";
 import {
   MessageMonitor,
   MessageManagerContext,
   MessageManager,
-} from "$ui-components";
+} from "@defogdotai/agents-ui-components/core-ui";
 import { UserContext } from "$components/context/UserContext";
 
 export default function App({ Component, pageProps }) {
