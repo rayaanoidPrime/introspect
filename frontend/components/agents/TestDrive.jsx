@@ -2,11 +2,10 @@
 
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
-  MessageManager,
   MessageManagerContext,
   MessageMonitor,
   Tabs,
-} from "../agents-ui-components/lib/ui-components/lib/main";
+} from "@defogdotai/agents-ui-components/core-ui";
 import { QueryDataScaffolding } from "../agents-ui-components/lib/components/defog-components/QueryDataScaffolding";
 import { twMerge } from "tailwind-merge";
 import { AnalysisTreeManager } from "../agents-ui-components/lib/components/defog-components/agent/analysisTreeManager";

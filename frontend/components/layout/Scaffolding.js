@@ -3,7 +3,7 @@ import { UserContext } from "../context/UserContext";
 import { Layout } from "antd/lib";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { NavBar } from "$ui-components";
+import { NavBar } from "@defogdotai/agents-ui-components/core-ui";
 import { usePathname } from "next/navigation";
 import { twMerge } from "tailwind-merge";
 
