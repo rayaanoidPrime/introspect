@@ -51,6 +51,7 @@ async def feedback(request: Request):
 
 @router.post("/get_feedback")
 async def get_feedback(request: Request):
+    print("get_feedback was hit")
     """Responds by fetching the feedback users have given in the past."""
     params = await request.json()
     token = params.get("token")
@@ -89,6 +90,32 @@ async def get_feedback(request: Request):
     res["data"] = data
     res["columns"] = columns[:-1]  # remove the last column (parent_question_text)
     return res
+
+
+@router.post("/get_instructions_recommendation")
+async def get_instructions_recommendation(request: Request):
+    """Uses negative feedback for a query to provide recommendations for instructions that might improve it."""
+    params = await request.json()
+    token = params.get("token")
+    if not validate_user(token):
+        return {"error": "unauthorized"}
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+    question = params.get("question")
+    sql_generated = params.get("sql_generated")
+    user_feedback = params.get("user_feedback")
+    url = DEFOG_BASE_URL + "/reflect_on_error"
+
+    r = await make_request(
+        url=url,
+        json={
+            "api_key": api_key,
+            "question": question,
+            "sql_generated": sql_generated,
+            "error": user_feedback,
+        },
+    )
+    return r
 
 
 ### Helper functions ###
