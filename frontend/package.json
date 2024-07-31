@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 1236",
     "export": "next build && next export && sh ./export.sh",
-    "lint": "next lint"
+    "lint": "next lint",
+    "update-agents": "rm -rf .next && rm -rf ./node_modules/@defogdotai && npm i ../../agents-ui-components/defogdotai-agents-ui-components-0.0.0-beta-17.tgz"
   },
   "dependencies": {
     "@amcharts/amcharts5": "^5.9.13",

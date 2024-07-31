@@ -345,9 +345,6 @@ async def update_report_data(
                         )
                 else:
                     err = "Report not found."
-                    print("\n\n\n")
-                    print(err)
-                    print("\n\n\n")
                     raise ValueError(err)
 
     except Exception as e:
@@ -568,9 +565,6 @@ async def delete_doc(doc_id):
                 print("Deleted doc with id: ", doc_id)
             else:
                 err = "Doc not found."
-                print("\n\n\n")
-                print(err)
-                print("\n\n\n")
                 raise ValueError(err)
     except Exception as e:
         err = str(e)
@@ -599,9 +593,6 @@ async def update_doc_data(doc_id, col_names=[], new_data={}):
                 conn.execute(update(Docs).where(Docs.doc_id == doc_id).values(new_data))
             else:
                 err = "Doc not found."
-                print("\n\n\n")
-                print(err)
-                print("\n\n\n")
                 raise ValueError(err)
     except Exception as e:
         err = str(e)
@@ -1189,13 +1180,13 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
                     .values(outputs=new_val, edited=False)
                 )
 
-            with engine.begin() as conn:
-                row = conn.execute(
-                    select(ToolRuns).where(ToolRuns.tool_run_id == tool_run_id)
-                ).fetchone()
+        with engine.begin() as conn:
+            row = conn.execute(
+                select(ToolRuns).where(ToolRuns.tool_run_id == tool_run_id)
+            ).fetchone()
 
-            if row is not None:
-                new_data = dict(row._mapping)
+        if row is not None:
+            new_data = dict(row._mapping)
 
         return {"success": True, "tool_run_data": new_data}
     except Exception as e:
