@@ -7,15 +7,14 @@
     "build": "next build",
     "start": "next start -p 1236",
     "export": "next build && next export && sh ./export.sh",
-    "lint": "next lint",
-    "update-agents": "rm -rf .next && rm -rf ./node_modules/@defogdotai && npm i ../../agents-ui-components/defogdotai-agents-ui-components-0.0.0-beta-17.tgz"
+    "lint": "next lint"
   },
   "dependencies": {
     "@amcharts/amcharts5": "^5.9.13",
     "@ant-design/icons": "^5.4.0",
     "@azure/msal-browser": "^3.7.1",
     "@azure/msal-react": "^2.0.10",
-    "@defogdotai/agents-ui-components": "file:../../agents-ui-components/defogdotai-agents-ui-components-0.0.0-beta-17.tgz",
+    "@defogdotai/agents-ui-components": "^0.0.0-beta-20",
     "@dotlottie/react-player": "^1.6.12",
     "@marsidev/react-turnstile": "^0.4.1",
     "@notionhq/client": "^2.2.14",

@@ -66,6 +66,7 @@ const QueryDataPage = () => {
                 uploadedCsvPredefinedQuestions={[
                   "Show me any 5 rows from the dataset",
                 ]}
+                showAnalysisUnderstanding={false}
                 dbs={apiKeyNames.map((name) => {
                   return {
                     name: name,
