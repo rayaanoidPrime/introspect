@@ -172,7 +172,6 @@ class Executor:
                             "dev": self.dev,
                             "temp": self.temp,
                         }
-                        print(payload)
                         ans = await asyncio.to_thread(requests.post, url, json=payload)
 
                     try:

@@ -2,7 +2,7 @@
 
 import removeImports from "next-remove-imports";
 
-export default removeImports({
+export default removeImports()({
   reactStrictMode: false,
   assetPrefix: "./",
   // need this for docker build
