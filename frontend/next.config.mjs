@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 
-const removeImports = require("next-remove-imports")();
+import removeImports from "next-remove-imports";
 
-const nextConfig = removeImports({
+export default removeImports({
   reactStrictMode: false,
   assetPrefix: "./",
   // need this for docker build
@@ -16,5 +16,3 @@ const nextConfig = removeImports({
     styledComponents: true,
   },
 });
-
-module.exports = nextConfig;
