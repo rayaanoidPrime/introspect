@@ -4,11 +4,10 @@ import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import dynamic from "next/dynamic";
 import { Toggle } from "@defogdotai/agents-ui-components/core-ui";
-// import { DefogAnalysisAgentEmbed } from "@defogdotai/agents-ui-components/agent";
 
 const DefogAnalysisAgentEmbed = dynamic(
   () =>
-    import("../../../agents-ui-components/dist/agent").then((m) => {
+    import("@defogdotai/agents-ui-components/agent").then((m) => {
       return m.DefogAnalysisAgentEmbed;
     }),
   { ssr: false }
