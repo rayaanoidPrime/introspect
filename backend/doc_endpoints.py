@@ -490,9 +490,6 @@ async def rerun_step(websocket: WebSocket):
                             websocket,
                         )
                     elif new_data.get("pre_tool_run_message"):
-                        logging.info(
-                            f"Starting rerunning of step: {new_data.get('pre_tool_run_message')} with websocket: {websocket} in application_state: {websocket.application_state} and client_state: {websocket.client_state}"
-                        )
                         await manager.send_personal_message(
                             {
                                 "pre_tool_run_message": new_data.get(

@@ -1,9 +1,12 @@
+import os
 from fastapi import APIRouter, Request, HTTPException
 from generic_utils import get_api_key_from_key_name, make_request
 import pandas as pd
 from io import StringIO
 
 router = APIRouter()
+
+DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 
 @router.post("/generate_column_descriptions_for_csv")
@@ -51,7 +54,7 @@ async def generate_column_descriptions_for_csv(request: Request):
     # now, send a request to `/get_schema_csv`
     schemas = {table_name: metadata}
     r = await make_request(
-        "https://api.defog.ai/get_schema_csv",
+        f"{DEFOG_BASE_URL}/get_schema_csv",
         {
             "api_key": api_key,
             "schemas": schemas,
@@ -127,7 +130,7 @@ async def generate_query_csv(request: Request):
         )
 
     r = await make_request(
-        "https://api.defog.ai/generate_query_chat",
+        f"{DEFOG_BASE_URL}/generate_query_chat",
         {
             "api_key": api_key,
             "question": question,

@@ -69,6 +69,8 @@ async def get_tables_db_creds(request: Request):
             os.path.join(defog_path, f"selected_tables_{api_key}.json"), "r"
         ) as f:
             selected_table_names = json.load(f)
+            if not selected_table_names:
+                raise Exception("No selected tables found")
     except:
         selected_table_names = table_names
 
