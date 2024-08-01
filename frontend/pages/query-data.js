@@ -8,7 +8,7 @@ import { Toggle } from "@defogdotai/agents-ui-components/core-ui";
 
 const DefogAnalysisAgentEmbed = dynamic(
   () =>
-    import("@defogdotai/agents-ui-components/agent").then((m) => {
+    import("../../../agents-ui-components/dist/agent").then((m) => {
       return m.DefogAnalysisAgentEmbed;
     }),
   { ssr: false }
