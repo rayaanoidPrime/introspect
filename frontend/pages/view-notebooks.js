@@ -7,7 +7,7 @@ import setupBaseUrl from "$utils/setupBaseUrl";
 import Scaffolding from "$components/layout/Scaffolding";
 import { UserContext } from "$components/context/UserContext";
 import dynamic from "next/dynamic";
-import { DocIcon } from "@defogdotai/agents-ui-components";
+import { DocIcon } from "@defogdotai/agents-ui-components/doc";
 
 const ViewNotebooks = () => {
   const [loading, setLoading] = useState(false);
