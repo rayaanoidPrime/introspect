@@ -9,7 +9,13 @@ import { UserContext } from "$components/context/UserContext";
 import Scaffolding from "$components/layout/Scaffolding";
 import "@blocknote/mantine/style.css";
 
-import { Doc } from "@defogdotai/agents-ui-components/doc";
+const Doc = dynamic(
+  () =>
+    import("@defogdotai/agents-ui-components/doc").then((m) => {
+      return m.Doc;
+    }),
+  { ssr: false }
+);
 
 export default function DocPage() {
   const router = useRouter();
