@@ -15,7 +15,11 @@ import {
 } from "antd/lib";
 import { FloatButton, Tabs } from "antd";
 import Scaffolding from "$components/layout/Scaffolding";
-import { DownOutlined, UpOutlined } from "@ant-design/icons";
+import {
+  DownOutlined,
+  MergeCellsOutlined,
+  UpOutlined,
+} from "@ant-design/icons";
 
 const { Option } = Select;
 
@@ -25,10 +29,15 @@ const ExtractMetadata = () => {
   ).split(",");
   const [apiKeyName, setApiKeyName] = useState(apiKeyNames[0]);
   const [token, setToken] = useState("");
+  const [user, setUser] = useState("");
+  const [userType, setUserType] = useState("");
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     const user = localStorage.getItem("defogUser");
+    setUser(user);
+    const userType = localStorage.getItem("defogUserType");
+    setUserType(userType);
     const token = localStorage.getItem("defogToken");
     setToken(token);
   }, []);
@@ -55,6 +64,7 @@ const ExtractMetadata = () => {
             </Row>
           ) : null}
 
+          {/* Updating Database Credentials Form */}
           <div className="w-full">
             <div
               onClick={() => setShowForm(!showForm)}
@@ -74,13 +84,17 @@ const ExtractMetadata = () => {
             <div
               className={`w-full bg-gray-100 p-3 rounded-lg shadow-md transition-all duration-500 ease-in-out ${showForm ? "max-h-screen opacity-100" : "max-h-0 opacity-0 overflow-hidden"}`}
             >
-              <DbCredentialsForm
-                token={token}
-                apiKeyName={apiKeyName}
-                setupBaseUrl={setupBaseUrl}
-              />
+              <DbCredentialsForm token={token} apiKeyName={apiKeyName} />
             </div>
           </div>
+
+          {/* Extracting/Updating Metadata for the associated api key */}
+          <MetadataTable
+            token={token}
+            user={user}
+            userType={userType}
+            apiKeyName={apiKeyName}
+          />
         </div>
       </Scaffolding>
     </>

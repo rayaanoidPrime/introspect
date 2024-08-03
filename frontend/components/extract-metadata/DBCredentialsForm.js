@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Form, Select, Input, Button } from "antd";
+import setupBaseUrl from "$utils/setupBaseUrl";
 import { DatabaseOutlined } from "@ant-design/icons";
 const dbCredOptions = {
   postgres: ["host", "port", "user", "password", "database"],
@@ -20,7 +21,7 @@ const placeholders = {
   schema: "Schema",
 };
 
-const DbCredentialsForm = ({ token, apiKeyName, setupBaseUrl }) => {
+const DbCredentialsForm = ({ token, apiKeyName }) => {
   const [form] = Form.useForm();
   const [dbType, setDbType] = useState("postgres");
 
