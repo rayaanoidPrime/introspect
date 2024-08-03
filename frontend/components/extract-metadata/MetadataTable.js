@@ -1,17 +1,31 @@
 import { Form, Select, Input, Button } from "antd";
 
-const MetadataTable = ({
-  metadata,
-  setMetadata,
-  tables,
-  selectedTablesForIndexing,
-  setSelectedTablesForIndexing,
-  filteredTables,
-  setFilteredTables,
-  handleMetadataUpdate,
-  loading,
-  handleUpdateMetadataOnServers,
-}) => {
+const MetadataTable = ({ token, apiKeyName, setupBaseUrl }) => {
+  // table states
+  const [tables, setTables] = useState([]);
+  const [selectedTablesForIndexing, setSelectedTablesForIndexing] = useState(
+    []
+  );
+  const [filteredTables, setFilteredTables] = useState([]);
+
+  const [metadata, setMetadata] = useState([]);
+
+  const getMetadata = async () => {
+    const token = localStorage.getItem("defogToken");
+    setToken(token);
+    const res = await fetch(setupBaseUrl("http", `integration/get_metadata`), {
+      method: "POST",
+      body: JSON.stringify({
+        token,
+        key_name: apiKeyName,
+      }),
+    });
+    const data = await res.json();
+    if (!data.error) {
+      setMetadata(data?.metadata || []);
+    }
+  };
+
   return (
     <div className="my-10">
       <Form className="w-full" onFinish={handleMetadataUpdate}>
