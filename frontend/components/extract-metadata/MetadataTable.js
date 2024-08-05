@@ -1,68 +1,26 @@
 import { useState, useEffect } from "react";
-import { Form, Select, Input, Button } from "antd";
-import { useRouter } from "next/router";
+import { Form, Select, Input, Button, Table, message } from "antd";
+import { EditOutlined, SaveOutlined, TableOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 
-const MetadataTable = ({ token, user, userType, apiKeyName }) => {
-  const router = useRouter();
-  // table states
+const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
   const [tables, setTables] = useState([]);
   const [selectedTablesForIndexing, setSelectedTablesForIndexing] = useState(
     []
   );
-  const [filteredTables, setFilteredTables] = useState([]);
-
   const [metadata, setMetadata] = useState([]);
+  const [editingKey, setEditingKey] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isUpdatedMetadata, setIsUpdatedMetadata] = useState(false);
+  const [desc, setDesc] = useState({});
 
-  const getTablesAndDbCreds = async () => {
-    if (!user || !token || !userType) {
-      // redirect to login page
-      router.push("/log-in");
-      return;
+  useEffect(() => {
+    if (tablesData) {
+      setTables(tablesData.tables);
+      setSelectedTablesForIndexing(tablesData.db_tables);
+      getMetadata(); // Fetch metadata as soon as tablesData is set
     }
-    const res = await fetch(
-      setupBaseUrl("http", `integration/get_tables_db_creds`),
-      {
-        method: "POST",
-        body: JSON.stringify({
-          token,
-          key_name: apiKeyName,
-        }),
-      }
-    );
-    const data = await res.json();
-    if (!data.error) {
-      // reset the current values in the db_creds form
-      // setDbType(data["db_type"]);
-      // setDbCreds(data["db_creds"]);
-      setTables(data["tables"]);
-      setSelectedTablesForIndexing(data["selected_tables"]);
-      // form.setFieldsValue({
-      //   db_type: data["db_type"],
-      //   ...data["db_creds"],
-      //   db_tables: data["selected_tables"],
-      // });
-    } else {
-      // setDbCreds({});
-      // setTables([]);
-      // setSelectedTablesForIndexing([]);
-      // form.setFieldsValue({
-      //   db_type: "",
-      //   db_tables: [],
-      //   host: "",
-      //   port: "",
-      //   user: "",
-      //   password: "",
-      //   database: "",
-      //   schema: "",
-      //   account: "",
-      //   warehouse: "",
-      //   access_token: "",
-      //   server_hostname: "",
-      //   http_path: "",
-      // });
-    }
-  };
+  }, [tablesData]);
 
   const getMetadata = async () => {
     const res = await fetch(setupBaseUrl("http", `integration/get_metadata`), {
@@ -74,32 +32,188 @@ const MetadataTable = ({ token, user, userType, apiKeyName }) => {
     });
     const data = await res.json();
     if (!data.error) {
-      setMetadata(data?.metadata || []);
-    } else {
-      //
+      setMetadata(data.metadata || []);
     }
   };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        await getTablesAndDbCreds();
         await getMetadata();
       } catch (error) {
         console.error("Error fetching data:", error);
-      } finally {
-        // setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [apiKeyName]);
 
-  const handleMetadataUpdate = () => ({});
+  useEffect(() => {
+    if (isUpdatedMetadata) {
+      const updateMetadata = async () => {
+        try {
+          setLoading(true);
+          const res = await fetch(
+            setupBaseUrl("http", `integration/update_metadata`),
+            {
+              method: "POST",
+              body: JSON.stringify({
+                metadata: metadata,
+                token: token,
+                // dev: devMode,
+                key_name: apiKeyName,
+              }),
+            }
+          );
+          const data = await res.json();
+          setLoading(false);
+          if (data.error) {
+            message.error("Error updating metadata");
+          } else {
+            if (data.suggested_joins) {
+              document.getElementById("allowed-joins").value =
+                data.suggested_joins;
+            }
+            message.success("Metadata updated successfully!");
+            setEditingKey("");
+          }
+        } catch (error) {
+          console.error("Error saving data:", error);
+          message.error("Error saving data");
+          setLoading(false);
+        }
+      };
+
+      updateMetadata();
+      setIsUpdatedMetadata(false);
+    }
+  }, [isUpdatedMetadata]);
+
+  const handleSave = () => {
+    setIsUpdatedMetadata(true);
+  };
+
+  const handleEdit = (key) => {
+    setEditingKey(key);
+  };
+
+  const handleInputChange = (e, key) => {
+    const { value } = e.target;
+    const newMetadata = metadata.map((item) =>
+      `${item.table_name}_${item.column_name}` === key
+        ? { ...item, column_description: value }
+        : item
+    );
+    setMetadata(newMetadata);
+  };
+
+  const reIndexTables = async (values) => {
+    setLoading(true);
+    try {
+      message.info(
+        "Extracting metadata from selected tables. This can take up to 5 minutes. Please be patient."
+      );
+      const res = await fetch(
+        setupBaseUrl("http", `integration/generate_metadata`),
+        {
+          method: "POST",
+          body: JSON.stringify({
+            tables: values.tables,
+            token: token,
+            // dev: devMode,
+            key_name: apiKeyName,
+          }),
+        }
+      );
+      const data = await res.json();
+      console.log(data);
+      setLoading(false);
+      if (data.error) {
+        message.error("Error fetching metadata");
+      } else {
+        data.metadata.forEach((item) => {
+          if (desc[item.column_name]) {
+            item.column_description = desc[item.column_name];
+          }
+        });
+        setMetadata(data.metadata || []);
+      }
+    } catch (e) {
+      console.log(e);
+      setLoading(false);
+      message.error(
+        "Error fetching metadata - please look at your docker logs for more information."
+      );
+    }
+  };
+
+  const columns = [
+    {
+      title: "Table Name",
+      dataIndex: "table_name",
+      key: "table_name",
+      width: "20%",
+      align: "center",
+    },
+    {
+      title: "Column Name",
+      dataIndex: "column_name",
+      key: "column_name",
+      width: "20%",
+      align: "center",
+    },
+    {
+      title: "Data Type",
+      dataIndex: "data_type",
+      key: "data_type",
+      width: "20%",
+      align: "center",
+    },
+    {
+      title: "Description",
+      dataIndex: "column_description",
+      key: "column_description",
+      width: "35%",
+      align: "center",
+      render: (text, record) => {
+        return editingKey === record.key ? (
+          <Input.TextArea
+            defaultValue={text}
+            onChange={(e) => handleInputChange(e, record.key)}
+            autoSize={{ minRows: 2, maxRows: 4 }}
+          />
+        ) : (
+          text
+        );
+      },
+    },
+    {
+      key: "action",
+      width: "5%",
+      align: "center",
+      render: (text, record) => {
+        const editable = editingKey === record.key;
+        return editable ? (
+          <SaveOutlined onClick={handleSave} />
+        ) : (
+          <EditOutlined onClick={() => handleEdit(record.key)} />
+        );
+      },
+    },
+  ];
+
+  const tableData = metadata.map((item) => ({
+    key: `${item.table_name}_${item.column_name}`,
+    ...item,
+  }));
 
   return (
-    <div className="my-10">
-      <Form className="flex flex-row w-full " onFinish={handleMetadataUpdate}>
+    <div className="mx-auto bg-white shadow-md rounded-md p-6">
+      <div className="text-2xl mb-10 text-center">
+        <TableOutlined className="text-2xl mr-2" />
+         View and Update Metadata
+      </div>
+      <Form className="flex flex-row w-full" onFinish={reIndexTables}>
         <Form.Item
           className="w-4/5"
           label="Select tables"
@@ -110,139 +224,29 @@ const MetadataTable = ({ token, user, userType, apiKeyName }) => {
             mode="tags"
             placeholder="Add tables to index"
             onChange={setSelectedTablesForIndexing}
-            options={tables.map((table) => ({ value: table, label: table }))}
+            options={(tables || []).map((table) => ({
+              value: table,
+              label: table,
+            }))}
           />
         </Form.Item>
-        <Button
-          type="dashed"
-          htmlType="submit"
-          className="w-1/5 ml-2"
-          // loading={loading}
-        >
+        <Button type="dashed" htmlType="submit" className="w-1/5 ml-2">
           Index Tables
         </Button>
       </Form>
-      {/* {metadata.length > 0 && (
-        <>
-          <div className="sticky top-0 bg-white py-2 shadow-md grid grid-cols-4 gap-4 font-bold">
-            <div className="border-r-2 p-2">
-              Table Name
-              <Select
-                mode="tags"
-                className="w-full mt-2"
-                placeholder="Filter"
-                onChange={setFilteredTables}
-                options={tables.map((table) => ({
-                  value: table,
-                  label: table,
-                }))}
-              />
-            </div>
-            <div className="p-2 border-r-2">Column Name</div>
-            <div className="p-2 border-r-2">Data Type</div>
-            <div className="p-2">Description (Optional)</div>
-          </div>
-          {metadata.map((item, index) => {
-            if (
-              filteredTables.length > 0 &&
-              !filteredTables.includes(item.table_name)
-            ) {
-              return null;
-            }
-            return (
-              <div
-                key={item.table_name + "_" + item.column_name}
-                className={`py-4 grid grid-cols-4 gap-4 ${index % 2 === 1 ? "bg-gray-100" : ""}`}
-              >
-                <div className="p-2 border-r-2">{item.table_name}</div>
-                <div className="p-2 border-r-2">{item.column_name}</div>
-                <div className="p-2 border-r-2">{item.data_type}</div>
-                <div className="p-2">
-                  <Input.TextArea
-                    placeholder="Description of what this column does"
-                    defaultValue={item.column_description || ""}
-                    autoSize={{ minRows: 2 }}
-                    onChange={(e) => {
-                      const newMetadata = [...metadata];
-                      newMetadata[index].column_description = e.target.value;
-                      setMetadata(newMetadata);
-                    }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-          <Button
-            className="w-full bg-orange-500 text-white py-2 mt-4"
-            // onClick={handleUpdateMetadataOnServers}
-            // loading={loading}
-          >
-            Update Metadata on Servers
-          </Button>
-        </> */}
-      {metadata.length > 0 && (
-        <>
-          <div className="sticky top-0 bg-white py-2 shadow-md grid grid-cols-4 gap-4 font-bold">
-            <div className="border-r-2 p-2">
-              Table Name
-              <Select
-                mode="tags"
-                className="w-full mt-2"
-                placeholder="Filter"
-                onChange={setFilteredTables}
-                options={tables.map((table) => ({
-                  value: table,
-                  label: table,
-                }))}
-              />
-            </div>
-            <div className="p-2 border-r-2">Column Name</div>
-            <div className="p-2 border-r-2">Data Type</div>
-            <div className="p-2">Description (Optional)</div>
-          </div>
-          <div className="overflow-y-auto max-h-screen">
-            {" "}
-            {/* Adjust the max height as needed */}
-            {metadata.map((item, index) => {
-              if (
-                filteredTables.length > 0 &&
-                !filteredTables.includes(item.table_name)
-              ) {
-                return null;
-              }
-              return (
-                <div
-                  key={item.table_name + "_" + item.column_name}
-                  className={`py-4 grid grid-cols-4 gap-4 ${index % 2 === 1 ? "bg-gray-100" : ""}`}
-                >
-                  <div className="p-2 border-r-2">{item.table_name}</div>
-                  <div className="p-2 border-r-2">{item.column_name}</div>
-                  <div className="p-2 border-r-2">{item.data_type}</div>
-                  <div className="p-2">
-                    <Input.TextArea
-                      placeholder="Description of what this column does"
-                      defaultValue={item.column_description || ""}
-                      autoSize={{ minRows: 2 }}
-                      onChange={(e) => {
-                        const newMetadata = [...metadata];
-                        newMetadata[index].column_description = e.target.value;
-                        setMetadata(newMetadata);
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <Button
-            className="w-full bg-orange-500 text-white py-2 mt-4"
-            // onClick={handleUpdateMetadataOnServers}
-            // loading={loading}
-          >
-            Update Metadata on Servers
-          </Button>
-        </>
-      )}
+      <Table
+        columns={columns}
+        dataSource={tableData}
+        pagination={{ pageSize: 10, position: ["bottomCenter"] }}
+        scroll={{ y: 700 }}
+      />
+      <Button
+        className="w-full bg-orange-500 text-white py-2 mt-4"
+        onClick={handleSave}
+        loading={loading}
+      >
+        Update Metadata on Servers
+      </Button>
     </div>
   );
 };

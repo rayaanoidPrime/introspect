@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Form, Select, Input, Button } from "antd";
+import { Form, Select, Input, Button, message } from "antd";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { DatabaseOutlined } from "@ant-design/icons";
+
 const dbCredOptions = {
   postgres: ["host", "port", "user", "password", "database"],
   redshift: ["host", "port", "user", "password", "database", "schema"],
@@ -12,7 +13,7 @@ const dbCredOptions = {
 
 const placeholders = {
   host: "host.docker.internal",
-  port: "543",
+  port: "5432",
   user: "Database User",
   database: "Database Name",
   server_hostname: "Server Hostname",
@@ -21,7 +22,7 @@ const placeholders = {
   schema: "Schema",
 };
 
-const DbCredentialsForm = ({ token, apiKeyName }) => {
+const DbCredentialsForm = ({ token, apiKeyName, dbData = {} }) => {
   const [form] = Form.useForm();
   const [dbType, setDbType] = useState("postgres");
 
@@ -35,17 +36,22 @@ const DbCredentialsForm = ({ token, apiKeyName }) => {
 
   const handleDbTypeChange = (value) => {
     setDbType(value);
+    form.resetFields(); // Reset form fields when dbType changes
   };
 
   useEffect(() => {
-    form.resetFields(); // Reset form fields when dbType changes
-  }, [dbType, form]);
+    if (Object.keys(dbData).length > 0) {
+      console.log(dbData);
+      setDbType(dbData.dbType);
+      form.setFieldsValue(dbData);
+    }
+  }, [dbData, form]);
 
   const handleSubmit = async (values) => {
     console.log("Received values of form: ", values);
     values = {
       db_creds: values,
-      db_type: values["db_type"] || dbType,
+      db_type: values.dbType || dbType,
       token: token,
       key_name: apiKeyName,
     };
@@ -63,11 +69,11 @@ const DbCredentialsForm = ({ token, apiKeyName }) => {
         message.success("Database Credentials updated successfully!");
       }
       // also get the new list of tables
-      await getTables();
+      // await getTables();
     } catch (e) {
       console.log(e);
       message.error(
-        "Error fetching tables. Please check your docker logs for more informati)on."
+        "Error fetching tables. Please check your docker logs for more information."
       );
     }
   };
@@ -81,7 +87,7 @@ const DbCredentialsForm = ({ token, apiKeyName }) => {
       <Form
         form={form}
         onFinish={handleSubmit}
-        initialValues={{ dbType: "postgres" }}
+        initialValues={dbData}
         layout="vertical"
       >
         <Form.Item name="dbType" label="Database Type">
