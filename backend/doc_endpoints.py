@@ -979,7 +979,6 @@ async def add_tool_endpoint(request: Request):
             input_metadata=input_metadata,
             output_metadata=output_metadata,
             toolbox=toolbox,
-            no_code=no_code,
         )
 
         if err:
@@ -1124,6 +1123,7 @@ async def generate_tool_code_endpoint(request: Request):
 
         retries = 0
         error = None
+        messages = None
         while retries < 3:
             try:
                 logging.info(payload)
@@ -1138,6 +1138,10 @@ async def generate_tool_code_endpoint(request: Request):
 
                 tool_code = resp["tool_code"]
                 testing_code = resp["testing_code"]
+                messages = resp["messages"]
+
+                print(tool_code)
+                print(testing_code, flush=True)
 
                 # find the function name in tool_code
                 try:
@@ -1151,7 +1155,7 @@ async def generate_tool_code_endpoint(request: Request):
                     )
 
                 # try running this code
-                err, testing_details = await execute_code(
+                err, testing_details, _ = await execute_code(
                     [tool_code, testing_code], "test_tool"
                 )
 
@@ -1196,7 +1200,7 @@ async def generate_tool_code_endpoint(request: Request):
                     payload = {
                         "request_type": "fix_tool_code",
                         "error": error,
-                        "messages": None,
+                        "messages": messages,
                         "api_key": api_key,
                     }
                 retries += 1

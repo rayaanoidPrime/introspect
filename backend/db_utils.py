@@ -1,3 +1,4 @@
+import inspect
 import json
 import traceback
 import datetime
@@ -125,25 +126,37 @@ def validate_user(token, user_type=None, get_username=False):
         return False
 
 
-async def execute_code(codestr):
+async def execute_code(
+    code_snippets: list,  # list of code strings to execute
+    fn_name=None,  # function name to call
+    use_globals=False,  # whether to use globals as the sandbox
+):
     """
-    Executes the code in a string. Returns the error or results.
+    Runs code string and returns output.
     """
     err = None
-    analysis = None
-    full_data = None
+    out = None
     try:
-        # add some imports to the codestr
-        exec(codestr, globals())
-        analysis, full_data = await globals()["exec_code"]()
-        full_data.code_str = codestr
+        sandbox = {}
+        if use_globals:
+            sandbox = globals()
+
+        for code in code_snippets:
+            exec(code, sandbox)
+
+        if fn_name:
+            # check if test_tool is an async function
+            if inspect.iscoroutinefunction(sandbox[fn_name]):
+                out = await sandbox[fn_name]()
+            else:
+                out = sandbox[fn_name]()
     except Exception as e:
+        out = None
+        err = str(e)
+        sandbox = None
         traceback.print_exc()
-        err = e
-        analysis = None
-        full_data = None
     finally:
-        return err, analysis, full_data
+        return err, out, sandbox
 
 
 async def initialise_report(

@@ -1,3 +1,4 @@
+"use client";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import { addTool, toolboxDisplayNames } from "$utils/utils";

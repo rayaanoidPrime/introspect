@@ -1,4 +1,4 @@
-"use-client";
+"use client";
 import React, { useState } from "react";
 import "../styles/globals.css";
 import "@defogdotai/agents-ui-components/css";
