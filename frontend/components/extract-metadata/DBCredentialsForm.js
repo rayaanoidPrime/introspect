@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Form, Select, Input, Button, message } from "antd";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { DatabaseOutlined } from "@ant-design/icons";
@@ -52,7 +52,11 @@ const DbCredentialsForm = ({
         console.log(dbData);
         setDbType(dbData.db_type);
         console.log("dbData before setting fields:", dbData);
-        form.setFieldsValue(dbData.db_creds);
+        form.setFieldsValue({
+          db_type: dbData.db_type,
+          ...dbData.db_creds,
+        });
+
         try {
           const res = await validateDatabaseConnection(
             dbData.db_type,
@@ -64,6 +68,7 @@ const DbCredentialsForm = ({
             message.success("Database connection validated!");
           } else {
             message.error("Database connection is not valid.");
+            setDbConnectionStatus(false);
           }
         } catch (error) {
           console.error("Validation error:", error);
@@ -78,9 +83,10 @@ const DbCredentialsForm = ({
 
   const handleSubmit = async (values) => {
     console.log("Received values of form: ", values);
+    const { db_type, ...db_creds } = values;
     const payload = {
-      db_creds: values,
-      db_type: values.db_type || dbType,
+      db_creds: db_creds,
+      db_type: db_type || dbType,
       token: token,
       key_name: apiKeyName,
     };

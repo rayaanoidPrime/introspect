@@ -70,12 +70,6 @@ const SetupStatus = ({
 
   return (
     <div style={{ padding: "1em 0" }}>
-      {/* <h2 style={{ textAlign: 'center', marginBottom: '1em' }}>
-        <Tooltip title="Check the status of database and metadata setup">
-          <ToolOutlined style={{ marginRight: '0.5em', fontSize: '1.2em', color: '#1890ff', cursor: 'pointer' }} />
-        </Tooltip>
-        Setup Status
-      </h2> */}
       <Row gutter={[16, 16]}>
         {statusItems.map((item) => (
           <Col span={8} key={item.key}>

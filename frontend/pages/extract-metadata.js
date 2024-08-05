@@ -5,7 +5,7 @@ import DbCredentialsForm from "../components/extract-metadata/DbCredentialsForm"
 import MetadataTable from "../components/extract-metadata/MetadataTable";
 import SetupStatus from "../components/extract-metadata/SetupStatus"; // Adjust the import path as needed
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { Input, Select, Form, Button, Row, Col, message, Tabs } from "antd";
+import { Select, Row, Col, Tabs } from "antd";
 import Scaffolding from "$components/layout/Scaffolding";
 
 const { TabPane } = Tabs;

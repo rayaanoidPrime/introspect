@@ -116,6 +116,9 @@ async def validate_db_connection(request: Request):
         return {"error": "unauthorized"}
     db_type = params.get("db_type")
     db_creds = params.get("db_creds")
+    for k in ["api_key", "db_type"]:
+        if k in db_creds:
+            del db_creds[k]
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
     sql_query = "SELECT 'test';"
