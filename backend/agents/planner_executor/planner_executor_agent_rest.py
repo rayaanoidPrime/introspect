@@ -15,8 +15,8 @@ import pandas as pd
 import os
 
 
-llm_calls_url = os.environ["LLM_CALLS_URL"]
-report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
+llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
+report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
 
 
 class RESTExecutor:

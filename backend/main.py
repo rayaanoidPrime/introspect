@@ -46,7 +46,7 @@ app.add_middleware(
 )
 
 request_types = ["clarify", "understand", "gen_approaches", "gen_steps", "gen_report"]
-report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
+report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
 
 
 @app.get("/ping")
@@ -62,7 +62,7 @@ edit_request_types_and_prop_names = {
 
 async def get_classification(question, api_key, debug=False):
     r = await make_request(
-        url=f"{os.environ['DEFOG_BASE_URL']}/classify_question",
+        f"{os.environ.get('DEFOG_BASE_URL', 'https://api.defog.ai')}/update_agent_feedback",
         payload={"question": question, "api_key": api_key},
     )
     if r.status_code == 200:

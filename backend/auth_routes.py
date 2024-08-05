@@ -7,7 +7,7 @@ import asyncio
 import os
 
 INTERNAL_API_KEY = "DUMMY_KEY"
-GOOGLE_CLIENT_ID = os.environ["GOOGLE_CLIENT_ID"]
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 
 router = APIRouter()
 
