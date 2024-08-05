@@ -22,9 +22,16 @@ const placeholders = {
   schema: "Schema",
 };
 
-const DbCredentialsForm = ({ token, apiKeyName, dbData = {} }) => {
+const DbCredentialsForm = ({
+  token,
+  apiKeyName,
+  validateDatabaseConnection,
+  setDbConnectionStatus,
+  dbData = {},
+  setDbData,
+}) => {
   const [form] = Form.useForm();
-  const [dbType, setDbType] = useState("postgres");
+  const [dbType, setDbType] = useState(dbData.db_type || "postgres");
 
   const dbOptions = [
     { value: "postgres", label: "PostgreSQL" },
@@ -40,18 +47,40 @@ const DbCredentialsForm = ({ token, apiKeyName, dbData = {} }) => {
   };
 
   useEffect(() => {
-    if (Object.keys(dbData).length > 0) {
-      console.log(dbData);
-      setDbType(dbData.dbType);
-      form.setFieldsValue(dbData);
-    }
+    const fetchData = async () => {
+      if (Object.keys(dbData).length > 0) {
+        console.log(dbData);
+        setDbType(dbData.db_type);
+        console.log("dbData before setting fields:", dbData);
+        form.setFieldsValue(dbData.db_creds);
+        try {
+          const res = await validateDatabaseConnection(
+            dbData.db_type,
+            dbData.db_creds
+          );
+          console.log("res", res);
+          if (res.status === "success") {
+            setDbConnectionStatus(true);
+            message.success("Database connection validated!");
+          } else {
+            message.error("Database connection is not valid.");
+          }
+        } catch (error) {
+          console.error("Validation error:", error);
+          message.error("Failed to validate database connection.");
+          setDbConnectionStatus(false);
+        }
+      }
+    };
+
+    fetchData();
   }, [dbData, form]);
 
   const handleSubmit = async (values) => {
     console.log("Received values of form: ", values);
-    values = {
+    const payload = {
       db_creds: values,
-      db_type: values.dbType || dbType,
+      db_type: values.db_type || dbType,
       token: token,
       key_name: apiKeyName,
     };
@@ -60,16 +89,17 @@ const DbCredentialsForm = ({ token, apiKeyName, dbData = {} }) => {
         setupBaseUrl("http", `integration/update_db_creds`),
         {
           method: "POST",
-          body: JSON.stringify(values),
+          body: JSON.stringify(payload),
         }
       );
       const data = await res.json();
       console.log("data", data);
-      if (data?.status === "success") {
+      if (data?.success === true) {
+        setDbData({ db_type: payload.db_type, db_creds: payload.db_creds });
         message.success("Database Credentials updated successfully!");
+      } else {
+        message.error("Failed to update Database Credentials.");
       }
-      // also get the new list of tables
-      // await getTables();
     } catch (e) {
       console.log(e);
       message.error(
@@ -79,7 +109,7 @@ const DbCredentialsForm = ({ token, apiKeyName, dbData = {} }) => {
   };
 
   return (
-    <div className="mx-auto bg-white shadow-md rounded-md p-6 mt-8 w-1/2">
+    <div className="mx-auto bg-white shadow-md rounded-md p-6 mt-8 w-2/3">
       <div className="text-2xl mb-4 text-center">
         <DatabaseOutlined className="text-2xl mr-2" />
         Database Credentials
@@ -87,10 +117,10 @@ const DbCredentialsForm = ({ token, apiKeyName, dbData = {} }) => {
       <Form
         form={form}
         onFinish={handleSubmit}
-        initialValues={dbData}
+        initialValues={{ db_type: dbData.db_type, ...dbData }}
         layout="vertical"
       >
-        <Form.Item name="dbType" label="Database Type">
+        <Form.Item name="db_type" label="Database Type">
           <Select options={dbOptions} onChange={handleDbTypeChange} />
         </Form.Item>
         {dbCredOptions[dbType]?.map((field) => (

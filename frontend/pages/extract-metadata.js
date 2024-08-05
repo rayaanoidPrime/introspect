@@ -7,7 +7,6 @@ import SetupStatus from "../components/extract-metadata/SetupStatus"; // Adjust 
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { Input, Select, Form, Button, Row, Col, message, Tabs } from "antd";
 import Scaffolding from "$components/layout/Scaffolding";
-import { DownOutlined, UpOutlined } from "@ant-design/icons";
 
 const { TabPane } = Tabs;
 const { Option } = Select;
@@ -25,6 +24,7 @@ const ExtractMetadata = () => {
   const [tablesData, setTablesData] = useState({});
   const [loading, setLoading] = useState(false);
   const [emptyDescriptions, setEmptyDescriptions] = useState(0);
+  const [dbConnectionstatus, setDbConnectionStatus] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -64,7 +64,7 @@ const ExtractMetadata = () => {
         tables: data["tables"],
         db_tables: data["selected_tables"],
       });
-      setDbData({ dbType: data["db_type"], ...data["db_creds"] });
+      setDbData({ db_type: data["db_type"], db_creds: data["db_creds"] });
       const emptyDescriptionsCount = data["tables"].reduce((count, table) => {
         // return count + table.columns.filter((col) => !col.description).length;
       }, 0);
@@ -72,10 +72,30 @@ const ExtractMetadata = () => {
     }
     setLoading(false);
   };
-
-  // Check if the database is set up well
-  const isDatabaseSetupWell =
-    dbData && dbData.dbType && Object.keys(dbData).length > 1;
+  const validateDatabaseConnection = async (db_type, db_creds) => {
+    const payload = {
+      db_type,
+      db_creds,
+      token,
+      key_name: apiKeyName,
+    };
+    try {
+      const response = await fetch(
+        setupBaseUrl("http", `integration/validate_db_connection`),
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+      const data = await response.json();
+      console.log("Validation response:", data);
+      return data;
+    } catch (error) {
+      console.error("Error validating database connection:", error);
+      throw new Error("Network error during database validation.");
+    }
+  };
 
   // Check if the metadata is set up
   const isMetadataSetup =
@@ -106,7 +126,7 @@ const ExtractMetadata = () => {
           {/* Status Indicators */}
           <SetupStatus
             loading={loading}
-            isDatabaseSetupWell={isDatabaseSetupWell}
+            isDatabaseSetupWell={dbConnectionstatus}
             isMetadataSetup={isMetadataSetup}
             emptyDescriptions={emptyDescriptions}
           />
@@ -117,7 +137,10 @@ const ExtractMetadata = () => {
               <DbCredentialsForm
                 token={token}
                 apiKeyName={apiKeyName}
+                validateDatabaseConnection={validateDatabaseConnection}
+                setDbConnectionStatus={setDbConnectionStatus}
                 dbData={dbData}
+                setDbData={setDbData}
               />
             </TabPane>
             <TabPane tab="Extract Metadata" key="2">

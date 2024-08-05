@@ -1,18 +1,18 @@
 import { useState, useEffect } from "react";
-import { Form, Select, Input, Button, Table, message } from "antd";
+import { Form, Select, Input, Button, Table, message, Spin } from "antd";
 import { EditOutlined, SaveOutlined, TableOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 
 const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
   const [tables, setTables] = useState([]);
-  const [selectedTablesForIndexing, setSelectedTablesForIndexing] = useState(
-    []
-  );
+  const [selectedTablesForIndexing, setSelectedTablesForIndexing] = useState([]);
   const [metadata, setMetadata] = useState([]);
+  const [filteredMetadata, setFilteredMetadata] = useState([]);
   const [editingKey, setEditingKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [isUpdatedMetadata, setIsUpdatedMetadata] = useState(false);
   const [desc, setDesc] = useState({});
+  const [filter, setFilter] = useState("");
 
   useEffect(() => {
     if (tablesData) {
@@ -23,6 +23,7 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
   }, [tablesData]);
 
   const getMetadata = async () => {
+    setLoading(true);
     const res = await fetch(setupBaseUrl("http", `integration/get_metadata`), {
       method: "POST",
       body: JSON.stringify({
@@ -31,8 +32,10 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
       }),
     });
     const data = await res.json();
+    setLoading(false);
     if (!data.error) {
       setMetadata(data.metadata || []);
+      setFilteredMetadata(data.metadata || []);
     }
   };
 
@@ -60,7 +63,6 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
               body: JSON.stringify({
                 metadata: metadata,
                 token: token,
-                // dev: devMode,
                 key_name: apiKeyName,
               }),
             }
@@ -71,8 +73,7 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
             message.error("Error updating metadata");
           } else {
             if (data.suggested_joins) {
-              document.getElementById("allowed-joins").value =
-                data.suggested_joins;
+              document.getElementById("allowed-joins").value = data.suggested_joins;
             }
             message.success("Metadata updated successfully!");
             setEditingKey("");
@@ -120,13 +121,11 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
           body: JSON.stringify({
             tables: values.tables,
             token: token,
-            // dev: devMode,
             key_name: apiKeyName,
           }),
         }
       );
       const data = await res.json();
-      console.log(data);
       setLoading(false);
       if (data.error) {
         message.error("Error fetching metadata");
@@ -137,6 +136,7 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
           }
         });
         setMetadata(data.metadata || []);
+        setFilteredMetadata(data.metadata || []);
       }
     } catch (e) {
       console.log(e);
@@ -147,13 +147,41 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
     }
   };
 
+  const handleFilterChange = (value) => {
+    setFilter(value);
+    if (value) {
+      setFilteredMetadata(metadata.filter((item) => item.table_name.includes(value)));
+    } else {
+      setFilteredMetadata(metadata);
+    }
+  };
+
+  // Extract unique table names from metadata
+  const uniqueTableNames = [...new Set(metadata.map(item => item.table_name))];
+
   const columns = [
     {
-      title: "Table Name",
+      title: (
+        <div>
+          <div>Table Name</div>
+          <Select
+            showSearch
+            placeholder="Filter tables"
+            optionFilterProp="children"
+            onChange={handleFilterChange}
+            className="w-full mt-1"
+            options={uniqueTableNames.map((table) => ({
+              value: table,
+              label: table,
+            }))}
+          />
+        </div>
+      ),
       dataIndex: "table_name",
       key: "table_name",
       width: "20%",
       align: "center",
+      render: (text) => <span className="font-bold">{text}</span>,
     },
     {
       title: "Column Name",
@@ -161,6 +189,7 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
       key: "column_name",
       width: "20%",
       align: "center",
+      render: (text) => <span className="font-semibold">{text}</span>,
     },
     {
       title: "Data Type",
@@ -168,6 +197,7 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
       key: "data_type",
       width: "20%",
       align: "center",
+      render: (text) => <span className="font-mono">{text}</span>,
     },
     {
       title: "Description",
@@ -183,7 +213,7 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
             autoSize={{ minRows: 2, maxRows: 4 }}
           />
         ) : (
-          text
+          <span className="italic p-1">{text}</span>
         );
       },
     },
@@ -202,20 +232,20 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
     },
   ];
 
-  const tableData = metadata.map((item) => ({
+  const tableData = filteredMetadata.map((item) => ({
     key: `${item.table_name}_${item.column_name}`,
     ...item,
   }));
 
   return (
     <div className="mx-auto bg-white shadow-md rounded-md p-6">
-      <div className="text-2xl mb-10 text-center">
-        <TableOutlined className="text-2xl mr-2" />
-         View and Update Metadata
+      <div className="flex flex-col items-center text-2xl mb-10">
+        <TableOutlined className="text-4xl mb-2" />
+        <span>View and Update Metadata</span>
       </div>
-      <Form className="flex flex-row w-full" onFinish={reIndexTables}>
+      <Form className="flex flex-row w-full mb-4" onFinish={reIndexTables}>
         <Form.Item
-          className="w-4/5"
+          className="w-3/4"
           label="Select tables"
           name="tables"
           initialValue={selectedTablesForIndexing}
@@ -230,23 +260,22 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
             }))}
           />
         </Form.Item>
-        <Button type="dashed" htmlType="submit" className="w-1/5 ml-2">
+        <Button type="dashed" htmlType="submit" className="w-1/4 ml-2">
           Index Tables
         </Button>
       </Form>
-      <Table
-        columns={columns}
-        dataSource={tableData}
-        pagination={{ pageSize: 10, position: ["bottomCenter"] }}
-        scroll={{ y: 700 }}
-      />
-      <Button
-        className="w-full bg-orange-500 text-white py-2 mt-4"
-        onClick={handleSave}
-        loading={loading}
-      >
-        Update Metadata on Servers
-      </Button>
+      {loading ? (
+        <div className="flex justify-center items-center">
+          <Spin size="large" tip="Fetching metadata..." />
+        </div>
+      ) : (
+        <Table
+          columns={columns}
+          dataSource={tableData}
+          pagination={{ pageSize: 10, position: ["bottomCenter"] }}
+          scroll={{ y: 700 }}
+        />
+      )}
     </div>
   );
 };
