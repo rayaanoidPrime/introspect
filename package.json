@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@defogdotai/agents-ui-components": "^0.0.18"
+  }
+}
