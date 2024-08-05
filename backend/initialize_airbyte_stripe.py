@@ -4,6 +4,11 @@ from datetime import datetime
 import json
 import os
 
+if "STRIPE_ACCOUNT_ID" not in os.environ or "STRIPE_CLIENT_SECRET" not in os.environ:
+    raise ValueError(
+        "Please set the STRIPE_ACCOUNT_ID and STRIPE_CLIENT_SECRET env vars"
+    )
+
 account_id = os.environ["STRIPE_ACCOUNT_ID"]
 api_key = os.environ["STRIPE_CLIENT_SECRET"]
 

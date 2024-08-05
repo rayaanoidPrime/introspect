@@ -16,7 +16,7 @@ import asyncio
 from utils import warn_str, YieldList, make_request
 import os
 
-report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
+report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
 
 if os.environ.get("INTERNAL_DB") == "sqlite":
     print("using sqlite as our internal db")
@@ -25,11 +25,11 @@ if os.environ.get("INTERNAL_DB") == "sqlite":
     engine = create_engine(connection_uri, connect_args={"timeout": 3})
 else:
     db_creds = {
-        "user": os.environ["DBUSER"],
-        "password": os.environ["DBPASSWORD"],
-        "host": os.environ["DBHOST"],
-        "port": os.environ["DBPORT"],
-        "database": os.environ["DATABASE"],
+        "user": os.environ.get("DBUSER", "postgres"),
+        "password": os.environ.get("DBPASSWORD", "postgres"),
+        "host": os.environ.get("DBHOST", "agents-postgres"),
+        "port": os.environ.get("DBPORT", "5432"),
+        "database": os.environ.get("DATABASE", "postgres"),
     }
 
     # if using postgres
@@ -1238,7 +1238,7 @@ async def store_feedback(
 
     asyncio.create_task(
         make_request(
-            f"{os.environ['DEFOG_BASE_URL']}/update_agent_feedback",
+            f"{os.environ.get('DEFOG_BASE_URL', 'https://api.defog.ai')}/update_agent_feedback",
             {
                 "api_key": api_key,
                 "user_question": user_question,
@@ -1344,7 +1344,7 @@ async def add_tool(
         print("Adding tool to the defog API server", tool_name)
         asyncio.create_task(
             make_request(
-                url=f"{os.environ['DEFOG_BASE_URL']}/update_tool",
+                url=f"{os.environ.get('DEFOG_BASE_URL', 'https://api.defog.ai')}/update_tool",
                 payload={
                     "api_key": api_key,
                     "tool_name": tool_name,

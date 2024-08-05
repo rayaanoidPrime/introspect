@@ -12,7 +12,7 @@ import pandas as pd
 import os
 from db_utils import get_db_type_creds
 
-report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
+report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
 
 
 import matplotlib.pyplot as plt
