@@ -95,11 +95,11 @@ const Scaffolding = ({
       items = [];
     } else {
       items = [
-        {
-          key: "view-notebooks",
-          title: "View your notebook",
-          href: "/view-notebooks",
-        },
+        // {
+        //   key: "view-notebooks",
+        //   title: "View your notebook",
+        //   href: "/view-notebooks",
+        // },
         {
           key: "query-data",
           title: "Query Data",
