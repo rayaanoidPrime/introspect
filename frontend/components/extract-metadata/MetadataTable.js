@@ -276,8 +276,12 @@ const MetadataTable = ({
             }))}
           />
         </Form.Item>
-        <Button type="dashed" htmlType="submit" className="w-1/4 ml-2 bg-white border border-gray-300 text-blue-500 hover:bg-blue-500 hover:text-white">
-          Index Tables
+        <Button
+          type="dashed"
+          htmlType="submit"
+          className="w-1/4 ml-2 bg-white border border-gray-300 text-blue-500 hover:bg-blue-500 hover:text-white"
+        >
+          Extract Table Metadata
         </Button>
       </Form>
       <Alert
@@ -291,27 +295,29 @@ const MetadataTable = ({
           <Spin size="large" tip="Fetching metadata..." />
         </div>
       ) : (
-        <Table
-          columns={columns}
-          dataSource={tableData}
-          pagination={{ pageSize: 10, position: ["bottomCenter"] }}
-          scroll={{ y: 700 }}
-        />
+        <>
+          <div className="flex justify-center mt-4">
+            <Button
+              type="primary"
+              loading={loading}
+              onClick={() => setIsUpdatedMetadata(true)}
+              style={{
+                backgroundColor: "#4CAF50", // Darker shade of green
+                borderColor: "#4CAF50",
+                color: "#fff",
+              }}
+            >
+              Save Changes
+            </Button>
+          </div>
+          <Table
+            columns={columns}
+            dataSource={tableData}
+            pagination={{ pageSize: 10, position: ["bottomCenter"] }}
+            scroll={{ y: 700 }}
+          />
+        </>
       )}
-      <div className="flex justify-end mb-4 mt-4">
-        <Button
-          type="primary"
-          loading={loading}
-          onClick={() => setIsUpdatedMetadata(true)}
-          style={{
-            backgroundColor: "#4CAF50", // Darker shade of green
-            borderColor: "#4CAF50",
-            color: "#fff",
-          }}
-        >
-          Save Changes
-        </Button>
-      </div>
     </div>
   );
 };
