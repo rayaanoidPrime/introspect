@@ -9,7 +9,7 @@ import { useRouter } from "next/router";
 const SetupStatus = ({
   loading,
   isDatabaseSetupWell,
-  isMetadataSetup,
+  isTablesIndexed,
   emptyDescriptions,
 }) => {
   const router = useRouter();
@@ -39,14 +39,14 @@ const SetupStatus = ({
       title: "Metadata Setup",
       description: loading ? (
         <LoadingOutlined />
-      ) : isMetadataSetup ? (
-        "We can verify that your database details are correct and a connection is sucessfully established"
+      ) : isTablesIndexed ? (
+        "We can verify that at least one table from your database was indexed for defog to generate queries."
       ) : (
-        "Please fill in your database details before you can start querying"
+        "We did not find any tables indexed for defog to work on. Please index tables to get started."
       ),
       status: loading ? (
         <LoadingOutlined />
-      ) : isMetadataSetup ? (
+      ) : isTablesIndexed ? (
         <CheckCircleOutlined style={{ color: "green" }} />
       ) : (
         <CloseCircleOutlined style={{ color: "red" }} />
@@ -55,8 +55,8 @@ const SetupStatus = ({
     },
     {
       key: "3",
-      title: "Empty Column Descriptions",
-      description: "Check for columns with empty descriptions in the metadata",
+      title: "Column Descriptions",
+      description: "We found ",
       status: loading ? (
         <LoadingOutlined />
       ) : emptyDescriptions === 0 ? (

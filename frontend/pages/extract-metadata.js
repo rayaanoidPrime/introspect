@@ -43,6 +43,8 @@ const ExtractMetadata = () => {
       }
     };
 
+    
+
     fetchUserData();
   }, [apiKeyName]);
 
@@ -62,8 +64,10 @@ const ExtractMetadata = () => {
     if (!data.error) {
       setTablesData({
         tables: data["tables"],
-        db_tables: data["selected_tables"],
+        indexed_tables: data["selected_tables"],
       });
+      console.log("tablesData", data["tables"]);
+      console.log("db_tables", data["selected_tables"]);
       setDbData({ db_type: data["db_type"], db_creds: data["db_creds"] });
       const emptyDescriptionsCount = data["tables"].reduce((count, table) => {
         // return count + table.columns.filter((col) => !col.description).length;
@@ -98,8 +102,8 @@ const ExtractMetadata = () => {
   };
 
   // Check if the metadata is set up
-  const isMetadataSetup =
-    tablesData && tablesData.tables && tablesData.tables.length > 0;
+  const isTablesIndexed =
+    tablesData && tablesData.indexed_tables && tablesData.indexed_tables.length > 0;
 
   return (
     <>
@@ -127,7 +131,7 @@ const ExtractMetadata = () => {
           <SetupStatus
             loading={loading}
             isDatabaseSetupWell={dbConnectionstatus}
-            isMetadataSetup={isMetadataSetup}
+            isTablesIndexed={isTablesIndexed}
             emptyDescriptions={emptyDescriptions}
           />
 
