@@ -1,0 +1,325 @@
+import { useState, useEffect } from "react";
+import { Alert, Form, Select, Input, Button, Table, message, Spin } from "antd";
+import { EditOutlined, SaveOutlined, TableOutlined } from "@ant-design/icons";
+import setupBaseUrl from "$utils/setupBaseUrl";
+
+const MetadataTable = ({
+  token,
+  apiKeyName,
+  tablesData,
+  metadata: initialMetadata,
+}) => {
+  // all tables from the database
+  const [tables, setTables] = useState([]);
+  // tables indexed for defog
+  const [selectedTablesForIndexing, setSelectedTablesForIndexing] = useState(
+    []
+  );
+  const [metadata, setMetadata] = useState(initialMetadata);
+  const [filteredMetadata, setFilteredMetadata] = useState(initialMetadata);
+
+  // key (table_name_column_name): value (boolean to toggle editing of the column descritpion)
+  const [editingKeys, setEditingKeys] = useState({});
+
+  const [loading, setLoading] = useState(false);
+  const [isUpdatedMetadata, setIsUpdatedMetadata] = useState(false);
+  const [desc, setDesc] = useState({});
+  const [filter, setFilter] = useState([]); // list of table names to filter
+  const [form] = Form.useForm();
+
+  useEffect(() => {
+    if (tablesData) {
+      setTables(tablesData.tables);
+      setSelectedTablesForIndexing(tablesData.indexed_tables);
+      form.setFieldsValue({ tables: tablesData.indexed_tables });
+    }
+  }, [tablesData]);
+
+  useEffect(() => {
+    setMetadata(initialMetadata);
+    setFilteredMetadata(initialMetadata);
+  }, [initialMetadata]);
+
+  useEffect(() => {
+    if (isUpdatedMetadata) {
+      const updateMetadata = async () => {
+        try {
+          setLoading(true);
+          const res = await fetch(
+            setupBaseUrl("http", `integration/update_metadata`),
+            {
+              method: "POST",
+              body: JSON.stringify({
+                metadata: metadata,
+                token: token,
+                key_name: apiKeyName,
+              }),
+            }
+          );
+          const data = await res.json();
+          setLoading(false);
+          if (data.error) {
+            message.error("Error updating metadata");
+          } else {
+            if (data.suggested_joins) {
+              document.getElementById("allowed-joins").value =
+                data.suggested_joins;
+            }
+            message.success("Metadata updated successfully!");
+          }
+        } catch (error) {
+          console.error("Error saving data:", error);
+          message.error("Error saving data");
+          setLoading(false);
+        }
+      };
+
+      updateMetadata();
+      setIsUpdatedMetadata(false);
+      setEditingKeys({});
+    }
+  }, [isUpdatedMetadata]);
+
+  const toggleEdit = (key) => {
+    setEditingKeys((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const handleInputChange = (e, key) => {
+    const newValue = e.target.value;
+    const updatedMetadata = metadata.map((item) => {
+      const itemKey = `${item.table_name}_${item.column_name}`;
+      if (itemKey === key) {
+        return { ...item, column_description: newValue };
+      }
+      return item;
+    });
+
+    setMetadata(updatedMetadata);
+    // Reapply the filter if there's an active filter, otherwise set filteredMetadata to updatedMetadata
+    if (filter.length > 0) {
+      const filtered = updatedMetadata.filter((item) =>
+        filter.some((f) => item.table_name.includes(f))
+      );
+      setFilteredMetadata(filtered);
+    } else {
+      setFilteredMetadata(updatedMetadata);
+    }
+  };
+
+  const reIndexTables = async (values) => {
+    setLoading(true);
+    try {
+      message.info(
+        "Extracting metadata from selected tables. This can take up to 5 minutes. Please be patient."
+      );
+      const res = await fetch(
+        setupBaseUrl("http", `integration/generate_metadata`),
+        {
+          method: "POST",
+          body: JSON.stringify({
+            tables: values.tables,
+            token: token,
+            key_name: apiKeyName,
+          }),
+        }
+      );
+      const data = await res.json();
+      setLoading(false);
+      if (data.error) {
+        message.error("Error fetching metadata");
+      } else {
+        data.metadata.forEach((item) => {
+          if (desc[item.column_name]) {
+            item.column_description = desc[item.column_name];
+          }
+        });
+        setMetadata(data.metadata || []);
+        setFilteredMetadata(data.metadata || []);
+      }
+    } catch (e) {
+      console.log(e);
+      setLoading(false);
+      message.error(
+        "Error fetching metadata - please look at your docker logs for more information."
+      );
+    }
+  };
+
+  const handleFilterChange = (value) => {
+    setFilter(value);
+    if (value.length > 0) {
+      setFilteredMetadata(
+        metadata.filter((item) =>
+          value.some((v) => item.table_name.includes(v))
+        )
+      );
+    } else {
+      setFilteredMetadata(metadata);
+    }
+  };
+
+  // to remove duplicate table names
+  const uniqueTableNames = [
+    ...new Set(metadata.map((item) => item.table_name)),
+  ];
+
+  const columns = [
+    {
+      title: (
+        <div>
+          <div>Table Name</div>
+          <Select
+            mode="multiple"
+            showSearch
+            placeholder="Filter tables"
+            optionFilterProp="children"
+            onChange={handleFilterChange}
+            allowClear={true}
+            className="w-full mt-1 focus:outline-none focus:ring-0"
+            options={[
+              ...uniqueTableNames.map((table) => ({
+                value: table,
+                label: table,
+              })),
+            ]}
+          />
+        </div>
+      ),
+      dataIndex: "table_name",
+      key: "table_name",
+      width: "20%",
+      align: "center",
+      render: (text) => <span className="font-bold">{text}</span>,
+    },
+    {
+      title: "Column Name",
+      dataIndex: "column_name",
+      key: "column_name",
+      width: "20%",
+      align: "center",
+      render: (text) => <span className="font-semibold">{text}</span>,
+    },
+    {
+      title: "Data Type",
+      dataIndex: "data_type",
+      key: "data_type",
+      width: "20%",
+      align: "center",
+      render: (text) => <span className="font-mono">{text}</span>,
+    },
+    {
+      title: "Description",
+      dataIndex: "column_description",
+      key: "column_description",
+      width: "35%",
+      align: "center",
+      render: (text, record) => {
+        const key = `${record.table_name}_${record.column_name}`;
+        return editingKeys[key] ? (
+          <Input.TextArea
+            defaultValue={text}
+            onChange={(e) => handleInputChange(e, key)}
+            autoSize={{ minRows: 2, maxRows: 4 }}
+          />
+        ) : (
+          <span className="italic p-1">{text}</span>
+        );
+      },
+    },
+    {
+      key: "action",
+      width: "5%",
+      align: "center",
+      render: (text, record) => {
+        const key = `${record.table_name}_${record.column_name}`;
+        return editingKeys[key] ? (
+          <SaveOutlined onClick={() => toggleEdit(key)} />
+        ) : (
+          <EditOutlined onClick={() => toggleEdit(key)} />
+        );
+      },
+    },
+  ];
+
+  const tableData = filteredMetadata.map((item) => ({
+    key: `${item.table_name}_${item.column_name}`,
+    ...item,
+  }));
+
+  return (
+    <div className="mx-auto bg-white shadow-md rounded-md p-6">
+      <div className="flex flex-col items-center text-2xl mb-10">
+        <TableOutlined className="text-4xl mb-2" />
+        <span>View and Update Metadata</span>
+      </div>
+      <Form
+        className="flex flex-row w-full mb-4"
+        form={form}
+        onFinish={reIndexTables}
+      >
+        <Form.Item
+          className="w-3/4"
+          label="Select tables"
+          name="tables"
+          initialValue={selectedTablesForIndexing}
+        >
+          <Select
+            mode="tags"
+            placeholder="Add tables to index"
+            onChange={setSelectedTablesForIndexing}
+            options={(tables || []).map((table) => ({
+              value: table,
+              label: table,
+            }))}
+          />
+        </Form.Item>
+        <Button
+          type="dashed"
+          htmlType="submit"
+          className="w-1/4 ml-2 bg-white border border-gray-300 text-blue-500 hover:bg-blue-500 hover:text-white"
+        >
+          Extract Table Metadata
+        </Button>
+      </Form>
+      <Alert
+        message="This table is a preview for your changes. Please hit 'Save Changes' to update metadata on the defog server."
+        type="info"
+        showIcon
+        className="mb-4"
+      />
+      {loading ? (
+        <div className="flex justify-center items-center">
+          <Spin size="large" tip="Fetching metadata..." />
+        </div>
+      ) : (
+        <>
+          <div className="flex justify-center mt-4">
+            <Button
+              type="primary"
+              loading={loading}
+              onClick={() => setIsUpdatedMetadata(true)}
+              style={{
+                backgroundColor: "#4CAF50", // Darker shade of green
+                borderColor: "#4CAF50",
+                color: "#fff",
+              }}
+            >
+              Save Changes
+            </Button>
+          </div>
+          <Table
+            columns={columns}
+            dataSource={tableData}
+            pagination={{ pageSize: 10, position: ["bottomCenter"] }}
+            scroll={{ y: 700 }}
+          />
+        </>
+      )}
+    </div>
+  );
+};
+
+export default MetadataTable;
