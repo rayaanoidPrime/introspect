@@ -123,12 +123,19 @@ async def get_metadata(request: Request):
     except:
         return {"error": "no metadata found"}
 
+
 @router.post("/integration/validate_db_connection")
 async def validate_db_connection(request: Request):
     params = await request.json()
     token = params.get("token")
     if not validate_user(token, user_type="admin"):
-        return {"error": "unauthorized"}
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
     db_type = params.get("db_type")
     db_creds = params.get("db_creds")
     for k in ["api_key", "db_type"]:
@@ -139,12 +146,20 @@ async def validate_db_connection(request: Request):
     sql_query = "SELECT 'test';"
     try:
         await asyncio.to_thread(
-            execute_query, sql_query, api_key, db_type, db_creds, retries=0,
+            execute_query,
+            sql_query,
+            api_key,
+            db_type,
+            db_creds,
+            retries=0,
         )
         return {"status": "success"}
     except Exception as e:
         print(e, flush=True)
-        return {"status": "error", "message": "Could not connect to the database within 10 seconds. Please verify that the DB credentials are correct."}
+        return {
+            "status": "error",
+            "message": "Could not connect to the database within 10 seconds. Please verify that the DB credentials are correct.",
+        }
 
 
 @router.post("/integration/update_db_creds")
