@@ -3,19 +3,28 @@ import { Alert, Form, Select, Input, Button, Table, message, Spin } from "antd";
 import { EditOutlined, SaveOutlined, TableOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 
-const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
+const MetadataTable = ({
+  token,
+  apiKeyName,
+  tablesData,
+  metadata: initialMetadata,
+}) => {
+  // all tables from the database
   const [tables, setTables] = useState([]);
+  // tables indexed for defog
   const [selectedTablesForIndexing, setSelectedTablesForIndexing] = useState(
     []
   );
-  const [metadata, setMetadata] = useState([]);
-  const [filteredMetadata, setFilteredMetadata] = useState([]);
+  const [metadata, setMetadata] = useState(initialMetadata);
+  const [filteredMetadata, setFilteredMetadata] = useState(initialMetadata);
+
+  // key (table_name_column_name): value (boolean to toggle editing of the column descritpion)
   const [editingKeys, setEditingKeys] = useState({});
+
   const [loading, setLoading] = useState(false);
   const [isUpdatedMetadata, setIsUpdatedMetadata] = useState(false);
   const [desc, setDesc] = useState({});
-  const [filter, setFilter] = useState([]);
-
+  const [filter, setFilter] = useState([]); // list of table names to filter
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -23,21 +32,13 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
       setTables(tablesData.tables);
       setSelectedTablesForIndexing(tablesData.indexed_tables);
       form.setFieldsValue({ tables: tablesData.indexed_tables });
-      getMetadata();
     }
   }, [tablesData]);
 
   useEffect(() => {
-    const fetchMetaData = async () => {
-      try {
-        await getMetadata();
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-
-    fetchMetaData();
-  }, [apiKeyName]);
+    setMetadata(initialMetadata);
+    setFilteredMetadata(initialMetadata);
+  }, [initialMetadata]);
 
   useEffect(() => {
     if (isUpdatedMetadata) {
@@ -78,23 +79,6 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
       setEditingKeys({});
     }
   }, [isUpdatedMetadata]);
-
-  const getMetadata = async () => {
-    setLoading(true);
-    const res = await fetch(setupBaseUrl("http", `integration/get_metadata`), {
-      method: "POST",
-      body: JSON.stringify({
-        token,
-        key_name: apiKeyName,
-      }),
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (!data.error) {
-      setMetadata(data.metadata || []);
-      setFilteredMetadata(data.metadata || []);
-    }
-  };
 
   const toggleEdit = (key) => {
     setEditingKeys((prev) => ({
@@ -177,7 +161,7 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
     }
   };
 
-  // Extract unique table names from metadata
+  // to remove duplicate table names
   const uniqueTableNames = [
     ...new Set(metadata.map((item) => item.table_name)),
   ];
@@ -292,12 +276,12 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
             }))}
           />
         </Form.Item>
-        <Button type="dashed" htmlType="submit" className="w-1/4 ml-2">
+        <Button type="dashed" htmlType="submit" className="w-1/4 ml-2 bg-white border border-gray-300 text-blue-500 hover:bg-blue-500 hover:text-white">
           Index Tables
         </Button>
       </Form>
       <Alert
-        message="This table is a preview for your changes. Please hit 'Save Changes' to update metadata on on the defog server."
+        message="This table is a preview for your changes. Please hit 'Save Changes' to update metadata on the defog server."
         type="info"
         showIcon
         className="mb-4"
@@ -317,6 +301,7 @@ const MetadataTable = ({ token, user, userType, apiKeyName, tablesData }) => {
       <div className="flex justify-end mb-4 mt-4">
         <Button
           type="primary"
+          loading={loading}
           onClick={() => setIsUpdatedMetadata(true)}
           style={{
             backgroundColor: "#4CAF50", // Darker shade of green

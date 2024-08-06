@@ -9,7 +9,6 @@ import { Select, Row, Col, Tabs } from "antd";
 import Scaffolding from "$components/layout/Scaffolding";
 
 const { TabPane } = Tabs;
-const { Option } = Select;
 
 const ExtractMetadata = () => {
   const router = useRouter();
@@ -20,11 +19,14 @@ const ExtractMetadata = () => {
   const [token, setToken] = useState("");
   const [user, setUser] = useState("");
   const [userType, setUserType] = useState("");
-  const [dbData, setDbData] = useState({});
-  const [tablesData, setTablesData] = useState({});
-  const [loading, setLoading] = useState(false);
-  const [emptyDescriptions, setEmptyDescriptions] = useState(0);
+
+  const [dbData, setDbData] = useState({}); // db_type and db_creds
+  const [tablesData, setTablesData] = useState({}); // tables and indexed_tables
+  const [metadata, setMetadata] = useState([]); // metadata of the tables
+
   const [dbConnectionstatus, setDbConnectionStatus] = useState(false);
+
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -38,12 +40,11 @@ const ExtractMetadata = () => {
 
       if (user && token && userType) {
         await getTablesAndDbCreds(token, apiKeyName);
+        await fetchMetadata(token, apiKeyName);
       } else {
         router.push("/log-in");
       }
     };
-
-    
 
     fetchUserData();
   }, [apiKeyName]);
@@ -69,13 +70,26 @@ const ExtractMetadata = () => {
       console.log("tablesData", data["tables"]);
       console.log("db_tables", data["selected_tables"]);
       setDbData({ db_type: data["db_type"], db_creds: data["db_creds"] });
-      const emptyDescriptionsCount = data["tables"].reduce((count, table) => {
-        // return count + table.columns.filter((col) => !col.description).length;
-      }, 0);
-      setEmptyDescriptions(emptyDescriptionsCount);
     }
     setLoading(false);
   };
+
+  const fetchMetadata = async (token, apiKeyName) => {
+    setLoading(true);
+    const res = await fetch(setupBaseUrl("http", `integration/get_metadata`), {
+      method: "POST",
+      body: JSON.stringify({
+        token,
+        key_name: apiKeyName,
+      }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (!data.error) {
+      setMetadata(data.metadata || []);
+    }
+  };
+
   const validateDatabaseConnection = async (db_type, db_creds) => {
     const payload = {
       db_type,
@@ -101,9 +115,16 @@ const ExtractMetadata = () => {
     }
   };
 
-  // Check if the metadata is set up
+  // Check if at least one table is indexed for defog
   const isTablesIndexed =
-    tablesData && tablesData.indexed_tables && tablesData.indexed_tables.length > 0;
+    tablesData &&
+    tablesData.indexed_tables &&
+    tablesData.indexed_tables.length > 0;
+
+  // Check if at least one column has a non-empty description
+  const hasNonEmptyDescription = metadata.some(
+    (item) => item.column_description && item.column_description.trim() !== ""
+  );
 
   return (
     <>
@@ -126,16 +147,15 @@ const ExtractMetadata = () => {
               </Col>
             </Row>
           ) : null}
+          <div className="mt-4">
+            <SetupStatus
+              loading={loading}
+              isDatabaseSetupWell={dbConnectionstatus}
+              isTablesIndexed={isTablesIndexed}
+              hasNonEmptyDescription={hasNonEmptyDescription}
+            />
+          </div>
 
-          {/* Status Indicators */}
-          <SetupStatus
-            loading={loading}
-            isDatabaseSetupWell={dbConnectionstatus}
-            isTablesIndexed={isTablesIndexed}
-            emptyDescriptions={emptyDescriptions}
-          />
-
-          {/* Tabs for Database Credentials and Metadata */}
           <Tabs defaultActiveKey="1" className="w-full mt-4">
             <TabPane tab="Update Database Credentials" key="1">
               <DbCredentialsForm
@@ -154,6 +174,7 @@ const ExtractMetadata = () => {
                 userType={userType}
                 apiKeyName={apiKeyName}
                 tablesData={tablesData}
+                metadata={metadata} // Pass metadata as prop
               />
             </TabPane>
           </Tabs>
@@ -162,4 +183,5 @@ const ExtractMetadata = () => {
     </>
   );
 };
+
 export default ExtractMetadata;

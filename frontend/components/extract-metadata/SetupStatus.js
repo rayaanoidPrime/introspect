@@ -10,7 +10,7 @@ const SetupStatus = ({
   loading,
   isDatabaseSetupWell,
   isTablesIndexed,
-  emptyDescriptions,
+  hasNonEmptyDescription,
 }) => {
   const router = useRouter();
 
@@ -21,7 +21,7 @@ const SetupStatus = ({
       description: loading ? (
         <LoadingOutlined />
       ) : isDatabaseSetupWell ? (
-        "We can verify that your database details are correct and a connection is sucessfully established"
+        "We can verify that your database details are correct and a connection is successfully established"
       ) : (
         "Please fill in your correct database details to get started querying"
       ),
@@ -52,35 +52,49 @@ const SetupStatus = ({
         <CloseCircleOutlined style={{ color: "red" }} />
       ),
       onClick: () => router.push("/extract-metadata"),
+      blur: !isDatabaseSetupWell, // Add blur property
     },
     {
       key: "3",
       title: "Column Descriptions",
-      description: "We found ",
+      description: loading ? (
+        <LoadingOutlined />
+      ) : hasNonEmptyDescription ? (
+        "We found at least one column with a description. You can view and update metadata."
+      ) : (
+        "We did not find any column descriptions. Please add descriptions to columns to give defog better context of your data."
+      ),
       status: loading ? (
         <LoadingOutlined />
-      ) : emptyDescriptions === 0 ? (
+      ) : hasNonEmptyDescription ? (
         <CheckCircleOutlined style={{ color: "green" }} />
       ) : (
         <CloseCircleOutlined style={{ color: "red" }} />
       ),
       onClick: () => router.push("/extract-metadata"),
+      blur: !isDatabaseSetupWell, // Add blur property
     },
   ];
 
   return (
-    <div style={{ padding: "1em 0" }}>
+    <div className="py-4">
       <Row gutter={[16, 16]}>
         {statusItems.map((item) => (
           <Col span={8} key={item.key}>
-            <Card
-              hoverable
-              onClick={item.onClick}
-              title={item.title}
-              extra={item.status}
+            <div
+              className={`${
+                item.blur ? "filter blur-sm pointer-events-none opacity-60" : ""
+              }`}
             >
-              <p>{item.description}</p>
-            </Card>
+              <Card
+                hoverable={!item.blur}
+                onClick={item.blur ? null : item.onClick}
+                title={item.title}
+                extra={item.status}
+              >
+                <p>{item.description}</p>
+              </Card>
+            </div>
           </Col>
         ))}
       </Row>
