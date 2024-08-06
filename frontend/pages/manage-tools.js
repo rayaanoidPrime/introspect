@@ -1,3 +1,4 @@
+"use client";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import { addTool, toolboxDisplayNames } from "$utils/utils";
@@ -10,8 +11,16 @@ import {
   useState,
 } from "react";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { MessageManagerContext, Button, Modal } from "$ui-components";
-import { DefineTool, AddTool } from "$agents-ui-components";
+import {
+  MessageManagerContext,
+  Button,
+  Modal,
+} from "@defogdotai/agents-ui-components/core-ui";
+
+import {
+  DefineTool,
+  AddTool,
+} from "@defogdotai/agents-ui-components/tool-editor";
 
 const toggleDisableToolEndpoint = setupBaseUrl("http", "toggle_disable_tool");
 const deleteToolEndpoint = setupBaseUrl("http", "delete_tool");

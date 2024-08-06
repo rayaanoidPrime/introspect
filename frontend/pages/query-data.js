@@ -1,15 +1,10 @@
-"use-client";
+"use client";
 import React, { useState, useEffect } from "react";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
-import {
-  MessageManager,
-  MessageManagerContext,
-  MessageMonitor,
-  SingleSelect,
-  Toggle,
-} from "$ui-components";
-import { TestDrive } from "$components/agents/TestDrive";
+import { Toggle } from "@defogdotai/agents-ui-components/core-ui";
+
+import { DefogAnalysisAgentEmbed } from "@defogdotai/agents-ui-components/agent";
 
 const QueryDataPage = () => {
   const [token, setToken] = useState("");
@@ -54,20 +49,20 @@ const QueryDataPage = () => {
           {/* </div> */}
 
           {token ? (
-            <MessageManagerContext.Provider value={MessageManager()}>
-              <MessageMonitor />
-              {/* env keyname stuff happens inside QueryData component */}
-              <TestDrive
-                devMode={devMode}
+            <>
+              <DefogAnalysisAgentEmbed
                 token={token}
+                user={user}
+                devMode={devMode}
                 apiEndpoint={process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}
                 uploadedCsvPredefinedQuestions={[
                   "Show me any 5 rows from the dataset",
                 ]}
+                showAnalysisUnderstanding={false}
                 dbs={apiKeyNames.map((name) => {
                   return {
-                    keyName: name,
                     name: name,
+                    keyName: name,
                     predefinedQuestions:
                       name === "Manufacturing"
                         ? [
@@ -88,7 +83,7 @@ const QueryDataPage = () => {
                   };
                 })}
               />
-            </MessageManagerContext.Provider>
+            </>
           ) : null}
         </div>
       </Scaffolding>

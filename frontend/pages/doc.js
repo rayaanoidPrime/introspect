@@ -2,23 +2,20 @@ import "@blocknote/react/style.css";
 import React, { useContext, useEffect, useRef, useState } from "react";
 import Meta from "$components/layout/Meta";
 import { useRouter } from "next/router";
-import dynamic from "next/dynamic";
+// import dynamic from "next/dynamic";
 import ErrorBoundary from "$components/layout/ErrorBoundary";
 import { v4 } from "uuid";
 import { UserContext } from "$components/context/UserContext";
 import Scaffolding from "$components/layout/Scaffolding";
-// import { Doc } from "$agents-ui-components";
 import "@blocknote/mantine/style.css";
 
-const Doc = dynamic(
-  () =>
-    import("$agents-doc").then((module) => {
-      return module.Doc;
-    }),
-  {
-    ssr: false,
-  }
-);
+// const Doc = dynamic(
+//   () =>
+//     import("@defogdotai/agents-ui-components/doc").then((m) => {
+//       return m.Doc;
+//     }),
+//   { ssr: false }
+// );
 
 export default function DocPage() {
   const router = useRouter();
@@ -87,12 +84,22 @@ export default function DocPage() {
 
   console.log(docId.current, token);
 
+  const apiKeyNames = (
+    process.env.NEXT_PUBLIC_API_KEY_NAMES || "REPLACE_WITH_API_KEY_NAMES"
+  ).split(",");
+
   return docId.current ? (
     <>
       <Meta />
       <Scaffolding id={"view-notebooks"} userType={"admin"}>
         <ErrorBoundary>
-          <Doc docId={docId.current} user={user} token={token}></Doc>
+          {/* <Doc
+            docId={docId.current}
+            user={user}
+            token={token}
+            apiEndpoint={process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}
+            keyName={apiKeyNames[0]}
+          ></Doc> */}
         </ErrorBoundary>
       </Scaffolding>
     </>

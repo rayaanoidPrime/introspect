@@ -1,7 +1,12 @@
 import inspect
 from agents.planner_executor.tool_helpers.all_tools import *
 from tool_code_utilities import fetch_query_into_df
-from db_utils import store_tool_run, get_tool_run, update_tool_run_data
+from db_utils import (
+    store_tool_run,
+    get_tool_run,
+    update_particular_step,
+    update_tool_run_data,
+)
 from colorama import Style
 from agents.planner_executor.execute_tool import execute_tool
 
@@ -21,7 +26,7 @@ import traceback
 import os
 
 
-report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
+report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
 
 
 # rerun_step_and_dependents function runs the step, the step's parents if needed AND all descendants that depend on this step recursively
@@ -269,7 +274,6 @@ async def rerun_step_and_parents(
                         raise ValueError(
                             f"Error saving the outputs of re running step: {update_res['error_message']}"
                         )
-
                     new_data = update_res["tool_run_data"]
                     log_success(f"Successfully saved output of running tool:" + f_nm)
 
@@ -314,6 +318,16 @@ async def rerun_step_and_parents(
                 # first remove any errors from target_step
                 target_step["error_message"] = None
                 store_res = await store_tool_run(analysis_id, target_step, result)
+
+                # now also update model_generated_inputs so that if we change sql later,
+                # we don't end up comparing the question to the *first* question that was generated
+                # but instead, compare to this new one
+                await update_particular_step(
+                    analysis_id=analysis_id,
+                    tool_run_id=tool_run_id,
+                    prop="model_generated_inputs",
+                    new_val=resolved_inputs,
+                )
 
                 if not store_res["success"]:
                     log_error(f"Error re running step: {store_res['error_message']}")

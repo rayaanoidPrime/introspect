@@ -1,3 +1,4 @@
+import inspect
 import json
 import traceback
 import datetime
@@ -16,7 +17,7 @@ import asyncio
 from utils import warn_str, YieldList, make_request
 import os
 
-report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
+report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
 
 if os.environ.get("INTERNAL_DB") == "sqlite":
     print("using sqlite as our internal db")
@@ -25,11 +26,11 @@ if os.environ.get("INTERNAL_DB") == "sqlite":
     engine = create_engine(connection_uri, connect_args={"timeout": 3})
 else:
     db_creds = {
-        "user": os.environ["DBUSER"],
-        "password": os.environ["DBPASSWORD"],
-        "host": os.environ["DBHOST"],
-        "port": os.environ["DBPORT"],
-        "database": os.environ["DATABASE"],
+        "user": os.environ.get("DBUSER", "postgres"),
+        "password": os.environ.get("DBPASSWORD", "postgres"),
+        "host": os.environ.get("DBHOST", "agents-postgres"),
+        "port": os.environ.get("DBPORT", "5432"),
+        "database": os.environ.get("DATABASE", "postgres"),
     }
 
     # if using postgres
@@ -125,25 +126,37 @@ def validate_user(token, user_type=None, get_username=False):
         return False
 
 
-async def execute_code(codestr):
+async def execute_code(
+    code_snippets: list,  # list of code strings to execute
+    fn_name=None,  # function name to call
+    use_globals=False,  # whether to use globals as the sandbox
+):
     """
-    Executes the code in a string. Returns the error or results.
+    Runs code string and returns output.
     """
     err = None
-    analysis = None
-    full_data = None
+    out = None
     try:
-        # add some imports to the codestr
-        exec(codestr, globals())
-        analysis, full_data = await globals()["exec_code"]()
-        full_data.code_str = codestr
+        sandbox = {}
+        if use_globals:
+            sandbox = globals()
+
+        for code in code_snippets:
+            exec(code, sandbox)
+
+        if fn_name:
+            # check if test_tool is an async function
+            if inspect.iscoroutinefunction(sandbox[fn_name]):
+                out = await sandbox[fn_name]()
+            else:
+                out = sandbox[fn_name]()
     except Exception as e:
+        out = None
+        err = str(e)
+        sandbox = None
         traceback.print_exc()
-        err = e
-        analysis = None
-        full_data = None
     finally:
-        return err, analysis, full_data
+        return err, out, sandbox
 
 
 async def initialise_report(
@@ -345,9 +358,6 @@ async def update_report_data(
                         )
                 else:
                     err = "Report not found."
-                    print("\n\n\n")
-                    print(err)
-                    print("\n\n\n")
                     raise ValueError(err)
 
     except Exception as e:
@@ -568,9 +578,6 @@ async def delete_doc(doc_id):
                 print("Deleted doc with id: ", doc_id)
             else:
                 err = "Doc not found."
-                print("\n\n\n")
-                print(err)
-                print("\n\n\n")
                 raise ValueError(err)
     except Exception as e:
         err = str(e)
@@ -599,9 +606,6 @@ async def update_doc_data(doc_id, col_names=[], new_data={}):
                 conn.execute(update(Docs).where(Docs.doc_id == doc_id).values(new_data))
             else:
                 err = "Doc not found."
-                print("\n\n\n")
-                print(err)
-                print("\n\n\n")
                 raise ValueError(err)
     except Exception as e:
         err = str(e)
@@ -1189,13 +1193,13 @@ async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
                     .values(outputs=new_val, edited=False)
                 )
 
-            with engine.begin() as conn:
-                row = conn.execute(
-                    select(ToolRuns).where(ToolRuns.tool_run_id == tool_run_id)
-                ).fetchone()
+        with engine.begin() as conn:
+            row = conn.execute(
+                select(ToolRuns).where(ToolRuns.tool_run_id == tool_run_id)
+            ).fetchone()
 
-            if row is not None:
-                new_data = dict(row._mapping)
+        if row is not None:
+            new_data = dict(row._mapping)
 
         return {"success": True, "tool_run_data": new_data}
     except Exception as e:
@@ -1247,7 +1251,7 @@ async def store_feedback(
 
     asyncio.create_task(
         make_request(
-            f"{os.environ['DEFOG_BASE_URL']}/update_agent_feedback",
+            f"{os.environ.get('DEFOG_BASE_URL', 'https://api.defog.ai')}/update_agent_feedback",
             {
                 "api_key": api_key,
                 "user_question": user_question,
@@ -1353,7 +1357,7 @@ async def add_tool(
         print("Adding tool to the defog API server", tool_name)
         asyncio.create_task(
             make_request(
-                url=f"{os.environ['DEFOG_BASE_URL']}/update_tool",
+                url=f"{os.environ.get('DEFOG_BASE_URL', 'https://api.defog.ai')}/update_tool",
                 payload={
                     "api_key": api_key,
                     "tool_name": tool_name,

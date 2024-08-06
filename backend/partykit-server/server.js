@@ -10,19 +10,19 @@ export default {
   async onConnect(ws, room, context) {
     // get doc id from uri
     const params = new URLSearchParams(ws.uri.split("?").pop());
-    const docId = params.get("doc_id");
-    const apiToken = params.get("api_token");
+    const docId = params.get("docId");
+    const keyName = params.get("keyName");
     const token = params.get("token");
     const docsBackend = await setupWebsocketManager(docsEndpoint);
 
-    console.log("onConnect", docId, apiToken, token);
+    console.log("onConnect", docId, keyName, token);
 
     return await onConnect(ws, room, {
       load() {
         return fetch(getDocsEndpoint, {
           method: "POST",
           body: JSON.stringify({
-            api_key: apiToken,
+            key_name: keyName,
             doc_id: docId,
             col_name: "doc_uint8",
             token: token,

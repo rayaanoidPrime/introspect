@@ -6,17 +6,15 @@ import { useRouter } from "next/router";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Scaffolding from "$components/layout/Scaffolding";
 import { UserContext } from "$components/context/UserContext";
-import dynamic from "next/dynamic";
+// import dynamic from "next/dynamic";
 
-const DocIcon = dynamic(
-  () =>
-    import("$agents-doc").then((module) => {
-      return module.DocIcon;
-    }),
-  {
-    ssr: false,
-  }
-);
+// const DocIcon = dynamic(
+//   () =>
+//     import("../../../agents-ui-components/dist/doc.js").then((m) => {
+//       return m.DocIcon;
+//     }),
+//   { ssr: false }
+// );
 
 const ViewNotebooks = () => {
   const [loading, setLoading] = useState(false);
@@ -180,10 +178,10 @@ const ViewNotebooks = () => {
         <div className="flex flex-wrap justify-start">
           {ownDocs && !loading ? (
             <>
-              <DocIcon addDocIcon={true} />
+              {/* <DocIcon addDocIcon={true} />
               {ownDocs.map((doc) => (
                 <DocIcon doc={doc} key={doc.doc_id} onClick={archiveToggle} />
-              ))}
+              ))} */}
             </>
           ) : (
             <div>Loading docs...</div>

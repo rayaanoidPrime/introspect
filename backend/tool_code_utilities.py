@@ -12,7 +12,7 @@ import pandas as pd
 import os
 from db_utils import get_db_type_creds
 
-report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
+report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
 
 
 import matplotlib.pyplot as plt
@@ -67,6 +67,7 @@ async def fetch_query_into_df(
     colnames, data, new_sql_query = await asyncio.to_thread(
         execute_query, sql_query, api_key, db_type, db_creds, retries=2, temp=temp
     )
+
     df = pd.DataFrame(data, columns=colnames)
 
     # if this df has any columns that have lists, remove those columns

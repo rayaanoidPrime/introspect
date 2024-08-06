@@ -53,8 +53,8 @@ router = APIRouter()
 
 manager = ConnectionManager()
 
-llm_calls_url = os.environ["LLM_CALLS_URL"]
-report_assets_dir = os.environ["REPORT_ASSETS_DIR"]
+llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
+report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
 
 
 @router.websocket("/docs")
@@ -490,9 +490,6 @@ async def rerun_step(websocket: WebSocket):
                             websocket,
                         )
                     elif new_data.get("pre_tool_run_message"):
-                        logging.info(
-                            f"Starting rerunning of step: {new_data.get('pre_tool_run_message')} with websocket: {websocket} in application_state: {websocket.application_state} and client_state: {websocket.client_state}"
-                        )
                         await manager.send_personal_message(
                             {
                                 "pre_tool_run_message": new_data.get(
@@ -982,7 +979,6 @@ async def add_tool_endpoint(request: Request):
             input_metadata=input_metadata,
             output_metadata=output_metadata,
             toolbox=toolbox,
-            no_code=no_code,
         )
 
         if err:
@@ -1127,6 +1123,7 @@ async def generate_tool_code_endpoint(request: Request):
 
         retries = 0
         error = None
+        messages = None
         while retries < 3:
             try:
                 logging.info(payload)
@@ -1141,6 +1138,10 @@ async def generate_tool_code_endpoint(request: Request):
 
                 tool_code = resp["tool_code"]
                 testing_code = resp["testing_code"]
+                messages = resp["messages"]
+
+                print(tool_code)
+                print(testing_code, flush=True)
 
                 # find the function name in tool_code
                 try:
@@ -1154,7 +1155,7 @@ async def generate_tool_code_endpoint(request: Request):
                     )
 
                 # try running this code
-                err, testing_details = await execute_code(
+                err, testing_details, _ = await execute_code(
                     [tool_code, testing_code], "test_tool"
                 )
 
@@ -1199,7 +1200,7 @@ async def generate_tool_code_endpoint(request: Request):
                     payload = {
                         "request_type": "fix_tool_code",
                         "error": error,
-                        "messages": None,
+                        "messages": messages,
                         "api_key": api_key,
                     }
                 retries += 1

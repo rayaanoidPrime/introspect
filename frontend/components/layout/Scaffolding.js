@@ -3,7 +3,7 @@ import { UserContext } from "../context/UserContext";
 import { Layout } from "antd/lib";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { NavBar } from "$ui-components";
+import { NavBar } from "@defogdotai/agents-ui-components/core-ui";
 import { usePathname } from "next/navigation";
 import { twMerge } from "tailwind-merge";
 
@@ -95,11 +95,11 @@ const Scaffolding = ({
       items = [];
     } else {
       items = [
-        {
-          key: "view-notebooks",
-          title: "View your notebook",
-          href: "/view-notebooks",
-        },
+        // {
+        //   key: "view-notebooks",
+        //   title: "View your notebook",
+        //   href: "/view-notebooks",
+        // },
         {
           key: "query-data",
           title: "Query Data",
