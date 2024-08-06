@@ -1,9 +1,12 @@
+import logging
 import os
+import trace
 import traceback
 from fastapi import FastAPI, WebSocket, Request
 from fastapi.responses import FileResponse
 from starlette.websockets import WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from agents.clarifier.clarifier_agent import get_clarification
 from connection_manager import ConnectionManager
 from report_data_manager import ReportDataManager
 from agents.planner_executor.execute_tool import execute_tool
@@ -22,6 +25,8 @@ from db_utils import (
 )
 from generic_utils import get_api_key_from_key_name
 import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes, feedback_routes, slack_routes
+
+logging.basicConfig(level=logging.INFO)
 
 manager = ConnectionManager()
 
@@ -47,6 +52,7 @@ app.add_middleware(
 
 request_types = ["clarify", "understand", "gen_approaches", "gen_steps", "gen_report"]
 report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
+llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 
 
 @app.get("/ping")
@@ -171,6 +177,67 @@ async def create_report(request: Request):
         return {"success": False, "error_message": "Incorrect request"}
 
 
+@app.post("/clarify")
+async def clarify(request: Request):
+    """
+    Function that returns clarifying questions, if any for a given question and
+    """
+    try:
+        params = await request.json()
+        key_name = params.get("key_name")
+        question = params.get("user_question")
+        analysis_id = params.get("analysis_id")
+
+        # if key name or question is none or blank, return error
+        if not key_name or key_name == "":
+            raise Exception("Invalid request. Must have API key name.")
+
+        if not question or question == "":
+            raise Exception("Invalid request. Must have a question.")
+
+        if not analysis_id or analysis_id == "":
+            raise Exception("Invalid request. Must have an analysis id.")
+
+        api_key = get_api_key_from_key_name(key_name)
+
+        if not api_key:
+            raise Exception("Invalid API key name.")
+
+        dev = params.get("dev", False)
+        temp = params.get("temp", False)
+
+        clarification_questions = await get_clarification(
+            question=question,
+            api_key=api_key,
+            dev=dev,
+            temp=temp,
+        )
+
+        report_manager = ReportDataManager(
+            dfg_api_key=api_key,
+            user_question=question,
+            report_id=analysis_id,
+            dev=dev,
+            temp=temp,
+        )
+
+        if report_manager.invalid:
+            # it's okay if it's invalid. helps us test this endpoint/function in isolation
+            # so just warn instead of throwing
+            logging.warn(
+                "Returned questions but report id was invalid. Check unless you're in a testing environment."
+            )
+        else:
+            await report_manager.setup_similar_plans()
+            # TODO: save the clarifying questions to the report data
+
+        return {"success": True, "clarification_questions": clarification_questions}
+
+    except Exception as e:
+        logging.error(e)
+        return {"success": False, "error_message": str(e) or "Incorrect request"}
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
@@ -230,7 +297,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     temp=temp,
                 )
 
-                await report_data_manager.async_init()
+                await report_data_manager.setup_similar_plans()
 
                 # if this report is invalid
                 if report_data_manager.invalid:

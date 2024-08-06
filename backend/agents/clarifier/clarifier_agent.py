@@ -7,6 +7,8 @@ import asyncio
 import requests
 import os
 
+from utils import make_request
+
 default_values_formatted = {
     "multi select": [],
     "text input": "",
@@ -45,6 +47,28 @@ def parse_q(q):
         # print(e)
         # traceback.print_exc()
         return []
+
+
+async def get_clarification(question, api_key, dev=False, temp=False):
+    payload = {
+        "request_type": "clarify_task",
+        "question": question,
+        "api_key": api_key,
+        "dev": dev,
+        "temp": temp,
+    }
+
+    r = await make_request(
+        llm_calls_url,
+        payload=payload,
+    )
+
+    if r.status_code == 200:
+        clarifying_questions = r.json()["clarifications"]
+        parsed_clarifying_questions = parse_q(clarifying_questions)
+        return parsed_clarifying_questions
+    else:
+        raise Exception(f"Error getting clarifications: {r.status_code}")
 
 
 class Clarifier:
