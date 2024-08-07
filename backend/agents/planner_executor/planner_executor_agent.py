@@ -7,6 +7,7 @@ from colorama import Fore, Style
 
 from agents.planner_executor.execute_tool import execute_tool
 from agents.planner_executor.tool_helpers.core_functions import resolve_input
+from agents.clarifier.clarifier_agent import turn_into_statements
 from db_utils import get_analysis_question_context, store_tool_run
 from utils import warn_str, YieldList
 from .tool_helpers.toolbox_manager import get_tool_library_prompt
@@ -19,9 +20,114 @@ import re
 import pandas as pd
 import os
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
 
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
+
+
+async def generate_single_step(
+    dfg_api_key,
+    analysis_id,
+    user_question,
+    clarification_questions=[],
+    toolboxes=[],
+    parent_analyses=[],
+    similar_plans=[],
+    dev=False,
+    temp=False,
+    predefined_steps=None,
+    direct_parent_analysis=None,
+    previous_steps=[],
+):
+    """
+    Generates a single step of a plan.
+    """
+    assignment_understanding = ""
+    logging.info("Clarification questiuons:")
+    logging.info(clarification_questions)
+    if len(clarification_questions) > 0:
+        try:
+            assignment_understanding = await turn_into_statements(
+                clarification_questions, dfg_api_key
+            )
+        except Exception as e:
+            logging.warn(
+                "Could not generate understanding. The answers might not be what the user wants. Resorting to blank string"
+            )
+            logging.error(e)
+            assignment_understanding = ""
+
+    logging.info("Assignment understanding:")
+    logging.info(assignment_understanding)
+
+    err, user_question_context = await get_analysis_question_context(analysis_id)
+    if err:
+        user_question_context = None
+
+    tool_library_prompt = await get_tool_library_prompt(
+        toolboxes, user_question_context or user_question
+    )
+
+    # make calls to the LLM to get the next step
+    llm_server_url = os.environ.get("LLM_SERVER_ENDPOINT", None)
+    if not llm_server_url:
+        llm_server_url = None
+        print("LLM_SERVER_ENDPOINT not set, using None", flush=True)
+    else:
+        print(
+            f"LLM_SERVER_ENDPOINT set to {llm_server_url}",
+            flush=True,
+        )
+
+    # construct previous_responses from previous_steps
+    # wrap in ```yaml ``` and yaml format it
+    previous_responses = []
+    for step in previous_steps:
+        previous_responses.append(
+            yaml.dump([step], default_flow_style=False, sort_keys=False)
+        )
+
+    next_step_data_description = ""
+
+    payload = {
+        "request_type": "create_plan",
+        "question": user_question,
+        "tool_library_prompt": tool_library_prompt,
+        "assignment_understanding": assignment_understanding,
+        "parent_questions": [p["user_question"] for p in parent_analyses],
+        "previous_responses": previous_responses,
+        "next_step_data_description": next_step_data_description,
+        "similar_plans": similar_plans[:2],
+        "direct_parent_analysis": direct_parent_analysis,
+        "api_key": dfg_api_key,
+        "plan_id": analysis_id,
+        "llm_server_url": llm_server_url,
+        "model_name": os.environ.get("LLM_MODEL_NAME", None),
+        "dev": dev,
+        "temp": temp,
+    }
+
+    res = (await asyncio.to_thread(requests.post, llm_calls_url, json=payload)).json()
+    step_yaml = res["generated_step"]
+    print(step_yaml)
+
+    match = re.search("(?:```yaml)([\s\S]*?)(?=```)", step_yaml)
+
+    if match is None:
+        logging.info(
+            f"No step generated. This was the response from the LLM: \n {step_yaml}"
+        )
+        raise Exception("Invalid response from the model")
+
+    step = yaml.safe_load(match[1].strip())[0]
+    # add a unique id to this tool as the tool_run prop
+    step["tool_run_id"] = str(uuid4())
+
+    return step
 
 
 class Executor:

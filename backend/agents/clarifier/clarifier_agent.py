@@ -25,6 +25,24 @@ default_values = {
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 
 
+async def turn_into_statements(clarification_questions, dfg_api_key):
+    url = llm_calls_url
+    filtered = [q for q in clarification_questions if q.get("response", "") != ""]
+    if len(filtered) == 0:
+        return []
+
+    payload = {
+        "request_type": "turn_into_statement",
+        "clarification_questions": [
+            q for q in clarification_questions if q.get("response", "") != ""
+        ],
+        "api_key": dfg_api_key,
+    }
+    r = await make_request(url, payload=payload)
+    statements = r.json()["statements"]
+    return statements
+
+
 def parse_q(q):
     try:
         q = re.sub("```", "", q).strip()
