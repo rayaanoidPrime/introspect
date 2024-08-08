@@ -8,7 +8,7 @@ from colorama import Fore, Style
 from agents.planner_executor.execute_tool import execute_tool
 from agents.clarifier.clarifier_agent import turn_into_statements
 from db_utils import get_analysis_question_context, store_tool_run
-from utils import warn_str, YieldList
+from utils import deduplicate_columns, warn_str, YieldList
 from .tool_helpers.toolbox_manager import get_tool_library_prompt
 from .tool_helpers.tool_param_types import ListWithDefault
 import asyncio
@@ -60,7 +60,11 @@ class MissingVariableException(Exception):
 
 def get_input_value(inp, tool_cache):
     """
-    Tries to figure out a value of an input
+    Tries to figure out a value of an input.
+
+    If the input starts with `global_dict.XXX`, and is not found in tool_cache, raises a MissingVariableException.
+
+    That exception is usually a signal to the calling function that it needs to run some parent step.
     """
     val = None
 
@@ -155,15 +159,84 @@ async def run_step(step, previous_steps):
 
     # once we have the resolved inputs
 
-    result, tool_input_metadata = await execute_tool(
+    results, tool_input_metadata = await execute_tool(
         function_name=step["tool_name"],
         tool_function_inputs=resolved_inputs,
         global_dict=tool_cache,
     )
 
-    logging.info(f"Results: {result}")
+    logging.info(f"Results: {results}")
     logging.info(f"Tool input metadata: {tool_input_metadata}")
 
+    step["error_message"] = results.get("error_message")
+
+    step["input_metadata"] = tool_input_metadata
+
+    step["model_generated_inputs"] = deepcopy(step["inputs"])
+
+    # merge result into the step object
+    step.update(results)
+
+    # but not outputs
+    # we will construct the outputs object below
+    step["outputs"] = {}
+
+    # if there's no error, check if zip is possible
+    if not results.get("error_message"):
+        # if number of outputs does not match the number of keys to store the outputs in
+        # raise exception
+        # this should never really happen
+        if len(step.get("outputs_storage_keys")) != len(results.get("outputs")):
+            raise Exception(
+                f"Length of outputs_storage_keys and outputs don't match. Outputs: {results.get('outputs')}"
+            )
+        else:
+            # zip and store the output keys to tool_cache
+            for output_name, output_value in zip(
+                step["outputs_storage_keys"], results.get("outputs")
+            ):
+                data = output_value.get("data")
+                reactive_vars = output_value.get("reactive_vars")
+                chart_images = output_value.get("chart_images")
+
+                step["outputs"][output_name] = {}
+
+                logging.info("Parsing output: " + output_name)
+
+                # if the output has data and it is a pandas dataframe,
+                # 1. deduplicate the columns
+                # 2. store the dataframe in the tool_cache
+                # 3. store the dataframe in the report_assets directory
+                # 4. Finally store in the step object
+                if data is not None and type(data) == type(pd.DataFrame()):
+                    db_path = step["id"] + "_output-" + output_name + ".feather"
+
+                    # deduplicate columns of this df
+                    deduplicated = deduplicate_columns(data)
+
+                    # store the dataframe in the tool_cache
+                    tool_cache[output_name] = deduplicated
+                    # name the df too
+                    tool_cache[output_name].df_name = output_name
+
+                    # store the dataframe in the report_assets directory
+                    deduplicated.reset_index(drop=True).to_feather(
+                        report_assets_dir + "/datasets/" + db_path
+                    )
+
+                    step["outputs"][output_name]["data"] = deduplicated.to_csv(
+                        float_format="%.3f", index=False
+                    )
+
+                if reactive_vars is not None:
+                    step["outputs"][output_name]["reactive_vars"] = reactive_vars
+
+                if chart_images is not None:
+                    step["outputs"][output_name]["chart_images"] = chart_images
+
+                logging.info(f"Stored output: {step['outputs'][output_name]}")
+
+    logging.info("Step with results: " + str(step))
     return step
 
 
@@ -276,8 +349,8 @@ async def generate_single_step(
         raise Exception("Invalid response from the model")
 
     step = yaml.safe_load(step_yaml[1].strip())[0]
-    # add a unique id to this tool as the tool_run prop
-    step["tool_run_id"] = str(uuid4())
+    # give a unique id to this step
+    step["id"] = str(uuid4())
 
     step_with_results = await run_step(step, previous_steps)
 

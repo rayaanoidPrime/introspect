@@ -7,6 +7,8 @@ from colorama import Fore, Style
 import httpx
 import os
 
+import pandas as pd
+
 
 # custom list class with a overwrite_key attribute
 class YieldList(list):
@@ -158,6 +160,24 @@ async def make_request(url, payload, verbose=False):
         if verbose:
             print(f"Response: {r.text}")
     return r
+
+
+def deduplicate_columns(df: pd.DataFrame):
+    # de-duplicate column names
+    # if the same column name exists more than once, add a suffix
+    deduplicated_df = df.copy()
+    columns = deduplicated_df.columns.tolist()
+    seen = {}
+    for i, item in enumerate(columns):
+        if item in seen:
+            columns[i] = f"{item}_{seen[item]}"
+            seen[item] += 1
+        else:
+            seen[item] = 1
+
+    deduplicated_df.columns = columns
+
+    return deduplicated_df
 
 
 def filter_function_inputs(fn, inputs):
