@@ -236,7 +236,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     temp=temp,
                 )
 
-                await report_data_manager.setup_similar_plans()
+                await report_data_manager.get_similar_plans()
 
                 # if this report is invalid
                 if report_data_manager.invalid:

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request
 from agents.clarifier.clarifier_agent import get_clarification
 
 from agents.planner_executor.planner_executor_agent import generate_single_step
+from db_utils import get_report_data
 from report_data_manager import ReportDataManager
 import logging
 
@@ -43,14 +44,26 @@ async def generate_step(request: Request):
         if not api_key:
             raise Exception("Invalid API key name.")
 
+        # try getting the steps of this analysis
+        previous_steps = []
+        err, analysis_data = get_report_data(analysis_id)
+        if err is None:
+            previous_steps = analysis_data.get("steps", [])
+
         step = await generate_single_step(
             dfg_api_key=api_key,
             analysis_id=analysis_id,
             user_question=question,
             clarification_questions=clarification_questions,
+            previous_steps=previous_steps,
         )
 
-        return {"success": True, "steps": [step], "done": step.get("done", True)}
+        return {
+            "success": True,
+            "steps": [step],
+            "done": step.get("done", True),
+            "error_message": step.get("error_message", True),
+        }
 
     except Exception as e:
         logging.error(e)
@@ -108,7 +121,7 @@ async def clarify(request: Request):
                 "Returned questions but report id was invalid. Check unless you're in a testing environment."
             )
         else:
-            await report_manager.setup_similar_plans()
+            await report_manager.get_similar_plans()
             # TODO: save the clarifying questions to the report data
 
         return {

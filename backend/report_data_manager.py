@@ -25,8 +25,6 @@ prop_names = {
     "gen_steps": "steps",
 }
 
-import os
-
 
 class ReportDataManager:
     def __init__(self, dfg_api_key, user_question, report_id, dev=False, temp=False):
@@ -38,7 +36,7 @@ class ReportDataManager:
         self.user_question = user_question
         self.invalid = False
         self.similar_plans = []
-        self.was_setup_similar_plans_called = False
+        self.was_get_similar_plans_called = False
         # check if this report exists in the main db
         # if so, load the report details from there
         err1, report_data = get_report_data(report_id)
@@ -104,8 +102,8 @@ class ReportDataManager:
 
     # have to call this separately because update_report_data is an async function
     # sorry :/
-    async def setup_similar_plans(self):
-        self.was_setup_similar_plans_called = True
+    async def get_similar_plans(self):
+        self.was_get_similar_plans_called = True
         if not self.invalid:
             # update with latest user question
             # we also update the embedding in this function
@@ -159,8 +157,8 @@ class ReportDataManager:
         err = None
         result = None
 
-        if not self.was_setup_similar_plans_called:
-            await self.setup_similar_plans()
+        if not self.was_get_similar_plans_called:
+            await self.get_similar_plans()
 
         try:
             if request_type is None or request_type not in self.agents:

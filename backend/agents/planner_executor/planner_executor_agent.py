@@ -6,7 +6,6 @@ from uuid import uuid4
 from colorama import Fore, Style
 
 from agents.planner_executor.execute_tool import execute_tool
-from agents.planner_executor.tool_helpers.core_functions import resolve_input
 from agents.clarifier.clarifier_agent import turn_into_statements
 from db_utils import get_analysis_question_context, store_tool_run
 from utils import warn_str, YieldList
@@ -24,9 +23,148 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+# store the outputs of each step in a global variable
+# we keep this around for a while, in case we need to re-run a step v soon after it was run
+# but we will clear this cache after a while
+# things like api_key, user_question, etc are stored here and are overwritten on every call to generate_single_step
+# but the step output cache remains the same
+# {
+#   "user_question": user_question,
+#   "dfg_api_key": dfg_api_key,
+#   "toolboxes": toolboxes,
+#   "assignment_understanding": assignment_understanding,
+#   "dfg": None,
+#   "llm_calls_url": llm_calls_url,
+#   "report_assets_dir": report_assets_dir,
+#   "dev": dev,
+#   "temp": temp,
+#   "STEP_ID_1": {...}
+#   "STEP_ID_2": {...}
+#   "STEP_ID_3": {...}
+#   ...
+# }
+tool_cache = {}
 
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
+
+
+class MissingVariableException(Exception):
+    def __init__(self, variable_name):
+        # Call the base class constructor with the parameters it needs
+        super().__init__(f"{variable_name}")
+
+        # Now for your custom code...
+        self.variable_name = variable_name
+
+
+def get_input_value(inp, tool_cache):
+    """
+    Tries to figure out a value of an input
+    """
+    val = None
+
+    if isinstance(inp, list):
+        # this is an array
+        val = []
+        for inp in inp:
+            val.append(get_input_value(inp, tool_cache))
+
+    elif isinstance(inp, str) and inp.startswith("global_dict."):
+        variable_name = inp.split(".")[1]
+        # if tool_cache doesn't have this key, raise an error
+        if variable_name not in tool_cache:
+            # raise error
+            raise MissingVariableException(variable_name)
+        else:
+            # TODO: first look in the report_assets directory
+            # asset_file_name = step_id + "_output" + "-" + input_name + ".feather"
+            # find_asset(asset_file_name)
+            # Then store in tool_cache
+            val = tool_cache[variable_name]
+
+    else:
+        # simpler types
+        if isinstance(inp, str):
+            # if only numbers, return float
+            if inp.isnumeric():
+                val = float(inp)
+
+            # if None as a string after stripping, return None
+            if inp.strip() == "None":
+                val = None
+            val = inp
+
+    return val
+
+
+def resolve_step_inputs(inputs: dict, tool_cache: dict = {}, previous_steps=[]):
+    """
+    Resolved the inputs to a step.
+    This is mostly crucial for parsing tool_cache.XXX style of inputs, which occur if this step uses outputs from another step
+    This works closely with the get_input_value function which is responsible for parsing a single input.
+    An example step's yaml is:
+    ```
+    - description: Fetching 5 rows from the database to display.
+        tool_name: data_fetcher_and_aggregator
+        inputs:
+        question: "Show me 5 rows from the database."
+        outputs_storage_keys: ["five_rows"]
+        done: true
+    ```
+    So the "inputs" is a dict with the key "question". Each input i to a tool is a key in that inputs object.
+
+    That input i itself can be any python type.
+
+    Iff that input i is a string and it starts with "tool_cache.", we will have extra logic:
+    1. We will first try to find the output inside the report_assets folder. If we can't find it, we will call the parent step = the step that generated that `tool_cache.XXX` data. This will be one of the steps passed in `previous_responses` to the generate_single_step function.
+    2. We will keep recursively calling the `run_tool` function till we resolve all the inputs.
+    """
+
+    resolved_inputs = {}
+
+    for input_name, input_val in inputs.items():
+        try:
+            val = get_input_value(input_val, tool_cache)
+            resolved_inputs[input_name] = val
+        except MissingVariableException as e:
+            missing_variable = e.variable_name
+            # find the step that generated this variable
+            # this will be one of the previous steps
+        except Exception as e:
+            logging.error(f"Error resolving input {input_name}: {input_val}")
+            logging.error(e)
+            raise Exception(f"Error resolving input {input_name}: {input_val}")
+
+    return resolved_inputs
+
+
+async def run_step(step, previous_steps):
+    """
+    Runs a step.
+    Returns the same object with the results stored in an "outputs" key.
+    """
+    # we will keep stuff around jic we need to re run this particular step again v soon
+    # so use the global tool_cache
+    global tool_cache
+
+    # resolve the inputs
+    resolved_inputs = resolve_step_inputs(step["inputs"], tool_cache, previous_steps)
+
+    logging.info(f"Resolved step inputs: {resolved_inputs}")
+
+    # once we have the resolved inputs
+
+    result, tool_input_metadata = await execute_tool(
+        function_name=step["tool_name"],
+        tool_function_inputs=resolved_inputs,
+        global_dict=tool_cache,
+    )
+
+    logging.info(f"Results: {result}")
+    logging.info(f"Tool input metadata: {tool_input_metadata}")
+
+    return step
 
 
 async def generate_single_step(
@@ -35,20 +173,34 @@ async def generate_single_step(
     user_question,
     clarification_questions=[],
     toolboxes=[],
-    parent_analyses=[],
-    similar_plans=[],
+    previous_steps=[],
     dev=False,
     temp=False,
-    predefined_steps=None,
-    direct_parent_analysis=None,
-    previous_steps=[],
+    # NOTE: we will remove this feature of "parent/nested/follow-on" analysis.
+    # Keeping this here for now, but will remove it once we reach a stable point.
+    # parent_analyses=[],
+    # similar_plans=[],
+    # direct_parent_analysis=None,
 ):
     """
-    Generates a single step of a plan.
+    This function:
+    1. Generates a single step of a plan using the LLM. Calls defog-backend-python.
+    2. Runs that step.
+    3. Stores the result of the step.
+    4. Returns the generated step + result.
     """
-    assignment_understanding = ""
-    logging.info("Clarification questiuons:")
-    logging.info(clarification_questions)
+    global tool_cache
+
+    tool_cache["dfg_api_key"] = dfg_api_key
+    tool_cache["user_question"] = user_question
+    tool_cache["toolboxes"] = toolboxes
+    tool_cache["dev"] = dev
+    tool_cache["temp"] = temp
+
+    # get the assignment understanding aka answers to clarification questions
+    assignment_understanding = None
+    logging.info(f"Clarification questiuons: {clarification_questions}")
+
     if len(clarification_questions) > 0:
         try:
             assignment_understanding = await turn_into_statements(
@@ -61,27 +213,24 @@ async def generate_single_step(
             logging.error(e)
             assignment_understanding = ""
 
-    logging.info("Assignment understanding:")
-    logging.info(assignment_understanding)
+    logging.info(f"Assignment understanding: {assignment_understanding}")
 
-    err, user_question_context = await get_analysis_question_context(analysis_id)
-    if err:
-        user_question_context = None
+    tool_cache["assignment_understanding"] = assignment_understanding
 
-    tool_library_prompt = await get_tool_library_prompt(
-        toolboxes, user_question_context or user_question
-    )
+    # NOTE: see note above
+    # err, user_question_context = await get_analysis_question_context(analysis_id)
+    # if err:
+    #     user_question_context = None
+
+    tool_library_prompt = await get_tool_library_prompt(toolboxes, user_question)
 
     # make calls to the LLM to get the next step
     llm_server_url = os.environ.get("LLM_SERVER_ENDPOINT", None)
+
+    # this will default to empty string, so make sure to set to None
     if not llm_server_url:
         llm_server_url = None
-        print("LLM_SERVER_ENDPOINT not set, using None", flush=True)
-    else:
-        print(
-            f"LLM_SERVER_ENDPOINT set to {llm_server_url}",
-            flush=True,
-        )
+    logging.info(f"LLM_SERVER_ENDPOINT set to: `{llm_server_url}`")
 
     # construct previous_responses from previous_steps
     # wrap in ```yaml ``` and yaml format it
@@ -93,41 +242,46 @@ async def generate_single_step(
 
     next_step_data_description = ""
 
+    logging.info(f"Previous responses: {previous_responses}")
+
     payload = {
         "request_type": "create_plan",
         "question": user_question,
         "tool_library_prompt": tool_library_prompt,
         "assignment_understanding": assignment_understanding,
-        "parent_questions": [p["user_question"] for p in parent_analyses],
         "previous_responses": previous_responses,
         "next_step_data_description": next_step_data_description,
-        "similar_plans": similar_plans[:2],
-        "direct_parent_analysis": direct_parent_analysis,
         "api_key": dfg_api_key,
         "plan_id": analysis_id,
         "llm_server_url": llm_server_url,
         "model_name": os.environ.get("LLM_MODEL_NAME", None),
         "dev": dev,
         "temp": temp,
+        # NOTE: disabled for now. See note above.
+        # "parent_questions": [p["user_question"] for p in parent_analyses],
+        # "similar_plans": similar_plans[:2],
     }
 
     res = (await asyncio.to_thread(requests.post, llm_calls_url, json=payload)).json()
+    logging.info(res)
     step_yaml = res["generated_step"]
-    print(step_yaml)
+    logging.info(step_yaml)
 
-    match = re.search("(?:```yaml)([\s\S]*?)(?=```)", step_yaml)
+    step_yaml = re.search("(?:```yaml)([\s\S]*?)(?=```)", step_yaml)
 
-    if match is None:
-        logging.info(
-            f"No step generated. This was the response from the LLM: \n {step_yaml}"
+    if step_yaml is None:
+        logging.error(
+            f"Seems like no step was generated. This was the response from the LLM: \n {step_yaml}"
         )
         raise Exception("Invalid response from the model")
 
-    step = yaml.safe_load(match[1].strip())[0]
+    step = yaml.safe_load(step_yaml[1].strip())[0]
     # add a unique id to this tool as the tool_run prop
     step["tool_run_id"] = str(uuid4())
 
-    return step
+    step_with_results = await run_step(step, previous_steps)
+
+    return step_with_results
 
 
 class Executor:
