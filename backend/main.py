@@ -10,6 +10,7 @@ from connection_manager import ConnectionManager
 from report_data_manager import ReportDataManager
 from agents.planner_executor.execute_tool import execute_tool
 from agents.planner_executor.planner_executor_agent_rest import RESTExecutor
+from oracle.setup import setup_dir
 import doc_endpoints
 from uuid import uuid4
 from utils import make_request
@@ -23,8 +24,7 @@ from db_utils import (
     validate_user,
 )
 from generic_utils import get_api_key_from_key_name
-import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes, feedback_routes, slack_routes, agent_routes
-
+import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes, feedback_routes, slack_routes, oracle_routes
 logging.basicConfig(level=logging.INFO)
 
 manager = ConnectionManager()
@@ -39,7 +39,11 @@ app.include_router(doc_endpoints.router)
 app.include_router(csv_routes.router)
 app.include_router(feedback_routes.router)
 app.include_router(slack_routes.router)
+<<<<<<< HEAD
 app.include_router(agent_routes.router)
+=======
+app.include_router(oracle_routes.router)
+>>>>>>> main
 
 origins = ["*"]
 app.add_middleware(
@@ -54,6 +58,8 @@ request_types = ["clarify", "understand", "gen_approaches", "gen_steps", "gen_re
 report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 
+# check if the oracle directory structure exists and create if not
+setup_dir(os.getcwd())
 
 @app.get("/ping")
 async def root():
