@@ -12,7 +12,7 @@ import pandas as pd
 import os
 from db_utils import get_db_type_creds
 
-report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
+analysis_assets_dir = os.environ.get("ANALYSIS_ASSETS_DIR", "./analysis_assets")
 
 
 import matplotlib.pyplot as plt
@@ -155,11 +155,11 @@ def add_default_imports(code):
 
 def fix_savefig_calls(code):
     """
-    Fixes the savefig calls in the code by changing the path and always appending report_assets_dir variable to the path.
+    Fixes the savefig calls in the code by changing the path and always appending analysis_assets_dir variable to the path.
     """
     # check both for double and single quote
-    code = code.replace('savefig("', f'savefig({report_assets_dir} + "')
-    code = code.replace("savefig('", f"savefig({report_assets_dir} + '")
+    code = code.replace('savefig("', f'savefig({analysis_assets_dir} + "')
+    code = code.replace("savefig('", f"savefig({analysis_assets_dir} + '")
     # remove jic we got two slashes
     code = code.replace("//", "/")
     return code

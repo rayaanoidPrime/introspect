@@ -31,15 +31,14 @@ from db_utils import (
     get_all_docs,
     get_analysis_versions,
     get_doc_data,
-    get_report_data,
+    get_analysis_data,
     get_tool_run,
     get_toolboxes,
-    initialise_report,
     store_feedback,
     store_tool_run,
     toggle_disable_tool,
     update_doc_data,
-    update_report_data,
+    update_analysis_data,
     update_table_chart_data,
     get_table_data,
     get_all_analyses,
@@ -54,7 +53,7 @@ router = APIRouter()
 manager = ConnectionManager()
 
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
-report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
+analysis_assets_dir = os.environ.get("ANALYSIS_ASSETS_DIR", "./analysis_assets")
 
 
 @router.websocket("/docs")
@@ -432,7 +431,7 @@ async def rerun_step(websocket: WebSocket):
                 return {"success": False, "error_message": "Invalid analysis id."}
 
             # get steps from db
-            err, analysis_data = get_report_data(analysis_id)
+            err, analysis_data = get_analysis_data(analysis_id)
             if err:
                 return {
                     "success": False,
@@ -444,7 +443,7 @@ async def rerun_step(websocket: WebSocket):
             global_dict = {
                 "user_question": analysis_data["user_question"],
                 "llm_calls_url": llm_calls_url,
-                "report_assets_dir": report_assets_dir,
+                "analysis_assets_dir": analysis_assets_dir,
                 "dev": dev,
                 "dfg_api_key": api_key,
                 "temp": temp,
@@ -619,7 +618,7 @@ async def create_new_step(request: Request):
             }
 
         # try to get this analysis' data
-        err, analysis_data = get_report_data(analysis_id)
+        err, analysis_data = get_analysis_data(analysis_id)
         if err:
             return {"success": False, "error_message": err}
 
@@ -668,8 +667,8 @@ async def create_new_step(request: Request):
         if not store_result["success"]:
             return store_result
 
-        # update report data
-        update_err = await update_report_data(analysis_id, "gen_steps", [new_step])
+        # update analysis data
+        update_err = await update_analysis_data(analysis_id, "gen_steps", [new_step])
 
         if update_err:
             return {"success": False, "error_message": update_err}
@@ -736,7 +735,7 @@ async def download_csv(request: Request):
 
         # first try to find this file in the file system
         f_name = tool_run_id + "_output-" + output_storage_key + ".feather"
-        f_path = os.path.join(report_assets_dir, "datasets", f_name)
+        f_path = os.path.join(analysis_assets_dir, "datasets", f_name)
 
         if not os.path.isfile(f_path):
             log_msg(
@@ -744,14 +743,14 @@ async def download_csv(request: Request):
             )
             # re run this step
             # get steps from db
-            err, analysis_data = get_report_data(analysis_id)
+            err, analysis_data = get_analysis_data(analysis_id)
             if err:
                 return {"success": False, "error_message": err}
 
             global_dict = {
                 "user_question": analysis_data["user_question"],
                 "llm_calls_url": llm_calls_url,
-                "report_assets_dir": report_assets_dir,
+                "analysis_assets_dir": analysis_assets_dir,
                 "dfg_api_key": api_key,
             }
 
@@ -819,7 +818,7 @@ async def delete_steps(request: Request):
             return {"success": False, "error_message": "Invalid analysis id."}
 
         # try to get this analysis' data
-        err, analysis_data = get_report_data(analysis_id)
+        err, analysis_data = get_analysis_data(analysis_id)
         if err:
             return {"success": False, "error_message": err}
 
@@ -840,8 +839,8 @@ async def delete_steps(request: Request):
         # remove the steps with these tool run ids
         new_steps = [s for s in steps if s["tool_run_id"] not in tool_run_ids]
 
-        # # # update report data
-        update_err = await update_report_data(
+        # # # update analysis data
+        update_err = await update_analysis_data(
             analysis_id, "gen_steps", new_steps, replace=True
         )
 
@@ -1021,7 +1020,7 @@ async def submit_feedback(request: Request):
         if user_question is None or type(user_question) != str:
             raise Exception("Invalid user question.")
 
-        err, analysis_data = get_report_data(analysis_id)
+        err, analysis_data = get_analysis_data(analysis_id)
 
         # store in the defog_plans_feedback table
         err, did_overwrite = await store_feedback(

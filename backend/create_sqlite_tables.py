@@ -40,21 +40,18 @@ defog_recently_viewed_docs = Table(
     Column("recent_docs", JSON),
 )
 
-defog_reports = Table(
-    "defog_reports",
+defog_analyses = Table(
+    "defog_analyses",
     metadata,
-    Column("report_id", Text, primary_key=True),
+    Column("analysis_id", Text, primary_key=True),
     Column("api_key", Text, nullable=False),
     Column("email", Text),
     Column("timestamp", Text),
-    Column("report_uuid", Text),
     Column("approaches", JSON),
-    Column("report_markdown", Text),
     Column("clarify", JSON),
     Column("understand", JSON),
     Column("gen_approaches", JSON),
     Column("user_question", Text),
-    Column("gen_report", JSON),
     Column("gen_steps", JSON),
     Column("follow_up_analyses", JSON),
     Column("parent_analyses", JSON),

@@ -52,7 +52,7 @@ async def get_clarification(
 
 async def execute(
     dfg_api_key="",
-    report_id="",
+    analysis_id="",
     user_question="",
     client_description="",
     assignment_understanding="",
@@ -67,17 +67,14 @@ async def execute(
     **kwargs,
 ):
     """
-    This function is called after the user submits the approaches.
-    It creates an executor object and calls the execute function on it.
-    This function returns a generator that yields the report sections, intro and conclusion.
-    This takes quite long as of now. Needs to be parallelised for the future.
+    Generates and executes a single step of the plan
     """
     print("Evaling approaches")
     print("API Key: ", dfg_api_key)
 
     executor = Executor(
         dfg_api_key=dfg_api_key,
-        report_id=report_id,
+        analysis_id=analysis_id,
         user_question=user_question,
         assignment_understanding=assignment_understanding,
         toolboxes=toolboxes,

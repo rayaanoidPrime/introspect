@@ -16,12 +16,14 @@ async def store_files_to_gcs(paths):
     err = None
     print(log_str("Storing chart images to GCS"))
     try:
-        # remove everything before "report-assets" from the path, but keep the "report-assets" part
-        # if the path doesn't contain "report-assets", then the whole path is kept
+        # remove everything before "analysis-assets" from the path, but keep the "analysis-assets" part
+        # if the path doesn't contain "analysis-assets", then the whole path is kept
         file_blob_pairs = [
-            (path, bucket.blob(path[path.find("report-assets") :]))
-            if path.find("report-assets") != -1
-            else (path, bucket.blob(path))
+            (
+                (path, bucket.blob(path[path.find("analysis-assets") :]))
+                if path.find("analysis-assets") != -1
+                else (path, bucket.blob(path))
+            )
             for path in paths
         ]
         print(file_blob_pairs)

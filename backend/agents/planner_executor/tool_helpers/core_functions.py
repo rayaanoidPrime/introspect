@@ -23,14 +23,14 @@ if (
 else:
     openai = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
+analysis_assets_dir = os.environ.get("ANALYSIS_ASSETS_DIR", "./analysis_assets")
 
 
 def encode_image(image_path):
     """
     Encodes an image to base64.
     """
-    image_path = os.path.join(report_assets_dir, image_path)
+    image_path = os.path.join(analysis_assets_dir, image_path)
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 

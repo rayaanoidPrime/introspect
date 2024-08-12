@@ -33,20 +33,17 @@ class RecentlyViewedDocs(Base):
     recent_docs = Column(JSONB)
 
 
-class Reports(Base):
-    __tablename__ = "defog_reports"
+class Analyses(Base):
+    __tablename__ = "defog_analyses"
     api_key = Column(Text, primary_key=True)
     email = Column(Text)
     timestamp = Column(Text)
-    report_uuid = Column(Text)
     approaches = Column(JSONB)
-    report_markdown = Column(Text)
     clarify = Column(JSONB)
     understand = Column(JSONB)
     gen_approaches = Column(JSONB)
     user_question = Column(Text)
-    gen_report = Column(JSONB)
-    report_id = Column(Text, primary_key=True)
+    analysis_id = Column(Text, primary_key=True)
     gen_steps = Column(JSONB)
     follow_up_analyses = Column(JSONB)
     parent_analyses = Column(JSONB)

@@ -3,8 +3,8 @@ from fastapi import APIRouter, Request
 from agents.clarifier.clarifier_agent import get_clarification
 
 from agents.planner_executor.planner_executor_agent import generate_single_step
-from db_utils import get_report_data
-from report_data_manager import ReportDataManager
+from db_utils import get_analysis_data
+from analysis_data_manager import AnalysisDataManager
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -46,7 +46,7 @@ async def generate_step(request: Request):
 
         # try getting the steps of this analysis
         previous_steps = []
-        err, analysis_data = get_report_data(analysis_id)
+        err, analysis_data = get_analysis_data(analysis_id)
         if err is None:
             previous_steps = analysis_data.get("steps", [])
 
@@ -106,23 +106,23 @@ async def clarify(request: Request):
             temp=temp,
         )
 
-        report_manager = ReportDataManager(
+        analysis_manager = AnalysisDataManager(
             dfg_api_key=api_key,
             user_question=question,
-            report_id=analysis_id,
+            analysis_id=analysis_id,
             dev=dev,
             temp=temp,
         )
 
-        if report_manager.invalid:
+        if analysis_manager.invalid:
             # it's okay if it's invalid. helps us test this endpoint/function in isolation
             # so just warn instead of throwing
             logging.warn(
-                "Returned questions but report id was invalid. Check unless you're in a testing environment."
+                "Returned questions but analysis id was invalid. Check unless you're in a testing environment."
             )
         else:
-            await report_manager.get_similar_plans()
-            # TODO: save the clarifying questions to the report data
+            await analysis_manager.get_similar_plans()
+            # TODO: save the clarifying questions to the analysis data
 
         return {
             "success": True,

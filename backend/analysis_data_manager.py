@@ -4,9 +4,9 @@ import yaml
 from agents.clarifier.clarifier_agent import Clarifier
 from utils import get_clean_plan
 from db_utils import (
-    get_multiple_reports,
-    get_report_data,
-    update_report_data,
+    get_multiple_analyses,
+    get_analysis_data,
+    update_analysis_data,
 )
 from agents.main_agent import (
     execute,
@@ -26,10 +26,10 @@ prop_names = {
 }
 
 
-class ReportDataManager:
-    def __init__(self, dfg_api_key, user_question, report_id, dev=False, temp=False):
-        self.report_id = report_id
-        self.report_data = None
+class AnalysisDataManager:
+    def __init__(self, dfg_api_key, user_question, analysis_id, dev=False, temp=False):
+        self.analysis_id = analysis_id
+        self.analysis_data = None
         self.api_key = dfg_api_key
         self.dev = dev
         self.temp = temp
@@ -37,23 +37,23 @@ class ReportDataManager:
         self.invalid = False
         self.similar_plans = []
         self.was_get_similar_plans_called = False
-        # check if this report exists in the main db
-        # if so, load the report details from there
-        err1, report_data = get_report_data(report_id)
+        # check if this analysis exists in the main db
+        # if so, load the analysis details from there
+        err1, analysis_data = get_analysis_data(analysis_id)
 
         # if there are parent_analyses, get the user_question from each of them
-        err2, parent_analyses = get_multiple_reports(
-            report_data.get("parent_analyses") or []
+        err2, parent_analyses = get_multiple_analyses(
+            analysis_data.get("parent_analyses") or []
         )
         self.parent_analyses = parent_analyses
 
-        self.direct_parent_id = report_data.get("direct_parent_id")
+        self.direct_parent_id = analysis_data.get("direct_parent_id")
         self.direct_parent_analysis = None
 
         err3 = None
 
         if self.direct_parent_id:
-            err3, self.direct_parent_analysis = get_report_data(self.direct_parent_id)
+            err3, self.direct_parent_analysis = get_analysis_data(self.direct_parent_id)
             # if we get something valid, we only need two things:
             # the user question, and the generated steps in yaml format
             if err3 is None:
@@ -75,9 +75,9 @@ class ReportDataManager:
 
         self.invalid = err1 or err2 or err3
 
-        if self.invalid is None and report_data is not None:
-            self.report_data = report_data
-            self.report_id = report_data.get("report_id")
+        if self.invalid is None and analysis_data is not None:
+            self.analysis_data = analysis_data
+            self.analysis_id = analysis_data.get("analysis_id")
 
             self.agents = {
                 "clarify": partial(
@@ -100,15 +100,15 @@ class ReportDataManager:
                 ),
             }
 
-    # have to call this separately because update_report_data is an async function
+    # have to call this separately because update_analysis_data is an async function
     # sorry :/
     async def get_similar_plans(self):
         self.was_get_similar_plans_called = True
         if not self.invalid:
             # update with latest user question
             # we also update the embedding in this function
-            err = await update_report_data(
-                self.report_id, "user_question", self.user_question, True
+            err = await update_analysis_data(
+                self.analysis_id, "user_question", self.user_question, True
             )
 
             if err is not None:
@@ -144,14 +144,14 @@ class ReportDataManager:
         ):
             return
 
-        err = await update_report_data(
-            self.report_id, request_type, new_data, replace, overwrite_key
+        err = await update_analysis_data(
+            self.analysis_id, request_type, new_data, replace, overwrite_key
         )
         if err is not None:
             print(err)
             return
-        # update the report data in memory
-        self.report_data[request_type] = new_data
+        # update the analysis data in memory
+        self.analysis_data[request_type] = new_data
 
     async def run_agent(self, request_type=None, post_process_data={}, **kwargs):
         err = None
@@ -176,14 +176,14 @@ class ReportDataManager:
             last_request_type = "noop"
             if request_type != "clarify":
                 last_request_type = request_types[request_types.index(request_type) - 1]
-                # update the report data manager with the latest data with user inputs from the last stage
+                # update the analysis data manager with the latest data with user inputs from the last stage
                 err = await self.update(
                     last_request_type,
                     post_process_data[prop_names[last_request_type]],
                     replace=True,
                 )
 
-            if last_request_type in ["noop", "gen_report"]:
+            if last_request_type in ["noop", "gen_analysis"]:
                 post_processing_arguments = {}
             elif last_request_type in ["understand", "gen_steps"]:
                 # these are not doing any async stuff
@@ -208,7 +208,7 @@ class ReportDataManager:
 
             if result["success"] is not True:
                 raise ValueError(
-                    result.get("error_message") or "Error generating report"
+                    result.get("error_message") or "Error generating analysis"
                 )
 
             self.post_processes[request_type] = post_process

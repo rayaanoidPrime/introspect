@@ -7,7 +7,7 @@ from colorama import Fore, Style
 
 from agents.planner_executor.execute_tool import execute_tool
 from agents.clarifier.clarifier_agent import turn_into_statements
-from db_utils import get_analysis_question_context, store_tool_run
+from db_utils import get_analysis_question_context, store_tool_run, update_analysis_data
 from utils import deduplicate_columns, warn_str, YieldList
 from .tool_helpers.toolbox_manager import get_tool_library_prompt
 from .tool_helpers.tool_param_types import ListWithDefault
@@ -35,7 +35,7 @@ logging.basicConfig(level=logging.INFO)
 #   "assignment_understanding": assignment_understanding,
 #   "dfg": None,
 #   "llm_calls_url": llm_calls_url,
-#   "report_assets_dir": report_assets_dir,
+#   "analysis_assets_dir": analysis_assets_dir,
 #   "dev": dev,
 #   "temp": temp,
 #   "STEP_ID_1": {...}
@@ -43,10 +43,10 @@ logging.basicConfig(level=logging.INFO)
 #   "STEP_ID_3": {...}
 #   ...
 # }
-tool_cache = {}
+output_cache = {}
 
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
-report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
+analysis_assets_dir = os.environ.get("ANALYSIS_ASSETS_DIR", "./analysis_assets")
 
 
 class MissingVariableException(Exception):
@@ -58,11 +58,11 @@ class MissingVariableException(Exception):
         self.variable_name = variable_name
 
 
-def get_input_value(inp, tool_cache):
+def get_input_value(inp, output_cache):
     """
     Tries to figure out a value of an input.
 
-    If the input starts with `global_dict.XXX`, and is not found in tool_cache, raises a MissingVariableException.
+    If the input starts with `global_dict.XXX`, and is not found in output_cache, raises a MissingVariableException.
 
     That exception is usually a signal to the calling function that it needs to run some parent step.
     """
@@ -72,20 +72,20 @@ def get_input_value(inp, tool_cache):
         # this is an array
         val = []
         for inp in inp:
-            val.append(get_input_value(inp, tool_cache))
+            val.append(get_input_value(inp, output_cache))
 
     elif isinstance(inp, str) and inp.startswith("global_dict."):
         variable_name = inp.split(".")[1]
-        # if tool_cache doesn't have this key, raise an error
-        if variable_name not in tool_cache:
+        # if output_cache doesn't have this key, raise an error
+        if variable_name not in output_cache:
             # raise error
             raise MissingVariableException(variable_name)
         else:
-            # TODO: first look in the report_assets directory
+            # TODO: first look in the analysis_assets directory
             # asset_file_name = step_id + "_output" + "-" + input_name + ".feather"
             # find_asset(asset_file_name)
-            # Then store in tool_cache
-            val = tool_cache[variable_name]
+            # Then store in output_cache
+            val = output_cache[variable_name]
 
     else:
         # simpler types
@@ -102,10 +102,10 @@ def get_input_value(inp, tool_cache):
     return val
 
 
-def resolve_step_inputs(inputs: dict, tool_cache: dict = {}, previous_steps=[]):
+def resolve_step_inputs(inputs: dict, output_cache: dict = {}, previous_steps=[]):
     """
     Resolved the inputs to a step.
-    This is mostly crucial for parsing tool_cache.XXX style of inputs, which occur if this step uses outputs from another step
+    This is mostly crucial for parsing output_cache.XXX style of inputs, which occur if this step uses outputs from another step
     This works closely with the get_input_value function which is responsible for parsing a single input.
     An example step's yaml is:
     ```
@@ -120,8 +120,8 @@ def resolve_step_inputs(inputs: dict, tool_cache: dict = {}, previous_steps=[]):
 
     That input i itself can be any python type.
 
-    Iff that input i is a string and it starts with "tool_cache.", we will have extra logic:
-    1. We will first try to find the output inside the report_assets folder. If we can't find it, we will call the parent step = the step that generated that `tool_cache.XXX` data. This will be one of the steps passed in `previous_responses` to the generate_single_step function.
+    Iff that input i is a string and it starts with "output_cache.", we will have extra logic:
+    1. We will first try to find the output inside the analysis_assets folder. If we can't find it, we will call the parent step = the step that generated that `output_cache.XXX` data. This will be one of the steps passed in `previous_responses` to the generate_single_step function.
     2. We will keep recursively calling the `run_tool` function till we resolve all the inputs.
     """
 
@@ -129,12 +129,14 @@ def resolve_step_inputs(inputs: dict, tool_cache: dict = {}, previous_steps=[]):
 
     for input_name, input_val in inputs.items():
         try:
-            val = get_input_value(input_val, tool_cache)
+            val = get_input_value(input_val, output_cache)
             resolved_inputs[input_name] = val
         except MissingVariableException as e:
             missing_variable = e.variable_name
             # find the step that generated this variable
             # this will be one of the previous steps
+            logging.error(f"Error while resolving input: {input_name}, {input_val}")
+            logging.error(f"Missing variable: {missing_variable}")
         except Exception as e:
             logging.error(f"Error resolving input {input_name}: {input_val}")
             logging.error(e)
@@ -149,11 +151,11 @@ async def run_step(step, previous_steps):
     Returns the same object with the results stored in an "outputs" key.
     """
     # we will keep stuff around jic we need to re run this particular step again v soon
-    # so use the global tool_cache
-    global tool_cache
+    # so use the global output_cache
+    global output_cache
 
     # resolve the inputs
-    resolved_inputs = resolve_step_inputs(step["inputs"], tool_cache, previous_steps)
+    resolved_inputs = resolve_step_inputs(step["inputs"], output_cache, previous_steps)
 
     logging.info(f"Resolved step inputs: {resolved_inputs}")
 
@@ -162,7 +164,7 @@ async def run_step(step, previous_steps):
     results, tool_input_metadata = await execute_tool(
         function_name=step["tool_name"],
         tool_function_inputs=resolved_inputs,
-        global_dict=tool_cache,
+        global_dict=output_cache,
     )
 
     logging.info(f"Results: {results}")
@@ -191,7 +193,7 @@ async def run_step(step, previous_steps):
                 f"Length of outputs_storage_keys and outputs don't match. Outputs: {results.get('outputs')}"
             )
         else:
-            # zip and store the output keys to tool_cache
+            # zip and store the output keys to output_cache
             for output_name, output_value in zip(
                 step["outputs_storage_keys"], results.get("outputs")
             ):
@@ -205,8 +207,8 @@ async def run_step(step, previous_steps):
 
                 # if the output has data and it is a pandas dataframe,
                 # 1. deduplicate the columns
-                # 2. store the dataframe in the tool_cache
-                # 3. store the dataframe in the report_assets directory
+                # 2. store the dataframe in the output_cache
+                # 3. store the dataframe in the analysis_assets directory
                 # 4. Finally store in the step object
                 if data is not None and type(data) == type(pd.DataFrame()):
                     db_path = step["id"] + "_output-" + output_name + ".feather"
@@ -214,14 +216,14 @@ async def run_step(step, previous_steps):
                     # deduplicate columns of this df
                     deduplicated = deduplicate_columns(data)
 
-                    # store the dataframe in the tool_cache
-                    tool_cache[output_name] = deduplicated
+                    # store the dataframe in the output_cache
+                    output_cache[output_name] = deduplicated
                     # name the df too
-                    tool_cache[output_name].df_name = output_name
+                    output_cache[output_name].df_name = output_name
 
-                    # store the dataframe in the report_assets directory
+                    # store the dataframe in the analysis_assets directory
                     deduplicated.reset_index(drop=True).to_feather(
-                        report_assets_dir + "/datasets/" + db_path
+                        analysis_assets_dir + "/datasets/" + db_path
                     )
 
                     step["outputs"][output_name]["data"] = deduplicated.to_csv(
@@ -262,13 +264,13 @@ async def generate_single_step(
     3. Stores the result of the step.
     4. Returns the generated step + result.
     """
-    global tool_cache
+    global output_cache
 
-    tool_cache["dfg_api_key"] = dfg_api_key
-    tool_cache["user_question"] = user_question
-    tool_cache["toolboxes"] = toolboxes
-    tool_cache["dev"] = dev
-    tool_cache["temp"] = temp
+    output_cache["dfg_api_key"] = dfg_api_key
+    output_cache["user_question"] = user_question
+    output_cache["toolboxes"] = toolboxes
+    output_cache["dev"] = dev
+    output_cache["temp"] = temp
 
     # get the assignment understanding aka answers to clarification questions
     assignment_understanding = None
@@ -288,7 +290,7 @@ async def generate_single_step(
 
     logging.info(f"Assignment understanding: {assignment_understanding}")
 
-    tool_cache["assignment_understanding"] = assignment_understanding
+    output_cache["assignment_understanding"] = assignment_understanding
 
     # NOTE: see note above
     # err, user_question_context = await get_analysis_question_context(analysis_id)
@@ -354,6 +356,9 @@ async def generate_single_step(
 
     step_with_results = await run_step(step, previous_steps)
 
+    if analysis_id:
+        update_analysis_data
+
     return step_with_results
 
 
@@ -366,7 +371,7 @@ class Executor:
     def __init__(
         self,
         dfg_api_key,
-        report_id,
+        analysis_id,
         user_question,
         assignment_understanding,
         toolboxes=[],
@@ -381,7 +386,7 @@ class Executor:
         self.dfg_api_key = dfg_api_key
         self.toolboxes = toolboxes
         self.assignment_understanding = assignment_understanding
-        self.analysis_id = report_id
+        self.analysis_id = analysis_id
         self.parent_analyses = parent_analyses
         self.previous_responses = []
         self.similar_plans = similar_plans
@@ -397,7 +402,7 @@ class Executor:
             "assignment_understanding": assignment_understanding,
             "dfg": None,
             "llm_calls_url": llm_calls_url,
-            "report_assets_dir": report_assets_dir,
+            "analysis_assets_dir": analysis_assets_dir,
             "dev": dev,
             "temp": temp,
         }
