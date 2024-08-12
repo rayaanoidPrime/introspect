@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import IMGO from "$components/align-model/IMGO";
 import Instructions from "../components/align-model/Instructions";
 import GoldenQueries from "../components/align-model/GoldenQueries";
 import { message } from "antd";
@@ -154,6 +155,10 @@ const AlignModel = () => {
           </p>
         </div>
         <div className="flex flex-col p-1 border border-gray-3200 rounded-lg">
+          <IMGO
+            token={token}
+            apiKeyName={apiKeyName}
+          />
           <Instructions
             glossary={glossary}
             setGlossary={setGlossary}
