@@ -5,11 +5,13 @@ import setupBaseUrl from "$utils/setupBaseUrl";
 
 const IMGO = ({ token, apiKeyName }) => {
   const [modalVisible, setModalVisible] = useState(false);
-  const [loadingIndex, setLoadingIndex] = useState(null); // Track which step is loading
-  const [loading, setLoading] = useState(false); // For the full workflow button
-  const [results, setResults] = useState({}); // Store all results
-  const [recommendations, setRecommendations] = useState(null); // Store final recommendations
-  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+
+  const [loadingIndex, setLoadingIndex] = useState(null); // current loading step
+  const [loading, setLoading] = useState(false); // loading state for the full workflow at once
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false); // loading state for final recommendations
+
+  const [results, setResults] = useState({}); // stores results for each step
+  const [recommendations, setRecommendations] = useState(null); // state for the final recommendations
 
   const [optimizedGlossary, setOptimizedGlossary] = useState(null);
   const [optimizedMetadata, setOptimizedMetadata] = useState(null);
@@ -111,6 +113,15 @@ const IMGO = ({ token, apiKeyName }) => {
         body: JSON.stringify(step.payload(iteration)), // Correctly call payload function with iteration
       });
       const data = await res.json();
+
+      // Introduce delay for specific endpoints
+      if (
+        step.endpoint === "generate_golden_queries_from_questions" ||
+        step.endpoint === "check_generated_golden_queries_correctness"
+      ) {
+        console.log("Introducing delay for", step.endpoint);
+        await new Promise((resolve) => setTimeout(resolve, 10000)); // 10 seconds delay
+      }
 
       // Update results for the specific step
       setResults((prevResults) => ({
