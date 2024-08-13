@@ -1,12 +1,14 @@
 # the executor converts the user's task to steps and maps those steps to tools.
 # also runs those steps
 from copy import deepcopy
+from distutils.util import execute
 from uuid import uuid4
 
 from colorama import Fore, Style
 
 from agents.planner_executor.execute_tool import execute_tool
 from agents.clarifier.clarifier_agent import turn_into_statements
+from backend.tool_code_utilities import fetch_query_into_df
 from db_utils import (
     get_analysis_data,
     get_analysis_question_context,
@@ -50,7 +52,7 @@ logging.basicConfig(level=logging.INFO)
 #   "analysis_id_3": {...}
 #   ...
 # }
-global_output_cache = {}
+global_execution_cache = {}
 
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 analysis_assets_dir = os.environ.get(
@@ -67,11 +69,11 @@ class MissingDependencyException(Exception):
         self.variable_name = variable_name
 
 
-def get_input_value(inp, output_cache):
+def get_input_value(inp, analysis_execution_cache):
     """
     Tries to figure out a value of an input.
 
-    If the input starts with `global_dict.XXX`, and is not found in output_cache, raises a MissingDependencyException.
+    If the input starts with `global_dict.XXX`, and is not found in analysis_execution_cache, raises a MissingDependencyException.
 
     That exception is usually a signal to the calling function that it needs to run some parent step.
     """
@@ -81,20 +83,20 @@ def get_input_value(inp, output_cache):
         # this is an array
         val = []
         for inp in inp:
-            val.append(get_input_value(inp, output_cache))
+            val.append(get_input_value(inp, analysis_execution_cache))
 
     elif isinstance(inp, str) and inp.startswith("global_dict."):
         variable_name = inp.split(".")[1]
-        # if output_cache doesn't have this key, raise an error
-        if variable_name not in output_cache:
+        # if analysis_execution_cache doesn't have this key, raise an error
+        if variable_name not in analysis_execution_cache:
             # raise error
             raise MissingDependencyException(variable_name)
         else:
             # TODO: first look in the analysis_assets directory
             # asset_file_name = step_id + "_output" + "-" + input_name + ".feather"
             # find_asset(asset_file_name)
-            # Then store in output_cache
-            val = output_cache[variable_name]
+            # Then store in analysis_execution_cache
+            val = analysis_execution_cache[variable_name]
 
     else:
         # simpler types
@@ -111,10 +113,10 @@ def get_input_value(inp, output_cache):
     return val
 
 
-def resolve_step_inputs(inputs: dict, output_cache: dict = {}):
+def resolve_step_inputs(inputs: dict, analysis_execution_cache: dict = {}):
     """
     Resolved the inputs to a step.
-    This is mostly crucial for parsing output_cache.XXX style of inputs, which occur if this step uses outputs from another step
+    This is mostly crucial for parsing analysis_execution_cache.XXX style of inputs, which occur if this step uses outputs from another step
     This works closely with the get_input_value function which is responsible for parsing a single input.
     An example step's yaml is:
     ```
@@ -129,8 +131,8 @@ def resolve_step_inputs(inputs: dict, output_cache: dict = {}):
 
     That input i itself can be any python type.
 
-    Iff that input i is a string and it starts with "output_cache.", we will have extra logic:
-    1. We will first try to find the output inside the analysis_assets folder. If we can't find it, we will call the parent step = the step that generated that `output_cache.XXX` data. This will be one of the steps passed in `previous_responses` to the generate_single_step function.
+    Iff that input i is a string and it starts with "analysis_execution_cache.", we will have extra logic:
+    1. We will first try to find the output inside the analysis_assets folder. If we can't find it, we will call the parent step = the step that generated that `analysis_execution_cache.XXX` data. This will be one of the steps passed in `previous_responses` to the generate_single_step function.
     2. We will keep recursively calling the `run_tool` function till we resolve all the inputs.
     """
 
@@ -138,7 +140,7 @@ def resolve_step_inputs(inputs: dict, output_cache: dict = {}):
 
     for input_name, input_val in inputs.items():
         try:
-            val = get_input_value(input_val, output_cache)
+            val = get_input_value(input_val, analysis_execution_cache)
             resolved_inputs[input_name] = val
         except MissingDependencyException as e:
             # let calling function handle this
@@ -162,17 +164,55 @@ def find_step_by_output_name(output_name, previous_steps):
 
 
 async def run_step(
-    analysis_id, step, all_steps, output_cache, skip_cache_storing=False
+    analysis_id, step, all_steps, analysis_execution_cache, skip_cache_storing=False
 ):
     """
     Runs a single step, updating the steps object *in place* with the results.
     General flow:
-    1. First it tries to resolve the inputs to a step.
-    2. If the inputs can't be resolved, it recursively runs the parent steps till either resolved or error.
-    3. Once resolved successfully, it runs the step.
-    4. Stores the run step in the respective analysis in the db
+    1. First check if we have the outputs of this step already stored. If we do have them stored, then check if the inputs to the step have been edited by the user. If they have, then re run the step. Otherwise, no need to re run it, just use the stored outputs.
+    2. First it tries to resolve the inputs to a step.
+    3. If the inputs can't be resolved, it recursively runs the parent steps till either resolved or error.
+    4. Once resolved successfully, it runs the step.
+    5. Stores the run step in the respective analysis in the db
     """
 
+    step_outputs_available = 0
+    step_edited = False
+    outputs_storage_keys = step["outputs_storage_keys"]
+
+    # check if this step has been edited
+    # compare each stringified model_generated_inputs to stringified inputs
+    if step.get("model_generated_inputs", {}) != step.get("inputs", {}):
+        step_edited = True
+
+    if not step_edited:
+        # check if all the outputs of this step are already stored and available
+        if "outputs" in step:
+            # keep in a temp dictionary at the start
+            # we will only merge this into analysis_execution_cache if *all* outputs are available
+            temp = {}
+            # find if the dataframes for these outputs are available
+            for output_name in outputs_storage_keys:
+                path = (
+                    analysis_assets_dir
+                    + "/datasets/"
+                    + step["id"]
+                    + "_output-"
+                    + output_name
+                    + ".feather"
+                )
+                if os.path.exists(path):
+                    step_outputs_available += 1
+                    temp[output_name] = pd.read_feather(path)
+                else:
+                    break
+
+            if step_outputs_available == len(outputs_storage_keys):
+                # don't need to do anything, just update the analysis_execution_cache and return.
+                analysis_execution_cache.update(temp)
+                return
+
+    # if we're here, it means we need to run this step
     max_resolve_tries = 4
 
     while max_resolve_tries > 0:
@@ -180,7 +220,7 @@ async def run_step(
         try:
             # resolve the inputs
             resolved_inputs = resolve_step_inputs(
-                step["inputs"], output_cache=output_cache
+                step["inputs"], analysis_execution_cache=analysis_execution_cache
             )
         except MissingDependencyException as e:
             missing_variable = e.variable_name
@@ -203,7 +243,7 @@ async def run_step(
                     analysis_id=analysis_id,
                     step=step_that_generated_this_output,
                     all_steps=all_steps,
-                    output_cache=output_cache,
+                    analysis_execution_cache=analysis_execution_cache,
                 )
         except Exception as e:
             logging.error(f"Error while resolving step inputs: {e}")
@@ -213,13 +253,46 @@ async def run_step(
 
     logging.info(f"Resolved step inputs: {resolved_inputs}")
 
-    # once we have the resolved inputs
+    # once we have the resolved inputs, run the step
+    # but if this is data fetcher and aggregator, we need to check what changed in the inputs
+    # if the question changed, then run the tool itself, where we send a req to defog and get the sql
+    # if the question is the same, but the sql changed, then just run the sql again
+    results = None
+    tool_input_metadata = step["tool_input_metadata"]
+    executed = False
 
-    results, tool_input_metadata = await execute_tool(
-        function_name=step["tool_name"],
-        tool_function_inputs=resolved_inputs,
-        global_dict=output_cache,
-    )
+    if step["tool_name"] == "data_fetcher_and_aggregator":
+        model_generated_question = step["model_generated_inputs"]["question"]
+        current_question = step["inputs"]["question"]
+
+        # if the question has not changed, we will make executed to True, then run the sql
+        if model_generated_question == current_question:
+            executed = True
+            try:
+                output_df, final_sql_query = await fetch_query_into_df(
+                    api_key=analysis_execution_cache["dfg_api_key"],
+                    sql_query=step["sql"],
+                    temp=analysis_execution_cache["temp"],
+                )
+                results = {
+                    "sql": final_sql_query,
+                    "outputs": [
+                        {
+                            "data": output_df,
+                        }
+                    ],
+                }
+                analysis_execution_cache[outputs_storage_keys[0]] = output_df
+            except Exception as e:
+                results = {"error_message": str(e)}
+
+    # if we didn't execute yet, do it now by running the tool
+    if not executed:
+        results, tool_input_metadata = await execute_tool(
+            function_name=step["tool_name"],
+            tool_function_inputs=resolved_inputs,
+            global_dict=analysis_execution_cache,
+        )
 
     logging.info(f"Tool input metadata: {tool_input_metadata}")
 
@@ -258,7 +331,7 @@ async def run_step(
                     : len(outputs)
                 ]
 
-        # zip and store the output keys to output_cache
+        # zip and store the output keys to analysis_execution_cache
         for output_name, output_value in zip(
             step["outputs_storage_keys"], results.get("outputs")
         ):
@@ -272,7 +345,7 @@ async def run_step(
 
             # if the output has data and it is a pandas dataframe,
             # 1. deduplicate the columns
-            # 2. store the dataframe in the output_cache
+            # 2. store the dataframe in the analysis_execution_cache
             # 3. store the dataframe in the analysis_assets directory
             # 4. Finally store in the step object
             if data is not None and type(data) == type(pd.DataFrame()):
@@ -281,11 +354,11 @@ async def run_step(
                 # deduplicate columns of this df
                 deduplicated = deduplicate_columns(data)
 
-                # store the dataframe in the output_cache
+                # store the dataframe in the analysis_execution_cache
                 # name the df too
                 if not skip_cache_storing:
-                    output_cache[output_name] = deduplicated
-                    output_cache[output_name].df_name = output_name
+                    analysis_execution_cache[output_name] = deduplicated
+                    analysis_execution_cache[output_name].df_name = output_name
 
                 # store the dataframe in the analysis_assets directory
                 deduplicated.reset_index(drop=True).to_feather(
@@ -388,17 +461,17 @@ async def generate_single_step(
     4. Stores the result of the step.
     5. Returns the generated step + result.
     """
-    global global_output_cache
+    global global_execution_cache
 
     unique_id = str(uuid4())
 
-    analysis_output_cache = global_output_cache.get(analysis_id, {})
+    analysis_execution_cache = global_execution_cache.get(analysis_id, {})
 
-    analysis_output_cache["dfg_api_key"] = dfg_api_key
-    analysis_output_cache["user_question"] = user_question
-    analysis_output_cache["toolboxes"] = toolboxes
-    analysis_output_cache["dev"] = dev
-    analysis_output_cache["temp"] = temp
+    analysis_execution_cache["dfg_api_key"] = dfg_api_key
+    analysis_execution_cache["user_question"] = user_question
+    analysis_execution_cache["toolboxes"] = toolboxes
+    analysis_execution_cache["dev"] = dev
+    analysis_execution_cache["temp"] = temp
 
     # get the assignment understanding aka answers to clarification questions
     assignment_understanding = None
@@ -418,7 +491,7 @@ async def generate_single_step(
 
     logging.info(f"Assignment understanding: {assignment_understanding}")
 
-    analysis_output_cache["assignment_understanding"] = assignment_understanding
+    analysis_execution_cache["assignment_understanding"] = assignment_understanding
 
     # NOTE: see note above
     # err, user_question_context = await get_analysis_question_context(analysis_id)
@@ -499,13 +572,13 @@ async def generate_single_step(
         analysis_id=analysis_id,
         step=step,
         all_steps=all_steps,
-        output_cache=analysis_output_cache,
+        analysis_execution_cache=analysis_execution_cache,
         # just for testing for now
         skip_cache_storing=True,
     )
 
-    # store the output_cache
-    global_output_cache[analysis_id] = analysis_output_cache
+    # store the analysis_execution_cache
+    global_execution_cache[analysis_id] = analysis_execution_cache
 
     return step
 
