@@ -1,5 +1,6 @@
 import inspect
 import json
+import logging
 import traceback
 import datetime
 import uuid
@@ -321,6 +322,7 @@ async def update_analysis_data(
                             )
                             replaced = 0
                             for i, item in enumerate(new_data):
+                                # try to find the item
                                 found = False
                                 for j, old_item in enumerate(curr_data):
                                     if old_item.get(overwrite_key) == item.get(
@@ -331,6 +333,8 @@ async def update_analysis_data(
                                         replaced += 1
                                         break
                                 if not found:
+                                    # just append
+                                    logging.info("Item not found. Appending.")
                                     curr_data.append(item)
 
                             print(

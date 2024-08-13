@@ -161,13 +161,16 @@ def find_step_by_output_name(output_name, previous_steps):
     return None
 
 
-async def run_step(step, all_steps, output_cache, skip_cache_storing=False):
+async def run_step(
+    analysis_id, step, all_steps, output_cache, skip_cache_storing=False
+):
     """
     Runs a single step, updating the steps object *in place* with the results.
     General flow:
     1. First it tries to resolve the inputs to a step.
     2. If the inputs can't be resolved, it recursively runs the parent steps till either resolved or error.
-    3. Once resolved successfully, it runs th step.
+    3. Once resolved successfully, it runs the step.
+    4. Stores the run step in the respective analysis in the db
     """
 
     max_resolve_tries = 4
@@ -196,7 +199,12 @@ async def run_step(step, all_steps, output_cache, skip_cache_storing=False):
                     f"Found step that generated the output: {missing_variable}. Now running that."
                 )
                 # TODO: run the above step that was found
-                await run_step(step_that_generated_this_output, all_steps, output_cache)
+                await run_step(
+                    analysis_id=analysis_id,
+                    step=step_that_generated_this_output,
+                    all_steps=all_steps,
+                    output_cache=output_cache,
+                )
         except Exception as e:
             logging.error(f"Error while resolving step inputs: {e}")
             raise Exception(f"Error while resolving step inputs")
@@ -295,6 +303,17 @@ async def run_step(step, all_steps, output_cache, skip_cache_storing=False):
                 step["outputs"][output_name]["chart_images"] = chart_images
 
             logging.info(f"Stored output: {step['outputs'][output_name]}")
+
+    # update the analysis data in the db
+    if analysis_id:
+        await update_analysis_data(
+            analysis_id=analysis_id,
+            request_type="gen_steps",
+            new_data=[step],
+            # if this is a new step, this will simply append
+            # but if we're running an existing step, this will overwrite it with the new one
+            overwrite_key=step["id"],
+        )
 
 
 def create_yaml_for_prompt_from_steps(steps=[]) -> list[str]:
@@ -477,6 +496,7 @@ async def generate_single_step(
     step["id"] = unique_id
 
     await run_step(
+        analysis_id=analysis_id,
         step=step,
         all_steps=all_steps,
         output_cache=analysis_output_cache,
@@ -486,13 +506,6 @@ async def generate_single_step(
 
     # store the output_cache
     global_output_cache[analysis_id] = analysis_output_cache
-
-    if analysis_id:
-        await update_analysis_data(
-            analysis_id=analysis_id,
-            request_type="gen_steps",
-            new_data=[step],
-        )
 
     return step
 
