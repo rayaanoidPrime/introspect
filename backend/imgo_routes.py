@@ -81,3 +81,29 @@ async def optimize_metadata(request: Request):
 async def get_recommendation_for_glossary_and_metadata(request: Request):
     """Responds to a request for recommendation for glossary and metadata."""
     return await process_imgo_request(request, "imgo_get_recommendation")
+
+
+@router.post("/check_task_status")
+async def check_task_status(request: Request):
+    """Checks the status of a task and returns the status which can be either 'processing' or 'completed'."""
+    print("Checking task status")
+    params = await request.json()
+    token = params.get("token")
+    if not validate_user(token):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+
+    task_id = params.get("task_id")
+
+    url = f"{DEFOG_BASE_URL}/check_imgo_task_status"
+    return await make_request(
+        url,
+        json={"api_key": api_key, "task_id": task_id},
+    )

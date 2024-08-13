@@ -101,7 +101,7 @@ const IMGO = ({ token, apiKeyName }) => {
   };
 
   const handleApiRequest = async (step, iteration = 0) => {
-    const stepKey = `${step.name} Iteration ${iteration + 1}`; // Use `iteration + 1` for correct 1-based indexing
+    const stepKey = `${step.name} Iteration ${iteration + 1}`;
     setLoadingIndex(stepKey); // Set the loading state for the current step
     try {
       console.log(`Executing ${stepKey}`);
@@ -110,28 +110,76 @@ const IMGO = ({ token, apiKeyName }) => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(step.payload(iteration)), // Correctly call payload function with iteration
+        body: JSON.stringify(step.payload(iteration)),
       });
       const data = await res.json();
-
-      // Introduce delay for specific endpoints
-      if (
-        step.endpoint === "generate_golden_queries_from_questions" ||
-        step.endpoint === "check_generated_golden_queries_correctness"
-      ) {
-        console.log("Introducing delay for", step.endpoint);
-        await new Promise((resolve) => setTimeout(resolve, 10000)); // 10 seconds delay
+  
+      // Check if task_id is present and not undefined
+      const { task_id } = data;
+      console.log("Task ID for", step.name, ":", task_id);
+      if (task_id) {
+        // Polling function to check the task status
+        const pollTaskStatus = async (taskId) => {
+          console.log("Polling task status for", step.name, "with task_id", taskId);
+          let isTaskCompleted = false;
+          while (!isTaskCompleted) {
+            const statusRes = await fetch(setupBaseUrl("http", "check_task_status"), {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ token, key_name: apiKeyName, task_id: taskId }),
+            });
+            const statusData = await statusRes.json();
+            console.log("Task status for", step.name, ":", statusData);
+  
+            if (statusData.status === "completed") {
+              isTaskCompleted = true;
+              console.log(`${step.name} completed for Iteration ${iteration + 1}`);
+              return isTaskCompleted;
+            } else {
+              console.log(`${step.name} still processing...`);
+            }
+            // Wait for a 5 seconds before polling again
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+          }
+          return isTaskCompleted;
+        };
+  
+        // Start polling
+        const completed = await pollTaskStatus(task_id);
+  
+        if (completed) {
+          // Once the task is completed, fetch the final data
+          const finalRes = await fetch(setupBaseUrl("http", step.endpoint), {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(step.payload(iteration)), // Re-fetch the data now that the task is completed
+          });
+          const finalData = await finalRes.json();
+  
+          // Update results for the specific step
+          setResults((prevResults) => ({
+            ...prevResults,
+            [stepKey]: finalData,
+          }));
+  
+          console.log("Set results for", stepKey, ":", finalData); // Debugging log
+  
+          if (step.onSuccess) step.onSuccess(finalData);
+        }
+      } else {
+        // If no task_id, directly update the results with the initial data
+        setResults((prevResults) => ({
+          ...prevResults,
+          [stepKey]: data,
+        }));
+        console.log("Set results for", stepKey, ":", data); // Debugging log
+  
+        if (step.onSuccess) step.onSuccess(data);
       }
-
-      // Update results for the specific step
-      setResults((prevResults) => ({
-        ...prevResults,
-        [stepKey]: data,
-      }));
-
-      console.log("Set results for", stepKey, ":", data); // Debugging log
-
-      if (step.onSuccess) step.onSuccess(data);
     } catch (e) {
       console.error(`Error executing step ${stepKey}:`, e);
       message.error(`Failed to execute step ${stepKey}.`);
@@ -139,6 +187,7 @@ const IMGO = ({ token, apiKeyName }) => {
       setLoadingIndex(null); // Reset the loading state
     }
   };
+  
 
   const handleFinalRecommendations = async () => {
     setLoadingRecommendations(true);
@@ -201,16 +250,24 @@ const IMGO = ({ token, apiKeyName }) => {
             <div key={iteration}>
               <h3 className="font-bold text-lg">Iteration {iteration + 1}</h3>
               {steps.map((step, index) => (
-                <div key={index} className="border border-gray-300 p-4 rounded-lg">
+                <div
+                  key={index}
+                  className="border border-gray-300 p-4 rounded-lg"
+                >
                   <h4 className="font-bold text-md">{step.name}</h4>
                   <Button
                     className="mt-2 mb-4 bg-blue-500 text-white"
                     onClick={() => handleApiRequest(step, iteration)}
-                    disabled={loadingIndex === `${step.name} Iteration ${iteration + 1}`}
+                    disabled={
+                      loadingIndex === `${step.name} Iteration ${iteration + 1}`
+                    }
                   >
-                    {loadingIndex === `${step.name} Iteration ${iteration + 1}` ? (
+                    {loadingIndex ===
+                    `${step.name} Iteration ${iteration + 1}` ? (
                       <Spin
-                        indicator={<LoadingOutlined style={{ color: "white" }} />}
+                        indicator={
+                          <LoadingOutlined style={{ color: "white" }} />
+                        }
                       />
                     ) : (
                       `Execute ${step.name}`
@@ -247,11 +304,25 @@ const IMGO = ({ token, apiKeyName }) => {
               )}
             </Button>
             {recommendations && (
-              <Card title="Final Recommendations" className="bg-white shadow-md">
-                <p><strong>Recommendation:</strong> {recommendations.message}</p>
-                <p><strong>Validity Percentages:</strong> {recommendations.valid_pct_list.join(", ")}</p>
-                <p><strong>Correctness Percentages:</strong> {recommendations.correct_pct_list.join(", ")}</p>
-                <p><strong>Overall Scores:</strong> {recommendations.overall_list.join(", ")}</p>
+              <Card
+                title="Final Recommendations"
+                className="bg-white shadow-md"
+              >
+                <p>
+                  <strong>Recommendation:</strong> {recommendations.message}
+                </p>
+                <p>
+                  <strong>Validity Percentages:</strong>{" "}
+                  {recommendations.valid_pct_list.join(", ")}
+                </p>
+                <p>
+                  <strong>Correctness Percentages:</strong>{" "}
+                  {recommendations.correct_pct_list.join(", ")}
+                </p>
+                <p>
+                  <strong>Overall Scores:</strong>{" "}
+                  {recommendations.overall_list.join(", ")}
+                </p>
               </Card>
             )}
           </div>
