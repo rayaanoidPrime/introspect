@@ -346,15 +346,12 @@ async def update_analysis_data(
                     # insert back into analyses table
                     # if the request type is user_question, we will also update the embedding
                     if request_type == "user_question":
-                        print(new_data)
-                        print(analysis_id)
                         conn.execute(
                             update(Analyses)
                             .where(Analyses.analysis_id == analysis_id)
                             .values({request_type: new_data})
                         )
                     else:
-                        print(curr_data)
                         conn.execute(
                             update(Analyses)
                             .where(Analyses.analysis_id == analysis_id)

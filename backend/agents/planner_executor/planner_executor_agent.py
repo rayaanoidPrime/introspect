@@ -58,7 +58,7 @@ analysis_assets_dir = os.environ.get(
 )
 
 
-class MissingVariableException(Exception):
+class MissingDependencyException(Exception):
     def __init__(self, variable_name):
         # Call the base class constructor with the parameters it needs
         super().__init__(f"{variable_name}")
@@ -71,7 +71,7 @@ def get_input_value(inp, output_cache):
     """
     Tries to figure out a value of an input.
 
-    If the input starts with `global_dict.XXX`, and is not found in output_cache, raises a MissingVariableException.
+    If the input starts with `global_dict.XXX`, and is not found in output_cache, raises a MissingDependencyException.
 
     That exception is usually a signal to the calling function that it needs to run some parent step.
     """
@@ -88,7 +88,7 @@ def get_input_value(inp, output_cache):
         # if output_cache doesn't have this key, raise an error
         if variable_name not in output_cache:
             # raise error
-            raise MissingVariableException(variable_name)
+            raise MissingDependencyException(variable_name)
         else:
             # TODO: first look in the analysis_assets directory
             # asset_file_name = step_id + "_output" + "-" + input_name + ".feather"
@@ -111,7 +111,7 @@ def get_input_value(inp, output_cache):
     return val
 
 
-def resolve_step_inputs(inputs: dict, output_cache: dict = {}, previous_steps=[]):
+def resolve_step_inputs(inputs: dict, output_cache: dict = {}):
     """
     Resolved the inputs to a step.
     This is mostly crucial for parsing output_cache.XXX style of inputs, which occur if this step uses outputs from another step
@@ -140,12 +140,9 @@ def resolve_step_inputs(inputs: dict, output_cache: dict = {}, previous_steps=[]
         try:
             val = get_input_value(input_val, output_cache)
             resolved_inputs[input_name] = val
-        except MissingVariableException as e:
-            missing_variable = e.variable_name
-            # find the step that generated this variable
-            # this will be one of the previous steps
-            logging.error(f"Error while resolving input: {input_name}, {input_val}")
-            logging.error(f"Missing variable: {missing_variable}")
+        except MissingDependencyException as e:
+            # let calling function handle this
+            raise e
         except Exception as e:
             logging.error(f"Error resolving input {input_name}: {input_val}")
             logging.error(e)
@@ -154,15 +151,57 @@ def resolve_step_inputs(inputs: dict, output_cache: dict = {}, previous_steps=[]
     return resolved_inputs
 
 
-async def run_step(step, previous_steps, output_cache):
+def find_step_by_output_name(output_name, previous_steps):
     """
-    Runs a step.
-    Returns the same object with the results stored in an "outputs" key.
+    Given an output name, find the step that generated this output.
     """
-    # resolve the inputs
-    resolved_inputs = resolve_step_inputs(
-        step["inputs"], output_cache=output_cache, previous_steps=previous_steps
-    )
+    for step in previous_steps:
+        if output_name in step.get("outputs_storage_keys", []):
+            return step
+    return None
+
+
+async def run_step(step, all_steps, output_cache, skip_cache_storing=False):
+    """
+    Runs a single step, updating the steps object *in place* with the results.
+    General flow:
+    1. First it tries to resolve the inputs to a step.
+    2. If the inputs can't be resolved, it recursively runs the parent steps till either resolved or error.
+    3. Once resolved successfully, it runs th step.
+    """
+
+    max_resolve_tries = 4
+
+    while max_resolve_tries > 0:
+        # keep doing till we either resolve the inputs or raise an error while resolving
+        try:
+            # resolve the inputs
+            resolved_inputs = resolve_step_inputs(
+                step["inputs"], output_cache=output_cache
+            )
+        except MissingDependencyException as e:
+            missing_variable = e.variable_name
+            logging.info(f"Missing variable: {missing_variable}")
+            # find the step that generated this variable
+            # this should be one of the previous steps
+            step_that_generated_this_output = find_step_by_output_name(
+                missing_variable, all_steps
+            )
+            if step_that_generated_this_output is None:
+                raise Exception(
+                    f"Could not find the step that generated the output: {missing_variable}"
+                )
+            else:
+                logging.info(
+                    f"Found step that generated the output: {missing_variable}. Now running that."
+                )
+                # TODO: run the above step that was found
+                await run_step(step_that_generated_this_output, all_steps, output_cache)
+        except Exception as e:
+            logging.error(f"Error while resolving step inputs: {e}")
+            raise Exception(f"Error while resolving step inputs")
+        finally:
+            max_resolve_tries -= 1
 
     logging.info(f"Resolved step inputs: {resolved_inputs}")
 
@@ -174,7 +213,6 @@ async def run_step(step, previous_steps, output_cache):
         global_dict=output_cache,
     )
 
-    logging.info(f"Results: {results}")
     logging.info(f"Tool input metadata: {tool_input_metadata}")
 
     step["error_message"] = results.get("error_message")
@@ -236,9 +274,10 @@ async def run_step(step, previous_steps, output_cache):
                 deduplicated = deduplicate_columns(data)
 
                 # store the dataframe in the output_cache
-                output_cache[output_name] = deduplicated
                 # name the df too
-                output_cache[output_name].df_name = output_name
+                if not skip_cache_storing:
+                    output_cache[output_name] = deduplicated
+                    output_cache[output_name].df_name = output_name
 
                 # store the dataframe in the analysis_assets directory
                 deduplicated.reset_index(drop=True).to_feather(
@@ -257,8 +296,54 @@ async def run_step(step, previous_steps, output_cache):
 
             logging.info(f"Stored output: {step['outputs'][output_name]}")
 
-    logging.info("Step with results: " + str(step))
-    return step
+
+def create_yaml_for_prompt_from_steps(steps=[]) -> list[str]:
+    """
+    Formats the steps array (as stored in the db)
+    into yaml strings that can be used as a prompt for the LLM.
+
+    We take selected properties from each step's dict
+    convert it to a yaml string
+
+    Then wrap each one in ```yaml...```
+
+    Returns an array of strings
+    """
+    yaml_formatted_steps = []
+    for step in steps:
+        yaml_formatted_steps.append(
+            yaml.dump(
+                [
+                    {
+                        "description": step["description"],
+                        "inputs": step["inputs"],
+                        "outputs_storage_keys": step["outputs_storage_keys"],
+                        "tool_name": step["tool_name"],
+                        "done": step["done"],
+                    }
+                ],
+                default_flow_style=False,
+                sort_keys=False,
+            )
+        )
+
+    return yaml_formatted_steps
+
+
+def find_previous_steps_from_step_id(step_id, all_steps):
+    """
+    Finds *only* the previous steps of the provided step_id from an array of all steps
+    If step is not found, it returns all the steps
+    """
+    # find the index of this step_id
+    idx = len(all_steps)
+
+    for i, step in enumerate(all_steps):
+        if step["id"] == step_id:
+            idx = i
+            break
+
+    return all_steps[:idx]
 
 
 async def generate_single_step(
@@ -277,12 +362,16 @@ async def generate_single_step(
 ):
     """
     This function:
-    1. Generates a single step of a plan using the LLM. Calls defog-backend-python.
-    2. Runs that step.
-    3. Stores the result of the step.
-    4. Returns the generated step + result.
+    1. Prepares all the data needed to generate a step: the global_dict, the tool_library_prompt, the assignment_understanding, etc.
+       Also prepares the previous steps in the analysis as a yaml for the prompt.
+    2. Calls defog-backend-python to generate the next step.
+    3. Runs that step.
+    4. Stores the result of the step.
+    5. Returns the generated step + result.
     """
     global global_output_cache
+
+    unique_id = str(uuid4())
 
     analysis_output_cache = global_output_cache.get(analysis_id, {})
 
@@ -327,48 +416,37 @@ async def generate_single_step(
         llm_server_url = None
     logging.info(f"LLM_SERVER_ENDPOINT set to: `{llm_server_url}`")
 
-    # try getting the existing steps of this analysis
-    previous_steps = []
     err, analysis_data = get_analysis_data(analysis_id)
-    if err is None:
-        gen_steps_stage_output = analysis_data.get("gen_steps", {})
-        if gen_steps_stage_output.get("success", False):
-            previous_steps = gen_steps_stage_output.get("steps", [])
-        else:
-            previous_steps = []
+    if err:
+        # can't do much about not being able to fetch data. fail.
+        raise Exception(err)
 
-    # construct previous_responses from previous_steps
-    # where we basically just wrap in ```yaml ``` and yaml format it
-    # and only take selected properties from each step
-    previous_responses = []
-    for step in previous_steps:
-        previous_responses.append(
-            yaml.dump(
-                [
-                    {
-                        "description": step["description"],
-                        "inputs": step["inputs"],
-                        "outputs_storage_keys": step["outputs_storage_keys"],
-                        "tool_name": step["tool_name"],
-                        "done": step["done"],
-                    }
-                ],
-                default_flow_style=False,
-                sort_keys=False,
-            )
-        )
+    gen_steps_stage_output = analysis_data.get("gen_steps", {})
 
-    # TODO: construct using previous step outputs
+    if gen_steps_stage_output.get("success", False):
+        # find the index of this
+        all_steps = gen_steps_stage_output.get("steps", [])
+    else:
+        all_steps = []
+
+    previous_steps = find_previous_steps_from_step_id(unique_id, all_steps)
+
+    # format the above steps into yaml strings for the prompt
+    previous_responses_yaml_for_prompt = create_yaml_for_prompt_from_steps(
+        previous_steps
+    )
+
+    # TODO: construct using previous steps' outputs
     next_step_data_description = ""
 
-    logging.info(f"Previous responses: {previous_responses}")
+    logging.info(f"Previous responses: {previous_responses_yaml_for_prompt}")
 
     payload = {
         "request_type": "create_plan",
         "question": user_question,
         "tool_library_prompt": tool_library_prompt,
         "assignment_understanding": assignment_understanding,
-        "previous_responses": previous_responses,
+        "previous_responses": previous_responses_yaml_for_prompt,
         "next_step_data_description": next_step_data_description,
         "api_key": dfg_api_key,
         "plan_id": analysis_id,
@@ -382,8 +460,8 @@ async def generate_single_step(
     }
 
     res = (await asyncio.to_thread(requests.post, llm_calls_url, json=payload)).json()
-    logging.info(res)
     step_yaml = res["generated_step"]
+    logging.info("Generated step yaml:")
     logging.info(step_yaml)
 
     step_yaml = re.search("(?:```yaml)([\s\S]*?)(?=```)", step_yaml)
@@ -396,10 +474,14 @@ async def generate_single_step(
 
     step = yaml.safe_load(step_yaml[1].strip())[0]
     # give a unique id to this step
-    step["id"] = str(uuid4())
+    step["id"] = unique_id
 
-    step_with_results = await run_step(
-        step, previous_steps, output_cache=analysis_output_cache
+    await run_step(
+        step=step,
+        all_steps=all_steps,
+        output_cache=analysis_output_cache,
+        # just for testing for now
+        skip_cache_storing=True,
     )
 
     # store the output_cache
@@ -409,10 +491,10 @@ async def generate_single_step(
         await update_analysis_data(
             analysis_id=analysis_id,
             request_type="gen_steps",
-            new_data=[step_with_results],
+            new_data=[step],
         )
 
-    return step_with_results
+    return step
 
 
 class Executor:

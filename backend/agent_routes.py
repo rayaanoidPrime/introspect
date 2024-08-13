@@ -55,7 +55,6 @@ async def generate_step(request: Request):
             "success": True,
             "steps": [step],
             "done": step.get("done", True),
-            "error_message": step.get("error_message", True),
         }
 
     except Exception as e:
@@ -126,3 +125,14 @@ async def clarify(request: Request):
     except Exception as e:
         logging.error(e)
         return {"success": False, "error_message": str(e) or "Incorrect request"}
+
+
+@router.post("/rerun_step")
+async def clarify(request: Request):
+    """
+    Function that re runs a step given:
+    1. anlaysis id
+    2. step id
+    It reuses the run_step function that is also used in the generate_step endpoint
+    """
+    pass
