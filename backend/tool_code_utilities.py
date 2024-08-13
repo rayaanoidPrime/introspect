@@ -12,7 +12,9 @@ import pandas as pd
 import os
 from db_utils import get_db_type_creds
 
-analysis_assets_dir = os.environ.get("ANALYSIS_ASSETS_DIR", "./analysis_assets")
+analysis_assets_dir = os.environ.get(
+    "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
+)
 
 
 import matplotlib.pyplot as plt

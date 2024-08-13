@@ -23,7 +23,9 @@ if (
 else:
     openai = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
-analysis_assets_dir = os.environ.get("ANALYSIS_ASSETS_DIR", "./analysis_assets")
+analysis_assets_dir = os.environ.get(
+    "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
+)
 
 
 def encode_image(image_path):

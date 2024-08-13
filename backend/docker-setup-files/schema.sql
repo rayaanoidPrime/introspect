@@ -35,8 +35,6 @@ CREATE TABLE public.defog_analyses (
     "timestamp" text,
     approaches json,
     clarify jsonb,
-    understand jsonb,
-    gen_approaches jsonb,
     user_question text,
     analysis_id text NOT NULL,
     gen_steps jsonb,

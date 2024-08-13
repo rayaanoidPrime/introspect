@@ -58,7 +58,9 @@ async def boxplot(
     if "index" not in full_data.columns:
         full_data["index"] = range(len(full_data))
 
-    analysis_assets_dir = global_dict.get("analysis_assets_dir", "analysis_assets")
+    analysis_assets_dir = global_dict.get(
+        "analysis_assets_dir", "/agents-assets/analysis-assets"
+    )
 
     if type(color) == ListWithDefault:
         color = color.default_value
@@ -207,7 +209,9 @@ async def heatmap(
     heatmap_path = f"heatmaps/heatmap-{uuid4()}.png"
     fig, ax = plt.subplots()
     plt.xticks(rotation=45)
-    analysis_assets_dir = global_dict.get("analysis_assets_dir", "analysis_assets")
+    analysis_assets_dir = global_dict.get(
+        "analysis_assets_dir", "/agents-assets/analysis-assets"
+    )
 
     if not aggregation_type or type(aggregation_type) != str:
         raise ValueError("Aggregation type must be a string")
@@ -279,7 +283,9 @@ async def line_plot(
     if "index" not in full_data.columns:
         full_data["index"] = range(len(full_data))
 
-    analysis_assets_dir = global_dict.get("analysis_assets_dir", "analysis_assets")
+    analysis_assets_dir = global_dict.get(
+        "analysis_assets_dir", "/agents-assets/analysis-assets"
+    )
 
     if type(average_line_type) == ListWithDefault:
         average_line_type = average_line_type[0]

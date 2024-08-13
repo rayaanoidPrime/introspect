@@ -44,18 +44,11 @@ async def generate_step(request: Request):
         if not api_key:
             raise Exception("Invalid API key name.")
 
-        # try getting the steps of this analysis
-        previous_steps = []
-        err, analysis_data = get_analysis_data(analysis_id)
-        if err is None:
-            previous_steps = analysis_data.get("steps", [])
-
         step = await generate_single_step(
             dfg_api_key=api_key,
             analysis_id=analysis_id,
             user_question=question,
             clarification_questions=clarification_questions,
-            previous_steps=previous_steps,
         )
 
         return {
@@ -127,14 +120,7 @@ async def clarify(request: Request):
         return {
             "success": True,
             "done": True,
-            "clarification_questions": [
-                {
-                    "question": "which db",
-                    "ui_tool": "text input",
-                    "response": "",
-                    "response_formatted": "",
-                }
-            ],
+            "clarification_questions": clarification_questions,
         }
 
     except Exception as e:

@@ -26,7 +26,9 @@ import traceback
 import os
 
 
-analysis_assets_dir = os.environ.get("ANALYSIS_ASSETS_DIR", "./analysis_assets")
+analysis_assets_dir = os.environ.get(
+    "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
+)
 
 
 # rerun_step_and_dependents function runs the step, the step's parents if needed AND all descendants that depend on this step recursively

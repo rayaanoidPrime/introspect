@@ -17,7 +17,9 @@ import asyncio
 from utils import warn_str, YieldList, make_request
 import os
 
-analysis_assets_dir = os.environ.get("ANALYSIS_ASSETS_DIR", "./analysis_assets")
+analysis_assets_dir = os.environ.get(
+    "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
+)
 
 if os.environ.get("INTERNAL_DB") == "sqlite":
     print("using sqlite as our internal db")
@@ -374,8 +376,6 @@ def analysis_data_from_row(row):
     rpt = None
     try:
         clarify = None if row.clarify is None else row.clarify
-        understand = None if row.understand is None else row.understand
-        gen_approaches = None if row.gen_approaches is None else row.gen_approaches
         gen_steps = None if row.gen_steps is None else row.gen_steps
         parent_analyses = row.parent_analyses or []
         follow_up_analyses = row.follow_up_analyses or []
@@ -396,16 +396,6 @@ def analysis_data_from_row(row):
             rpt["clarify"] = {
                 "success": True,
                 "clarification_questions": clarify,
-            }
-        if understand is not None:
-            rpt["understand"] = {
-                "success": True,
-                "understanding": understand,
-            }
-        if gen_approaches is not None:
-            rpt["gen_approaches"] = {
-                "success": True,
-                "approaches": gen_approaches,
             }
 
         if gen_steps is not None:

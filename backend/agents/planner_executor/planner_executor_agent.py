@@ -7,7 +7,12 @@ from colorama import Fore, Style
 
 from agents.planner_executor.execute_tool import execute_tool
 from agents.clarifier.clarifier_agent import turn_into_statements
-from db_utils import get_analysis_question_context, store_tool_run, update_analysis_data
+from db_utils import (
+    get_analysis_data,
+    get_analysis_question_context,
+    store_tool_run,
+    update_analysis_data,
+)
 from utils import deduplicate_columns, warn_str, YieldList
 from .tool_helpers.toolbox_manager import get_tool_library_prompt
 from .tool_helpers.tool_param_types import ListWithDefault
@@ -23,30 +28,34 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-# store the outputs of each step in a global variable
+# store the outputs of multiple analysis in a global variable
 # we keep this around for a while, in case we need to re-run a step v soon after it was run
 # but we will clear this cache after a while
-# things like api_key, user_question, etc are stored here and are overwritten on every call to generate_single_step
-# but the step output cache remains the same
+# things stored here, also specific to each step.
 # {
-#   "user_question": user_question,
-#   "dfg_api_key": dfg_api_key,
-#   "toolboxes": toolboxes,
-#   "assignment_understanding": assignment_understanding,
-#   "dfg": None,
-#   "llm_calls_url": llm_calls_url,
-#   "analysis_assets_dir": analysis_assets_dir,
-#   "dev": dev,
-#   "temp": temp,
-#   "STEP_ID_1": {...}
-#   "STEP_ID_2": {...}
-#   "STEP_ID_3": {...}
+#   "analysis_id_1": {
+#     "user_question": user_question,
+#     "dfg_api_key": dfg_api_key,
+#     "toolboxes": toolboxes,
+#     "assignment_understanding": assignment_understanding,
+#     "dfg": None,
+#     "llm_calls_url": llm_calls_url,
+#     "analysis_assets_dir": analysis_assets_dir,
+#     "dev": dev,
+#     "temp": temp,
+#     "output_1": ...
+#     "output_2": ...
+#   },
+#   "analysis_id_2": {...}
+#   "analysis_id_3": {...}
 #   ...
 # }
-output_cache = {}
+global_output_cache = {}
 
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
-analysis_assets_dir = os.environ.get("ANALYSIS_ASSETS_DIR", "./analysis_assets")
+analysis_assets_dir = os.environ.get(
+    "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
+)
 
 
 class MissingVariableException(Exception):
@@ -145,17 +154,15 @@ def resolve_step_inputs(inputs: dict, output_cache: dict = {}, previous_steps=[]
     return resolved_inputs
 
 
-async def run_step(step, previous_steps):
+async def run_step(step, previous_steps, output_cache):
     """
     Runs a step.
     Returns the same object with the results stored in an "outputs" key.
     """
-    # we will keep stuff around jic we need to re run this particular step again v soon
-    # so use the global output_cache
-    global output_cache
-
     # resolve the inputs
-    resolved_inputs = resolve_step_inputs(step["inputs"], output_cache, previous_steps)
+    resolved_inputs = resolve_step_inputs(
+        step["inputs"], output_cache=output_cache, previous_steps=previous_steps
+    )
 
     logging.info(f"Resolved step inputs: {resolved_inputs}")
 
@@ -188,55 +195,67 @@ async def run_step(step, previous_steps):
         # if number of outputs does not match the number of keys to store the outputs in
         # raise exception
         # this should never really happen
-        if len(step.get("outputs_storage_keys")) != len(results.get("outputs")):
-            raise Exception(
-                f"Length of outputs_storage_keys and outputs don't match. Outputs: {results.get('outputs')}"
+        output_storage_keys = step.get("outputs_storage_keys", [])
+        outputs = results.get("outputs", [])
+        if len(output_storage_keys) != len(outputs):
+            logging.warn(
+                f"Length of outputs_storage_keys and outputs don't match. Outputs: {results.get('outputs')}. Force matching with index suffixes."
             )
-        else:
-            # zip and store the output keys to output_cache
-            for output_name, output_value in zip(
-                step["outputs_storage_keys"], results.get("outputs")
-            ):
-                data = output_value.get("data")
-                reactive_vars = output_value.get("reactive_vars")
-                chart_images = output_value.get("chart_images")
-
-                step["outputs"][output_name] = {}
-
-                logging.info("Parsing output: " + output_name)
-
-                # if the output has data and it is a pandas dataframe,
-                # 1. deduplicate the columns
-                # 2. store the dataframe in the output_cache
-                # 3. store the dataframe in the analysis_assets directory
-                # 4. Finally store in the step object
-                if data is not None and type(data) == type(pd.DataFrame()):
-                    db_path = step["id"] + "_output-" + output_name + ".feather"
-
-                    # deduplicate columns of this df
-                    deduplicated = deduplicate_columns(data)
-
-                    # store the dataframe in the output_cache
-                    output_cache[output_name] = deduplicated
-                    # name the df too
-                    output_cache[output_name].df_name = output_name
-
-                    # store the dataframe in the analysis_assets directory
-                    deduplicated.reset_index(drop=True).to_feather(
-                        analysis_assets_dir + "/datasets/" + db_path
+            # if outputs_storage_keys <= outputs, append the difference with output_idx
+            if len(output_storage_keys) <= len(outputs):
+                for i in range(len(output_storage_keys), len(outputs)):
+                    step["outputs_storage_keys"].append(
+                        f"{step['tool_name']}_output_{i}"
                     )
+            else:
+                step["outputs_storage_keys"] = step["outputs_storage_keys"][
+                    : len(outputs)
+                ]
 
-                    step["outputs"][output_name]["data"] = deduplicated.to_csv(
-                        float_format="%.3f", index=False
-                    )
+        # zip and store the output keys to output_cache
+        for output_name, output_value in zip(
+            step["outputs_storage_keys"], results.get("outputs")
+        ):
+            data = output_value.get("data")
+            reactive_vars = output_value.get("reactive_vars")
+            chart_images = output_value.get("chart_images")
 
-                if reactive_vars is not None:
-                    step["outputs"][output_name]["reactive_vars"] = reactive_vars
+            step["outputs"][output_name] = {}
 
-                if chart_images is not None:
-                    step["outputs"][output_name]["chart_images"] = chart_images
+            logging.info("Parsing output: " + output_name)
 
-                logging.info(f"Stored output: {step['outputs'][output_name]}")
+            # if the output has data and it is a pandas dataframe,
+            # 1. deduplicate the columns
+            # 2. store the dataframe in the output_cache
+            # 3. store the dataframe in the analysis_assets directory
+            # 4. Finally store in the step object
+            if data is not None and type(data) == type(pd.DataFrame()):
+                db_path = step["id"] + "_output-" + output_name + ".feather"
+
+                # deduplicate columns of this df
+                deduplicated = deduplicate_columns(data)
+
+                # store the dataframe in the output_cache
+                output_cache[output_name] = deduplicated
+                # name the df too
+                output_cache[output_name].df_name = output_name
+
+                # store the dataframe in the analysis_assets directory
+                deduplicated.reset_index(drop=True).to_feather(
+                    analysis_assets_dir + "/datasets/" + db_path
+                )
+
+                step["outputs"][output_name]["data"] = deduplicated.to_csv(
+                    float_format="%.3f", index=False
+                )
+
+            if reactive_vars is not None:
+                step["outputs"][output_name]["reactive_vars"] = reactive_vars
+
+            if chart_images is not None:
+                step["outputs"][output_name]["chart_images"] = chart_images
+
+            logging.info(f"Stored output: {step['outputs'][output_name]}")
 
     logging.info("Step with results: " + str(step))
     return step
@@ -248,7 +267,6 @@ async def generate_single_step(
     user_question,
     clarification_questions=[],
     toolboxes=[],
-    previous_steps=[],
     dev=False,
     temp=False,
     # NOTE: we will remove this feature of "parent/nested/follow-on" analysis.
@@ -264,13 +282,15 @@ async def generate_single_step(
     3. Stores the result of the step.
     4. Returns the generated step + result.
     """
-    global output_cache
+    global global_output_cache
 
-    output_cache["dfg_api_key"] = dfg_api_key
-    output_cache["user_question"] = user_question
-    output_cache["toolboxes"] = toolboxes
-    output_cache["dev"] = dev
-    output_cache["temp"] = temp
+    analysis_output_cache = global_output_cache.get(analysis_id, {})
+
+    analysis_output_cache["dfg_api_key"] = dfg_api_key
+    analysis_output_cache["user_question"] = user_question
+    analysis_output_cache["toolboxes"] = toolboxes
+    analysis_output_cache["dev"] = dev
+    analysis_output_cache["temp"] = temp
 
     # get the assignment understanding aka answers to clarification questions
     assignment_understanding = None
@@ -290,7 +310,7 @@ async def generate_single_step(
 
     logging.info(f"Assignment understanding: {assignment_understanding}")
 
-    output_cache["assignment_understanding"] = assignment_understanding
+    analysis_output_cache["assignment_understanding"] = assignment_understanding
 
     # NOTE: see note above
     # err, user_question_context = await get_analysis_question_context(analysis_id)
@@ -307,14 +327,38 @@ async def generate_single_step(
         llm_server_url = None
     logging.info(f"LLM_SERVER_ENDPOINT set to: `{llm_server_url}`")
 
+    # try getting the existing steps of this analysis
+    previous_steps = []
+    err, analysis_data = get_analysis_data(analysis_id)
+    if err is None:
+        gen_steps_stage_output = analysis_data.get("gen_steps", {})
+        if gen_steps_stage_output.get("success", False):
+            previous_steps = gen_steps_stage_output.get("steps", [])
+        else:
+            previous_steps = []
+
     # construct previous_responses from previous_steps
-    # wrap in ```yaml ``` and yaml format it
+    # where we basically just wrap in ```yaml ``` and yaml format it
+    # and only take selected properties from each step
     previous_responses = []
     for step in previous_steps:
         previous_responses.append(
-            yaml.dump([step], default_flow_style=False, sort_keys=False)
+            yaml.dump(
+                [
+                    {
+                        "description": step["description"],
+                        "inputs": step["inputs"],
+                        "outputs_storage_keys": step["outputs_storage_keys"],
+                        "tool_name": step["tool_name"],
+                        "done": step["done"],
+                    }
+                ],
+                default_flow_style=False,
+                sort_keys=False,
+            )
         )
 
+    # TODO: construct using previous step outputs
     next_step_data_description = ""
 
     logging.info(f"Previous responses: {previous_responses}")
@@ -354,10 +398,19 @@ async def generate_single_step(
     # give a unique id to this step
     step["id"] = str(uuid4())
 
-    step_with_results = await run_step(step, previous_steps)
+    step_with_results = await run_step(
+        step, previous_steps, output_cache=analysis_output_cache
+    )
+
+    # store the output_cache
+    global_output_cache[analysis_id] = analysis_output_cache
 
     if analysis_id:
-        update_analysis_data
+        await update_analysis_data(
+            analysis_id=analysis_id,
+            request_type="gen_steps",
+            new_data=[step_with_results],
+        )
 
     return step_with_results
 
