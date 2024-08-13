@@ -1,22 +1,34 @@
 import React, { useState } from "react";
 import { message, Modal, Button, Spin, Card } from "antd";
-import { LoadingOutlined } from "@ant-design/icons";
+import { LoadingOutlined, CheckCircleOutlined, CloseCircleOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 
 const IMGO = ({ token, apiKeyName }) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const [loadingIndex, setLoadingIndex] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
 
-  const [loadingIndex, setLoadingIndex] = useState(null); // current loading step
-  const [loading, setLoading] = useState(false); // loading state for the full workflow at once
-  const [loadingRecommendations, setLoadingRecommendations] = useState(false); // loading state for final recommendations
-
-  const [results, setResults] = useState({}); // stores results for each step
-  const [recommendations, setRecommendations] = useState(null); // state for the final recommendations
+  const [results, setResults] = useState({});
+  const [recommendations, setRecommendations] = useState(null);
 
   const [optimizedGlossary, setOptimizedGlossary] = useState(null);
   const [optimizedMetadata, setOptimizedMetadata] = useState(null);
 
-  const iterations = 3; // Number of iterations to run the loop
+  const iterations = [
+    {
+      title: "Iteration 1: Use Current Metadata and Glossary",
+      description: "This iteration uses the current (unoptimized) metadata and glossary for generating golden queries.",
+    },
+    {
+      title: "Iteration 2: Use Optimized Glossary or Metadata",
+      description: "This iteration uses either the optimized glossary or optimized metadata, depending on what's available.",
+    },
+    {
+      title: "Iteration 3: Use Both Optimized Glossary and Metadata",
+      description: "This iteration uses both the optimized glossary and optimized metadata for generating golden queries.",
+    }
+  ];
 
   const steps = [
     {
@@ -86,8 +98,7 @@ const IMGO = ({ token, apiKeyName }) => {
   const executeWorkflow = async () => {
     setLoading(true);
     try {
-      // Execute the workflow with the full loop and iterations
-      for (let iteration = 0; iteration < iterations; iteration++) {
+      for (let iteration = 0; iteration < iterations.length; iteration++) {
         for (let step of steps) {
           await handleApiRequest(step, iteration);
         }
@@ -101,10 +112,10 @@ const IMGO = ({ token, apiKeyName }) => {
   };
 
   const handleApiRequest = async (step, iteration = 0) => {
-    const stepKey = `${step.name} Iteration ${iteration + 1}`;
-    setLoadingIndex(stepKey); // Set the loading state for the current step
+    const stepKey = `${step.name} ${iterations[iteration].title}`;
+    setLoadingIndex(stepKey);
+
     try {
-      console.log(`Executing ${stepKey}`);
       const res = await fetch(setupBaseUrl("http", step.endpoint), {
         method: "POST",
         headers: {
@@ -113,86 +124,74 @@ const IMGO = ({ token, apiKeyName }) => {
         body: JSON.stringify(step.payload(iteration)),
       });
       const data = await res.json();
-  
-      // Check if task_id is present and not undefined
+
+      const filteredData = { ...data };
+      delete filteredData.task_id;
+
+      setResults((prevResults) => ({
+        ...prevResults,
+        [stepKey]: filteredData,
+      }));
+
+      if (step.onSuccess) step.onSuccess(filteredData);
+
       const { task_id } = data;
-      console.log("Task ID for", step.name, ":", task_id);
       if (task_id) {
-        // Polling function to check the task status
         const pollTaskStatus = async (taskId) => {
-          console.log("Polling task status for", step.name, "with task_id", taskId);
           let isTaskCompleted = false;
           while (!isTaskCompleted) {
-            const statusRes = await fetch(setupBaseUrl("http", "check_task_status"), {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ token, key_name: apiKeyName, task_id: taskId }),
-            });
+            const statusRes = await fetch(
+              setupBaseUrl("http", "check_task_status"),
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  token,
+                  key_name: apiKeyName,
+                  task_id: taskId,
+                }),
+              }
+            );
             const statusData = await statusRes.json();
-            console.log("Task status for", step.name, ":", statusData);
-  
+
             if (statusData.status === "completed") {
               isTaskCompleted = true;
-              console.log(`${step.name} completed for Iteration ${iteration + 1}`);
               return isTaskCompleted;
             } else {
               console.log(`${step.name} still processing...`);
             }
-            // Wait for a 5 seconds before polling again
             await new Promise((resolve) => setTimeout(resolve, 5000));
           }
           return isTaskCompleted;
         };
-  
-        // Start polling
+
         const completed = await pollTaskStatus(task_id);
-  
+
         if (completed) {
-          // Once the task is completed, fetch the final data
-          const finalRes = await fetch(setupBaseUrl("http", step.endpoint), {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(step.payload(iteration)), // Re-fetch the data now that the task is completed
-          });
-          const finalData = await finalRes.json();
-  
-          // Update results for the specific step
+          const finalData = { ...data, finalmessage: "Task completed successfully" };
+          delete finalData.task_id;
+
           setResults((prevResults) => ({
             ...prevResults,
             [stepKey]: finalData,
           }));
-  
-          console.log("Set results for", stepKey, ":", finalData); // Debugging log
-  
+
           if (step.onSuccess) step.onSuccess(finalData);
         }
-      } else {
-        // If no task_id, directly update the results with the initial data
-        setResults((prevResults) => ({
-          ...prevResults,
-          [stepKey]: data,
-        }));
-        console.log("Set results for", stepKey, ":", data); // Debugging log
-  
-        if (step.onSuccess) step.onSuccess(data);
       }
     } catch (e) {
       console.error(`Error executing step ${stepKey}:`, e);
       message.error(`Failed to execute step ${stepKey}.`);
     } finally {
-      setLoadingIndex(null); // Reset the loading state
+      setLoadingIndex(null);
     }
   };
-  
 
   const handleFinalRecommendations = async () => {
     setLoadingRecommendations(true);
     try {
-      console.log("Executing final recommendations");
       const res = await fetch(setupBaseUrl("http", finalStep.endpoint), {
         method: "POST",
         headers: {
@@ -202,8 +201,6 @@ const IMGO = ({ token, apiKeyName }) => {
       });
       const data = await res.json();
       setRecommendations(data);
-
-      console.log("Final recommendations received:", data); // Debugging log
     } catch (e) {
       console.error("Error fetching final recommendations:", e);
       message.error("Failed to fetch final recommendations.");
@@ -214,27 +211,27 @@ const IMGO = ({ token, apiKeyName }) => {
 
   return (
     <>
-      <Button onClick={() => setModalVisible(true)}>
-        Iterative Metadata and Glossary Optimisation Workflow
+      <Button onClick={() => setModalVisible(true)} style={{ width: '100%' }}>
+        Iterative Metadata and Glossary Optimisation
       </Button>
       <Modal
-        title={<div className="text-center">IMGO Workflow Steps</div>}
+        title={<div className="text-center mt-4 text-xl">Recommendations for Improving Glossary and Metadata</div>}
         visible={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={[
-          <Button key="close" onClick={() => setModalVisible(false)}>
+          <Button key="close" onClick={() => setModalVisible(false)} style={{ width: '100%' }}>
             Close
           </Button>,
         ]}
         width="75%"
-        bodyStyle={{ maxHeight: "80vh", overflowY: "auto" }} // Handle overflow
+        bodyStyle={{ maxHeight: "80vh", overflowY: "auto" }}
       >
         <div className="space-y-4">
-          {/* Button to trigger full workflow */}
           <Button
             className="mt-2 mb-4 bg-blue-500 text-white"
             onClick={executeWorkflow}
             disabled={loading}
+            style={{ width: '100%' }}
           >
             {loading ? (
               <Spin
@@ -245,55 +242,86 @@ const IMGO = ({ token, apiKeyName }) => {
             )}
           </Button>
 
-          {/* Individual buttons for each step in each iteration */}
-          {Array.from({ length: iterations }).map((_, iteration) => (
-            <div key={iteration}>
-              <h3 className="font-bold text-lg">Iteration {iteration + 1}</h3>
-              {steps.map((step, index) => (
+          {iterations.map((iteration, iterationIndex) => (
+            <div key={iterationIndex} className="border border-gray-300 p-4 rounded-lg">
+              <h3 className="font-bold text-lg">{iteration.title}</h3>
+              <p className="text-sm text-gray-600 mb-4">{iteration.description}</p>
+              {steps.map((step, stepIndex) => (
                 <div
-                  key={index}
-                  className="border border-gray-300 p-4 rounded-lg"
+                  key={stepIndex}
+                  className="p-2 rounded-lg flex flex-col"
+                  style={{
+                    borderBottom: stepIndex < steps.length - 1 ? "1px solid #e0e0e0" : "none",
+                  }}
                 >
-                  <h4 className="font-bold text-md">{step.name}</h4>
-                  <Button
-                    className="mt-2 mb-4 bg-blue-500 text-white"
-                    onClick={() => handleApiRequest(step, iteration)}
-                    disabled={
-                      loadingIndex === `${step.name} Iteration ${iteration + 1}`
-                    }
-                  >
-                    {loadingIndex ===
-                    `${step.name} Iteration ${iteration + 1}` ? (
-                      <Spin
-                        indicator={
-                          <LoadingOutlined style={{ color: "white" }} />
-                        }
-                      />
-                    ) : (
-                      `Execute ${step.name}`
-                    )}
-                  </Button>
-                  {results[`${step.name} Iteration ${iteration + 1}`] && (
-                    <pre className="bg-gray-100 p-2 rounded overflow-auto max-h-32">
-                      {JSON.stringify(
-                        results[`${step.name} Iteration ${iteration + 1}`],
-                        null,
-                        2
+                  <div className="flex items-center">
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        marginRight: '8px',
+                        color:
+                          loadingIndex === `${step.name} ${iteration.title}`
+                            ? 'orange'
+                            : results[`${step.name} ${iteration.title}`]
+                              ? 'green'
+                              : 'red',
+                      }}
+                    >
+                      {loadingIndex === `${step.name} ${iteration.title}` ? (
+                        <Spin indicator={<LoadingOutlined style={{ color: "orange" }} />} />
+                      ) : results[`${step.name} ${iteration.title}`] ? (
+                        <CheckCircleOutlined />
+                      ) : (
+                        <CloseCircleOutlined />
                       )}
-                    </pre>
+                    </span>
+                    <span className="flex-1">{step.name}</span>
+                    <Button
+                      className="bg-blue-500 text-white"
+                      onClick={() => handleApiRequest(step, iterationIndex)}
+                      disabled={
+                        loadingIndex === `${step.name} ${iteration.title}`
+                      }
+                      style={{ width: '120px' }}
+                    >
+                      {loadingIndex === `${step.name} ${iteration.title}` ? (
+                        <Spin
+                          indicator={<LoadingOutlined style={{ color: "white" }} />}
+                        />
+                      ) : (
+                        `Execute`
+                      )}
+                    </Button>
+                  </div>
+                  {results[`${step.name} ${iteration.title}`] && (
+                    <div className="mt-2 bg-gray-200 text-black p-2 rounded font-mono text-sm">
+                      <div>----------</div>
+                      {Object.entries(results[`${step.name} ${iteration.title}`])
+                        .filter(([key]) => key !== "task_id")
+                        .map(([key, value], idx) => (
+                          <div key={idx}>
+                            {typeof value === 'object' ? (
+                              JSON.stringify(value, null, 2)
+                            ) : (
+                              <span>{value}</span>
+                            )}
+                          </div>
+                        ))}
+                      <div>----------</div>
+                    </div>
                   )}
                 </div>
               ))}
             </div>
           ))}
 
-          {/* Separate button for final recommendations */}
           <div className="border border-gray-300 p-4 rounded-lg">
             <h4 className="font-bold text-md">{finalStep.name}</h4>
             <Button
               className="mt-2 mb-4 bg-green-500"
               onClick={handleFinalRecommendations}
               disabled={loadingRecommendations}
+              style={{ width: '100%' }}
             >
               {loadingRecommendations ? (
                 <Spin
@@ -308,21 +336,10 @@ const IMGO = ({ token, apiKeyName }) => {
                 title="Final Recommendations"
                 className="bg-white shadow-md"
               >
-                <p>
-                  <strong>Recommendation:</strong> {recommendations.message}
-                </p>
-                <p>
-                  <strong>Validity Percentages:</strong>{" "}
-                  {recommendations.valid_pct_list.join(", ")}
-                </p>
-                <p>
-                  <strong>Correctness Percentages:</strong>{" "}
-                  {recommendations.correct_pct_list.join(", ")}
-                </p>
-                <p>
-                  <strong>Overall Scores:</strong>{" "}
-                  {recommendations.overall_list.join(", ")}
-                </p>
+                <p>{recommendations.message}</p>
+                <p>Validity Percentages: {recommendations.valid_pct_list.join(", ")}</p>
+                <p>Correctness Percentages: {recommendations.correct_pct_list.join(", ")}</p>
+                <p>Overall Scores: {recommendations.overall_list.join(", ")}</p>
               </Card>
             )}
           </div>

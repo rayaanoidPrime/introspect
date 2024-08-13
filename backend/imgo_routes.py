@@ -79,7 +79,7 @@ async def optimize_metadata(request: Request):
 
 @router.post("/get_recommendation_for_glossary_and_metadata")
 async def get_recommendation_for_glossary_and_metadata(request: Request):
-    """Responds to a request for recommendation for glossary and metadata."""
+    """Responds to a recommendation request for whether to improve glossary and/or metadata."""
     return await process_imgo_request(request, "imgo_get_recommendation")
 
 
