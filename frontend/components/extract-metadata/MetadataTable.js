@@ -59,7 +59,7 @@ const MetadataTable = ({
           const data = await res.json();
           setLoading(false);
           if (data.error) {
-            message.error("Error updating metadata");
+            message.error(data.error || "Error updating metadata");
           } else {
             if (data.suggested_joins) {
               document.getElementById("allowed-joins").value =
