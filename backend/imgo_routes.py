@@ -12,7 +12,7 @@ router = APIRouter()
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 
-async def process_imgo_request(
+async def send_imgo_request(
     request: Request, endpoint: str, additional_payload: dict = None
 ):
     """Helper function to handle IMGO request processing."""
@@ -50,37 +50,37 @@ async def process_imgo_request(
 @router.post("/generate_golden_queries_from_questions")
 async def generate_golden_queries_from_questions(request: Request):
     """Generates golden queries for the current set of golden questions."""
-    return await process_imgo_request(request, "imgo_gen_golden_queries")
+    return await send_imgo_request(request, "imgo_gen_golden_queries")
 
 
 @router.post("/check_generated_golden_queries_validity")
 async def check_generated_golden_queries_validity(request: Request):
     """Checks if the generated golden queries are valid and returns the invalid ones with the error message."""
-    return await process_imgo_request(request, "imgo_check_golden_queries_valid")
+    return await send_imgo_request(request, "imgo_check_golden_queries_valid")
 
 
 @router.post("/check_generated_golden_queries_correctness")
 async def check_generated_golden_queries_correctness(request: Request):
     """Checks if the generated golden queries are correct and returns a confirmation message that it was triggered."""
-    return await process_imgo_request(request, "imgo_check_golden_queries_correct")
+    return await send_imgo_request(request, "imgo_check_golden_queries_correct")
 
 
 @router.post("/optimize_glossary")
 async def optimize_glossary(request: Request):
     """Responds to a request for optimized glossary and returns the optimized glossary."""
-    return await process_imgo_request(request, "imgo_optimize_glossary")
+    return await send_imgo_request(request, "imgo_optimize_glossary")
 
 
 @router.post("/optimize_metadata")
 async def optimize_metadata(request: Request):
     """Responds to a request for optimized metadata and returns the optimized metadata."""
-    return await process_imgo_request(request, "imgo_optimize_metadata")
+    return await send_imgo_request(request, "imgo_optimize_metadata")
 
 
 @router.post("/get_recommendation_for_glossary_and_metadata")
 async def get_recommendation_for_glossary_and_metadata(request: Request):
     """Responds to a recommendation request for whether to improve glossary and/or metadata."""
-    return await process_imgo_request(request, "imgo_get_recommendation")
+    return await send_imgo_request(request, "imgo_get_recommendation")
 
 
 @router.post("/check_task_status")
