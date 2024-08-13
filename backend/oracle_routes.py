@@ -1,5 +1,12 @@
+from datetime import datetime
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy.orm import Session
+from sqlalchemy.sql import insert, select
+
+from db_utils import OracleReports, engine, validate_user
+from generic_utils import get_api_key_from_key_name
+from oracle.core import begin_generation_task
 
 router = APIRouter()
 
@@ -20,13 +27,39 @@ async def begin_generation(req: Request):
     """
     Given the question / objective statement provided by the user, as well as the
     full list of configuration options, this endpoint will begin the process of
-    generating a report.
-    We will use https://fastapi.tiangolo.com/tutorial/background-tasks/#using-backgroundtasks
-    to run the report generation in the background.
+    generating a report asynchronously as a celery task.
     """
     body = await req.json()
-    # TODO: Implement this endpoint
-    return JSONResponse(status_code=501, content={"error": "Not Implemented"})
+    key_name = body.pop("key_name")
+    token = body.pop("token")
+    username = validate_user(token, user_type=None, get_username=True)
+    if not username:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+    api_key = get_api_key_from_key_name(key_name)
+    # insert a new row into the OracleReports table and get a new report_id
+    with Session(engine) as session:
+        stmt = (
+            insert(OracleReports)
+            .values(
+                api_key=api_key,
+                username=username,
+                inputs=body,
+                status="started",
+                created_ts=datetime.now()
+            )
+            .returning(OracleReports.report_id)
+        )
+        result = session.execute(stmt)
+        report_id = result.scalar_one()
+        session.commit()
+    begin_generation_task.apply_async(args=[api_key, username, report_id, body])
+    return JSONResponse(content={"report_id": report_id, "status": "started"})
 
 @router.post("/oracle/list_reports")
 async def reports_list(req: Request):
@@ -40,8 +73,48 @@ async def reports_list(req: Request):
     - feedback
     """
     body = await req.json()
-    # TODO: Implement this endpoint
-    return JSONResponse(status_code=501, content={"error": "Not Implemented"})
+    key_name = body.pop("key_name")
+    token = body.pop("token")
+    username = validate_user(token, user_type=None, get_username=True)
+    if not username:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+    api_key = get_api_key_from_key_name(key_name)
+
+    with Session(engine) as session:
+        stmt = (
+            select(
+                OracleReports.report_id,
+                OracleReports.report_name,
+                OracleReports.status,
+                OracleReports.created_ts,
+                OracleReports.inputs
+            )
+            .where(
+                OracleReports.api_key == api_key,
+                OracleReports.username == username
+            )
+            .order_by(OracleReports.created_ts.desc())
+        )
+        result = session.execute(stmt)
+        reports = result.fetchall()
+
+    reports_list = [
+        {
+            "report_id": report.report_id,
+            "report_name": report.report_name,
+            "status": report.status,
+            "date_created": report.created_ts.isoformat(),  # Convert to ISO 8601 string
+            "inputs": report.inputs,
+        }
+        for report in reports
+    ]
+    return JSONResponse(status_code=200, content={"reports": reports_list})
 
 @router.post("/oracle/download_report")
 async def download_report(req: Request):
@@ -59,8 +132,37 @@ async def delete_report(req: Request):
     Reports in progress will have their associated background tasks cancelled.
     """
     body = await req.json()
-    # TODO: Implement this endpoint
-    return JSONResponse(status_code=501, content={"error": "Not Implemented"})
+    key_name = body.pop("key_name", "")
+    token = body.pop("token", "")
+    report_id = body.pop("report_id", None)
+    username = validate_user(token, user_type=None, get_username=True)
+    if not username:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+    api_key = get_api_key_from_key_name(key_name)
+
+    with Session(engine) as session:
+        stmt = (
+            select(OracleReports)
+            .where(
+                OracleReports.api_key == api_key,
+                OracleReports.username == username,
+                OracleReports.report_id == report_id
+            )
+        )
+        result = session.execute(stmt)
+        report = result.scalar_one_or_none()
+        if report:
+            session.delete(report)
+            session.commit()
+            return JSONResponse(status_code=200, content={"message": "Report deleted"})
+        else:
+            return JSONResponse(status_code=404, content={"error": "Report not found"})
 
 @router.post("/oracle/rename_report")
 async def rename_report(req: Request):

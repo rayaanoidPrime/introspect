@@ -183,8 +183,8 @@ CREATE TABLE IF NOT EXISTS oracle_reports (
     created_ts TIMESTAMP,
     api_key VARCHAR(255),
     username TEXT,
-    inputs TEXT,
-    outputs TEXT,
+    inputs JSONB,
+    outputs JSONB,
     feedback TEXT
 );
 
