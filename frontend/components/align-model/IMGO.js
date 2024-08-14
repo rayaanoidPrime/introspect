@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import Instructions from "./Instructions";
+import MetadataEditor from "./EditableMetadata";
 import { message, Modal, Button, Spin, Card, Slider, Table } from "antd";
 import {
   PlayCircleOutlined,
@@ -7,8 +9,9 @@ import {
   CloseCircleOutlined,
 } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import { EditableLabel } from "@amcharts/amcharts5";
 
-const IMGO = ({ token, apiKeyName }) => {
+const IMGO = ({ token, apiKeyName, updateGlossary }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [loadingIndex, setLoadingIndex] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -16,10 +19,23 @@ const IMGO = ({ token, apiKeyName }) => {
   // store the logs/output of each step
   const [results, setResults] = useState({});
   // store the final recommendations
+  const dummyRecs = {
+    message: "metadata and glossary",
+    valid_pct_list: [100, 100, 100, 100],
+    correct_pct_list: [100, 100, 100, 100],
+  }
   const [recommendations, setRecommendations] = useState(null);
+
+  const [changeGlossary, setChangeGlossary] = useState(false);
+  const [changeMetadata, setChangeMetadata] = useState(false);
 
   const optimizedGlossaryRef = useRef(null);
   const optimizedMetadataRef = useRef(null);
+
+  const [newGlossary, setNewGlossary] = useState("");
+  const [newMetadata, setNewMetadata] = useState();
+
+  const [updatingInstructions, setUpdatingInstructions] = useState(false);
 
   const iterations = [
     {
@@ -144,11 +160,15 @@ const IMGO = ({ token, apiKeyName }) => {
 
     if (iteration === 1) {
       payload.optimized_glossary = optimizedGlossaryRef.current;
+      setNewGlossary(optimizedGlossaryRef.current);
     } else if (iteration === 2) {
       payload.optimized_metadata = optimizedMetadataRef.current;
+      setNewMetadata(optimizedMetadataRef.current);
     } else if (iteration === 3) {
       payload.optimized_glossary = optimizedGlossaryRef.current;
+      setNewGlossary(optimizedGlossaryRef.current);
       payload.optimized_metadata = optimizedMetadataRef.current;
+      setNewMetadata(optimizedMetadataRef.current);
     }
 
     try {
@@ -180,7 +200,7 @@ const IMGO = ({ token, apiKeyName }) => {
       const { task_id } = data;
       if (task_id) {
         const pollTaskStatus = async (taskId) => {
-          let isTaskCompleted = false;
+          let isTaskCompleted = true;
           while (!isTaskCompleted) {
             const statusRes = await fetch(
               setupBaseUrl("http", "check_task_status"),
@@ -207,7 +227,7 @@ const IMGO = ({ token, apiKeyName }) => {
           return isTaskCompleted;
         };
 
-        const completed = await pollTaskStatus(task_id);
+        const completed = true; // await pollTaskStatus(task_id);
 
         if (completed) {
           const finalData = {
@@ -260,10 +280,14 @@ const IMGO = ({ token, apiKeyName }) => {
       lowerMessage.includes("metadata") &&
       lowerMessage.includes("glossary")
     ) {
+      setChangeGlossary(true);
+      setChangeMetadata(true);
       return "Recommendations: Focus on improving both Metadata and Glossary.";
     } else if (lowerMessage.includes("metadata")) {
+      setChangeMetadata(true);
       return "Recommendations: Focus on improving Metadata.";
     } else if (lowerMessage.includes("glossary")) {
+      setChangeGlossary(true);
       return "Recommendations: Focus on improving Glossary.";
     }
 
@@ -299,32 +323,27 @@ const IMGO = ({ token, apiKeyName }) => {
         bodyStyle={{ maxHeight: "80vh", overflowY: "auto" }}
       >
         <div className="space-y-4">
-          <div className="flex justify-center">
-            <Button
-              className={`mt-2 mb-4 w-1/5 text-white text-lg py-3 rounded-lg ${
-                loading ? "bg-lime-600" : "bg-lime-700 hover:bg-lime-800"
-              } flex justify-center items-center`}
-              onClick={executeWorkflow}
-              disabled={loading}
-            >
-              {loading ? (
-                <Spin
-                  indicator={
-                    <LoadingOutlined className="text-white text-2xl" />
-                  }
-                  className="mr-2"
-                />
-              ) : (
-                <PlayCircleOutlined className="text-xl mb-2" />
-              )}
-            </Button>
-          </div>
-
-          {recommendations && (
+          {recommendations ? (
             <Card title="Final Recommendations" className="bg-white shadow-md">
               <p className="mb-2 font-semibold text-lg">
                 {interpretFinalMessage(recommendations.message)}
               </p>
+              {true && (
+                <Instructions
+                  title="Optimized Glossary"
+                  description="These are the optimized glossary recommendations. You can edit them below before accepting changes."
+                  glossary={newGlossary}
+                  setGlossary={setNewGlossary}
+                  updateGlossary={updateGlossary}
+                  updateGlossaryLoadingFunction={setUpdatingInstructions}
+                  isLoading={false}
+                  isUpdatingInstructions={updatingInstructions}
+                />
+              )}
+              <MetadataEditor
+                metadata={newMetadata}
+                onUpdate={setNewMetadata}
+              />
               <div className="mt-4">
                 <h4 className="font-semibold">Percentages:</h4>
                 {recommendations.valid_pct_list.map((value, index) => (
@@ -341,6 +360,13 @@ const IMGO = ({ token, apiKeyName }) => {
                 ))}
               </div>
             </Card>
+          ) : (
+            <div className="text-center italic text-lg">
+              Your recommendations will appear here after the workflow is done
+              running. Please bear with us as we run multiple iterations to
+              provide you with the best recommendations. This can take a few
+              minutes.
+            </div>
           )}
 
           {iterations.map((iteration, iterationIndex) => (

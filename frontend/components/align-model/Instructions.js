@@ -1,6 +1,8 @@
 import { Button, Spin } from "antd";
 
 const Instructions = ({
+  title,
+  description,
   glossary,
   setGlossary,
   updateGlossary,
@@ -9,11 +11,8 @@ const Instructions = ({
   isUpdatingInstructions,
 }) => (
   <div className="w-full p-4">
-    <h2 className="text-xl mb-3 font-semibold">Instructions</h2>
-    <p className="mb-4 text-gray-700">
-      These instructions are used by the model as a guide for the SQL queries
-      that it generates. You can change them below.
-    </p>
+    <h2 className="text-xl mb-3 font-semibold">{title}</h2>
+    <p className="mb-4 text-gray-700">{description}</p>
     <Spin
       spinning={isLoading || isUpdatingInstructions}
       tip={
@@ -32,11 +31,11 @@ const Instructions = ({
     </Spin>
     <Button
       type="primary"
-      className="mt-4 h-auto p-2 min-w-56"
+      className="mt-4 p-2 min-w-56"
       onClick={() => updateGlossary(glossary, updateGlossaryLoadingFunction)}
       disabled={isLoading || isUpdatingInstructions}
     >
-      Update Instructions
+      Update Glossary
     </Button>
   </div>
 );
