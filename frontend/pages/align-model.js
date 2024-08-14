@@ -155,10 +155,9 @@ const AlignModel = () => {
           </p>
         </div>
         <div className="flex flex-col p-1 border border-gray-3200 rounded-lg">
-          <IMGO
-            token={token}
-            apiKeyName={apiKeyName}
-          />
+          {!!glossary && goldenQueries.length > 0 ? (
+            <IMGO token={token} apiKeyName={apiKeyName} />
+          ) : null}
           <Instructions
             glossary={glossary}
             setGlossary={setGlossary}
