@@ -8,7 +8,7 @@ from colorama import Fore, Style
 
 from agents.planner_executor.execute_tool import execute_tool
 from agents.clarifier.clarifier_agent import turn_into_statements
-from backend.tool_code_utilities import fetch_query_into_df
+from tool_code_utilities import fetch_query_into_df
 from db_utils import (
     get_analysis_data,
     get_analysis_question_context,
@@ -167,62 +167,30 @@ async def run_step(
     analysis_id, step, all_steps, analysis_execution_cache, skip_cache_storing=False
 ):
     """
-    Runs a single step, updating the steps object *in place* with the results.
+    Runs a single step, updating the steps object *in place* with the results. Also re-runs all parent steps if required.
     General flow:
-    1. First check if we have the outputs of this step already stored. If we do have them stored, then check if the inputs to the step have been edited by the user. If they have, then re run the step. Otherwise, no need to re run it, just use the stored outputs.
-    2. First it tries to resolve the inputs to a step.
-    3. If the inputs can't be resolved, it recursively runs the parent steps till either resolved or error.
-    4. Once resolved successfully, it runs the step.
+    1. First try to resolve the inputs of this step.
+    2. If the inputs resolution gives a MissingDependencyException means that one of hte inputs is a global_dict.XXX type of input, which means we need to run a parent step. If any other error, fail.
+    3. Run all the required parent steps recursively till the inputs are resolved.
+    4. Now the inputs are resolved, run this step.
     5. Stores the run step in the respective analysis in the db
     """
 
-    step_outputs_available = 0
-    step_edited = False
     outputs_storage_keys = step["outputs_storage_keys"]
 
-    # check if this step has been edited
-    # compare each stringified model_generated_inputs to stringified inputs
-    if step.get("model_generated_inputs", {}) != step.get("inputs", {}):
-        step_edited = True
-
-    if not step_edited:
-        # check if all the outputs of this step are already stored and available
-        if "outputs" in step:
-            # keep in a temp dictionary at the start
-            # we will only merge this into analysis_execution_cache if *all* outputs are available
-            temp = {}
-            # find if the dataframes for these outputs are available
-            for output_name in outputs_storage_keys:
-                path = (
-                    analysis_assets_dir
-                    + "/datasets/"
-                    + step["id"]
-                    + "_output-"
-                    + output_name
-                    + ".feather"
-                )
-                if os.path.exists(path):
-                    step_outputs_available += 1
-                    temp[output_name] = pd.read_feather(path)
-                else:
-                    break
-
-            if step_outputs_available == len(outputs_storage_keys):
-                # don't need to do anything, just update the analysis_execution_cache and return.
-                analysis_execution_cache.update(temp)
-                return
-
-    # if we're here, it means we need to run this step
+    # try to resolve the inputs to this step
     max_resolve_tries = 4
 
     while max_resolve_tries > 0:
         # keep doing till we either resolve the inputs or raise an error while resolving
+        # NOTE: we only decrease the above max_resolve_tries in case of exceptions
         try:
             # resolve the inputs
             resolved_inputs = resolve_step_inputs(
                 step["inputs"], analysis_execution_cache=analysis_execution_cache
             )
         except MissingDependencyException as e:
+            max_resolve_tries -= 1
             missing_variable = e.variable_name
             logging.info(f"Missing variable: {missing_variable}")
             # find the step that generated this variable
@@ -236,9 +204,9 @@ async def run_step(
                 )
             else:
                 logging.info(
-                    f"Found step that generated the output: {missing_variable}. Now running that."
+                    f"Found step that generated the output: {missing_variable}. Putting that in run queue."
                 )
-                # TODO: run the above step that was found
+
                 await run_step(
                     analysis_id=analysis_id,
                     step=step_that_generated_this_output,
@@ -246,10 +214,14 @@ async def run_step(
                     analysis_execution_cache=analysis_execution_cache,
                 )
         except Exception as e:
+            max_resolve_tries -= 1
             logging.error(f"Error while resolving step inputs: {e}")
             raise Exception(f"Error while resolving step inputs")
         finally:
-            max_resolve_tries -= 1
+            if max_resolve_tries == 0:
+                raise Exception(
+                    f"Exceeded max tries while resolving the inputs to this step: {step['id']}"
+                )
 
     logging.info(f"Resolved step inputs: {resolved_inputs}")
 
@@ -438,6 +410,46 @@ def find_previous_steps_from_step_id(step_id, all_steps):
     return all_steps[:idx]
 
 
+async def prepare_cache(
+    analysis_id,
+    dfg_api_key,
+    user_question,
+    clarification_questions=[],
+    toolboxes=[],
+    dev=False,
+    temp=False,
+):
+    analysis_execution_cache = {}
+    analysis_execution_cache["dfg_api_key"] = dfg_api_key
+    analysis_execution_cache["user_question"] = user_question
+    analysis_execution_cache["toolboxes"] = toolboxes
+    analysis_execution_cache["dev"] = dev
+    analysis_execution_cache["temp"] = temp
+
+    # TODO: store the statements generated from the clarification questions in the db and reuse
+    # get the assignment understanding aka answers to clarification questions
+    assignment_understanding = None
+    logging.info(f"Clarification questiuons: {clarification_questions}")
+
+    if len(clarification_questions) > 0:
+        try:
+            assignment_understanding = await turn_into_statements(
+                clarification_questions, dfg_api_key
+            )
+        except Exception as e:
+            logging.warn(
+                "Could not generate understanding. The answers might not be what the user wants. Resorting to blank string"
+            )
+            logging.error(e)
+            assignment_understanding = ""
+
+    logging.info(f"Assignment understanding: {assignment_understanding}")
+
+    analysis_execution_cache["assignment_understanding"] = assignment_understanding
+
+    return analysis_execution_cache
+
+
 async def generate_single_step(
     dfg_api_key,
     analysis_id,
@@ -465,33 +477,16 @@ async def generate_single_step(
 
     unique_id = str(uuid4())
 
-    analysis_execution_cache = global_execution_cache.get(analysis_id, {})
-
-    analysis_execution_cache["dfg_api_key"] = dfg_api_key
-    analysis_execution_cache["user_question"] = user_question
-    analysis_execution_cache["toolboxes"] = toolboxes
-    analysis_execution_cache["dev"] = dev
-    analysis_execution_cache["temp"] = temp
-
-    # get the assignment understanding aka answers to clarification questions
-    assignment_understanding = None
-    logging.info(f"Clarification questiuons: {clarification_questions}")
-
-    if len(clarification_questions) > 0:
-        try:
-            assignment_understanding = await turn_into_statements(
-                clarification_questions, dfg_api_key
-            )
-        except Exception as e:
-            logging.warn(
-                "Could not generate understanding. The answers might not be what the user wants. Resorting to blank string"
-            )
-            logging.error(e)
-            assignment_understanding = ""
-
-    logging.info(f"Assignment understanding: {assignment_understanding}")
-
-    analysis_execution_cache["assignment_understanding"] = assignment_understanding
+    # prepare the cache
+    analysis_execution_cache = await prepare_cache(
+        analysis_id,
+        dfg_api_key,
+        user_question,
+        clarification_questions,
+        toolboxes,
+        dev,
+        temp,
+    )
 
     # NOTE: see note above
     # err, user_question_context = await get_analysis_question_context(analysis_id)
@@ -581,6 +576,83 @@ async def generate_single_step(
     global_execution_cache[analysis_id] = analysis_execution_cache
 
     return step
+
+
+def find_dependent_steps(step, all_steps):
+    """
+    Given a step, find all the steps that depend on this step.
+    """
+    dependent_steps = []
+
+    # output keys of the step we want to find the dependents of
+    output_keys = step.get("outputs_storage_keys", [])
+
+    for s in all_steps:
+        # skip if it's the same step
+        if step["id"] == s["id"]:
+            continue
+        inputs = s.get("inputs", {}).values()
+        # if any of the inputs to this step start with global_dict.[output_key], then this step is dependent on the step we're looking at
+        for inp in inputs:
+            if isinstance(inp, str) and inp.startswith("global_dict."):
+                variable_name = inp.split(".")[1]
+                if variable_name in output_keys:
+                    dependent_steps.append(s)
+
+    return dependent_steps
+
+
+async def rerun_step(
+    step,
+    all_steps,
+    dfg_api_key,
+    analysis_id,
+    user_question,
+    clarification_questions=[],
+    toolboxes=[],
+    dev=False,
+    temp=False,
+):
+    """
+    Run a step again, running both the parents AND dependents of this step.
+
+    Here all_steps and step is coming from the front end/client, NOT from the db. This is because we assume a person clicks on rerun_step when they have edited the inputs of a step and want to re-run it. And we don't store-on-edit the inputs to the db anymore. The edited versions only live on the front end.
+
+    1. First simply call run_step on this step. That will take care of running the parents.
+    2. Find the dependents of this step, in increasing order of depth in the DAG.
+    3. Run each of those steps.
+    4. Returns all steps with modified data.
+    """
+
+    # prepare the cache
+    analysis_execution_cache = await prepare_cache(
+        analysis_id,
+        dfg_api_key,
+        user_question,
+        clarification_questions,
+        toolboxes,
+        dev,
+        temp,
+    )
+
+    await run_step(
+        analysis_id=analysis_id,
+        step=step,
+        all_steps=all_steps,
+        analysis_execution_cache=analysis_execution_cache,
+    )
+
+    dependent_steps = find_dependent_steps(step, all_steps)
+
+    for dependent_step in dependent_steps:
+        await run_step(
+            analysis_id=analysis_id,
+            step=dependent_step,
+            all_steps=all_steps,
+            analysis_execution_cache=analysis_execution_cache,
+        )
+
+    return all_steps
 
 
 class Executor:
