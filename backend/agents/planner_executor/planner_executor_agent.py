@@ -532,7 +532,7 @@ async def generate_single_step(
         "request_type": "create_plan",
         "question": user_question,
         "tool_library_prompt": tool_library_prompt,
-        "assignment_understanding": assignment_understanding,
+        "assignment_understanding": analysis_execution_cache["assignment_understanding"],
         "previous_responses": previous_responses_yaml_for_prompt,
         "next_step_data_description": next_step_data_description,
         "api_key": dfg_api_key,

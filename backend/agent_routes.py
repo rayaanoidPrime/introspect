@@ -2,13 +2,16 @@ import traceback
 from fastapi import APIRouter, Request
 from agents.clarifier.clarifier_agent import get_clarification
 
-from agents.planner_executor.planner_executor_agent import generate_single_step
-from db_utils import get_analysis_data
+from agents.planner_executor.planner_executor_agent import (
+    generate_single_step,
+    rerun_step,
+)
 from analysis_data_manager import AnalysisDataManager
 import logging
 
 logging.basicConfig(level=logging.INFO)
 
+from backend.db_utils import get_analysis_data
 from generic_utils import get_api_key_from_key_name
 
 router = APIRouter()
@@ -23,14 +26,13 @@ async def generate_step(request: Request):
     try:
         logging.info("Generating step")
         params = await request.json()
-        max_retries = params.get("max_retries", 3)
         key_name = params.get("key_name")
         question = params.get("user_question")
         analysis_id = params.get("analysis_id")
-        previous_steps = params.get("previous_steps", [])
         dev = params.get("dev", False)
         temp = params.get("temp", False)
         clarification_questions = params.get("clarification_questions", [])
+        toolboxes = params.get("toolboxes", [])
 
         # if key name or question is none or blank, return error
         if not key_name or key_name == "":
@@ -49,6 +51,9 @@ async def generate_step(request: Request):
             analysis_id=analysis_id,
             user_question=question,
             clarification_questions=clarification_questions,
+            dev=dev,
+            temp=temp,
+            toolboxes=toolboxes,
         )
 
         return {
@@ -128,11 +133,77 @@ async def clarify(request: Request):
 
 
 @router.post("/rerun_step")
-async def clarify(request: Request):
+async def rerun_step_endpoint(request: Request):
     """
     Function that re runs a step given:
-    1. anlaysis id
-    2. step id
-    It reuses the run_step function that is also used in the generate_step endpoint
+    1. Analysis ID
+    2. Step id to re run
+    3. All steps' objects
+    4. Answers to clarification questions
+
+    It re runs both the parents and the dependent steps of the step to re run.
     """
+    try:
+        params = await request.json()
+        key_name = params.get("key_name")
+        analysis_id = params.get("analysis_id")
+        step_id = params.get("step_id")
+        all_steps = params.get("all_steps")
+        toolboxes = params.get("toolboxes", [])
+
+        # if key name is none or blank, return error
+        if not key_name or key_name == "":
+            raise Exception("Invalid request. Must have API key name.")
+
+        if not analysis_id or analysis_id == "":
+            raise Exception("Invalid request. Must have analysis id.")
+
+        if not step_id or step_id == "":
+            raise Exception("Invalid request. Must have step id.")
+
+        if not all_steps or type(all_steps) != list:
+            raise Exception("Invalid request. Must have all steps.")
+
+        api_key = get_api_key_from_key_name(key_name)
+
+        if not api_key:
+            raise Exception("Invalid API key name.")
+
+        # first make sure the step exists in all_steps
+        step = None
+        for s in all_steps:
+            if s.get("id") == step_id:
+                step = s
+                break
+
+        if not step:
+            raise Exception("Step not found in all steps.")
+
+        # rerun this step and all its parents and dependents
+        # the re run function will handle the storage of all the steps in the db
+        await rerun_step(
+            step=step,
+            all_steps=all_steps,
+            analysis_id=analysis_id,
+            dfg_api_key=api_key,
+            user_question=None,
+            clarification_questions=None,
+            toolboxes=toolboxes,
+            dev=False,
+            temp=False,
+        )
+
+        # now get analysis data, and return the updated steps
+        err, analysis_data = get_analysis_data(analysis_id=analysis_id)
+        if err:
+            raise Exception(err)
+
+        return {
+            "success": True,
+            "steps": analysis_data.get("gen_steps", {}).get("steps", []),
+        }
+    except Exception as e:
+        logging.error(e)
+        return {"success": False, "error_message": str(e) or "Incorrect request"}
+
     pass
