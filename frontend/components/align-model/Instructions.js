@@ -4,6 +4,7 @@ const Instructions = ({
   glossary,
   setGlossary,
   updateGlossary,
+  updateGlossaryLoadingFunction,
   isLoading,
   isUpdatingInstructions,
 }) => (
@@ -32,7 +33,7 @@ const Instructions = ({
     <Button
       type="primary"
       className="mt-4 h-auto p-2 min-w-56"
-      onClick={updateGlossary}
+      onClick={() => updateGlossary(glossary, updateGlossaryLoadingFunction)}
       disabled={isLoading || isUpdatingInstructions}
     >
       Update Instructions

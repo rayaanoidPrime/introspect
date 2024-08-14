@@ -75,8 +75,8 @@ const AlignModel = () => {
     }
   };
 
-  const updateGlossary = async () => {
-    setIsUpdatingInstructions(true);
+  const updateGlossary = async (glossary, setLoading) => {
+    setLoading(true);
     const res = await fetch(
       setupBaseUrl("http", `integration/update_glossary`),
       {
@@ -93,7 +93,7 @@ const AlignModel = () => {
       }
     );
     const data = await res.json();
-    setIsUpdatingInstructions(false);
+    setLoading(false);
     if (data.status === "success") {
       message.success("Instructions updated successfully!");
     }
@@ -156,12 +156,17 @@ const AlignModel = () => {
         </div>
         <div className="flex flex-col p-1 border border-gray-3200 rounded-lg">
           {!!glossary && goldenQueries.length > 0 ? (
-            <IMGO token={token} apiKeyName={apiKeyName} />
+            <IMGO
+              token={token}
+              apiKeyName={apiKeyName}
+              updateGlossary={updateGlossary}
+            />
           ) : null}
           <Instructions
             glossary={glossary}
             setGlossary={setGlossary}
             updateGlossary={updateGlossary}
+            updateGlossaryLoadingFunction={setIsUpdatingInstructions}
             isLoading={isLoading}
             isUpdatingInstructions={isUpdatingInstructions}
           />
