@@ -12,8 +12,10 @@ from tool_code_utilities import fetch_query_into_df
 from db_utils import (
     get_analysis_data,
     get_analysis_question_context,
+    get_assignment_understanding,
     store_tool_run,
     update_analysis_data,
+    update_assignment_understanding,
 )
 from utils import deduplicate_columns, warn_str, YieldList
 from .tool_helpers.toolbox_manager import get_tool_library_prompt
@@ -178,6 +180,8 @@ async def run_step(
 
     outputs_storage_keys = step["outputs_storage_keys"]
 
+    logging.info(f"Running step: {step['id']}")
+
     # try to resolve the inputs to this step
     max_resolve_tries = 4
 
@@ -190,7 +194,6 @@ async def run_step(
                 step["inputs"], analysis_execution_cache=analysis_execution_cache
             )
         except MissingDependencyException as e:
-            max_resolve_tries -= 1
             missing_variable = e.variable_name
             logging.info(f"Missing variable: {missing_variable}")
             # find the step that generated this variable
@@ -214,7 +217,6 @@ async def run_step(
                     analysis_execution_cache=analysis_execution_cache,
                 )
         except Exception as e:
-            max_resolve_tries -= 1
             logging.error(f"Error while resolving step inputs: {e}")
             raise Exception(f"Error while resolving step inputs")
         finally:
@@ -222,6 +224,7 @@ async def run_step(
                 raise Exception(
                     f"Exceeded max tries while resolving the inputs to this step: {step['id']}"
                 )
+            max_resolve_tries -= 1
 
     logging.info(f"Resolved step inputs: {resolved_inputs}")
 
@@ -230,33 +233,36 @@ async def run_step(
     # if the question changed, then run the tool itself, where we send a req to defog and get the sql
     # if the question is the same, but the sql changed, then just run the sql again
     results = None
-    tool_input_metadata = step["tool_input_metadata"]
     executed = False
+    tool_input_metadata = None
 
-    if step["tool_name"] == "data_fetcher_and_aggregator":
-        model_generated_question = step["model_generated_inputs"]["question"]
-        current_question = step["inputs"]["question"]
+    # for us to check anything, we need to ensure this isn't the first time this step is running
+    # check if model_generated_inputs and inputs even exist
+    if "model_generated_inputs" in step and "inputs" in step:
+        if step["tool_name"] == "data_fetcher_and_aggregator":
+            model_generated_question = step["model_generated_inputs"]["question"]
+            current_question = step["inputs"]["question"]
 
-        # if the question has not changed, we will make executed to True, then run the sql
-        if model_generated_question == current_question:
-            executed = True
-            try:
-                output_df, final_sql_query = await fetch_query_into_df(
-                    api_key=analysis_execution_cache["dfg_api_key"],
-                    sql_query=step["sql"],
-                    temp=analysis_execution_cache["temp"],
-                )
-                results = {
-                    "sql": final_sql_query,
-                    "outputs": [
-                        {
-                            "data": output_df,
-                        }
-                    ],
-                }
-                analysis_execution_cache[outputs_storage_keys[0]] = output_df
-            except Exception as e:
-                results = {"error_message": str(e)}
+            # if the question has not changed, we will make executed to True, then run the sql
+            if model_generated_question == current_question:
+                executed = True
+                try:
+                    output_df, final_sql_query = await fetch_query_into_df(
+                        api_key=analysis_execution_cache["dfg_api_key"],
+                        sql_query=step["sql"],
+                        temp=analysis_execution_cache["temp"],
+                    )
+                    results = {
+                        "sql": final_sql_query,
+                        "outputs": [
+                            {
+                                "data": output_df,
+                            }
+                        ],
+                    }
+                    analysis_execution_cache[outputs_storage_keys[0]] = output_df
+                except Exception as e:
+                    results = {"error_message": str(e)}
 
     # if we didn't execute yet, do it now by running the tool
     if not executed:
@@ -410,26 +416,17 @@ def find_previous_steps_from_step_id(step_id, all_steps):
     return all_steps[:idx]
 
 
-async def prepare_cache(
-    analysis_id,
-    dfg_api_key,
-    user_question,
-    clarification_questions=[],
-    toolboxes=[],
-    dev=False,
-    temp=False,
+async def generate_assignment_understanding(
+    analysis_id, clarification_questions, dfg_api_key
 ):
-    analysis_execution_cache = {}
-    analysis_execution_cache["dfg_api_key"] = dfg_api_key
-    analysis_execution_cache["user_question"] = user_question
-    analysis_execution_cache["toolboxes"] = toolboxes
-    analysis_execution_cache["dev"] = dev
-    analysis_execution_cache["temp"] = temp
+    """
+    Generates the assignment understanding from the clarification questions.
 
-    # TODO: store the statements generated from the clarification questions in the db and reuse
+    And stores in the defog_analyses table.
+    """
     # get the assignment understanding aka answers to clarification questions
     assignment_understanding = None
-    logging.info(f"Clarification questiuons: {clarification_questions}")
+    logging.info(f"Clarification questions: {clarification_questions}")
 
     if len(clarification_questions) > 0:
         try:
@@ -441,11 +438,46 @@ async def prepare_cache(
                 "Could not generate understanding. The answers might not be what the user wants. Resorting to blank string"
             )
             logging.error(e)
-            assignment_understanding = ""
+            assignment_understanding = []
 
     logging.info(f"Assignment understanding: {assignment_understanding}")
 
+    err = update_assignment_understanding(
+        analysis_id=analysis_id, understanding=assignment_understanding
+    )
+
+    return err
+
+
+async def prepare_cache(
+    analysis_id,
+    dfg_api_key,
+    user_question,
+    toolboxes=[],
+    dev=False,
+    temp=False,
+):
+    analysis_execution_cache = {}
+    analysis_execution_cache["dfg_api_key"] = dfg_api_key
+    analysis_execution_cache["user_question"] = user_question
+    analysis_execution_cache["toolboxes"] = toolboxes
+    analysis_execution_cache["dev"] = dev
+    analysis_execution_cache["temp"] = temp
+
+    err, assignment_understanding = get_assignment_understanding(
+        analysis_id=analysis_id
+    )
+
+    if err:
+        logging.warn(
+            "Could not fetch assignment understanding from the db. Using empty list"
+        )
+        assignment_understanding = []
+
     analysis_execution_cache["assignment_understanding"] = assignment_understanding
+
+    logging.info("Created cache:")
+    logging.info(analysis_execution_cache)
 
     return analysis_execution_cache
 
@@ -454,7 +486,6 @@ async def generate_single_step(
     dfg_api_key,
     analysis_id,
     user_question,
-    clarification_questions=[],
     toolboxes=[],
     dev=False,
     temp=False,
@@ -482,7 +513,6 @@ async def generate_single_step(
         analysis_id,
         dfg_api_key,
         user_question,
-        clarification_questions,
         toolboxes,
         dev,
         temp,
@@ -532,7 +562,9 @@ async def generate_single_step(
         "request_type": "create_plan",
         "question": user_question,
         "tool_library_prompt": tool_library_prompt,
-        "assignment_understanding": analysis_execution_cache["assignment_understanding"],
+        "assignment_understanding": analysis_execution_cache[
+            "assignment_understanding"
+        ],
         "previous_responses": previous_responses_yaml_for_prompt,
         "next_step_data_description": next_step_data_description,
         "api_key": dfg_api_key,

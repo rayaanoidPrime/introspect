@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request
 from agents.clarifier.clarifier_agent import get_clarification
 
 from agents.planner_executor.planner_executor_agent import (
+    generate_assignment_understanding,
     generate_single_step,
     rerun_step,
 )
@@ -11,7 +12,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-from backend.db_utils import get_analysis_data
+from db_utils import get_analysis_data, get_assignment_understanding
 from generic_utils import get_api_key_from_key_name
 
 router = APIRouter()
@@ -46,11 +47,28 @@ async def generate_step(request: Request):
         if not api_key:
             raise Exception("Invalid API key name.")
 
+        # check if the assignment_understanding exists in teh db for this analysis_id
+        err, assignment_understanding = get_assignment_understanding(
+            analysis_id=analysis_id
+        )
+
+        if err:
+            raise Exception("Error fetching assignment understanding from database")
+
+        if not assignment_understanding:
+            err = await generate_assignment_understanding(
+                analysis_id=analysis_id,
+                clarification_questions=clarification_questions,
+                dfg_api_key=api_key,
+            )
+
+        if err:
+            raise Exception("Error generating assignment understanding")
+
         step = await generate_single_step(
             dfg_api_key=api_key,
             analysis_id=analysis_id,
             user_question=question,
-            clarification_questions=clarification_questions,
             dev=dev,
             temp=temp,
             toolboxes=toolboxes,
@@ -139,7 +157,7 @@ async def rerun_step_endpoint(request: Request):
     1. Analysis ID
     2. Step id to re run
     3. All steps' objects
-    4. Answers to clarification questions
+    4. Clarification questions
 
     It re runs both the parents and the dependent steps of the step to re run.
     """

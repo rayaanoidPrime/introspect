@@ -270,6 +270,62 @@ def get_analysis_data(analysis_id):
     finally:
         return err, analysis_data
 
+def get_assignment_understanding(analysis_id):
+    """
+    Returns the assignment_understanding column from the analysis with the given analysis_id
+    """
+
+    try:
+        err = None
+        understanding = None
+
+        if analysis_id == "" or not analysis_id:
+            err = "Could not find analyis. Are you sure you have the correct link?"
+
+        elif analysis_id != "" and analysis_id is not None and analysis_id != "new":
+            # try to fetch analysis_data data
+            with engine.begin() as conn:
+                row = conn.execute(
+                    select(Analyses.__table__.columns["assignment_understanding"]).where(Analyses.analysis_id == analysis_id)
+                ).fetchone()
+
+                if row:
+                    understanding = row.assignment_understanding
+                else:
+                    err = "Could not find analyis. Are you sure you have the correct link?"
+
+    except Exception as e:
+        err = "Server error."
+        understanding = None
+        print(e)
+        traceback.print_exc()
+    finally:
+        return err, understanding
+    
+def update_assignment_understanding(analysis_id, understanding):
+    """
+    Updates the assignment_understanding column in the analysis with the given analysis_id
+    """
+
+    try:
+        err = None
+
+        if analysis_id == "" or not analysis_id:
+            err = "Could not find analyis. Are you sure you have the correct link?"
+
+        elif analysis_id != "" and analysis_id is not None and analysis_id != "new":
+            # try to fetch analysis_data data
+            with engine.begin() as conn:
+                conn.execute(
+                    update(Analyses).where(Analyses.analysis_id == analysis_id).values(assignment_understanding=understanding)
+                )
+
+    except Exception as e:
+        err = "Server error."
+        print(e)
+        traceback.print_exc()
+    finally:
+        return err
 
 async def update_analysis_data(
     analysis_id, request_type=None, new_data=None, replace=False, overwrite_key=None
