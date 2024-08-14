@@ -215,3 +215,7 @@ def wrap_in_async(fn):
         wrapped_fn = async_fn
 
     return wrapped_fn
+
+
+def add_indent(level=1):
+    return "...." * level

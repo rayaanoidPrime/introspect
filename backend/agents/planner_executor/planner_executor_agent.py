@@ -1,5 +1,6 @@
 # the executor converts the user's task to steps and maps those steps to tools.
 # also runs those steps
+from cgitb import reset
 from copy import deepcopy
 from distutils.util import execute
 from uuid import uuid4
@@ -17,7 +18,7 @@ from db_utils import (
     update_analysis_data,
     update_assignment_understanding,
 )
-from utils import deduplicate_columns, warn_str, YieldList
+from utils import deduplicate_columns, warn_str, YieldList, add_indent
 from .tool_helpers.toolbox_manager import get_tool_library_prompt
 from .tool_helpers.tool_param_types import ListWithDefault
 import asyncio
@@ -31,6 +32,42 @@ import os
 import logging
 
 logging.basicConfig(level=logging.INFO)
+
+
+# some helper functions for prettier logging
+
+indent_level = 0
+
+
+def add_indent_levels(level=1):
+    global indent_level
+    indent_level += level
+
+
+def set_indent_level(level=0):
+    global indent_level
+    indent_level = level
+
+
+def reset_indent_level():
+    global indent_level
+    indent_level = 0
+
+
+def info(msg):
+    global indent_level
+    logging.info(add_indent(indent_level) + " " + str(msg))
+
+
+def error(msg):
+    global indent_level
+    logging.error(add_indent(indent_level) + " " + str(msg))
+
+
+def warn(msg):
+    global indent_level
+    logging.warn(add_indent(indent_level) + " " + str(msg))
+
 
 # store the outputs of multiple analysis in a global variable
 # we keep this around for a while, in case we need to re-run a step v soon after it was run
@@ -148,8 +185,8 @@ def resolve_step_inputs(inputs: dict, analysis_execution_cache: dict = {}):
             # let calling function handle this
             raise e
         except Exception as e:
-            logging.error(f"Error resolving input {input_name}: {input_val}")
-            logging.error(e)
+            error(f"Error resolving input {input_name}: {input_val}")
+            error(e)
             raise Exception(f"Error resolving input {input_name}: {input_val}")
 
     return resolved_inputs
@@ -180,7 +217,8 @@ async def run_step(
 
     outputs_storage_keys = step["outputs_storage_keys"]
 
-    logging.info(f"Running step: {step['id']}")
+    info(f"Running step: {step['id']} with tool: {step['tool_name']}")
+    add_indent_levels(1)
 
     # try to resolve the inputs to this step
     max_resolve_tries = 4
@@ -195,7 +233,7 @@ async def run_step(
             )
         except MissingDependencyException as e:
             missing_variable = e.variable_name
-            logging.info(f"Missing variable: {missing_variable}")
+            info(f"Missing variable: {missing_variable}")
             # find the step that generated this variable
             # this should be one of the previous steps
             step_that_generated_this_output = find_step_by_output_name(
@@ -206,7 +244,7 @@ async def run_step(
                     f"Could not find the step that generated the output: {missing_variable}"
                 )
             else:
-                logging.info(
+                info(
                     f"Found step that generated the output: {missing_variable}. Putting that in run queue."
                 )
 
@@ -217,7 +255,7 @@ async def run_step(
                     analysis_execution_cache=analysis_execution_cache,
                 )
         except Exception as e:
-            logging.error(f"Error while resolving step inputs: {e}")
+            error(f"Error while resolving step inputs: {e}")
             raise Exception(f"Error while resolving step inputs")
         finally:
             if max_resolve_tries == 0:
@@ -226,7 +264,7 @@ async def run_step(
                 )
             max_resolve_tries -= 1
 
-    logging.info(f"Resolved step inputs: {resolved_inputs}")
+    info(f"Resolved step inputs: {resolved_inputs}")
 
     # once we have the resolved inputs, run the step
     # but if this is data fetcher and aggregator, we need to check what changed in the inputs
@@ -234,7 +272,7 @@ async def run_step(
     # if the question is the same, but the sql changed, then just run the sql again
     results = None
     executed = False
-    tool_input_metadata = None
+    tool_input_metadata = step.get("input_metadata", {})
 
     # for us to check anything, we need to ensure this isn't the first time this step is running
     # check if model_generated_inputs and inputs even exist
@@ -245,6 +283,7 @@ async def run_step(
 
             # if the question has not changed, we will make executed to True, then run the sql
             if model_generated_question == current_question:
+                info("Question has not changed. Re-running only the sql.")
                 executed = True
                 try:
                     output_df, final_sql_query = await fetch_query_into_df(
@@ -263,6 +302,10 @@ async def run_step(
                     analysis_execution_cache[outputs_storage_keys[0]] = output_df
                 except Exception as e:
                     results = {"error_message": str(e)}
+            else:
+                info(
+                    "Question has changed. Re-running the tool to fetch the sql for the new question."
+                )
 
     # if we didn't execute yet, do it now by running the tool
     if not executed:
@@ -271,8 +314,6 @@ async def run_step(
             tool_function_inputs=resolved_inputs,
             global_dict=analysis_execution_cache,
         )
-
-    logging.info(f"Tool input metadata: {tool_input_metadata}")
 
     step["error_message"] = results.get("error_message")
 
@@ -295,7 +336,7 @@ async def run_step(
         output_storage_keys = step.get("outputs_storage_keys", [])
         outputs = results.get("outputs", [])
         if len(output_storage_keys) != len(outputs):
-            logging.warn(
+            warn(
                 f"Length of outputs_storage_keys and outputs don't match. Outputs: {results.get('outputs')}. Force matching with index suffixes."
             )
             # if outputs_storage_keys <= outputs, append the difference with output_idx
@@ -319,7 +360,7 @@ async def run_step(
 
             step["outputs"][output_name] = {}
 
-            logging.info("Parsing output: " + output_name)
+            info("Parsing output: " + output_name)
 
             # if the output has data and it is a pandas dataframe,
             # 1. deduplicate the columns
@@ -353,7 +394,7 @@ async def run_step(
             if chart_images is not None:
                 step["outputs"][output_name]["chart_images"] = chart_images
 
-            logging.info(f"Stored output: {step['outputs'][output_name]}")
+            info(f"Stored output: {output_name}")
 
     # update the analysis data in the db
     if analysis_id:
@@ -426,7 +467,9 @@ async def generate_assignment_understanding(
     """
     # get the assignment understanding aka answers to clarification questions
     assignment_understanding = None
-    logging.info(f"Clarification questions: {clarification_questions}")
+    reset_indent_level()
+
+    info(f"Clarification questions: {clarification_questions}")
 
     if len(clarification_questions) > 0:
         try:
@@ -434,13 +477,13 @@ async def generate_assignment_understanding(
                 clarification_questions, dfg_api_key
             )
         except Exception as e:
-            logging.warn(
+            warn(
                 "Could not generate understanding. The answers might not be what the user wants. Resorting to blank string"
             )
-            logging.error(e)
+            error(e)
             assignment_understanding = []
 
-    logging.info(f"Assignment understanding: {assignment_understanding}")
+    info(f"Assignment understanding: {assignment_understanding}")
 
     err = update_assignment_understanding(
         analysis_id=analysis_id, understanding=assignment_understanding
@@ -457,6 +500,7 @@ async def prepare_cache(
     dev=False,
     temp=False,
 ):
+    reset_indent_level()
     analysis_execution_cache = {}
     analysis_execution_cache["dfg_api_key"] = dfg_api_key
     analysis_execution_cache["user_question"] = user_question
@@ -469,15 +513,13 @@ async def prepare_cache(
     )
 
     if err:
-        logging.warn(
-            "Could not fetch assignment understanding from the db. Using empty list"
-        )
+        warn("Could not fetch assignment understanding from the db. Using empty list")
         assignment_understanding = []
 
     analysis_execution_cache["assignment_understanding"] = assignment_understanding
 
-    logging.info("Created cache:")
-    logging.info(analysis_execution_cache)
+    info("Created cache:")
+    info(analysis_execution_cache)
 
     return analysis_execution_cache
 
@@ -504,6 +546,8 @@ async def generate_single_step(
     4. Stores the result of the step.
     5. Returns the generated step + result.
     """
+    reset_indent_level()
+
     global global_execution_cache
 
     unique_id = str(uuid4())
@@ -531,7 +575,7 @@ async def generate_single_step(
     # this will default to empty string, so make sure to set to None
     if not llm_server_url:
         llm_server_url = None
-    logging.info(f"LLM_SERVER_ENDPOINT set to: `{llm_server_url}`")
+    info(f"LLM_SERVER_ENDPOINT set to: `{llm_server_url}`")
 
     err, analysis_data = get_analysis_data(analysis_id)
     if err:
@@ -556,7 +600,7 @@ async def generate_single_step(
     # TODO: construct using previous steps' outputs
     next_step_data_description = ""
 
-    logging.info(f"Previous responses: {previous_responses_yaml_for_prompt}")
+    info(f"Previous responses: {previous_responses_yaml_for_prompt}")
 
     payload = {
         "request_type": "create_plan",
@@ -580,13 +624,13 @@ async def generate_single_step(
 
     res = (await asyncio.to_thread(requests.post, llm_calls_url, json=payload)).json()
     step_yaml = res["generated_step"]
-    logging.info("Generated step yaml:")
-    logging.info(step_yaml)
+    info("Generated step yaml:")
+    info(step_yaml)
 
     step_yaml = re.search("(?:```yaml)([\s\S]*?)(?=```)", step_yaml)
 
     if step_yaml is None:
-        logging.error(
+        error(
             f"Seems like no step was generated. This was the response from the LLM: \n {step_yaml}"
         )
         raise Exception("Invalid response from the model")
@@ -646,6 +690,7 @@ async def rerun_step(
     temp=False,
 ):
     """
+    TODO: use stored tool code from the client instead of using saved tool code in db.
     Run a step again, running both the parents AND dependents of this step.
 
     Here all_steps and step is coming from the front end/client, NOT from the db. This is because we assume a person clicks on rerun_step when they have edited the inputs of a step and want to re-run it. And we don't store-on-edit the inputs to the db anymore. The edited versions only live on the front end.
@@ -661,7 +706,6 @@ async def rerun_step(
         analysis_id,
         dfg_api_key,
         user_question,
-        clarification_questions,
         toolboxes,
         dev,
         temp,

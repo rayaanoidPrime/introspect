@@ -199,7 +199,7 @@ async def rerun_step_endpoint(request: Request):
 
         # rerun this step and all its parents and dependents
         # the re run function will handle the storage of all the steps in the db
-        await rerun_step(
+        new_steps = await rerun_step(
             step=step,
             all_steps=all_steps,
             analysis_id=analysis_id,
@@ -211,15 +211,7 @@ async def rerun_step_endpoint(request: Request):
             temp=False,
         )
 
-        # now get analysis data, and return the updated steps
-        err, analysis_data = get_analysis_data(analysis_id=analysis_id)
-        if err:
-            raise Exception(err)
-
-        return {
-            "success": True,
-            "steps": analysis_data.get("gen_steps", {}).get("steps", []),
-        }
+        return {"success": True, "steps": new_steps}
     except Exception as e:
         logging.error(e)
         return {"success": False, "error_message": str(e) or "Incorrect request"}
