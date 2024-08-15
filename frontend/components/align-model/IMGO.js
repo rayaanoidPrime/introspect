@@ -1,17 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import Instructions from "./Instructions";
 import MetadataEditor from "./EditableMetadata";
-import { message, Modal, Button, Spin, Card, Slider, Table } from "antd";
+import { message, Modal, Button, Spin, Card, Slider, Progress } from "antd";
 import {
-  PlayCircleOutlined,
   LoadingOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
 } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { EditableLabel } from "@amcharts/amcharts5";
 
-const IMGO = ({ token, apiKeyName, updateGlossary }) => {
+const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [loadingIndex, setLoadingIndex] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -19,11 +17,6 @@ const IMGO = ({ token, apiKeyName, updateGlossary }) => {
   // store the logs/output of each step
   const [results, setResults] = useState({});
   // store the final recommendations
-  const dummyRecs = {
-    message: "metadata and glossary",
-    valid_pct_list: [100, 100, 100, 100],
-    correct_pct_list: [100, 100, 100, 100],
-  }
   const [recommendations, setRecommendations] = useState(null);
 
   const [changeGlossary, setChangeGlossary] = useState(false);
@@ -64,7 +57,7 @@ const IMGO = ({ token, apiKeyName, updateGlossary }) => {
     {
       name: "Generate Golden Queries",
       endpoint: "generate_golden_queries_from_questions",
-      payload: (iteration) => ({
+      payload: () => ({
         token,
         key_name: apiKeyName,
         max_num_queries: 4,
@@ -76,7 +69,7 @@ const IMGO = ({ token, apiKeyName, updateGlossary }) => {
     {
       name: "Check Validity of the Generated Queries",
       endpoint: "check_generated_golden_queries_validity",
-      payload: (iteration) => ({
+      payload: () => ({
         token,
         key_name: apiKeyName,
         db_type: "postgres",
@@ -87,7 +80,7 @@ const IMGO = ({ token, apiKeyName, updateGlossary }) => {
     {
       name: "Check Correctness of the Generated Queries",
       endpoint: "check_generated_golden_queries_correctness",
-      payload: (iteration) => ({
+      payload: () => ({
         token,
         key_name: apiKeyName,
         db_type: "postgres",
@@ -156,7 +149,7 @@ const IMGO = ({ token, apiKeyName, updateGlossary }) => {
   const handleApiRequest = async (step, iteration = 0) => {
     const stepKey = `${step.name} ${iterations[iteration].title}`;
     setLoadingIndex(stepKey);
-    let payload = step.payload(iteration);
+    let payload = step.payload();
 
     if (iteration === 1) {
       payload.optimized_glossary = optimizedGlossaryRef.current;
@@ -200,7 +193,8 @@ const IMGO = ({ token, apiKeyName, updateGlossary }) => {
       const { task_id } = data;
       if (task_id) {
         const pollTaskStatus = async (taskId) => {
-          let isTaskCompleted = true;
+          console.log("starting polling now");
+          let isTaskCompleted = false;
           while (!isTaskCompleted) {
             const statusRes = await fetch(
               setupBaseUrl("http", "check_task_status"),
@@ -222,12 +216,12 @@ const IMGO = ({ token, apiKeyName, updateGlossary }) => {
               isTaskCompleted = true;
               return isTaskCompleted;
             }
-            await new Promise((resolve) => setTimeout(resolve, 5000));
+            await new Promise((resolve) => setTimeout(resolve, 10000)); // 10 seconds interval
           }
           return isTaskCompleted;
         };
 
-        const completed = true; // await pollTaskStatus(task_id);
+        const completed = await pollTaskStatus(task_id);
 
         if (completed) {
           const finalData = {
@@ -308,7 +302,7 @@ const IMGO = ({ token, apiKeyName, updateGlossary }) => {
       </Button>
       <Modal
         title={
-          <div className="text-2xl font-semibold text-center mt-2 mb-4">
+          <div className="text-2xl font-semibold text-center mt-2 mb-5">
             Recommendations for Improving Glossary and Metadata
           </div>
         }
@@ -324,11 +318,11 @@ const IMGO = ({ token, apiKeyName, updateGlossary }) => {
       >
         <div className="space-y-4">
           {recommendations ? (
-            <Card title="Final Recommendations" className="bg-white shadow-md">
-              <p className="mb-2 font-semibold text-lg">
+            <Card title="Results" className="bg-white shadow-md">
+              <p className="mb-2 font-semibold">
                 {interpretFinalMessage(recommendations.message)}
               </p>
-              {true && (
+              {(true || changeGlossary) && (
                 <Instructions
                   title="Optimized Glossary"
                   description="These are the optimized glossary recommendations. You can edit them below before accepting changes."
@@ -340,11 +334,15 @@ const IMGO = ({ token, apiKeyName, updateGlossary }) => {
                   isUpdatingInstructions={updatingInstructions}
                 />
               )}
-              <MetadataEditor
-                metadata={newMetadata}
-                onUpdate={setNewMetadata}
-              />
-              <div className="mt-4">
+              {(true || changeMetadata) && (
+                <MetadataEditor
+                  title="Optimised Metadata"
+                  description="These are the suggested descriptions for each column in the database. You can edit them below before updating the metadata."
+                  metadata={newMetadata}
+                  updateMetadata={updateMetadata}
+                />
+              )}
+              {/* <div className="mt-4">
                 <h4 className="font-semibold">Percentages:</h4>
                 {recommendations.valid_pct_list.map((value, index) => (
                   <div key={index} className="mt-2">
@@ -358,15 +356,33 @@ const IMGO = ({ token, apiKeyName, updateGlossary }) => {
                     <Slider value={value} max={100} />
                   </div>
                 ))}
+              </div> */}
+
+              <div className="mt-4">
+                <h4 className="font-semibold">Percentages:</h4>
+                {recommendations.valid_pct_list.map((value, index) => (
+                  <div key={index} className="mt-2">
+                    <p>Iteration {index + 1} Validity:</p>
+                    <Progress percent={value} />
+                  </div>
+                ))}
+                {recommendations.correct_pct_list.map((value, index) => (
+                  <div key={index} className="mt-2">
+                    <p>Iteration {index + 1} Correctness:</p>
+                    <Progress percent={value} />
+                  </div>
+                ))}
               </div>
+              
             </Card>
           ) : (
-            <div className="text-center italic text-lg">
-              Your recommendations will appear here after the workflow is done
-              running. Please bear with us as we run multiple iterations to
-              provide you with the best recommendations. This can take a few
-              minutes.
-            </div>
+            <Spin>
+              <div className="text-center italic text-lg m-4 mb-5">
+                {loading
+                  ? "Please bear with us as we run multiple iterations to provide you with the best recommendations. This can take a few minutes."
+                  : ""}
+              </div>
+            </Spin>
           )}
 
           {iterations.map((iteration, iterationIndex) => (
