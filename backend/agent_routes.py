@@ -6,6 +6,7 @@ from agents.planner_executor.planner_executor_agent import (
     generate_assignment_understanding,
     generate_single_step,
     rerun_step,
+    run_step,
 )
 from analysis_data_manager import AnalysisDataManager
 import logging
@@ -14,6 +15,7 @@ logging.basicConfig(level=logging.INFO)
 
 from db_utils import get_analysis_data, get_assignment_understanding
 from generic_utils import get_api_key_from_key_name
+from uuid import uuid4
 
 router = APIRouter()
 
@@ -34,6 +36,7 @@ async def generate_step(request: Request):
         temp = params.get("temp", False)
         clarification_questions = params.get("clarification_questions", [])
         toolboxes = params.get("toolboxes", [])
+        sql_only = params.get("sql_only", False)
 
         # if key name or question is none or blank, return error
         if not key_name or key_name == "":
@@ -47,38 +50,90 @@ async def generate_step(request: Request):
         if not api_key:
             raise Exception("Invalid API key name.")
 
-        # check if the assignment_understanding exists in teh db for this analysis_id
-        err, assignment_understanding = get_assignment_understanding(
-            analysis_id=analysis_id
-        )
+        if sql_only:
+            # if sql_only is true, just call the sql generation function and return, while saving the step
+            inputs = {
+                "question": question,
+                "global_dict": {
+                    "dfg_api_key": api_key,
+                    "dev": dev,
+                    "temp": temp,
+                },
+            }
 
-        if err:
-            raise Exception("Error fetching assignment understanding from database")
+            step_id = str(uuid4())
+            step = {
+                "description": question,
+                "tool_name": "data_fetcher_and_aggregator",
+                "inputs": inputs,
+                "outputs_storage_keys": ["answer"],
+                "done": True,
+                "id": step_id,
+                "error_message": None,
+                "input_metadata": {
+                    "question": {
+                        "name": "question",
+                        "type": "str",
+                        "default": None,
+                        "description": "natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string",
+                    }
+                },
+            }
 
-        if not assignment_understanding:
-            err = await generate_assignment_understanding(
+            analysis_execution_cache = {
+                "dfg_api_key": api_key,
+                "user_question": question,
+                "toolboxes": toolboxes,
+                "dev": dev,
+                "temp": temp,
+            }
+            await run_step(
                 analysis_id=analysis_id,
-                clarification_questions=clarification_questions,
-                dfg_api_key=api_key,
+                step=step,
+                all_steps=[step],
+                analysis_execution_cache=analysis_execution_cache,
+                skip_cache_storing=True,
+                resolve_inputs=False,
+            )
+            return {
+                "success": True,
+                "steps": [step],
+                "done": True,
+            }
+
+        else:
+            # check if the assignment_understanding exists in teh db for this analysis_id
+            err, assignment_understanding = get_assignment_understanding(
+                analysis_id=analysis_id
             )
 
-        if err:
-            raise Exception("Error generating assignment understanding")
+            if err:
+                raise Exception("Error fetching assignment understanding from database")
 
-        step = await generate_single_step(
-            dfg_api_key=api_key,
-            analysis_id=analysis_id,
-            user_question=question,
-            dev=dev,
-            temp=temp,
-            toolboxes=toolboxes,
-        )
+            if not assignment_understanding:
+                err = await generate_assignment_understanding(
+                    analysis_id=analysis_id,
+                    clarification_questions=clarification_questions,
+                    dfg_api_key=api_key,
+                )
 
-        return {
-            "success": True,
-            "steps": [step],
-            "done": step.get("done", True),
-        }
+            if err:
+                raise Exception("Error generating assignment understanding")
+
+            step = await generate_single_step(
+                dfg_api_key=api_key,
+                analysis_id=analysis_id,
+                user_question=question,
+                dev=dev,
+                temp=temp,
+                toolboxes=toolboxes,
+            )
+
+            return {
+                "success": True,
+                "steps": [step],
+                "done": step.get("done", True),
+            }
 
     except Exception as e:
         logging.error(e)
