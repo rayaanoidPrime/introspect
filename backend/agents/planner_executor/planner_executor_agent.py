@@ -668,17 +668,20 @@ def find_dependent_steps(step, all_steps):
     # output keys of the step we want to find the dependents of
     output_keys = step.get("outputs_storage_keys", [])
 
-    for s in all_steps:
-        # skip if it's the same step
-        if step["id"] == s["id"]:
-            continue
-        inputs = s.get("inputs", {}).values()
-        # if any of the inputs to this step start with global_dict.[output_key], then this step is dependent on the step we're looking at
-        for inp in inputs:
-            if isinstance(inp, str) and inp.startswith("global_dict."):
-                variable_name = inp.split(".")[1]
-                if variable_name in output_keys:
-                    dependent_steps.append(s)
+    if len(output_keys) > 0:
+        for s in all_steps:
+            # skip if it's the same step
+            if step["id"] == s["id"]:
+                continue
+            inputs = s.get("inputs", {}).values()
+            # if any of the inputs to this step start with global_dict.[output_key], then this step is dependent on the step we're looking at
+            for inp in inputs:
+                if isinstance(inp, str) and inp.startswith("global_dict."):
+                    variable_name = inp.split(".")[1]
+                    if variable_name in output_keys:
+                        dependent_steps.append(s)
+                        # also find the dependents of this step
+                        dependent_steps.extend(find_dependent_steps(s, all_steps))
 
     return dependent_steps
 
@@ -689,7 +692,6 @@ async def rerun_step(
     dfg_api_key,
     analysis_id,
     user_question,
-    clarification_questions=[],
     toolboxes=[],
     dev=False,
     temp=False,
@@ -733,4 +735,12 @@ async def rerun_step(
             analysis_execution_cache=analysis_execution_cache,
         )
 
-    return all_steps
+    # now after we've rerun everything, get the latest analysis data from the db and return those steps
+    err, analysis_data = get_analysis_data(analysis_id)
+    if err:
+        # can't do much about not being able to fetch data. fail.
+        raise Exception(err)
+
+    new_steps = analysis_data.get("gen_steps", {}).get("steps", [])
+
+    return new_steps

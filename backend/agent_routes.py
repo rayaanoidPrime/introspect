@@ -1,4 +1,5 @@
 import traceback
+from uuid import uuid4
 from fastapi import APIRouter, Request
 from agents.clarifier.clarifier_agent import get_clarification
 
@@ -13,7 +14,12 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-from db_utils import get_analysis_data, get_assignment_understanding
+from db_utils import (
+    get_all_tools,
+    get_analysis_data,
+    get_assignment_understanding,
+    update_analysis_data,
+)
 from generic_utils import get_api_key_from_key_name
 from uuid import uuid4
 
@@ -224,9 +230,13 @@ async def rerun_step_endpoint(request: Request):
         edited_step = params.get("edited_step")
         toolboxes = params.get("toolboxes", [])
 
-        # if key name is none or blank, return error
         if not key_name or key_name == "":
             raise Exception("Invalid request. Must have API key name.")
+
+        api_key = get_api_key_from_key_name(key_name)
+
+        if not api_key:
+            raise Exception("Invalid API key name.")
 
         if not analysis_id or analysis_id == "":
             raise Exception("Invalid request. Must have analysis id.")
@@ -237,20 +247,12 @@ async def rerun_step_endpoint(request: Request):
         if not edited_step or type(edited_step) != dict:
             raise Exception("Invalid edited step given.")
 
-        api_key = get_api_key_from_key_name(key_name)
-
-        if not api_key:
-            raise Exception("Invalid API key name.")
-
         err, analysis_data = get_analysis_data(analysis_id=analysis_id)
         if err:
             raise Exception("Error fetching analysis data from database")
 
         # we use the original versions of all steps but the one being rerun
         all_steps = analysis_data.get("gen_steps", {}).get("steps", [])
-
-        logging.info("All steps")
-        logging.info(all_steps)
 
         # first make sure the step exists in all_steps
         step_idx = None
@@ -259,7 +261,6 @@ async def rerun_step_endpoint(request: Request):
                 all_steps[i] = edited_step
                 step_idx = i
                 break
-        logging.info(f"Step index: {step_idx}")
 
         if step_idx is None:
             raise Exception("Step not found in all steps.")
@@ -272,7 +273,6 @@ async def rerun_step_endpoint(request: Request):
             analysis_id=analysis_id,
             dfg_api_key=api_key,
             user_question=None,
-            clarification_questions=None,
             toolboxes=toolboxes,
             dev=False,
             temp=False,
@@ -283,4 +283,149 @@ async def rerun_step_endpoint(request: Request):
         logging.error(e)
         return {"success": False, "error_message": str(e) or "Incorrect request"}
 
-    pass
+
+# an endpoint to delete steps.
+# we will get a list of tool run ids
+# we will remove these from the analysis
+@router.post("/delete_steps")
+async def delete_steps(request: Request):
+    """
+    Delete steps using the tool run ids passed.
+    """
+    try:
+        data = await request.json()
+        step_ids = data.get("step_ids")
+        analysis_id = data.get("analysis_id")
+
+        if step_ids is None or type(step_ids) != list:
+            raise Exception("Invalid tool run ids.")
+
+        if analysis_id is None or type(analysis_id) != str:
+            raise Exception("Invalid analysis id.")
+
+        # try to get this analysis' data
+        err, analysis_data = get_analysis_data(analysis_id)
+        if err:
+            raise Exception("Error fetching analysis data from database")
+
+        # get the steps
+        steps = analysis_data.get("gen_steps", {})
+        if steps and steps["success"]:
+            steps = steps["steps"]
+        else:
+            raise Exception("No steps found for analysis")
+
+        # remove the steps with these tool run ids
+        new_steps = [s for s in steps if s["id"] not in step_ids]
+
+        # # # update analysis data
+        update_err = await update_analysis_data(
+            analysis_id, "gen_steps", new_steps, replace=True
+        )
+
+        if update_err:
+            return {"success": False, "error_message": update_err}
+
+        return {"success": True, "new_steps": new_steps}
+
+    except Exception as e:
+        logging.error("Error deleting steps: " + str(e))
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}
+
+
+@router.post("/create_new_step")
+async def create_new_step(request: Request):
+    """
+    This is called when a user adds a step on the front end.
+    This will receive a tool name, and tool inputs.
+    This will create a new step in the analysis.
+    No tool run will occur. Though a tool run id will be created for this step in case rerun is called in the future.
+    """
+    try:
+        data = await request.json()
+        # check if this has analysis_id, tool_name and inputs
+        analysis_id = data.get("analysis_id")
+        tool_name = data.get("tool_name")
+        inputs = data.get("inputs")
+        outputs_storage_keys = data.get("outputs_storage_keys")
+        key_name = data.get("key_name")
+
+        if not key_name or key_name == "":
+            raise Exception("Invalid request. Must have API key name.")
+
+        api_key = get_api_key_from_key_name(key_name)
+
+        if not api_key:
+            raise Exception("Invalid API key name.")
+
+        err, tools = get_all_tools()
+
+        if err:
+            raise Exception(err)
+
+        if analysis_id is None or type(analysis_id) != str:
+            raise Exception("Invalid analysis id.")
+
+        if tool_name is None or type(tool_name) != str or tool_name not in tools:
+            raise Exception("Invalid tool name.")
+
+        if inputs is None or type(inputs) != dict:
+            raise Exception("Invalid inputs.")
+
+        if outputs_storage_keys is None or type(outputs_storage_keys) != list:
+            raise Exception("Invalid outputs provided.")
+
+        if len(outputs_storage_keys) == 0:
+            raise Exception("Please type in output names.")
+
+        # if any of the outputs are empty or aren't strings
+        if any([not o or type(o) != str for o in outputs_storage_keys]):
+            return {
+                "success": False,
+                "error_message": "Outputs provided are either blank or incorrect.",
+            }
+
+        # a new empty step
+        new_step = {
+            "tool_name": tool_name,
+            "inputs": inputs,
+            "id": str(uuid4()),
+            "outputs_storage_keys": outputs_storage_keys,
+        }
+
+        # update analysis data with the new empty step
+        update_err = await update_analysis_data(analysis_id, "gen_steps", [new_step])
+
+        if update_err:
+            raise Exception(update_err)
+
+        # now try to get this analysis' data (this will include the new step added)
+        err, analysis_data = get_analysis_data(analysis_id)
+        if err:
+            raise Exception(err)
+
+        # get the steps
+        all_steps = analysis_data.get("gen_steps")
+        if all_steps and all_steps["success"]:
+            all_steps = all_steps["steps"]
+        else:
+            raise Exception("No steps found for analysis")
+
+        new_steps = await rerun_step(
+            step=new_step,
+            all_steps=all_steps,
+            dfg_api_key=api_key,
+            analysis_id=analysis_id,
+            user_question=None,
+            toolboxes=[],
+            dev=False,
+            temp=False,
+        )
+
+        return {"success": True, "new_steps": new_steps}
+
+    except Exception as e:
+        logging.error("Error creating new step: " + str(e))
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}
