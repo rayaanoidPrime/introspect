@@ -87,8 +87,6 @@ def warn(msg):
 #   "analysis_id_3": {...}
 #   ...
 # }
-global_execution_cache = {}
-
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 analysis_assets_dir = os.environ.get(
     "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
@@ -203,12 +201,18 @@ def find_step_by_output_name(output_name, previous_steps):
 
 
 async def run_step(
-    analysis_id, step, all_steps, analysis_execution_cache, skip_cache_storing=False
+    analysis_id,
+    step,
+    all_steps,
+    analysis_execution_cache,
+    skip_cache_storing=False,
+    resolve_inputs=True,
 ):
     """
     Runs a single step, updating the steps object *in place* with the results. Also re-runs all parent steps if required.
+
     General flow:
-    1. First try to resolve the inputs of this step.
+    1. If resolve_inputs is True, first try to resolve the inputs of this step. If it is False, we assume that the inputs are already resolved and go straight to step 4.
     2. If the inputs resolution gives a MissingDependencyException means that one of hte inputs is a global_dict.XXX type of input, which means we need to run a parent step. If any other error, fail.
     3. Run all the required parent steps recursively till the inputs are resolved.
     4. Now the inputs are resolved, run this step.
@@ -221,50 +225,55 @@ async def run_step(
     add_indent_levels(1)
 
     # try to resolve the inputs to this step
-    max_resolve_tries = 4
+    if resolve_inputs:
+        max_resolve_tries = 4
 
-    while max_resolve_tries > 0:
-        # keep doing till we either resolve the inputs or raise an error while resolving
-        # NOTE: we only decrease the above max_resolve_tries in case of exceptions
-        try:
-            # resolve the inputs
-            resolved_inputs = resolve_step_inputs(
-                step["inputs"], analysis_execution_cache=analysis_execution_cache
-            )
-        except MissingDependencyException as e:
-            missing_variable = e.variable_name
-            info(f"Missing variable: {missing_variable}")
-            # find the step that generated this variable
-            # this should be one of the previous steps
-            step_that_generated_this_output = find_step_by_output_name(
-                missing_variable, all_steps
-            )
-            if step_that_generated_this_output is None:
-                raise Exception(
-                    f"Could not find the step that generated the output: {missing_variable}"
+        # these retries are only triggered if we get a MissingDependencyException
+        # I.e., if the LLM does not give us the right inputs to this step
+        while max_resolve_tries > 0:
+            # keep doing till we either resolve the inputs or raise an error while resolving
+            # NOTE: we only decrease the above max_resolve_tries in case of exceptions
+            try:
+                # resolve the inputs
+                resolved_inputs = resolve_step_inputs(
+                    step["inputs"], analysis_execution_cache=analysis_execution_cache
                 )
-            else:
-                info(
-                    f"Found step that generated the output: {missing_variable}. Putting that in run queue."
+            except MissingDependencyException as e:
+                missing_variable = e.variable_name
+                info(f"Missing variable: {missing_variable}")
+                # find the step that generated this variable
+                # this should be one of the previous steps
+                step_that_generated_this_output = find_step_by_output_name(
+                    missing_variable, all_steps
                 )
+                if step_that_generated_this_output is None:
+                    raise Exception(
+                        f"Could not find the step that generated the output: {missing_variable}"
+                    )
+                else:
+                    info(
+                        f"Found step that generated the output: {missing_variable}. Putting that in run queue."
+                    )
 
-                await run_step(
-                    analysis_id=analysis_id,
-                    step=step_that_generated_this_output,
-                    all_steps=all_steps,
-                    analysis_execution_cache=analysis_execution_cache,
-                )
-        except Exception as e:
-            error(f"Error while resolving step inputs: {e}")
-            raise Exception(f"Error while resolving step inputs")
-        finally:
-            if max_resolve_tries == 0:
-                raise Exception(
-                    f"Exceeded max tries while resolving the inputs to this step: {step['id']}"
-                )
-            max_resolve_tries -= 1
+                    await run_step(
+                        analysis_id=analysis_id,
+                        step=step_that_generated_this_output,
+                        all_steps=all_steps,
+                        analysis_execution_cache=analysis_execution_cache,
+                    )
+            except Exception as e:
+                error(f"Error while resolving step inputs: {e}")
+                raise Exception(f"Error while resolving step inputs")
+            finally:
+                if max_resolve_tries == 0:
+                    raise Exception(
+                        f"Exceeded max tries while resolving the inputs to this step: {step['id']}"
+                    )
+                max_resolve_tries -= 1
 
-    info(f"Resolved step inputs: {resolved_inputs}")
+        info(f"Resolved step inputs: {resolved_inputs}")
+    else:
+        resolved_inputs = step["inputs"]
 
     # once we have the resolved inputs, run the step
     # but if this is data fetcher and aggregator, we need to check what changed in the inputs
@@ -548,8 +557,6 @@ async def generate_single_step(
     """
     reset_indent_level()
 
-    global global_execution_cache
-
     unique_id = str(uuid4())
 
     # prepare the cache
@@ -648,9 +655,6 @@ async def generate_single_step(
         # just for testing for now
         skip_cache_storing=True,
     )
-
-    # store the analysis_execution_cache
-    global_execution_cache[analysis_id] = analysis_execution_cache
 
     return step
 
