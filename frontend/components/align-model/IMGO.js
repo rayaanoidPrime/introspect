@@ -342,22 +342,6 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
                   updateMetadata={updateMetadata}
                 />
               )}
-              {/* <div className="mt-4">
-                <h4 className="font-semibold">Percentages:</h4>
-                {recommendations.valid_pct_list.map((value, index) => (
-                  <div key={index} className="mt-2">
-                    <p>Iteration {index + 1} Validity:</p>
-                    <Slider value={value} max={100} />
-                  </div>
-                ))}
-                {recommendations.correct_pct_list.map((value, index) => (
-                  <div key={index} className="mt-2">
-                    <p>Iteration {index + 1} Correctness:</p>
-                    <Slider value={value} max={100} />
-                  </div>
-                ))}
-              </div> */}
-
               <div className="mt-4">
                 <h4 className="font-semibold">Percentages:</h4>
                 {recommendations.valid_pct_list.map((value, index) => (
@@ -373,7 +357,7 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
                   </div>
                 ))}
               </div>
-              
+
             </Card>
           ) : (
             <Spin>
