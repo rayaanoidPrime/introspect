@@ -43,6 +43,28 @@ async def generate_step(request: Request):
         clarification_questions = params.get("clarification_questions", [])
         toolboxes = params.get("toolboxes", [])
         sql_only = params.get("sql_only", False)
+        previous_questions = params.get("previous_questions", [])
+
+        if len(previous_questions) > 0:
+            previous_questions = previous_questions[:-1]
+
+        prev_questions = []
+        for item in previous_questions:
+            prev_question = item.get("user_question")
+            if question:
+                prev_steps = (
+                    item.get("analysisManager", {})
+                    .get("analysisData", {})
+                    .get("gen_steps", {})
+                    .get("steps", [])
+                )
+                if len(prev_steps) > 0:
+                    for step in prev_steps:
+                        if "sql" in step:
+                            prev_sql = step["sql"]
+                            prev_questions.append(prev_question)
+                            prev_questions.append(prev_sql)
+                            break
 
         # if key name or question is none or blank, return error
         if not key_name or key_name == "":
@@ -65,6 +87,7 @@ async def generate_step(request: Request):
                     "dev": dev,
                     "temp": temp,
                 },
+                "previous_context": prev_questions,
             }
 
             step_id = str(uuid4())
