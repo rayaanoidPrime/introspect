@@ -2,12 +2,9 @@ import { useState, useEffect } from "react";
 import {
   EditOutlined,
   SaveOutlined,
-  CloseCircleOutlined,
-  CloseSquareOutlined,
   RollbackOutlined,
 } from "@ant-design/icons";
-import setupBaseUrl from "$utils/setupBaseUrl";
-import { Table, Input, Button, Popconfirm, Form, message } from "antd";
+import { Table, Input, Button, Form, Spin } from "antd";
 
 const EditableCell = ({
   editing,
@@ -157,32 +154,34 @@ const MetadataEditor = ({ title, description, metadata, updateMetadata }) => {
       <h1 className="text-xl mb-3 font-semibold">{title}</h1>
       <p className="mb-4 text-gray-700">{description}</p>
       <Form form={form} component={false}>
-        <Table
-          components={{
-            body: {
-              cell: EditableCell,
-            },
-          }}
-          bordered
-          dataSource={currentData}
-          columns={mergedColumns}
-          rowClassName="editable-row"
-          pagination={{
-            position: ["bottomCenter"],
-          }}
-          footer={() => (
-            <Button
-              type="primary"
-              className="mt-4 p-2 min-w-56"
-              onClick={async () =>
-                await updateMetadata(currentData, setUpdatingMetadata)
-              }
-              disabled={updatingMetadata}
-            >
-              {updatingMetadata ? "Updating Metadata" : "Update Metadata"}
-            </Button>
-          )}
-        />
+        <Spin spinning={updatingMetadata} tip="Updating Metadata">
+          <Table
+            components={{
+              body: {
+                cell: EditableCell,
+              },
+            }}
+            bordered
+            dataSource={currentData}
+            columns={mergedColumns}
+            rowClassName="editable-row"
+            pagination={{
+              position: ["bottomCenter"],
+            }}
+            footer={() => (
+              <Button
+                type="primary"
+                className="mt-4 p-2 min-w-56"
+                onClick={async () =>
+                  await updateMetadata(currentData, setUpdatingMetadata)
+                }
+                disabled={updatingMetadata}
+              >
+                {updatingMetadata ? "Updating Metadata" : "Update Metadata"}
+              </Button>
+            )}
+          />
+        </Spin>
       </Form>
     </div>
   );

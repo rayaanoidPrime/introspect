@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import Instructions from "./Instructions";
 import MetadataEditor from "./EditableMetadata";
+import ResultsPercentages from "./ResultsPercentages";
 import { message, Modal, Button, Spin, Card, Slider, Progress } from "antd";
 import {
   LoadingOutlined,
@@ -342,22 +343,14 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
                   updateMetadata={updateMetadata}
                 />
               )}
-              <div className="mt-4">
-                <h4 className="font-semibold">Percentages:</h4>
-                {recommendations.valid_pct_list.map((value, index) => (
-                  <div key={index} className="mt-2">
-                    <p>Iteration {index + 1} Validity:</p>
-                    <Progress percent={value} />
-                  </div>
-                ))}
-                {recommendations.correct_pct_list.map((value, index) => (
-                  <div key={index} className="mt-2">
-                    <p>Iteration {index + 1} Correctness:</p>
-                    <Progress percent={value} />
-                  </div>
-                ))}
-              </div>
-
+              {recommendations &&
+                recommendations.valid_pct_list &&
+                recommendations.correct_pct_list && (
+                  <ResultsPercentages
+                    validPctList={recommendations.valid_pct_list}
+                    correctPctList={recommendations.correct_pct_list}
+                  />
+                )}
             </Card>
           ) : (
             <Spin>
