@@ -221,7 +221,7 @@ async def rerun_step_endpoint(request: Request):
         key_name = params.get("key_name")
         analysis_id = params.get("analysis_id")
         step_id = params.get("step_id")
-        all_steps = params.get("all_steps")
+        edited_step = params.get("edited_step")
         toolboxes = params.get("toolboxes", [])
 
         # if key name is none or blank, return error
@@ -234,28 +234,40 @@ async def rerun_step_endpoint(request: Request):
         if not step_id or step_id == "":
             raise Exception("Invalid request. Must have step id.")
 
-        if not all_steps or type(all_steps) != list:
-            raise Exception("Invalid request. Must have all steps.")
+        if not edited_step or type(edited_step) != dict:
+            raise Exception("Invalid edited step given.")
 
         api_key = get_api_key_from_key_name(key_name)
 
         if not api_key:
             raise Exception("Invalid API key name.")
 
-        # first make sure the step exists in all_steps
-        step = None
-        for s in all_steps:
-            if s.get("id") == step_id:
-                step = s
-                break
+        err, analysis_data = get_analysis_data(analysis_id=analysis_id)
+        if err:
+            raise Exception("Error fetching analysis data from database")
 
-        if not step:
+        # we use the original versions of all steps but the one being rerun
+        all_steps = analysis_data.get("gen_steps", {}).get("steps", [])
+
+        logging.info("All steps")
+        logging.info(all_steps)
+
+        # first make sure the step exists in all_steps
+        step_idx = None
+        for i, s in enumerate(all_steps):
+            if s.get("id") == step_id:
+                all_steps[i] = edited_step
+                step_idx = i
+                break
+        logging.info(f"Step index: {step_idx}")
+
+        if step_idx is None:
             raise Exception("Step not found in all steps.")
 
         # rerun this step and all its parents and dependents
         # the re run function will handle the storage of all the steps in the db
         new_steps = await rerun_step(
-            step=step,
+            step=all_steps[step_idx],
             all_steps=all_steps,
             analysis_id=analysis_id,
             dfg_api_key=api_key,
