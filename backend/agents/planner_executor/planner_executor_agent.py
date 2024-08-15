@@ -98,6 +98,10 @@ analysis_assets_dir = os.environ.get(
     "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
 )
 
+# check if analysis_assets_dir/datasets exists
+if not os.path.exists(analysis_assets_dir + "/datasets"):
+    os.makedirs(analysis_assets_dir + "/datasets")
+
 
 class MissingDependencyException(Exception):
     def __init__(self, variable_name):
@@ -617,6 +621,7 @@ async def generate_single_step(
         "model_name": os.environ.get("LLM_MODEL_NAME", None),
         "dev": dev,
         "temp": temp,
+        "parent_questions": [],
         # NOTE: disabled for now. See note above.
         # "parent_questions": [p["user_question"] for p in parent_analyses],
         # "similar_plans": similar_plans[:2],
