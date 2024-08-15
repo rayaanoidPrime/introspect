@@ -123,6 +123,41 @@ const AlignModel = () => {
     }
   };
 
+  const updateMetadata = async (metadata, setLoading) => {
+    try {
+      setLoading(true);
+      console.log("metadata", metadata);
+      console.log("token", token);
+      console.log("apiKeyName", apiKeyName);
+
+      const res = await fetch(
+        setupBaseUrl("http", `integration/update_metadata`),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token: token,
+            key_name: apiKeyName,
+            metadata: metadata,
+          }),
+        }
+      );
+      const data = await res.json();
+      setLoading(false);
+      if (data.error) {
+        message.error(data.error || "Error updating metadata");
+      } else {
+        message.success("Metadata updated successfully!");
+      }
+    } catch (error) {
+      console.error("Error saving data:", error);
+      message.error("Error saving data");
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       <Meta />
@@ -160,9 +195,12 @@ const AlignModel = () => {
               token={token}
               apiKeyName={apiKeyName}
               updateGlossary={updateGlossary}
+              updateMetadata={updateMetadata}
             />
           ) : null}
           <Instructions
+            title="Glossary"
+            description="This the information about your data that the model considers when generating your SQL queries. Feel free to edit these instructions to get the best results."
             glossary={glossary}
             setGlossary={setGlossary}
             updateGlossary={updateGlossary}
