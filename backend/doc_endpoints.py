@@ -1,9 +1,5 @@
-import base64
 import datetime
-import inspect
-import json
 import os
-import trace
 from uuid import uuid4
 from colorama import Fore, Style
 import traceback
@@ -14,8 +10,6 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
 from agents.planner_executor.tool_helpers.rerun_step import rerun_step_and_dependents
 from agents.planner_executor.tool_helpers.core_functions import analyse_data
 import pandas as pd
-from io import StringIO
-from tool_code_utilities import add_default_imports, fix_savefig_calls
 from utils import log_msg, snake_case
 import logging
 from generic_utils import get_api_key_from_key_name
