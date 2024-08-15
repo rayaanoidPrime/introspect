@@ -1,4 +1,12 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import {
+  EditOutlined,
+  SaveOutlined,
+  CloseCircleOutlined,
+  CloseSquareOutlined,
+  RollbackOutlined,
+} from "@ant-design/icons";
+import setupBaseUrl from "$utils/setupBaseUrl";
 import { Table, Input, Button, Popconfirm, Form, message } from "antd";
 
 const EditableCell = ({
@@ -14,17 +22,8 @@ const EditableCell = ({
   return (
     <td {...restProps}>
       {editing ? (
-        <Form.Item
-          name={dataIndex}
-          style={{ margin: 0 }}
-          rules={[
-            {
-              required: true,
-              message: `Please Input ${title}!`,
-            },
-          ]}
-        >
-          <Input />;
+        <Form.Item name={dataIndex} className="m-0">
+          <Input />
         </Form.Item>
       ) : (
         children
@@ -33,30 +32,34 @@ const EditableCell = ({
   );
 };
 
-const MetadataEditor = ({ metadata, onUpdate }) => {
+const MetadataEditor = ({ title, description, metadata, updateMetadata }) => {
   const [form] = Form.useForm();
-  const [data, setData] = useState([]);
+  const [currentData, setCurrentData] = useState([]);
   const [editingKey, setEditingKey] = useState("");
+
+  const [updatingMetadata, setUpdatingMetadata] = useState(false);
 
   useEffect(() => {
     const formattedData = Object.entries(metadata).flatMap(([key, columns]) =>
       columns.map((col) => ({
         key: `${key}-${col.column_name}`,
-        tableName: key,
-        columnName: col.column_name,
-        dataType: col.data_type,
-        description: col.column_description,
+        table_name: key,
+        column_name: col.column_name,
+        data_type: col.data_type,
+        column_description: col.column_description,
       }))
     );
-    setData(formattedData);
+    setCurrentData(formattedData);
   }, [metadata]);
 
   const isEditing = (record) => record.key === editingKey;
 
   const edit = (record) => {
     form.setFieldsValue({
-      ...record,
-      description: record.description,
+      table_name: record.table_name,
+      column_name: record.column_name,
+      data_type: record.data_type,
+      column_description: record.column_description,
     });
     setEditingKey(record.key);
   };
@@ -68,17 +71,17 @@ const MetadataEditor = ({ metadata, onUpdate }) => {
   const save = async (key) => {
     try {
       const row = await form.validateFields();
-      const newData = [...data];
+      const newData = [...currentData];
       const index = newData.findIndex((item) => key === item.key);
 
       if (index > -1) {
         const item = newData[index];
         newData.splice(index, 1, { ...item, ...row });
-        setData(newData);
+        setCurrentData(newData);
         setEditingKey("");
       } else {
         newData.push(row);
-        setData(newData);
+        setCurrentData(newData);
         setEditingKey("");
       }
     } catch (errInfo) {
@@ -86,62 +89,48 @@ const MetadataEditor = ({ metadata, onUpdate }) => {
     }
   };
 
-  const handleUpdateMetadata = () => {
-    // This function should handle the logic to update metadata based on the current state of `data`.
-    // Call the onUpdate function with the new data
-    onUpdate(data);
-    message.success("Metadata updated successfully!");
-  };
-
   const columns = [
     {
       title: "Table Name",
-      dataIndex: "tableName",
+      dataIndex: "table_name",
       width: "20%",
       editable: false,
     },
     {
       title: "Column Name",
-      dataIndex: "columnName",
+      dataIndex: "column_name",
       width: "20%",
       editable: false,
     },
     {
       title: "Data Type",
-      dataIndex: "dataType",
-      width: "20%",
+      dataIndex: "data_type",
+      width: "15%",
       editable: false,
     },
     {
       title: "Description",
-      dataIndex: "description",
-      width: "30%",
+      dataIndex: "column_description",
+      width: "35%",
       editable: true,
     },
     {
-      title: "Action",
+      title: "",
       dataIndex: "action",
+      width: "10%",
+      align: "center",
       render: (_, record) => {
         const editable = isEditing(record);
         return editable ? (
           <span>
-            <a
-              href="#!"
-              onClick={() => save(record.key)}
-              style={{
-                marginRight: 8,
-              }}
-            >
-              Save
-            </a>
-            <Popconfirm title="Sure to cancel?" onConfirm={cancel}>
-              <a>Cancel</a>
-            </Popconfirm>
+            <SaveOutlined onClick={() => save(record.key)} className="mr-3" />
+            <RollbackOutlined onClick={cancel} />
           </span>
         ) : (
-          <a disabled={editingKey !== ""} onClick={() => edit(record)}>
-            Edit
-          </a>
+          <EditOutlined
+            disabled={editingKey !== ""}
+            onClick={() => edit(record)}
+          />
         );
       },
     },
@@ -164,12 +153,9 @@ const MetadataEditor = ({ metadata, onUpdate }) => {
   });
 
   return (
-    <div className="w-full p-4">
-      <h1 className="text-xl mb-3 font-semibold">Metadata</h1>
-      <p className="mb-4 text-gray-700">
-        These are the suggested descriptions for each column in the database.
-        You can edit them below before updating the metadata.
-      </p>
+    <div className="w-full p-4 bg-gray-50">
+      <h1 className="text-xl mb-3 font-semibold">{title}</h1>
+      <p className="mb-4 text-gray-700">{description}</p>
       <Form form={form} component={false}>
         <Table
           components={{
@@ -178,7 +164,7 @@ const MetadataEditor = ({ metadata, onUpdate }) => {
             },
           }}
           bordered
-          dataSource={data}
+          dataSource={currentData}
           columns={mergedColumns}
           rowClassName="editable-row"
           pagination={{
@@ -188,9 +174,12 @@ const MetadataEditor = ({ metadata, onUpdate }) => {
             <Button
               type="primary"
               className="mt-4 p-2 min-w-56"
-              onClick={handleUpdateMetadata}
+              onClick={async () =>
+                await updateMetadata(currentData, setUpdatingMetadata)
+              }
+              disabled={updatingMetadata}
             >
-              Update Metadata
+              {updatingMetadata ? "Updating Metadata" : "Update Metadata"}
             </Button>
           )}
         />
