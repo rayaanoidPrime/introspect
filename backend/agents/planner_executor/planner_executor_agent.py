@@ -408,7 +408,7 @@ async def run_step(
             new_data=[step],
             # if this is a new step, this will simply append
             # but if we're running an existing step, this will overwrite it with the new one
-            overwrite_key=step["id"],
+            overwrite_key="id",
         )
 
 
