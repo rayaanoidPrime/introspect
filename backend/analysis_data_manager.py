@@ -9,7 +9,6 @@ from db_utils import (
     update_analysis_data,
 )
 from agents.main_agent import (
-    execute,
     get_clarification,
 )
 
@@ -85,9 +84,6 @@ class AnalysisDataManager:
                     dfg_api_key=self.api_key,
                     dev=self.dev,
                     temp=self.temp,
-                ),
-                "gen_steps": partial(
-                    execute, dfg_api_key=self.api_key, dev=self.dev, temp=self.temp
                 ),
             }
 
