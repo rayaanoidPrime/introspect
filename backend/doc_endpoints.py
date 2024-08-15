@@ -547,8 +547,14 @@ async def analyse_data_endpoint(websocket: WebSocket):
                 )
                 continue
 
+            df = pd.DataFrame(
+                data["data"]["data"],
+            )
+            for col in ["key", "index"]:
+                if col in df.columns:
+                    del df[col]
+
             # read data from the csv
-            df = pd.read_csv(StringIO(data.get("data")))
             image_path = data.get("image")
 
             async for chunk in analyse_data(
