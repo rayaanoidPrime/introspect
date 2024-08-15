@@ -10,7 +10,7 @@ const Instructions = ({
   isLoading,
   isUpdatingInstructions,
 }) => (
-  <div className="w-full p-4">
+  <div className="w-full p-4 bg-gray-50 mb-5">
     <h2 className="text-xl mb-3 font-semibold">{title}</h2>
     <p className="mb-4 text-gray-700">{description}</p>
     <Spin
