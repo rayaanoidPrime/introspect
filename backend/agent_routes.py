@@ -20,10 +20,19 @@ from db_utils import (
     get_assignment_understanding,
     update_analysis_data,
 )
-from generic_utils import get_api_key_from_key_name
+from generic_utils import get_api_key_from_key_name, make_request
 from uuid import uuid4
 
 router = APIRouter()
+
+import redis
+import os
+
+REDIS_HOST = os.getenv("REDIS_INTERNAL_HOST", "agents-redis")
+REDIS_PORT = os.getenv("REDIS_INTERNAL_PORT", 6379)
+redis_client = redis.Redis(
+    host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True
+)
 
 
 @router.post("/generate_step")
@@ -139,6 +148,7 @@ async def generate_step(request: Request):
             if err:
                 raise Exception("Error fetching assignment understanding from database")
 
+            # NOTE: to ask Manas: if the above statement raises an error, then this bit becomes redundant, no?
             if not assignment_understanding:
                 err = await generate_assignment_understanding(
                     analysis_id=analysis_id,
@@ -148,6 +158,31 @@ async def generate_step(request: Request):
 
             if err:
                 raise Exception("Error generating assignment understanding")
+
+            question = question.strip()
+            if len(prev_questions) > 0:
+                # make a request to combine the previous questions and the current question
+                if redis_client.exists(f"unified_question:{analysis_id}"):
+                    question = redis_client.get(f"unified_question:{analysis_id}")
+                else:
+                    question_unifier_url = (
+                        os.getenv("DEFOG_BASE_URL", "https://api.defog.ai")
+                        + "/convert_question_to_single"
+                    )
+                    unified_question = await make_request(
+                        url=question_unifier_url,
+                        json={
+                            "api_key": api_key,
+                            "question": question,
+                            "previous_context": prev_questions,
+                        },
+                    )
+                    question = unified_question.get("rephrased_question", question)
+                    redis_client.setex(
+                        f"unified_question:{analysis_id}", 3600, question
+                    )
+
+                print(f"*******\nUnified question: {question}\n********", flush=True)
 
             step = await generate_single_step(
                 dfg_api_key=api_key,
