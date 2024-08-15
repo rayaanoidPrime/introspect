@@ -230,7 +230,7 @@ async def initialise_analysis(
     except Exception as e:
         traceback.print_exc()
         print(e)
-        err = "Could not create a new analyis."
+        err = "Could not create a new analysis."
         new_analysis_data = None
     finally:
         return err, new_analysis_data
@@ -270,6 +270,7 @@ def get_analysis_data(analysis_id):
     finally:
         return err, analysis_data
 
+
 def get_assignment_understanding(analysis_id):
     """
     Returns the assignment_understanding column from the analysis with the given analysis_id
@@ -286,7 +287,9 @@ def get_assignment_understanding(analysis_id):
             # try to fetch analysis_data data
             with engine.begin() as conn:
                 row = conn.execute(
-                    select(Analyses.__table__.columns["assignment_understanding"]).where(Analyses.analysis_id == analysis_id)
+                    select(
+                        Analyses.__table__.columns["assignment_understanding"]
+                    ).where(Analyses.analysis_id == analysis_id)
                 ).fetchone()
 
                 if row:
@@ -301,7 +304,8 @@ def get_assignment_understanding(analysis_id):
         traceback.print_exc()
     finally:
         return err, understanding
-    
+
+
 def update_assignment_understanding(analysis_id, understanding):
     """
     Updates the assignment_understanding column in the analysis with the given analysis_id
@@ -317,7 +321,9 @@ def update_assignment_understanding(analysis_id, understanding):
             # try to fetch analysis_data data
             with engine.begin() as conn:
                 conn.execute(
-                    update(Analyses).where(Analyses.analysis_id == analysis_id).values(assignment_understanding=understanding)
+                    update(Analyses)
+                    .where(Analyses.analysis_id == analysis_id)
+                    .values(assignment_understanding=understanding)
                 )
 
     except Exception as e:
@@ -326,6 +332,7 @@ def update_assignment_understanding(analysis_id, understanding):
         traceback.print_exc()
     finally:
         return err
+
 
 async def update_analysis_data(
     analysis_id, request_type=None, new_data=None, replace=False, overwrite_key=None
@@ -603,7 +610,7 @@ async def get_doc_data(api_key, doc_id, token, col_name="doc_blocks"):
     except Exception as e:
         traceback.print_exc()
         print(e)
-        err = "Could not create a new analyis."
+        err = "Could not create a new analysis."
         doc_data = None
     finally:
         return err, doc_data
