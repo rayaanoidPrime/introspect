@@ -727,6 +727,10 @@ async def rerun_step(
 
     dependent_steps = find_dependent_steps(step, all_steps)
 
+    logging.info(
+        f"{len(dependent_steps)} dependent steps found: {[[x['id'], x['tool_name']]for x in dependent_steps]}"
+    )
+
     for dependent_step in dependent_steps:
         await run_step(
             analysis_id=analysis_id,
