@@ -24,7 +24,7 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
   const optimizedMetadataRef = useRef(null);
 
   const [newGlossary, setNewGlossary] = useState("");
-  const [newMetadata, setNewMetadata] = useState();
+  const [newMetadata, setNewMetadata] = useState(null);
 
   const [updatingInstructions, setUpdatingInstructions] = useState(false);
 
@@ -215,6 +215,9 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
               isTaskCompleted = true;
               return isTaskCompleted;
             }
+            if (statusData.status === "not_found") {
+              return false;
+            }
             await new Promise((resolve) => setTimeout(resolve, 10000)); // 10 seconds interval
           }
           return isTaskCompleted;
@@ -279,6 +282,9 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
     setLoading(false);
     setResults({});
     setRecommendations(null);
+
+    optimizedGlossaryRef.current = null;
+    optimizedMetadataRef.current = null;
   };
 
   return (
