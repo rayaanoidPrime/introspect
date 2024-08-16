@@ -9,7 +9,6 @@ from agents.planner_executor.planner_executor_agent import (
     rerun_step,
     run_step,
 )
-from analysis_data_manager import AnalysisDataManager
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -239,24 +238,6 @@ async def clarify(request: Request):
             dev=dev,
             temp=temp,
         )
-
-        analysis_manager = AnalysisDataManager(
-            dfg_api_key=api_key,
-            user_question=question,
-            analysis_id=analysis_id,
-            dev=dev,
-            temp=temp,
-        )
-
-        if analysis_manager.invalid:
-            # it's okay if it's invalid. helps us test this endpoint/function in isolation
-            # so just warn instead of throwing
-            logging.warn(
-                "Returned questions but analysis id was invalid. Check unless you're in a testing environment."
-            )
-        else:
-            await analysis_manager.get_similar_plans()
-            # TODO: save the clarifying questions to the analysis data
 
         return {
             "success": True,
