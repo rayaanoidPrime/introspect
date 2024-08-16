@@ -6,6 +6,7 @@ import {
 } from "@ant-design/icons";
 import { Table, Input, Button, Form, Spin } from "antd";
 
+
 const EditableCell = ({
   editing,
   dataIndex,
@@ -20,7 +21,14 @@ const EditableCell = ({
     <td {...restProps}>
       {editing ? (
         <Form.Item name={dataIndex} className="m-0">
-          <Input />
+          {dataIndex === "column_description" ? (
+            <Input.TextArea
+              autoSize={{ minRows: 3 }} 
+              className="max-h-32 overflow-auto p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          ) : (
+            <Input className="p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          )}
         </Form.Item>
       ) : (
         children
@@ -114,19 +122,28 @@ const MetadataEditor = ({ title, description, metadata, updateMetadata }) => {
     {
       title: "",
       dataIndex: "action",
-      width: "10%",
+      width: "5%",
       align: "center",
       render: (_, record) => {
         const editable = isEditing(record);
         return editable ? (
-          <span>
-            <SaveOutlined onClick={() => save(record.key)} className="mr-3" />
-            <RollbackOutlined onClick={cancel} />
+          <span className="flex space-x-3 justify-center">
+            <SaveOutlined
+              onClick={() => save(record.key)}
+              className="text-blue-500 hover:text-blue-700 cursor-pointer text-xl"
+            />
+            <RollbackOutlined
+              onClick={cancel}
+              className="text-red-500 hover:text-red-700 cursor-pointer text-xl"
+            />
           </span>
         ) : (
           <EditOutlined
             disabled={editingKey !== ""}
             onClick={() => edit(record)}
+            className={`${
+              editingKey === "" ? "text-yellow-500 hover:text-yellow-700 cursor-pointer text-xl" : "text-gray-400"
+            }`}
           />
         );
       },
@@ -141,7 +158,7 @@ const MetadataEditor = ({ title, description, metadata, updateMetadata }) => {
       ...col,
       onCell: (record) => ({
         record,
-        inputType: col.dataIndex === "description" ? "text" : "text",
+        inputType: col.dataIndex === "column_description" ? "textarea" : "text",
         dataIndex: col.dataIndex,
         title: col.title,
         editing: isEditing(record),

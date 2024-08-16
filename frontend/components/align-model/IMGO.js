@@ -266,11 +266,15 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
   };
 
   const recommendationMessage = (recommendations) => {
-    if (recommendations.glossary && recommendations.metadata) {
+    console.log(recommendations);
+    if (
+      recommendations.is_glossary_optimization_recommended &&
+      recommendations.is_metadata_optimization_recommended
+    ) {
       return `Recommendations: Focus on improving both Metadata and Glossary.`;
-    } else if (recommendations.glossary) {
+    } else if (recommendations.is_glossary_optimization_recommended) {
       return `Recommendations: Focus on improving Glossary.`;
-    } else if (recommendations.metadata) {
+    } else if (recommendations.is_metadata_optimization_recommended) {
       return `Recommendations: Focus on improving Metadata.`;
     } else {
       return `We do not have any recommendations for you at this point. Please add more golden queries and check back.`;
@@ -314,8 +318,7 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
               <p className="mb-2 font-semibold">
                 {recommendationMessage(recommendations)}
               </p>
-              {(true ||
-                recommendations.is_glossary_optimization_recommended) && (
+              {recommendations.is_glossary_optimization_recommended && (
                 <Instructions
                   title="Optimized Glossary"
                   description="These are the optimized glossary recommendations. You can edit them below before accepting changes."
@@ -327,8 +330,7 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
                   isUpdatingInstructions={updatingInstructions}
                 />
               )}
-              {(true ||
-                recommendations.is_metadata_optimization_recommended) && (
+              {recommendations.is_metadata_optimization_recommended && (
                 <MetadataEditor
                   title="Optimised Metadata"
                   description="These are the suggested descriptions for each column in the database. You can edit them below before updating the metadata."
