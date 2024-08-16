@@ -66,9 +66,18 @@ async def fetch_query_into_df(
             "password": "postgres",
         }
 
+    # make sure not unsafe
+    if not safe_sql(sql_query):
+        raise ValueError("Unsafe SQL Query")
+
     colnames, data, new_sql_query = await asyncio.to_thread(
         execute_query, sql_query, api_key, db_type, db_creds, retries=2, temp=temp
     )
+
+    # again, make sure new query that was run is safe
+    # make sure not unsafe
+    if not safe_sql(new_sql_query):
+        raise ValueError("Unsafe SQL Query")
 
     df = pd.DataFrame(data, columns=colnames)
 
