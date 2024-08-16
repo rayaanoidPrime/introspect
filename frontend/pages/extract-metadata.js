@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
-import DbCredentialsForm from "../components/extract-metadata/DbCredentialsForm";
+import DbCredentialsForm from "../components/extract-metadata/DBCredentialsForm";
 import MetadataTable from "../components/extract-metadata/MetadataTable";
 import SetupStatus from "../components/extract-metadata/SetupStatus"; // Adjust the import path as needed
 import setupBaseUrl from "$utils/setupBaseUrl";
