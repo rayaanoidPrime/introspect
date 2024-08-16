@@ -20,9 +20,6 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
   // store the final recommendations
   const [recommendations, setRecommendations] = useState(null);
 
-  const [changeGlossary, setChangeGlossary] = useState(false);
-  const [changeMetadata, setChangeMetadata] = useState(false);
-
   const optimizedGlossaryRef = useRef(null);
   const optimizedMetadataRef = useRef(null);
 
@@ -122,6 +119,7 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
   };
 
   useEffect(() => {
+    console.log("Renderinng IMGO modal visible state:", modalVisible);
     if (modalVisible) {
       executeWorkflow();
     }
@@ -264,29 +262,16 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
     }
   };
 
-  const interpretFinalMessage = (message) => {
-    const lowerMessage = message.toLowerCase();
-
-    if (lowerMessage.includes("none")) {
-      return "We do not have any recommendations for you at this point. Please add more golden queries and check back.";
+  const recommendationMessage = (recommendations) => {
+    if (recommendations.glossary && recommendations.metadata) {
+      return `Recommendations: Focus on improving both Metadata and Glossary.`;
+    } else if (recommendations.glossary) {
+      return `Recommendations: Focus on improving Glossary.`;
+    } else if (recommendations.metadata) {
+      return `Recommendations: Focus on improving Metadata.`;
+    } else {
+      return `We do not have any recommendations for you at this point. Please add more golden queries and check back.`;
     }
-
-    if (
-      lowerMessage.includes("metadata") &&
-      lowerMessage.includes("glossary")
-    ) {
-      setChangeGlossary(true);
-      setChangeMetadata(true);
-      return "Recommendations: Focus on improving both Metadata and Glossary.";
-    } else if (lowerMessage.includes("metadata")) {
-      setChangeMetadata(true);
-      return "Recommendations: Focus on improving Metadata.";
-    } else if (lowerMessage.includes("glossary")) {
-      setChangeGlossary(true);
-      return "Recommendations: Focus on improving Glossary.";
-    }
-
-    return message;
   };
 
   const onClose = () => {
@@ -298,7 +283,7 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
 
   return (
     <>
-      <Button onClick={() => setModalVisible(true)} style={{ width: "100%" }}>
+      <Button onClick={() => setModalVisible(true)} className="w-full">
         Iterative Metadata and Glossary Optimisation
       </Button>
       <Modal
@@ -307,7 +292,6 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
             Recommendations for Improving Glossary and Metadata
           </div>
         }
-        visible={modalVisible}
         onCancel={onClose}
         footer={[
           <Button key="close" onClick={onClose} style={{ width: "100%" }}>
@@ -315,15 +299,17 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
           </Button>,
         ]}
         width="75%"
-        bodyStyle={{ maxHeight: "80vh", overflowY: "auto" }}
+        className="max-h-full overflow-y-auto"
+        open={modalVisible}
       >
         <div className="space-y-4">
           {recommendations ? (
             <Card title="Results" className="bg-white shadow-md">
               <p className="mb-2 font-semibold">
-                {interpretFinalMessage(recommendations.message)}
+                {recommendationMessage(recommendations)}
               </p>
-              {(true || changeGlossary) && (
+              {(true ||
+                recommendations.is_glossary_optimization_recommended) && (
                 <Instructions
                   title="Optimized Glossary"
                   description="These are the optimized glossary recommendations. You can edit them below before accepting changes."
@@ -335,7 +321,8 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
                   isUpdatingInstructions={updatingInstructions}
                 />
               )}
-              {(true || changeMetadata) && (
+              {(true ||
+                recommendations.is_metadata_optimization_recommended) && (
                 <MetadataEditor
                   title="Optimised Metadata"
                   description="These are the suggested descriptions for each column in the database. You can edit them below before updating the metadata."
@@ -349,6 +336,7 @@ const IMGO = ({ token, apiKeyName, updateGlossary, updateMetadata }) => {
                   <ResultsPercentages
                     validPctList={recommendations.valid_pct_list}
                     correctPctList={recommendations.correct_pct_list}
+                    overallPctList={recommendations.overall_list}
                   />
                 )}
             </Card>

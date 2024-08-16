@@ -80,7 +80,22 @@ async def optimize_metadata(request: Request):
 @router.post("/get_recommendation_for_glossary_and_metadata")
 async def get_recommendation_for_glossary_and_metadata(request: Request):
     """Responds to a recommendation request for whether to improve glossary and/or metadata."""
-    return await send_imgo_request(request, "imgo_get_recommendation")
+    res = await send_imgo_request(request, "imgo_get_recommendation")
+
+    # Initialize flags to indicate if optimization is recommended
+    res["is_glossary_optimization_recommended"] = False
+    res["is_metadata_optimization_recommended"] = False
+
+    # Check if the message suggests optimizing glossary or metadata
+    if "message" in res and res["message"]:
+        message = str(res["message"]).lower()
+        if "glossary" in message:
+            res["is_glossary_optimization_recommended"] = True
+        if "metadata" in message:
+            res["is_metadata_optimization_recommended"] = True
+
+    return res
+
 
 
 @router.post("/check_task_status")
