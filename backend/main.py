@@ -18,9 +18,6 @@ from db_utils import (
     get_all_analyses,
     get_analysis_data,
     initialise_analysis,
-    update_analysis_data,
-    store_tool_run,
-    validate_user,
 )
 from generic_utils import get_api_key_from_key_name
 import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes, feedback_routes, slack_routes, agent_routes, oracle_routes
@@ -124,7 +121,6 @@ async def one_analysis(request: Request):
         return {"success": False, "error_message": "Incorrect request"}
 
 
-@app.post("/create_analysis")
 @app.post("/create_analysis")
 async def create_analysis(request: Request):
     try:

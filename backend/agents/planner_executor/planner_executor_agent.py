@@ -207,6 +207,7 @@ async def run_step(
     analysis_execution_cache,
     skip_cache_storing=False,
     resolve_inputs=True,
+    max_resolve_tries=4,
 ):
     """
     Runs a single step, updating the steps object *in place* with the results. Also re-runs all parent steps if required.
@@ -226,7 +227,6 @@ async def run_step(
 
     # try to resolve the inputs to this step
     if resolve_inputs:
-        max_resolve_tries = 4
 
         # these retries are only triggered if we get a MissingDependencyException
         # I.e., if the LLM does not give us the right inputs to this step

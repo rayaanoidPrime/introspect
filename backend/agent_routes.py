@@ -38,7 +38,14 @@ redis_client = redis.Redis(
 async def generate_step(request: Request):
     """
     Function that returns a single step of a plan.
+
     Takes in previous steps generated, which defaults to an empty array.
+
+    This is called by the front end's lib/components/agent/analysis/analysisManager.js from inside the `submit` function.
+
+    Rendered by lib/components/agent/analysis/step-results/StepResults.jsx
+
+    The mandatory inputs are analysis_id, a valid key_name and question.
     """
     try:
         logging.info("Generating step")
@@ -208,7 +215,14 @@ async def generate_step(request: Request):
 async def clarify(request: Request):
     """
     Function that returns clarifying questions, if any, for a given question.
+
     If analysis id is passed, it also stores the clarifying questions in the analysis data.
+
+    This is called by the front end's lib/components/agent/analysis/analysisManager.js from inside the `submit` function.
+
+    Rendered by lib/components/agent/analysis/Clarify.jsx
+
+    The mandatory inputs are a valid key_name and question.
     """
     try:
         logging.info("Generating clarification questions")
@@ -256,10 +270,14 @@ async def rerun_step_endpoint(request: Request):
     Function that re runs a step given:
     1. Analysis ID
     2. Step id to re run
-    3. All steps' objects
+    3. The edited step
     4. Clarification questions
 
+    Note that it will only accept edits to one step. If the other steps have been edited, but they have not been re run, they will be re run with the original inputs (because unless the user presses re run on the front end, we don't get their edits).
+
     It re runs both the parents and the dependent steps of the step to re run.
+
+    Called by the front end's lib/components/agent/analysis/analysisManager.js from inside the `reRun` function.
     """
     try:
         params = await request.json()
@@ -323,13 +341,14 @@ async def rerun_step_endpoint(request: Request):
         return {"success": False, "error_message": str(e) or "Incorrect request"}
 
 
-# an endpoint to delete steps.
-# we will get a list of tool run ids
-# we will remove these from the analysis
 @router.post("/delete_steps")
 async def delete_steps(request: Request):
     """
-    Delete steps using the tool run ids passed.
+    Delete steps from an analysis using the anlaysis_id and step ids passed.
+
+    Returns new steps after deletion.
+
+    This is called by the front end's lib/components/agent/analysis/analysisManager.js from inside the `deleteStepsWrapper` function.
     """
     try:
         data = await request.json()
@@ -337,7 +356,7 @@ async def delete_steps(request: Request):
         analysis_id = data.get("analysis_id")
 
         if step_ids is None or type(step_ids) != list:
-            raise Exception("Invalid tool run ids.")
+            raise Exception("Invalid step ids.")
 
         if analysis_id is None or type(analysis_id) != str:
             raise Exception("Invalid analysis id.")
@@ -377,9 +396,18 @@ async def delete_steps(request: Request):
 async def create_new_step(request: Request):
     """
     This is called when a user adds a step on the front end.
+
     This will receive a tool name, and tool inputs.
+
     This will create a new step in the analysis.
-    No tool run will occur. Though a tool run id will be created for this step in case rerun is called in the future.
+
+    Then it will run the new step and all its dependents/parents.
+
+    Returns the new steps after addition.
+
+    This is called by the front end's lib/components/agent/analysis/analysisManager.js from inside the `createNewStep` function.
+
+    The UI components for this are in lib/components/agent/analysis/agent/add-step/*.
     """
     try:
         data = await request.json()
