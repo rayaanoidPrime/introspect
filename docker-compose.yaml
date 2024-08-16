@@ -33,7 +33,7 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - REPORT_ASSETS_DIR=${REPORT_ASSETS_DIR}
+      - ANALYSIS_ASSETS_DIR=${ANALYSIS_ASSETS_DIR}
       - DBNAME=${DBNAME}
       - DBHOST=${DBHOST}
       - DBPORT=${DBPORT}
@@ -105,7 +105,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 256M
     command: >
       redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
@@ -118,7 +118,6 @@ volumes:
   agents-postgres:
   agents-assets:
   redis-data:
-
 
 networks:
   agents-network: # curl --header "Content-Type: application/json"  --data '{"request_type": "ping"}' http://localhost:80/llm-calls/

@@ -1,9 +1,5 @@
-import base64
 import datetime
-import inspect
-import json
 import os
-import trace
 from uuid import uuid4
 from colorama import Fore, Style
 import traceback
@@ -14,8 +10,6 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
 from agents.planner_executor.tool_helpers.rerun_step import rerun_step_and_dependents
 from agents.planner_executor.tool_helpers.core_functions import analyse_data
 import pandas as pd
-from io import StringIO
-from tool_code_utilities import add_default_imports, fix_savefig_calls
 from utils import log_msg, snake_case
 import logging
 from generic_utils import get_api_key_from_key_name
@@ -31,15 +25,14 @@ from db_utils import (
     get_all_docs,
     get_analysis_versions,
     get_doc_data,
-    get_report_data,
+    get_analysis_data,
     get_tool_run,
     get_toolboxes,
-    initialise_report,
     store_feedback,
     store_tool_run,
     toggle_disable_tool,
     update_doc_data,
-    update_report_data,
+    update_analysis_data,
     update_table_chart_data,
     get_table_data,
     get_all_analyses,
@@ -54,7 +47,9 @@ router = APIRouter()
 manager = ConnectionManager()
 
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
-report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
+analysis_assets_dir = os.environ.get(
+    "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
+)
 
 
 @router.websocket("/docs")
@@ -264,79 +259,6 @@ async def get_analyses(request: Request):
         return {"success": False, "error_message": "Unable to parse your request."}
 
 
-@router.websocket("/table_chart")
-async def update_table_chart(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            data = await websocket.receive_json()
-            if "ping" in data:
-                # don't do anything
-                continue
-
-            if data.get("table_id") is None:
-                logging.info("No table id ")
-                continue
-
-            if data.get("data") is None:
-                logging.info("No data given for table update")
-                continue
-
-            err, analysis, updated_data = await update_table_chart_data(
-                data.get("table_id"), data.get("data")
-            )
-
-            if err is None:
-                # run this table again
-                logging.info("Ran fine.")
-                await manager.send_personal_message(
-                    {"success": True, "run_again": True, "table_data": updated_data},
-                    websocket,
-                )
-            elif err is not None:
-                logging.info("Error re running:" + str(err))
-                await manager.send_personal_message(
-                    {"success": False, "run_again": True, "error_message": str(err)},
-                    websocket,
-                )
-
-    except WebSocketDisconnect as e:
-        # logging.info("Disconnected. Error: " +  str(e))
-        # traceback.print_exc()
-        manager.disconnect(websocket)
-        await websocket.close()
-    except Exception as e:
-        # logging.info("Disconnected. Error: " +  str(e))
-        traceback.print_exc()
-        # other reasons for disconnect, like websocket being closed or a timeout
-        manager.disconnect(websocket)
-        await websocket.close()
-
-
-@router.post("/get_table_chart")
-async def get_table_chart(request: Request):
-    """
-    Get the table_chart using the id passed.
-    """
-    try:
-        data = await request.json()
-        table_id = data.get("table_id")
-
-        if table_id is None or type(table_id) != str:
-            return {"success": False, "error_message": "Invalid document id."}
-
-        err, table_data = await get_table_data(table_id)
-
-        if err:
-            return {"success": False, "error_message": err}
-
-        return {"success": True, "table_data": table_data}
-    except Exception as e:
-        logging.info("Error getting analyses: " + str(e))
-        traceback.print_exc()
-        return {"success": False, "error_message": "Unable to parse your request."}
-
-
 @router.post("/get_tool_run")
 async def get_tool_run_endpoint(request: Request):
     """
@@ -362,168 +284,6 @@ async def get_tool_run_endpoint(request: Request):
         return {"success": False, "error_message": "Unable to parse your request."}
 
 
-@router.websocket("/edit_tool_run")
-async def edit_tool_run(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            data = await websocket.receive_json()
-
-            if "ping" in data:
-                # don't do anything
-                continue
-
-            if data.get("tool_run_id") is None:
-                logging.info("No tool run id ")
-                continue
-
-            if data.get("analysis_id") is None:
-                logging.info("No analysis id ")
-                continue
-
-            update_res = await update_tool_run_data(
-                data.get("analysis_id"),
-                data.get("tool_run_id"),
-                data.get("update_prop"),
-                data.get("new_val"),
-            )
-            if not update_res["success"]:
-                logging.info(
-                    f"{Fore.RED} {Style.Bright} Error updating tool run: {update_res['error_message']}{Style.RESET_ALL}"
-                )
-
-    except WebSocketDisconnect as e:
-        # logging.info("Disconnected. Error: " +  str(e))
-        # traceback.print_exc()
-        manager.disconnect(websocket)
-        await websocket.close()
-    except Exception as e:
-        # logging.info("Disconnected. Error: " +  str(e))
-        traceback.print_exc()
-        # other reasons for disconnect, like websocket being closed or a timeout
-        manager.disconnect(websocket)
-        await websocket.close()
-
-
-@router.websocket("/step_rerun")
-async def rerun_step(websocket: WebSocket):
-    """
-    Re run a step (and associated steps) in the analysis.
-    """
-    await manager.connect(websocket)
-    try:
-        while True:
-            data = await websocket.receive_json()
-            if "ping" in data:
-                # don't do anything
-                continue
-
-            tool_run_id = data.get("tool_run_id")
-            analysis_id = data.get("analysis_id")
-            dev = data.get("dev", False)
-            key_name = data.get("key_name")
-            temp = data.get("temp")
-            api_key = get_api_key_from_key_name(key_name)
-
-            if tool_run_id is None or type(tool_run_id) != str:
-                return {"success": False, "error_message": "Invalid tool run id."}
-
-            if analysis_id is None or type(analysis_id) != str:
-                return {"success": False, "error_message": "Invalid analysis id."}
-
-            # get steps from db
-            err, analysis_data = get_report_data(analysis_id)
-            if err:
-                return {
-                    "success": False,
-                    "error_message": err,
-                    "tool_run_id": tool_run_id,
-                    "analysis_id": analysis_id,
-                }
-
-            global_dict = {
-                "user_question": analysis_data["user_question"],
-                "llm_calls_url": llm_calls_url,
-                "report_assets_dir": report_assets_dir,
-                "dev": dev,
-                "dfg_api_key": api_key,
-                "temp": temp,
-            }
-
-            if err:
-                return {
-                    "success": False,
-                    "error_message": err,
-                    "tool_run_id": tool_run_id,
-                    "analysis_id": analysis_id,
-                }
-
-            steps = analysis_data["gen_steps"]
-            if steps["success"]:
-                steps = steps["steps"]
-            else:
-                return {
-                    "success": False,
-                    "error_message": steps["error_message"],
-                    "tool_run_id": tool_run_id,
-                    "analysis_id": analysis_id,
-                }
-
-            logging.info([s["inputs"] for s in steps])
-            async for err, reran_id, new_data in rerun_step_and_dependents(
-                dfg_api_key=api_key,
-                analysis_id=analysis_id,
-                tool_run_id=tool_run_id,
-                steps=steps,
-                global_dict=global_dict,
-            ):
-                if new_data and type(new_data) == dict:
-                    if reran_id:
-                        logging.info("Reran step: " + reran_id)
-                        await manager.send_personal_message(
-                            {
-                                "success": True,
-                                "tool_run_id": reran_id,
-                                "analysis_id": analysis_id,
-                                "tool_run_data": new_data,
-                            },
-                            websocket,
-                        )
-                    elif new_data.get("pre_tool_run_message"):
-                        await manager.send_personal_message(
-                            {
-                                "pre_tool_run_message": new_data.get(
-                                    "pre_tool_run_message"
-                                ),
-                                "analysis_id": analysis_id,
-                            },
-                            websocket,
-                        )
-                else:
-                    logging.info("Error: " + str(err))
-                    await manager.send_personal_message(
-                        {
-                            "success": False,
-                            "error_message": err,
-                            "tool_run_id": reran_id,
-                            "analysis_id": analysis_id,
-                        },
-                        websocket,
-                    )
-
-    except WebSocketDisconnect as e:
-        logging.info("Disconnected. Error: " + str(e))
-        # traceback.print_exc()
-        manager.disconnect(websocket)
-        await websocket.close()
-    except Exception as e:
-        # logging.info("Disconnected. Error: " +  str(e))
-        traceback.print_exc()
-        # other reasons for disconnect, like websocket being closed or a timeout
-        manager.disconnect(websocket)
-        await websocket.close()
-
-
 # setup an analyse_data websocket endpoint
 @router.websocket("/analyse_data")
 async def analyse_data_endpoint(websocket: WebSocket):
@@ -546,8 +306,14 @@ async def analyse_data_endpoint(websocket: WebSocket):
                 )
                 continue
 
+            df = pd.DataFrame(
+                data["data"]["data"],
+            )
+            for col in ["key", "index"]:
+                if col in df.columns:
+                    del df[col]
+
             # read data from the csv
-            df = pd.read_csv(StringIO(data.get("data")))
             image_path = data.get("image")
 
             async for chunk in analyse_data(
@@ -569,122 +335,6 @@ async def analyse_data_endpoint(websocket: WebSocket):
         # other reasons for disconnect, like websocket being closed or a timeout
         manager.disconnect(websocket)
         await websocket.close()
-
-
-@router.post("/create_new_step")
-async def create_new_step(request: Request):
-    """
-    This is called when a user adds a step on the front end.
-    This will receive a tool name, and tool inputs.
-    This will create a new step in the analysis.
-    No tool run will occur. Though a tool run id will be created for this step in case rerun is called in the future.
-    """
-    try:
-        data = await request.json()
-        # check if this has analysis_id, tool_name and parent_step, and inputs
-        analysis_id = data.get("analysis_id")
-        tool_name = data.get("tool_name")
-        parent_step = data.get("parent_step")
-        inputs = data.get("inputs")
-        outputs_storage_keys = data.get("outputs_storage_keys")
-
-        err, tools = get_all_tools()
-
-        if err:
-            return {"success": False, "error_message": err}
-
-        if analysis_id is None or type(analysis_id) != str:
-            return {"success": False, "error_message": "Invalid analysis id."}
-
-        if tool_name is None or type(tool_name) != str or tool_name not in tools:
-            return {"success": False, "error_message": "Invalid tool name."}
-
-        if parent_step is None or type(parent_step) != dict:
-            return {"success": False, "error_message": "Invalid parent step."}
-
-        if inputs is None or type(inputs) != dict:
-            return {"success": False, "error_message": "Invalid inputs."}
-
-        if outputs_storage_keys is None or type(outputs_storage_keys) != list:
-            return {"success": False, "error_message": "Invalid outputs provided."}
-
-        if len(outputs_storage_keys) == 0:
-            return {"success": False, "error_message": "Please type in output names."}
-
-        # if any of the outputs are empty or aren't strings
-        if any([not o or type(o) != str for o in outputs_storage_keys]):
-            return {
-                "success": False,
-                "error_message": "Outputs provided are either blank or incorrect.",
-            }
-
-        # try to get this analysis' data
-        err, analysis_data = get_report_data(analysis_id)
-        if err:
-            return {"success": False, "error_message": err}
-
-        # get the steps
-        steps = analysis_data.get("gen_steps")
-        if steps and steps["success"]:
-            steps = steps["steps"]
-        else:
-            return {
-                "success": False,
-                "error_message": (
-                    steps.get("error_message")
-                    if steps is not None
-                    else "No steps found for analysis"
-                ),
-            }
-
-        tool = tools[tool_name]
-
-        new_tool_run_id = str(uuid4())
-
-        # a new empty step
-        new_step = {
-            "tool_name": tool_name,
-            "model_generated_inputs": inputs,
-            "inputs": inputs,
-            "input_metadata": tool["input_metadata"],
-            "tool_run_id": new_tool_run_id,
-            "outputs_storage_keys": outputs_storage_keys,
-        }
-
-        # add a step with the given inputs and tool_name
-        steps.append(new_step)
-
-        # store a empty tool run
-        store_result = await store_tool_run(
-            analysis_id,
-            new_step,
-            {
-                "success": True,
-                "code_str": tool["code"],
-            },
-            skip_step_update=True,
-        )
-
-        if not store_result["success"]:
-            return store_result
-
-        # update report data
-        update_err = await update_report_data(analysis_id, "gen_steps", [new_step])
-
-        if update_err:
-            return {"success": False, "error_message": update_err}
-
-        return {
-            "success": True,
-            "new_step": new_step,
-            "tool_run_id": new_tool_run_id,
-        }
-
-    except Exception as e:
-        logging.info("Error creating new step: " + str(e))
-        traceback.print_exc()
-        return {"success": False, "error_message": str(e)[:300]}
-    return
 
 
 @router.post("/delete_doc")
@@ -736,7 +386,7 @@ async def download_csv(request: Request):
 
         # first try to find this file in the file system
         f_name = tool_run_id + "_output-" + output_storage_key + ".feather"
-        f_path = os.path.join(report_assets_dir, "datasets", f_name)
+        f_path = os.path.join(analysis_assets_dir, "datasets", f_name)
 
         if not os.path.isfile(f_path):
             log_msg(
@@ -744,14 +394,14 @@ async def download_csv(request: Request):
             )
             # re run this step
             # get steps from db
-            err, analysis_data = get_report_data(analysis_id)
+            err, analysis_data = get_analysis_data(analysis_id)
             if err:
                 return {"success": False, "error_message": err}
 
             global_dict = {
                 "user_question": analysis_data["user_question"],
                 "llm_calls_url": llm_calls_url,
-                "report_assets_dir": report_assets_dir,
+                "analysis_assets_dir": analysis_assets_dir,
                 "dfg_api_key": api_key,
             }
 
@@ -793,65 +443,6 @@ async def download_csv(request: Request):
 
     except Exception as e:
         logging.info("Error downloading csv: " + str(e))
-        traceback.print_exc()
-        return {"success": False, "error_message": str(e)[:300]}
-
-
-# an endpoint to delete steps.
-# we will get a list of tool run ids
-# we will remove these from the analysis
-
-
-@router.post("/delete_steps")
-async def delete_steps(request: Request):
-    """
-    Delete steps using the tool run ids passed.
-    """
-    try:
-        data = await request.json()
-        tool_run_ids = data.get("tool_run_ids")
-        analysis_id = data.get("analysis_id")
-
-        if tool_run_ids is None or type(tool_run_ids) != list:
-            return {"success": False, "error_message": "Invalid tool run ids."}
-
-        if analysis_id is None or type(analysis_id) != str:
-            return {"success": False, "error_message": "Invalid analysis id."}
-
-        # try to get this analysis' data
-        err, analysis_data = get_report_data(analysis_id)
-        if err:
-            return {"success": False, "error_message": err}
-
-        # get the steps
-        steps = analysis_data.get("gen_steps")
-        if steps and steps["success"]:
-            steps = steps["steps"]
-        else:
-            return {
-                "success": False,
-                "error_message": (
-                    steps.get("error_message")
-                    if steps is not None
-                    else "No steps found for analysis"
-                ),
-            }
-
-        # remove the steps with these tool run ids
-        new_steps = [s for s in steps if s["tool_run_id"] not in tool_run_ids]
-
-        # # # update report data
-        update_err = await update_report_data(
-            analysis_id, "gen_steps", new_steps, replace=True
-        )
-
-        if update_err:
-            return {"success": False, "error_message": update_err}
-
-        return {"success": True, "new_steps": new_steps}
-
-    except Exception as e:
-        logging.info("Error deleting steps: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
 
@@ -1021,7 +612,7 @@ async def submit_feedback(request: Request):
         if user_question is None or type(user_question) != str:
             raise Exception("Invalid user question.")
 
-        err, analysis_data = get_report_data(analysis_id)
+        err, analysis_data = get_analysis_data(analysis_id)
 
         # store in the defog_plans_feedback table
         err, did_overwrite = await store_feedback(

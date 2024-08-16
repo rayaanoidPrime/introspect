@@ -6,13 +6,12 @@ from datetime import datetime
 from typing import Any, Dict
 
 from db_utils import OracleReports, engine
-from sqlalchemy import select
+from sqlalchemy import insert, select
 from sqlalchemy.orm import Session
 
 from .celery_app import celery_app
 
 celery_async_executors = ThreadPoolExecutor(max_workers=4)
-
 
 @celery_app.task
 def begin_generation_task(
@@ -30,7 +29,6 @@ def begin_generation_task(
     time_elapsed = (t_end - t_start).total_seconds()
     print(f"Completed celery task for {username} in {time_elapsed:.2f} seconds.")
 
-
 async def begin_generation_async_task(
     api_key: str, username: str, report_id: int, inputs: Dict[str, Any]
 ):
@@ -44,7 +42,6 @@ async def begin_generation_async_task(
     Every call to control is scoped over a single report_id, which can only
     belong to 1 api_key and username.
     """
-
     stage = "gather_context"
     outputs = {}
     continue_generation = True
@@ -84,7 +81,6 @@ async def begin_generation_async_task(
                 print(f"Error occurred in stage {stage}:\n{e}")
                 session.commit()
             continue_generation = False
-
 
 def next_stage(stage: str) -> str:
     if stage == "gather_context":
@@ -140,7 +136,6 @@ async def execute_stage(
         raise ValueError(f"Stage {stage} not recognized.")
     return stage_result
 
-
 async def gather_context(
     api_key: str,
     username: str,
@@ -163,7 +158,6 @@ async def gather_context(
     await sleep(random.randint(1, 5))
     return {"context": "context gathered"}
 
-
 async def explore_data(
     api_key: str,
     username: str,
@@ -182,13 +176,11 @@ async def explore_data(
     # dummy print statement for now
     print(f"Exploring data for report {report_id}")
 
-
 async def wait_clarifications(
     api_key: str,
     username: str,
     report_id: str,
     inputs: Dict[str, Any],
-    outputs: Dict[str, Any],
 ):
     """
     This function will check the `clarifications` table in the SQLite3 database,
@@ -201,7 +193,6 @@ async def wait_clarifications(
     # sleep for a random amount of time to simulate work
     await sleep(random.randint(1, 5))
     return {"clarifications": "all clarifications addressed"}
-
 
 async def predict(
     api_key: str,
@@ -223,7 +214,6 @@ async def predict(
     await sleep(random.randint(1, 5))
     return {"predictions": "predictions generated"}
 
-
 async def optimize(
     api_key: str,
     username: str,
@@ -243,7 +233,6 @@ async def optimize(
     # sleep for a random amount of time to simulate work
     await sleep(random.randint(1, 5))
     return {"optimization": "optimization completed"}
-
 
 async def export(
     api_key: str,

@@ -20,6 +20,7 @@ pgvector
 pika
 psycopg2-binary
 pyyaml
+redis
 redshift_connector
 requests
 resend

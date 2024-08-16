@@ -29,19 +29,15 @@ CREATE TABLE public.defog_recently_viewed_docs (
 
 ALTER TABLE public.defog_recently_viewed_docs OWNER TO postgres;
 
-CREATE TABLE public.defog_reports (
+CREATE TABLE public.defog_analyses (
     api_key text NOT NULL,
     email text,
     "timestamp" text,
-    report_uuid text,
     approaches json,
-    report_markdown text,
     clarify jsonb,
-    understand jsonb,
-    gen_approaches jsonb,
+    assignment_understanding jsonb,
     user_question text,
-    gen_report jsonb,
-    report_id text NOT NULL,
+    analysis_id text NOT NULL,
     gen_steps jsonb,
     follow_up_analyses jsonb,
     parent_analyses jsonb,
@@ -49,16 +45,16 @@ CREATE TABLE public.defog_reports (
     -- "versions" of a root analysis will have this as false
     is_root_analysis boolean default true,
     -- if this is a root analysis, this will be null
-    -- if this is a version of a root analysis, this will be the report_id of the root analysis
+    -- if this is a version of a root analysis, this will be the analysis_id of the root analysis
     root_analysis_id text,
-    -- direct_parent_id: when a new analysis is created using the new agent, this will be the report_id of the immediate
+    -- direct_parent_id: when a new analysis is created using the new agent, this will be the analysis_id of the immediate
     -- parent after which the new one is being created
     -- think of it as "create analysis B by ~tweaking~ analysis A". A is the direct parent of B
     direct_parent_id text,
     username text
 );
 
-ALTER TABLE public.defog_reports OWNER TO postgres;
+ALTER TABLE public.defog_analyses OWNER TO postgres;
 
 CREATE TABLE public.defog_table_charts (
     data_csv jsonb,
@@ -132,7 +128,7 @@ CREATE TABLE public.defog_plans_feedback (
     user_question text NOT NULL,
     comments jsonb,
     is_correct boolean NOT NULL,
-    -- join on this with the defog_reports.report_id table to get the actual plan data
+    -- join on this with the defog_analyses.analysis_id table to get the actual plan data
     analysis_id text NOT NULL,
     -- store for later reference. in case metadata changes later
     metadata text NOT NULL,
@@ -159,8 +155,8 @@ ALTER TABLE ONLY public.defog_docs
 ALTER TABLE ONLY public.defog_recently_viewed_docs
     ADD CONSTRAINT defog_recently_viewed_docs_pkey PRIMARY KEY (api_key, username);
 
-ALTER TABLE ONLY public.defog_reports
-    ADD CONSTRAINT defog_reports_pkey PRIMARY KEY (report_id, api_key);
+ALTER TABLE ONLY public.defog_analyses
+    ADD CONSTRAINT defog_analyses_pkey PRIMARY KEY (analysis_id, api_key);
 
 ALTER TABLE ONLY public.defog_table_charts
     ADD CONSTRAINT defog_table_charts_pkey PRIMARY KEY (table_id);

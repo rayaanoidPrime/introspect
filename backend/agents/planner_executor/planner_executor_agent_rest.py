@@ -16,7 +16,9 @@ import os
 
 
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
-report_assets_dir = os.environ.get("REPORT_ASSETS_DIR", "./report_assets")
+analysis_assets_dir = os.environ.get(
+    "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
+)
 
 
 class RESTExecutor:
@@ -48,7 +50,7 @@ class RESTExecutor:
             "assignment_understanding": assignment_understanding,
             "dfg": None,
             "llm_calls_url": llm_calls_url,
-            "report_assets_dir": report_assets_dir,
+            "analysis_assets_dir": analysis_assets_dir,
             "dev": dev,
         }
 
