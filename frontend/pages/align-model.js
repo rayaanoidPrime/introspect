@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import IMGO from "$components/align-model/IMGO";
 import Instructions from "../components/align-model/Instructions";
 import GoldenQueries from "../components/align-model/GoldenQueries";
 import { message } from "antd";
@@ -74,8 +75,8 @@ const AlignModel = () => {
     }
   };
 
-  const updateGlossary = async () => {
-    setIsUpdatingInstructions(true);
+  const updateGlossary = async (glossary, setLoading) => {
+    setLoading(true);
     const res = await fetch(
       setupBaseUrl("http", `integration/update_glossary`),
       {
@@ -92,7 +93,7 @@ const AlignModel = () => {
       }
     );
     const data = await res.json();
-    setIsUpdatingInstructions(false);
+    setLoading(false);
     if (data.status === "success") {
       message.success("Instructions updated successfully!");
     }
@@ -119,6 +120,41 @@ const AlignModel = () => {
     setIsUpdatingGoldenQueries(false);
     if (data.status === "success") {
       message.success("Golden queries updated successfully!");
+    }
+  };
+
+  const updateMetadata = async (metadata, setLoading) => {
+    try {
+      setLoading(true);
+      console.log("metadata", metadata);
+      console.log("token", token);
+      console.log("apiKeyName", apiKeyName);
+
+      const res = await fetch(
+        setupBaseUrl("http", `integration/update_metadata`),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token: token,
+            key_name: apiKeyName,
+            metadata: metadata,
+          }),
+        }
+      );
+      const data = await res.json();
+      setLoading(false);
+      if (data.error) {
+        message.error(data.error || "Error updating metadata");
+      } else {
+        message.success("Metadata updated successfully!");
+      }
+    } catch (error) {
+      console.error("Error saving data:", error);
+      message.error("Error saving data");
+      setLoading(false);
     }
   };
 
@@ -154,10 +190,21 @@ const AlignModel = () => {
           </p>
         </div>
         <div className="flex flex-col p-1 border border-gray-3200 rounded-lg">
+          {!!glossary && goldenQueries.length > 0 ? (
+            <IMGO
+              token={token}
+              apiKeyName={apiKeyName}
+              updateGlossary={updateGlossary}
+              updateMetadata={updateMetadata}
+            />
+          ) : null}
           <Instructions
+            title="Glossary"
+            description="This the information about your data that the model considers when generating your SQL queries. Feel free to edit these instructions to get the best results."
             glossary={glossary}
             setGlossary={setGlossary}
             updateGlossary={updateGlossary}
+            updateGlossaryLoadingFunction={setIsUpdatingInstructions}
             isLoading={isLoading}
             isUpdatingInstructions={isUpdatingInstructions}
           />

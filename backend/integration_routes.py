@@ -27,6 +27,10 @@ print(DEFOG_BASE_URL, flush=True)
 home_dir = os.path.expanduser("~")
 defog_path = os.path.join(home_dir, ".defog")
 
+# create defog_path if it doesn't exist
+if not os.path.exists(defog_path):
+    os.makedirs(defog_path)
+
 router = APIRouter()
 
 
