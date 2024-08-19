@@ -35,7 +35,11 @@ const LogIn = () => {
       localStorage.setItem("defogUserType", data.user_type);
 
       // redirect to home page
-      router.push("/extract-metadata");
+      if (data.user_type === "admin") {
+        router.push("/extract-metadata");
+      } else {
+        router.push("/query-data");
+      }
     } else {
       message.error("Login failed. Please contact your administrator.");
     }

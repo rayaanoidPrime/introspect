@@ -36,8 +36,8 @@ const QueryDatabase = () => {
       console.log("redirecting to extract metadata..");
       router.push("/extract-metadata");
     } else {
-      console.log("redirecting to view notebooks..");
-      router.push("/view-notebooks");
+      console.log("redirecting to query data..");
+      router.push("/query-data");
     }
   }, []);
 
