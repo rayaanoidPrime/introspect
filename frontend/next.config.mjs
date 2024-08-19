@@ -15,4 +15,7 @@ export default removeImports()({
   compiler: {
     styledComponents: true,
   },
+  images: {
+    unoptimized: true,
+  },
 });
