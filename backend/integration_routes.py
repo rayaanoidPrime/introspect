@@ -145,6 +145,10 @@ async def validate_db_connection(request: Request):
     for k in ["api_key", "db_type"]:
         if k in db_creds:
             del db_creds[k]
+
+    if db_type == "bigquery":
+        db_creds["json_key_path"] = "./bq.json"
+
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
     sql_query = "SELECT 'test';"
@@ -189,7 +193,7 @@ async def update_db_creds(request: Request):
             del db_creds[k]
 
     if db_type == "bigquery":
-        db_creds["json_key_path"] = "/backend/bq.json"
+        db_creds["json_key_path"] = "./bq.json"
 
     success = update_db_type_creds(api_key=api_key, db_type=db_type, db_creds=db_creds)
     print(success)
@@ -612,7 +616,7 @@ async def preview_table(request: Request):
 
     # check that the table name only has alphanumeric characters, underscores, spaces, or periods
     # use regex for this
-    if not re.match(r"^[\w .]+$", table_name):
+    if not re.match(r"^[\w .-]+$", table_name):
         # \w: Matches any word character. A word character is defined as any alphanumeric character plus the underscore (a-z, A-Z, 0-9, _).
         # the space after \w is intentional, to allow spaces in the table name
         return {"error": "invalid table name"}
