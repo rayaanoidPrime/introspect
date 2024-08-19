@@ -162,18 +162,7 @@ async def generate_step(request: Request):
             )
 
             if err:
-                raise Exception("Error fetching assignment understanding from database")
-
-            # NOTE: to ask Manas: if the above statement raises an error, then this bit becomes redundant, no?
-            if not assignment_understanding:
-                err = await generate_assignment_understanding(
-                    analysis_id=analysis_id,
-                    clarification_questions=clarification_questions,
-                    dfg_api_key=api_key,
-                )
-
-            if err:
-                raise Exception("Error generating assignment understanding")
+                assignment_understanding = ""
 
             question = question.strip()
             if len(prev_questions) > 0:
@@ -217,6 +206,7 @@ async def generate_step(request: Request):
                 dev=dev,
                 temp=temp,
                 toolboxes=toolboxes,
+                assignment_understanding=assignment_understanding,
             )
 
             return {
@@ -272,6 +262,15 @@ async def clarify(request: Request):
             dev=dev,
             temp=temp,
         )
+
+        err = await generate_assignment_understanding(
+            analysis_id=analysis_id,
+            clarification_questions=clarification_questions,
+            dfg_api_key=api_key,
+        )
+
+        if err:
+            raise Exception("Error generating assignment understanding")
 
         return {
             "success": True,
