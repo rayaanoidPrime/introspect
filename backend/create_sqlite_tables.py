@@ -140,5 +140,13 @@ defog_plans_feedback = Table(
     Column("db_type", Text, nullable=False),
 )
 
+defog_db_creds = Table(
+    "defog_db_creds",
+    metadata,
+    Column("api_key", Text, primary_key=True),
+    Column("db_type", Text),
+    Column("db_creds", JSON),
+)
+
 # Create tables in the database
 metadata.create_all(engine)
