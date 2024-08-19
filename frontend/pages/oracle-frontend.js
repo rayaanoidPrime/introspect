@@ -61,46 +61,93 @@ function OracleDashboard() {
     );
   };
 
-  const getReports = async () => {
-    // fetch reports
-    const token = localStorage.getItem("defogToken");
-    const res = await fetch(setupBaseUrl("http", `oracle/list_reports`), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        token: token,
-        key_name: apiKeyName,
-      }),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      setReports(data.reports);
-    }
+  // function that checks if status == done or error for each report
+  const checkAllFinished = (reports) => {
+    return reports.every(
+      (report) => report.status === "done" || report.status === "error"
+    );
   };
 
-  const generateReport = async () => {
-    // generate a report
+  const getReports = async () => {
     const token = localStorage.getItem("defogToken");
-    const res = await fetch(setupBaseUrl("http", `oracle/generate_report`), {
+    let allFinished = false;
+
+    const pollReports = async () => {
+      try {
+        const res = await fetch(setupBaseUrl("http", `oracle/list_reports`), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token: token,
+            key_name: apiKeyName,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setReports(data.reports);
+          allFinished = checkAllFinished(data.reports);
+
+          if (allFinished) {
+            clearInterval(intervalId);
+          }
+        } else {
+          console.error("Failed to fetch reports");
+          clearInterval(intervalId);
+        }
+      } catch (error) {
+        console.error("An error occurred:", error);
+        clearInterval(intervalId);
+      }
+    };
+
+    const intervalId = setInterval(pollReports, 1000);
+
+    // Optionally, start the first poll immediately
+    pollReports();
+  };
+
+  const deleteReport = async (index) => {
+    // delete a report
+    const token = localStorage.getItem("defogToken");
+    const res = await fetch(setupBaseUrl("http", `oracle/delete_report`), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         token,
-        user_task: userTask,
+        key_name: apiKeyName,
+        report_id: reports[index].report_id,
       }),
     });
 
     if (res.ok) {
-      const data = await res.json();
+      // call getReports to refresh the list
+      getReports();
+    }
+  };
 
-      // for now, we just log the data
-      // later, we can do something more useful with it
-      console.log(data);
+  const generateReport = async () => {
+    // generate a report
+    const token = localStorage.getItem("defogToken");
+    const res = await fetch(setupBaseUrl("http", `oracle/begin_generation`), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        token,
+        key_name: apiKeyName,
+        question: userTask,
+      }),
+    });
+
+    if (res.ok) {
+      // at this point, we should have the new report's as an entry in the DB already
+      getReports();
     }
   };
 
@@ -211,17 +258,20 @@ function OracleDashboard() {
           <h2 className="text-xl font-semibold mb-4">Past Reports</h2>
           {reports.map((report, index) => (
             <div key={index} className="bg-purple-100 p-4 rounded-lg mb-4">
+              <h3 className="text-lg font-semibold">{report.report_id}</h3>
               <p className="text-purple-700">{report.report_name}</p>
-              <p className="text-gray-500">
-                {report.status === "generating"
-                  ? "Report generating..."
-                  : `Report generated on ${report.date_created}`}
+              <p className="text-gray-600">{report.status}</p>
+              <p className="text-gray-400">
+                Generated at {report.date_created}
               </p>
               <div className="flex space-x-4">
                 <button className="text-purple-700 hover:text-purple-900">
                   Download
                 </button>
-                <button className="text-purple-700 hover:text-purple-900">
+                <button
+                  className="text-purple-700 hover:text-purple-900"
+                  onClick={() => deleteReport(index)}
+                >
                   Delete
                 </button>
               </div>
