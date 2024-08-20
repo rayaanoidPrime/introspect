@@ -68,3 +68,7 @@ defog_metadata.csv
 
 # reports
 oracle/reports
+
+# golden queries
+backend/golden_queries.csv
+backend/bq.json
