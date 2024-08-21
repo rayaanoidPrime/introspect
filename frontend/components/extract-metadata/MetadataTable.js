@@ -32,7 +32,7 @@ const MetadataTable = ({
     return metadata.some(
       (item) => item.column_description && item.column_description.trim() !== ""
     );
-  };  
+  };
 
   useEffect(() => {
     if (tablesData) {
@@ -76,7 +76,9 @@ const MetadataTable = ({
               message.error(data.detail);
             } else {
               message.success("Metadata updated successfully!");
-              setColumnDescriptionCheck(hasNonEmptyDescriptionFunction(metadata));
+              setColumnDescriptionCheck(
+                hasNonEmptyDescriptionFunction(metadata)
+              );
             }
           }
         } catch (error) {
@@ -261,6 +263,16 @@ const MetadataTable = ({
     ...item,
   }));
 
+  const addAllTables = () => {
+    setSelectedTablesForIndexing(tables);
+    form.setFieldsValue({ tables: tables });
+  };
+
+  const clearAllTables = () => {
+    setSelectedTablesForIndexing([]);
+    form.setFieldsValue({ tables: [] });
+  };
+
   return (
     <div className="mx-auto bg-white shadow-md rounded-md p-6">
       <div className="flex flex-col items-center text-2xl mb-10">
@@ -286,6 +298,22 @@ const MetadataTable = ({
               value: table,
               label: table,
             }))}
+            dropdownRender={(menu) => (
+              <>
+                <div
+                  style={{ padding: "8px", justifyContent: "space-between" }}
+                >
+                  <button type="button" className="mr-4" onClick={addAllTables}>
+                    Add All ➕
+                  </button>
+                  <button type="button" onClick={clearAllTables}>
+                    Clear All ❌
+                  </button>
+                </div>
+                <hr style={{ margin: "4px 0" }} />
+                {menu}
+              </>
+            )}
           />
         </Form.Item>
         <Button
