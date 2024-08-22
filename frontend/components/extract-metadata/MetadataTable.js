@@ -303,10 +303,18 @@ const MetadataTable = ({
                 <div
                   style={{ padding: "8px", justifyContent: "space-between" }}
                 >
-                  <button type="button" className="mr-4" onClick={addAllTables}>
+                  <button
+                    type="button"
+                    className="mr-4 px-4 py-1 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200 transition-colors duration-200"
+                    onClick={addAllTables}
+                  >
                     Add All ➕
                   </button>
-                  <button type="button" onClick={clearAllTables}>
+                  <button
+                    type="button"
+                    className="px-4 py-1 bg-gray-100 border border-gray-300 rounded-md shadow-sm hover:bg-gray-200 transition-colors duration-200"
+                    onClick={clearAllTables}
+                  >
                     Clear All ❌
                   </button>
                 </div>
