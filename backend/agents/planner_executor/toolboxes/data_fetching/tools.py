@@ -94,14 +94,14 @@ async def send_email(
     import os
 
     # convert the full_data into markdown, using the pandas method
-    full_data_md = full_data.to_html(index=False)
+    full_data_md = full_data.head(50).to_html(index=False)
 
     resend.api_key = os.environ.get("RESEND_API_KEY")
     params = {
         "from": "support@defog.ai",
         "to": recipient_email_address,
         "subject": email_subject,
-        "html": f"You can find your analysis below:<br/><br/>{full_data_md}",
+        "html": f"You can find the table answering your question asked (first 50 rows) below:<br/><br/>{full_data_md}",
     }
     resend.Emails.send(params)
     return {
