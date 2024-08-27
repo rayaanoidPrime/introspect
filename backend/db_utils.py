@@ -1380,6 +1380,7 @@ async def add_tool(
         if no_changes:
             print(f"Tool {tool_name} already exists and no code changes detected.")
         else:
+            print(f"Adding tool {function_name} to local postgres database.")
             with engine.begin() as conn:
                 # delete if exists
                 if row:
@@ -1403,7 +1404,7 @@ async def add_tool(
                     )
                 )
 
-        print("Adding tool to the defog API server", tool_name)
+        print(f"Adding tool {function_name} to the defog API server")
         asyncio.create_task(
             make_request(
                 url=f"{os.environ.get('DEFOG_BASE_URL', 'https://api.defog.ai')}/update_tool",
