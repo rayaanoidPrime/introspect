@@ -113,6 +113,33 @@ async def send_email(
         }
         resend.Emails.send(params)
         success = True
+    elif EMAIL_OPTION == "SES":
+        import boto3
+
+        ses = boto3.client(
+            "ses", region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+        )
+
+        # convert the full_data into markdown, using the pandas method
+        full_data_md = full_data.head(50).to_html(index=False)
+
+        response = ses.send_email(
+            Destination={"ToAddresses": [recipient_email_address]},
+            Message={
+                "Body": {
+                    "Text": {
+                        "Charset": "UTF-8",
+                        "Data": f"Please open this email in an HTML supported email client to see the data.",
+                    },
+                    "Html": {
+                        "Charset": "UTF-8",
+                        "Data": f"You can find the table answering your question asked (first 50 rows) below:<br/><br/>{full_data_md}",
+                    },
+                },
+                "Subject": {"Charset": "UTF-8", "Data": email_subject},
+            },
+            Source=os.environ.get("FROM_EMAIL"),
+        )
     elif EMAIL_OPTION == "DEFOG":
         import httpx
 

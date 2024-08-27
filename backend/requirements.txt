@@ -1,5 +1,6 @@
 aiohttp
 airbyte
+boto3
 celery[redis]
 colorama
 databricks-sql-connector
@@ -31,7 +32,7 @@ seaborn
 slack_sdk
 snowflake-connector-python
 sqlalchemy
+sqlparse
 statsmodels
 tabulate
 tiktoken
-sqlparse
