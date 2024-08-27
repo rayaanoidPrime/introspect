@@ -73,30 +73,29 @@ async def generate_step(request: Request):
         if len(previous_questions) > 0:
             previous_questions = previous_questions[:-1]
 
-        prev_questions = []
-        for item in previous_questions:
-            prev_question = item.get("user_question")
-            if question:
-                prev_steps = (
-                    item.get("analysisManager", {})
-                    .get("analysisData", {})
-                    .get("gen_steps", {})
-                    .get("steps", [])
-                )
-                if len(prev_steps) > 0:
-                    for step in prev_steps:
-                        if "sql" in step:
-                            prev_sql = step["sql"]
-                            prev_questions.append(prev_question)
-                            prev_questions.append(prev_sql)
-                            break
-
         # if key name or question is none or blank, return error
         if not key_name or key_name == "":
             raise Exception("Invalid request. Must have API key name.")
 
         if not question or question == "":
             raise Exception("Invalid request. Must have a question.")
+
+        prev_questions = []
+        for item in previous_questions:
+            prev_question = item.get("user_question")
+            prev_steps = (
+                item.get("analysisManager", {})
+                .get("analysisData", {})
+                .get("gen_steps", {})
+                .get("steps", [])
+            )
+            if len(prev_steps) > 0:
+                for step in prev_steps:
+                    if "sql" in step:
+                        prev_sql = step["sql"]
+                        prev_questions.append(prev_question)
+                        prev_questions.append(prev_sql)
+                        break
 
         api_key = get_api_key_from_key_name(key_name)
 
@@ -119,6 +118,8 @@ async def generate_step(request: Request):
                     clarification_questions=clarification_questions,
                     dfg_api_key=api_key,
                 )
+        else:
+            assignment_understanding = None
 
         if sql_only:
             # if sql_only is true, just call the sql generation function and return, while saving the step
@@ -271,15 +272,6 @@ async def clarify(request: Request):
             dev=dev,
             temp=temp,
         )
-
-        err = await generate_assignment_understanding(
-            analysis_id=analysis_id,
-            clarification_questions=clarification_questions,
-            dfg_api_key=api_key,
-        )
-
-        if err:
-            raise Exception("Error generating assignment understanding")
 
         return {
             "success": True,

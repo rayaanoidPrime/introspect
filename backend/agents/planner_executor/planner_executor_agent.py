@@ -725,8 +725,6 @@ async def rerun_step(
         step=step,
         all_steps=all_steps,
         analysis_execution_cache=analysis_execution_cache,
-        # set resolve inputs to False, because we assume the inputs are already resolved if a step is being re-run
-        resolve_inputs=False,
     )
 
     dependent_steps = find_dependent_steps(step, all_steps)

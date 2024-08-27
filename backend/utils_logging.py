@@ -5,6 +5,7 @@ import time
 from typing import List, Tuple
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()  # Ensure uppercase for consistency
+
 if LOG_LEVEL == "":
     LOG_LEVEL = "INFO"
 
