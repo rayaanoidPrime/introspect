@@ -9,6 +9,8 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   CloseOutlined,
+  DownloadOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 
 function OracleDashboard() {
@@ -45,6 +47,7 @@ function OracleDashboard() {
   const [userTask, setUserTask] = useState("");
   const [clarifications, setClarifications] = useState([]);
   const [waitClarifications, setWaitClarifications] = useState(false);
+  const [dismissedClarifications, setDismissedClarifications] = useState([]);
   const [taskType, setTaskType] = useState("");
   const [sources, setSources] = useState([]);
   const [waitSources, setWaitSources] = useState(false);
@@ -54,6 +57,7 @@ function OracleDashboard() {
   const getClarifications = async () => {
     setWaitClarifications(true);
     const token = localStorage.getItem("defogToken");
+    console.log("dismissed clarifications:", dismissedClarifications);
     const res = await fetch(setupBaseUrl("http", `oracle/clarify_question`), {
       method: "POST",
       headers: {
@@ -63,6 +67,7 @@ function OracleDashboard() {
         token: token,
         key_name: apiKeyName,
         user_question: userTask,
+        dismissed_clarifications: dismissedClarifications,
       }),
     });
     setWaitClarifications(false);
@@ -81,6 +86,12 @@ function OracleDashboard() {
   };
 
   const deleteClarification = (index) => {
+    // add the clarification to the dismissed clarifications
+    setDismissedClarifications((prevClarifications) => [
+      ...prevClarifications,
+      clarifications[index],
+    ]);
+    // remove the clarification from the list of clarifications
     setClarifications((prevClarifications) =>
       prevClarifications.filter((_, i) => i !== index)
     );
@@ -166,7 +177,58 @@ function OracleDashboard() {
     pollReports();
   };
 
-  const deleteReport = async (index) => {
+  const downloadReport = async (report_id) => {
+    // Fetch the token from localStorage
+    const token = localStorage.getItem("defogToken");
+    console.log("Downloading report", report_id);
+
+    try {
+      // Make the API request
+      const res = await fetch(setupBaseUrl("http", `oracle/download_report`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/pdf",
+          // disable cors for the download
+          mode: "no-cors",
+        },
+        body: JSON.stringify({
+          token,
+          key_name: apiKeyName, // Make sure apiKeyName is defined in your scope
+          report_id: report_id,
+        }),
+      });
+
+      // Check if the request was successful
+      if (res.ok) {
+        console.log("Download successful");
+
+        // Create a blob from the response
+        const blob = await res.blob();
+
+        // Create a URL for the blob
+        const url = window.URL.createObjectURL(blob);
+
+        // Create a temporary anchor element to trigger the download
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `report_${report_id}.pdf`; // Specify the filename
+        document.body.appendChild(a);
+        a.click();
+
+        // Clean up by revoking the object URL and removing the anchor element
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        console.error("Download failed with status", res.status);
+      }
+    } catch (error) {
+      // send a toast of the error message
+      console.error(error.message);
+    }
+  };
+
+  const deleteReport = async (report_id) => {
     // delete a report
     const token = localStorage.getItem("defogToken");
     const res = await fetch(setupBaseUrl("http", `oracle/delete_report`), {
@@ -177,7 +239,7 @@ function OracleDashboard() {
       body: JSON.stringify({
         token,
         key_name: apiKeyName,
-        report_id: reports[index].report_id,
+        report_id: report_id,
       }),
     });
 
@@ -191,7 +253,8 @@ function OracleDashboard() {
     // generate a report
     const token = localStorage.getItem("defogToken");
     const selectedSources = sources.filter((source) => source.selected);
-    console.log(selectedSources);
+    // reset clarifications
+    setClarifications([]);
     const res = await fetch(setupBaseUrl("http", `oracle/begin_generation`), {
       method: "POST",
       headers: {
@@ -336,16 +399,25 @@ function OracleDashboard() {
               <p className="text-gray-400">
                 Generated at {report.date_created}
               </p>
-              <div className="flex space-x-4">
-                <button className="text-purple-700 hover:text-purple-900">
+              <div className="flex space-x-4 mt-2">
+                <Button
+                  className="text-purple-700 fill-purple-200 hover:text-purple-900 disabled:text-gray-300"
+                  icon={<DownloadOutlined />}
+                  disabled={report.status !== "done"}
+                  onClick={() => downloadReport(report.report_id)}
+                >
                   Download
-                </button>
-                <button
-                  className="text-purple-700 hover:text-purple-900"
-                  onClick={() => deleteReport(index)}
+                </Button>
+                <Button
+                  className="text-purple-700 fill-purple-200 hover:text-purple-900 disabled:text-gray-300"
+                  icon={<DeleteOutlined />}
+                  disabled={
+                    report.status !== "done" && report.status !== "error"
+                  }
+                  onClick={() => deleteReport(report.report_id)}
                 >
                   Delete
-                </button>
+                </Button>
               </div>
             </div>
           ))}
