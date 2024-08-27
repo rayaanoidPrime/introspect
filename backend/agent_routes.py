@@ -119,6 +119,8 @@ async def generate_step(request: Request):
                     clarification_questions=clarification_questions,
                     dfg_api_key=api_key,
                 )
+        else:
+            assignment_understanding = None
 
         if sql_only:
             # if sql_only is true, just call the sql generation function and return, while saving the step
@@ -271,15 +273,6 @@ async def clarify(request: Request):
             dev=dev,
             temp=temp,
         )
-
-        err = await generate_assignment_understanding(
-            analysis_id=analysis_id,
-            clarification_questions=clarification_questions,
-            dfg_api_key=api_key,
-        )
-
-        if err:
-            raise Exception("Error generating assignment understanding")
 
         return {
             "success": True,
