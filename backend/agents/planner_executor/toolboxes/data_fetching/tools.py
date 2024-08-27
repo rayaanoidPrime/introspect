@@ -94,15 +94,15 @@ async def send_email(
 
     success = False
 
-    RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+    EMAIL_OPTION = os.environ.get("EMAIL_OPTION", "DEFOG")
 
-    if RESEND_API_KEY:
+    if EMAIL_OPTION == "RESEND":
         import resend
 
         # convert the full_data into markdown, using the pandas method
         full_data_md = full_data.head(50).to_html(index=False)
 
-        resend.api_key = RESEND_API_KEY
+        resend.api_key = os.environ.get("RESEND_API_KEY")
         if os.environ.get("FROM_EMAIL") is None:
             raise ValueError("FROM_EMAIL is not set in the environment variables")
         params = {
@@ -113,34 +113,30 @@ async def send_email(
         }
         resend.Emails.send(params)
         success = True
-    else:
-        SEND_VIA_DEFOG = os.environ.get("SEND_VIA_DEFOG", False)
-        # TODO: implement a SEND_VIA_DEFOG feature, where the email is sent via Defog's backend server
+    elif EMAIL_OPTION == "DEFOG":
+        import httpx
 
-        if SEND_VIA_DEFOG == "TRUE":
-            import httpx
-
-            async with httpx.AsyncClient() as client:
-                r = await client.post(
-                    url=os.getenv("DEFOG_BASE_URL", "https://api.defog.ai")
-                    + "/email_data_report",
-                    json={
-                        "api_key": global_dict.get("dfg_api_key"),
-                        "to_email": recipient_email_address,
-                        "subject": email_subject,
-                        "data_csv": full_data.to_csv(index=False),
-                    },
-                    timeout=60,
-                )
-                if r.status_code == 200:
-                    success = True
-                else:
-                    success = False
+        async with httpx.AsyncClient() as client:
+            r = await client.post(
+                url=os.getenv("DEFOG_BASE_URL", "https://api.defog.ai")
+                + "/email_data_report",
+                json={
+                    "api_key": global_dict.get("dfg_api_key"),
+                    "to_email": recipient_email_address,
+                    "subject": email_subject,
+                    "data_csv": full_data.to_csv(index=False),
+                },
+                timeout=60,
+            )
+            if r.status_code == 200:
+                success = True
+            else:
+                success = False
 
     if success:
         message = f"Email sent successfully to {recipient_email_address}"
     else:
-        message = f"Email could not be sent to {recipient_email_address} as SEND_VIA_DEFOG is set to False or not set."
+        message = f"Email could not be successfully sent to {recipient_email_address}."
 
     return {
         "outputs": [
