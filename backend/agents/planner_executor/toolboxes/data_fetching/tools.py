@@ -122,7 +122,8 @@ async def send_email(
 
             async with httpx.AsyncClient() as client:
                 r = await client.post(
-                    "https://api.defog.ai/email_data_report",
+                    url=os.getenv("DEFOG_BASE_URL", "https://api.defog.ai")
+                    + "/email_data_report",
                     json={
                         "api_key": global_dict.get("dfg_api_key"),
                         "to_email": recipient_email_address,
