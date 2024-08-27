@@ -73,30 +73,29 @@ async def generate_step(request: Request):
         if len(previous_questions) > 0:
             previous_questions = previous_questions[:-1]
 
-        prev_questions = []
-        for item in previous_questions:
-            prev_question = item.get("user_question")
-            if question:
-                prev_steps = (
-                    item.get("analysisManager", {})
-                    .get("analysisData", {})
-                    .get("gen_steps", {})
-                    .get("steps", [])
-                )
-                if len(prev_steps) > 0:
-                    for step in prev_steps:
-                        if "sql" in step:
-                            prev_sql = step["sql"]
-                            prev_questions.append(prev_question)
-                            prev_questions.append(prev_sql)
-                            break
-
         # if key name or question is none or blank, return error
         if not key_name or key_name == "":
             raise Exception("Invalid request. Must have API key name.")
 
         if not question or question == "":
             raise Exception("Invalid request. Must have a question.")
+
+        prev_questions = []
+        for item in previous_questions:
+            prev_question = item.get("user_question")
+            prev_steps = (
+                item.get("analysisManager", {})
+                .get("analysisData", {})
+                .get("gen_steps", {})
+                .get("steps", [])
+            )
+            if len(prev_steps) > 0:
+                for step in prev_steps:
+                    if "sql" in step:
+                        prev_sql = step["sql"]
+                        prev_questions.append(prev_question)
+                        prev_questions.append(prev_sql)
+                        break
 
         api_key = get_api_key_from_key_name(key_name)
 
