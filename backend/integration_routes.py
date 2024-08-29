@@ -419,11 +419,28 @@ async def get_glossary_golden_queries(request: Request):
     defog.base_url = DEFOG_BASE_URL
 
     # get glossary
-    glossary = await asyncio.to_thread(defog.get_glossary, dev=dev)
+    url = DEFOG_BASE_URL + "/get_glossary"
+    resp = await make_request(url, {"api_key": api_key, "dev": dev})
+    resp = resp.get("glossary", {})
 
     # get golden queries
     golden_queries = await asyncio.to_thread(defog.get_golden_queries, dev=dev)
-    return {"glossary": glossary, "golden_queries": golden_queries}
+
+    # for backwards compatibility
+    glossary = resp.get("glossary", "")
+    glossary_compulsory = resp.get("glossary_compulsory", "")
+    glossary_prunable_units = resp.get("glossary_prunable_units", [])
+    glossary_prunable_units = "\n".join(glossary_prunable_units)
+    # for backwards compatibility
+    # if `glossary` is non empty and glossary compulsory is empty, set glossary compulsory to glossary
+    if glossary_compulsory == "" and glossary != "":
+        glossary_compulsory = glossary
+
+    return {
+        "glossary_compulsory": glossary_compulsory,
+        "glossary_prunable_units": glossary_prunable_units,
+        "golden_queries": golden_queries,
+    }
 
 
 @router.post("/integration/update_glossary")
@@ -447,14 +464,56 @@ async def update_glossary(request: Request):
     else:
         return {"error": "no db creds found"}
 
-    glossary = params.get("glossary")
-    dev = params.get("dev", False)
+    append = params.get("append", False)
 
-    defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
-    defog.base_url = DEFOG_BASE_URL
+    if not append:
+        # completely overwrite the existing glossary
+        glossary_compulsory = params.get("glossary_compulsory")
+        glossary_prunable_units = params.get("glossary_prunable_units")
+        dev = params.get("dev", False)
 
-    # update glossary
-    r = await asyncio.to_thread(defog.update_glossary, glossary, dev=dev)
+        if glossary_prunable_units:
+            glossary_prunable_units = glossary_prunable_units.split("\n")
+
+        defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
+        defog.base_url = DEFOG_BASE_URL
+
+        # update glossary
+        r = await asyncio.to_thread(
+            defog.update_glossary,
+            glossary_compulsory=glossary_compulsory,
+            glossary_prunable_units=glossary_prunable_units,
+            dev=dev,
+        )
+    else:
+        # first, get the existing glossary
+        url = DEFOG_BASE_URL + "/get_glossary"
+        resp = await make_request(url, {"api_key": api_key, "dev": dev})
+        resp = resp.get("glossary", {})
+        glossary = resp.get("glossary", "")
+        glossary_compulsory = resp.get("glossary_compulsory", "")
+        glossary_prunable_units = resp.get("glossary_prunable_units", [])
+        # for backwards compatibility
+        # if `glossary` is non empty and glossary compulsory is empty, set glossary compulsory to glossary
+        if glossary_compulsory == "" and glossary != "":
+            glossary_compulsory = glossary
+
+        new_instructions = params.get("new_instructions")
+        if new_instructions:
+            glossary_prunable_units += new_instructions.split("\n")
+
+        dev = params.get("dev", False)
+
+        defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
+        defog.base_url = DEFOG_BASE_URL
+
+        # update glossary
+        r = await asyncio.to_thread(
+            defog.update_glossary,
+            glossary_compulsory=glossary_compulsory,
+            glossary_prunable_units=glossary_prunable_units,
+            dev=dev,
+        )
     return r
 
 
@@ -650,3 +709,29 @@ async def preview_table(request: Request):
         return {"error": "error executing query"}
 
     return {"data": data, "columns": colnames}
+
+
+@router.post("/integration/get_dynamic_glossary")
+async def get_dynamic_glossary(request: Request):
+    params = await request.json()
+    token = params.get("token")
+    if not validate_user(token):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+    dev = params.get("dev", False)
+    question = params.get("question")
+
+    r = await make_request(
+        DEFOG_BASE_URL + "/prune_glossary",
+        {"question": question, "api_key": api_key, "dev": dev},
+    )
+
+    return r
