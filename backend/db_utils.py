@@ -116,7 +116,7 @@ def validate_user(token, user_type=None, get_username=False):
 
     if user:
         if user_type == "admin":
-            if user[0] == "admin":
+            if user.user_type == "admin":
                 if get_username:
                     return user[1]
                 else:
