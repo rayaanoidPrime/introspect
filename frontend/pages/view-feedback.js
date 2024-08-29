@@ -8,10 +8,31 @@ import RecommendationsModal from "../components/view-feedback/RecommendationsMod
 import { HistoryOutlined } from "@ant-design/icons";
 
 const ViewFeedback = () => {
-  const apiKeyNames = (
-    process.env.NEXT_PUBLIC_API_KEY_NAMES || "Your Database"
-  ).split(",");
+  const [apiKeyNames, setApiKeyNames] = useState([]);
   const [apiKeyName, setApiKeyName] = useState(null);
+
+  const getApiKeyNames = async (token) => {
+    const res = await fetch(
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token,
+        }),
+      }
+    );
+    if (!res.ok) {
+      throw new Error(
+        "Failed to get api key names - are you sure your network is working?"
+      );
+    }
+    const data = await res.json();
+    setApiKeyNames(data.api_key_names);
+  };
+
   const [token, setToken] = useState();
 
   // feedback data
@@ -35,6 +56,7 @@ const ViewFeedback = () => {
   useEffect(() => {
     const apiKeyName = localStorage.getItem("defogDbSelected");
     const token = localStorage.getItem("defogToken");
+    getApiKeyNames(token);
     if (apiKeyName) {
       setApiKeyName(apiKeyName);
     } else {
