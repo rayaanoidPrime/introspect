@@ -16,7 +16,7 @@ from db_utils import (
     update_assignment_understanding,
 )
 from utils import deduplicate_columns, warn_str, YieldList, add_indent
-from .tool_helpers.toolbox_manager import get_tool_library_prompt
+from .tool_helpers.get_tool_library_prompt import get_tool_library_prompt
 from .tool_helpers.tool_param_types import ListWithDefault
 import asyncio
 import requests
@@ -74,7 +74,6 @@ def warn(msg):
 #   "analysis_id_1": {
 #     "user_question": user_question,
 #     "dfg_api_key": dfg_api_key,
-#     "toolboxes": toolboxes,
 #     "assignment_understanding": assignment_understanding,
 #     "dfg": None,
 #     "llm_calls_url": llm_calls_url,
@@ -311,6 +310,7 @@ async def run_step(
                     }
                     analysis_execution_cache[outputs_storage_keys[0]] = output_df
                 except Exception as e:
+                    traceback.print_exc()
                     results = {
                         "error_message": "Could not run the sql query. Is it correct?"
                     }
@@ -508,7 +508,6 @@ async def prepare_cache(
     analysis_id,
     dfg_api_key,
     user_question,
-    toolboxes=[],
     dev=False,
     temp=False,
 ):
@@ -516,7 +515,6 @@ async def prepare_cache(
     analysis_execution_cache = {}
     analysis_execution_cache["dfg_api_key"] = dfg_api_key
     analysis_execution_cache["user_question"] = user_question
-    analysis_execution_cache["toolboxes"] = toolboxes
     analysis_execution_cache["dev"] = dev
     analysis_execution_cache["temp"] = temp
 
@@ -540,7 +538,6 @@ async def generate_single_step(
     dfg_api_key,
     analysis_id,
     user_question,
-    toolboxes=[],
     dev=False,
     temp=False,
     assignment_understanding="",
@@ -568,7 +565,6 @@ async def generate_single_step(
         analysis_id,
         dfg_api_key,
         user_question,
-        toolboxes,
         dev,
         temp,
     )
@@ -578,7 +574,7 @@ async def generate_single_step(
     # if err:
     #     user_question_context = None
 
-    tool_library_prompt = await get_tool_library_prompt(toolboxes, user_question)
+    tool_library_prompt = await get_tool_library_prompt(user_question)
 
     # make calls to the LLM to get the next step
     llm_server_url = os.environ.get("LLM_SERVER_ENDPOINT", None)
@@ -697,7 +693,6 @@ async def rerun_step(
     dfg_api_key,
     analysis_id,
     user_question,
-    toolboxes=[],
     dev=False,
     temp=False,
 ):
@@ -718,7 +713,6 @@ async def rerun_step(
         analysis_id,
         dfg_api_key,
         user_question,
-        toolboxes,
         dev,
         temp,
     )

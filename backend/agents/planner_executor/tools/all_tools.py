@@ -1,9 +1,7 @@
-# this is where you can import your custom tools
-# create a folder insider toolboxes and add your tools (aka python functions) there inside a tools.py file
-# and finally add all your tools in the tools array below in the given format
-from ..toolboxes.data_fetching.tools import *
-from ..toolboxes.stats.tools import *
-from ..toolboxes.plots.tools import *
+from .data_fetching import data_fetcher_and_aggregator, send_email
+
+# from ..tools.stats import *
+# from ..tools.plotting import *
 
 import inspect
 
@@ -22,7 +20,6 @@ tool_name_dict = tools = {
                 "type": "str",
             },
         },
-        "toolbox": "data_fetching",
         "output_metadata": [
             {
                 "name": "output_df",
@@ -57,7 +54,6 @@ tool_name_dict = tools = {
                 "type": "pandas.core.frame.DataFrame",
             },
         },
-        "toolbox": "data_fetching",
         "output_metadata": [
             {
                 "name": "output_df",
@@ -104,7 +100,6 @@ tool_name_dict = tools = {
     #             "type": "DropdownSingleSelect",
     #         },
     #     },
-    #     "toolbox": "stats",
     #     "output_metadata": [
     #         {
     #             "name": "output_df",
@@ -151,7 +146,6 @@ tool_name_dict = tools = {
     #             "type": "DBColumn",
     #         },
     #     },
-    #     "toolbox": "stats",
     #     "output_metadata": [
     #         {
     #             "name": "output_df",
@@ -186,7 +180,6 @@ tool_name_dict = tools = {
     #             "type": "DBColumn",
     #         },
     #     },
-    #     "toolbox": "stats",
     #     "output_metadata": [
     #         {
     #             "name": "output_df",
@@ -227,7 +220,6 @@ tool_name_dict = tools = {
     #             "type": "DBColumn",
     #         },
     #     },
-    #     "toolbox": "stats",
     #     "output_metadata": [
     #         {
     #             "name": "output_df",
@@ -298,7 +290,6 @@ tool_name_dict = tools = {
     #             "type": "DropdownSingleSelect",
     #         },
     #     },
-    #     "toolbox": "plots",
     #     "output_metadata": [
     #         {
     #             "name": "output_df",
@@ -364,7 +355,6 @@ tool_name_dict = tools = {
     #             "type": "DropdownSingleSelect",
     #         },
     #     },
-    #     "toolbox": "plots",
     #     "output_metadata": [
     #         {
     #             "name": "output_df",
@@ -600,7 +590,6 @@ tool_name_dict = tools = {
     #             "type": "DropdownSingleSelect",
     #         },
     #     },
-    #     "toolbox": "plots",
     #     "output_metadata": [
     #         {
     #             "name": "output_df",

@@ -51,7 +51,6 @@ RecentlyViewedDocs = Base.classes.defog_recently_viewed_docs
 Analyses = Base.classes.defog_analyses
 TableCharts = Base.classes.defog_table_charts
 ToolRuns = Base.classes.defog_tool_runs
-Toolboxes = Base.classes.defog_toolboxes
 Tools = Base.classes.defog_tools
 Users = Base.classes.defog_users
 Feedback = Base.classes.defog_plans_feedback
@@ -889,41 +888,6 @@ async def get_all_analyses(api_key: str):
         return err, analyses
 
 
-async def get_toolboxes(token):
-    username = validate_user(token, get_username=True)
-    if not username:
-        return "Invalid token.", None
-    # table is defog_agent_toolboxes
-    # get all toolboxes available to a user using the username
-    err = None
-    toolboxes = []
-    try:
-        with engine.begin() as conn:
-            rows = conn.execute(
-                select(Toolboxes).where(Toolboxes.username == username)
-            ).fetchall()
-
-            for row in rows:
-                row_dict = row._mapping
-
-                if len(row_dict["toolboxes"]) == 0:
-                    continue
-
-                if row_dict["toolboxes"][0] == "*":
-                    toolboxes = ["data-fetching", "stats", "plots", "cancer-survival"]
-                    break
-
-                else:
-                    toolboxes += row_dict["toolboxes"]
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        err = "Could not fetch toolboxes for the user."
-        toolboxes = []
-    finally:
-        return err, toolboxes
-
-
 async def update_particular_step(analysis_id, tool_run_id, prop, new_val):
     if tool_run_id is None or prop is None or analysis_id is None:
         return "Invalid tool run data"
@@ -1328,7 +1292,6 @@ def get_all_tools():
                     "function_name": tool.function_name,
                     "description": tool.description,
                     "code": tool.code,
-                    "toolbox": tool.toolbox,
                     "input_metadata": tool.input_metadata,
                     "output_metadata": tool.output_metadata,
                     "cannot_delete": tool.cannot_delete,
@@ -1358,7 +1321,6 @@ async def add_tool(
     code,
     input_metadata,
     output_metadata,
-    toolbox,
     cannot_delete=False,
     cannot_disable=False,
 ):
@@ -1394,7 +1356,9 @@ async def add_tool(
                             "function_name": function_name,
                             "description": description,
                             "code": code,
-                            "toolbox": toolbox,
+                            # we don't use toolboxes anymore
+                            # this defaults to None so no need to set it
+                            # "toolbox": toolbox,
                             "input_metadata": input_metadata,
                             "output_metadata": output_metadata,
                             "cannot_delete": cannot_delete,
@@ -1417,7 +1381,9 @@ async def add_tool(
                     "embedding": embedding,
                     "input_metadata": input_metadata,
                     "output_metadata": output_metadata,
-                    "toolbox": toolbox,
+                    # we don't use toolboxes anymore
+                    # this defaults to None so no need to set it
+                    # "toolbox": toolbox,
                     "disabled": False,
                     "cannot_delete": cannot_delete,
                     "cannot_disable": cannot_disable,

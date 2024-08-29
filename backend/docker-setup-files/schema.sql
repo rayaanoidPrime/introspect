@@ -84,14 +84,6 @@ CREATE TABLE public.defog_tool_runs (
 
 ALTER TABLE public.defog_tool_runs OWNER TO postgres;
 
-CREATE TABLE public.defog_toolboxes (
-    api_key text NOT NULL,
-    username text NOT NULL,
-    toolboxes jsonb
-);
-
-ALTER TABLE public.defog_toolboxes OWNER TO postgres;
-
 CREATE TABLE public.defog_tools (
     tool_name TEXT NOT NULL,
     function_name TEXT NOT NULL,
@@ -99,7 +91,7 @@ CREATE TABLE public.defog_tools (
     code TEXT NOT NULL,
     input_metadata jsonb,
     output_metadata jsonb,
-    toolbox TEXT,
+    toolbox TEXT DEFAULT NULL,
     disabled BOOLEAN NOT NULL DEFAULT FALSE,
     cannot_delete BOOLEAN NOT NULL DEFAULT FALSE,
     cannot_disable BOOLEAN NOT NULL DEFAULT FALSE
@@ -160,9 +152,6 @@ ALTER TABLE ONLY public.defog_analyses
 
 ALTER TABLE ONLY public.defog_table_charts
     ADD CONSTRAINT defog_table_charts_pkey PRIMARY KEY (table_id);
-
-ALTER TABLE ONLY public.defog_toolboxes
-    ADD CONSTRAINT defog_toolboxes_pkey PRIMARY KEY (username, api_key);
 
 ALTER TABLE ONLY public.defog_users
     ADD CONSTRAINT defog_users_pkey PRIMARY KEY (username);

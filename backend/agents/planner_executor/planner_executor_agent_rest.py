@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from agents.planner_executor.execute_tool import execute_tool
 from agents.planner_executor.tool_helpers.core_functions import resolve_input
-from .tool_helpers.toolbox_manager import get_tool_library_prompt
+from .tool_helpers.get_tool_library_prompt import get_tool_library_prompt
 from generic_utils import make_request
 from copy import deepcopy
 
@@ -33,12 +33,10 @@ class RESTExecutor:
         dfg_api_key,
         user_question,
         assignment_understanding,
-        toolboxes=[],
         dev=False,
     ):
         self.user_question = user_question
         self.dfg_api_key = dfg_api_key
-        self.toolboxes = toolboxes
         self.assignment_understanding = assignment_understanding
         self.previous_responses = []
         self.dev = dev
@@ -46,7 +44,6 @@ class RESTExecutor:
         self.global_dict = {
             "user_question": user_question,
             "dfg_api_key": dfg_api_key,
-            "toolboxes": toolboxes,
             "assignment_understanding": assignment_understanding,
             "dfg": None,
             "llm_calls_url": llm_calls_url,
@@ -58,9 +55,7 @@ class RESTExecutor:
         self.tool_outputs_column_descriptions = ""
 
     async def execute(self):
-        self.tool_library_prompt = await get_tool_library_prompt(
-            self.toolboxes, self.user_question
-        )
+        self.tool_library_prompt = await get_tool_library_prompt(self.user_question)
 
         is_done = False
         steps = []

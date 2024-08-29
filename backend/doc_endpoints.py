@@ -27,7 +27,6 @@ from db_utils import (
     get_doc_data,
     get_analysis_data,
     get_tool_run,
-    get_toolboxes,
     store_feedback,
     store_tool_run,
     toggle_disable_tool,
@@ -186,29 +185,6 @@ async def get_document(request: Request):
         return {"success": False, "error_message": err}
 
     return {"success": True, "doc_data": doc_data}
-
-
-@router.post("/get_toolboxes")
-async def get_toolboxes_endpoint(request: Request):
-    """
-    Get all toolboxes using the username.
-    """
-    try:
-        data = await request.json()
-        token = data.get("token")
-
-        if token is None or type(token) != str:
-            return {"success": False, "error_message": "Invalid token."}
-
-        err, toolboxes = await get_toolboxes(token)
-        if err:
-            return {"success": False, "error_message": err}
-
-        return {"success": True, "toolboxes": toolboxes}
-    except Exception as e:
-        logging.info("Error getting analyses: " + str(e))
-        traceback.print_exc()
-        return {"success": False, "error_message": "Unable to parse your request."}
 
 
 @router.post("/get_docs")
@@ -521,7 +497,6 @@ async def add_tool_endpoint(request: Request):
         code = data.get("code")
         input_metadata = data.get("input_metadata")
         output_metadata = data.get("output_metadata")
-        toolbox = data.get("toolbox")
         no_code = data.get("no_code", False)
         key_name = data.get("key_name")
         api_key = get_api_key_from_key_name(key_name)
@@ -555,9 +530,6 @@ async def add_tool_endpoint(request: Request):
         if tool_name is None or type(tool_name) != str or len(tool_name) == 0:
             return {"success": False, "error_message": "Invalid display name."}
 
-        if toolbox is None or type(toolbox) != str or len(toolbox) == 0:
-            return {"success": False, "error_message": "Invalid toolbox."}
-
         if no_code is None or type(no_code) != bool:
             return {"success": False, "error_message": "Invalid no code."}
 
@@ -569,7 +541,6 @@ async def add_tool_endpoint(request: Request):
             code=code,
             input_metadata=input_metadata,
             output_metadata=output_metadata,
-            toolbox=toolbox,
         )
 
         if err:

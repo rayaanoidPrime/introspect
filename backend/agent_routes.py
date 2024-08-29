@@ -66,7 +66,6 @@ async def generate_step(request: Request):
         dev = params.get("dev", False)
         temp = params.get("temp", False)
         clarification_questions = params.get("clarification_questions", [])
-        toolboxes = params.get("toolboxes", [])
         sql_only = params.get("sql_only", False)
         previous_questions = params.get("previous_questions", [])
 
@@ -167,7 +166,6 @@ async def generate_step(request: Request):
             analysis_execution_cache = {
                 "dfg_api_key": api_key,
                 "user_question": question,
-                "toolboxes": toolboxes,
                 "dev": dev,
                 "temp": temp,
             }
@@ -227,7 +225,6 @@ async def generate_step(request: Request):
                 user_question=question,
                 dev=dev,
                 temp=temp,
-                toolboxes=toolboxes,
                 assignment_understanding=assignment_understanding,
             )
 
@@ -317,7 +314,6 @@ async def rerun_step_endpoint(request: Request):
         analysis_id = params.get("analysis_id")
         step_id = params.get("step_id")
         edited_step = params.get("edited_step")
-        toolboxes = params.get("toolboxes", [])
 
         if not key_name or key_name == "":
             raise Exception("Invalid request. Must have API key name.")
@@ -362,7 +358,6 @@ async def rerun_step_endpoint(request: Request):
             analysis_id=analysis_id,
             dfg_api_key=api_key,
             user_question=None,
-            toolboxes=toolboxes,
             dev=False,
             temp=False,
         )
@@ -517,7 +512,6 @@ async def create_new_step(request: Request):
             dfg_api_key=api_key,
             analysis_id=analysis_id,
             user_question=None,
-            toolboxes=[],
             dev=False,
             temp=False,
         )
