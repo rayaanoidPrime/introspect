@@ -9,6 +9,7 @@ import requests
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
 from agents.planner_executor.tool_helpers.core_functions import analyse_data
 import pandas as pd
+from backend.agents.planner_executor.planner_executor_agent import rerun_step
 from utils import log_msg, snake_case
 import logging
 from generic_utils import get_api_key_from_key_name
@@ -25,7 +26,6 @@ from db_utils import (
     get_analysis_versions,
     get_doc_data,
     get_analysis_data,
-    get_tool_run,
     store_feedback,
     store_tool_run,
     toggle_disable_tool,
@@ -234,31 +234,6 @@ async def get_analyses(request: Request):
         return {"success": False, "error_message": "Unable to parse your request."}
 
 
-@router.post("/get_tool_run")
-async def get_tool_run_endpoint(request: Request):
-    """
-    Get the tool run using the id passed.
-    """
-    try:
-        data = await request.json()
-        tool_run_id = data.get("tool_run_id")
-        logging.info("getting tool run: " + tool_run_id)
-
-        if tool_run_id is None or type(tool_run_id) != str:
-            return {"success": False, "error_message": "Invalid tool run id."}
-
-        err, tool_run = await get_tool_run(tool_run_id)
-
-        if err:
-            return {"success": False, "error_message": err}
-
-        return {"success": True, "tool_run_data": tool_run}
-    except Exception as e:
-        logging.info("Error getting analyses: " + str(e))
-        traceback.print_exc()
-        return {"success": False, "error_message": "Unable to parse your request."}
-
-
 # setup an analyse_data websocket endpoint
 @router.websocket("/analyse_data")
 async def analyse_data_endpoint(websocket: WebSocket):
@@ -310,6 +285,91 @@ async def analyse_data_endpoint(websocket: WebSocket):
         # other reasons for disconnect, like websocket being closed or a timeout
         manager.disconnect(websocket)
         await websocket.close()
+
+
+# download csv using step_id and output_storage_key
+@router.post("/download_csv")
+async def download_csv(request: Request):
+    """
+    Download a csv using the step id and output storage key.
+    """
+    try:
+        data = await request.json()
+        step_id = data.get("step_id")
+        output_storage_key = data.get("output_storage_key")
+        analysis_id = data.get("analysis_id")
+        key_name = data.get("key_name")
+        api_key = get_api_key_from_key_name(key_name)
+
+        if step_id is None or type(step_id) != str:
+            return {"success": False, "error_message": "Invalid tool run id."}
+
+        if output_storage_key is None or type(output_storage_key) != str:
+            return {"success": False, "error_message": "Invalid output storage key."}
+
+        if analysis_id is None or type(analysis_id) != str:
+            return {"success": False, "error_message": "Invalid analysis id."}
+
+        # first try to find this file in the file system
+        f_name = step_id + "_output-" + output_storage_key + ".feather"
+        f_path = os.path.join(analysis_assets_dir, "datasets", f_name)
+
+        if not os.path.isfile(f_path):
+            log_msg(
+                f"Input {output_storage_key} not found in the file system. Rerunning step: {step_id}"
+            )
+            # re run this step
+            # get steps from db
+            err, analysis_data = get_analysis_data(analysis_id)
+            if err:
+                raise Exception(err)
+
+            # get the steps
+            all_steps = analysis_data.get("gen_steps")
+            if all_steps and all_steps["success"]:
+                all_steps = all_steps["steps"]
+            else:
+                raise Exception("No steps found in analysis data")
+
+            # get the target step
+            target_step = None
+            for step in all_steps:
+                if step["step_id"] == step_id:
+                    target_step = step
+                    break
+
+            if target_step is None:
+                raise Exception("Request step not found in analysis data")
+
+            _ = await rerun_step(
+                step=target_step,
+                all_steps=all_steps,
+                dfg_api_key=api_key,
+                analysis_id=analysis_id,
+                user_question=None,
+                dev=False,
+                temp=False,
+            )
+        else:
+            log_msg(
+                f"Input {output_storage_key} found in the file system. No need to rerun step."
+            )
+
+        # now the file *should* be available
+        df = pd.read_feather(f_path)
+
+        return {
+            "success": True,
+            "step_id": step_id,
+            "output_storage_key": output_storage_key,
+            # get it as a csv string
+            "csv": df.to_csv(index=False),
+        }
+
+    except Exception as e:
+        logging.info("Error downloading csv: " + str(e))
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}
 
 
 @router.post("/delete_doc")

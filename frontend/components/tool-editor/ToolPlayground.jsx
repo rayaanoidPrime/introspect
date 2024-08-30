@@ -2,7 +2,7 @@ import { SpinningLoader } from "@defogdotai/agents-ui-components/core-ui";
 import { ToolFlow } from "./ToolFlow";
 import { ExclamationCircleIcon } from "@heroicons/react/20/solid";
 
-export default function ToolCreatorAssistant({
+export default function ToolPlayground({
   tool,
   loading,
   handleChange = (...args) => {},

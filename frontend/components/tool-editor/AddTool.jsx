@@ -1,6 +1,6 @@
 import { addTool, arrayOfObjectsToObject } from "$utils/utils";
 import { useCallback, useContext, useState } from "react";
-import ToolCreatorAssistant from "./ToolCreatorAssistant";
+import ToolPlayground from "./ToolPlayground";
 import { SparklesIcon } from "@heroicons/react/20/solid";
 import { DefineTool } from "./DefineTool";
 
@@ -23,7 +23,7 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
   const generateToolCodeEndpoint = setupBaseUrl("http", "generate_tool_code");
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [toolAssistMode, setToolAssistMode] = useState(false);
+  const [showCode, setShowCode] = useState(false);
   const [testingResults, setTestingResults] = useState(null);
   const [tool, setTool] = useState({
     code: "",
@@ -154,7 +154,7 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
       >
         <div className="flex items-center  justify-center text-blue-500">
           <span className="">
-            <p className="m-0">+</p>
+            <p className="m-0">+ New tool</p>
           </span>
         </div>
       </div>
@@ -169,35 +169,47 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
       >
         <h1 className="text-lg font-bold mb-4">Add a custom tool</h1>
 
-        <div className="flex flex-row relative">
-          <Sidebar
-            open={true}
-            location="left"
-            title=""
-            rootClassNames="min-h-full bg-gray-50"
-            contentClassNames={
-              "px-2 pt-5 flex flex-col pb-14 rounded-tl-lg relative sm:block grow"
-            }
-          >
-            <div className="pr-4 *:font-sans">
-              <DefineTool
-                disabled={loading}
-                toolName={toolName}
-                handleChange={handleChange}
-                toolDocString={tool.description}
-              />
-            </div>
-          </Sidebar>
+        <div className="flex flex-row relative ">
+          <div className="p-4 bg-gray-50 sm:block grow">
+            <DefineTool
+              disabled={loading}
+              toolName={toolName}
+              handleChange={handleChange}
+              toolDocString={tool.description}
+            />
+            <Button
+              className={"text-sm border w-60"}
+              disabled={!toolName || !toolDocString || loading}
+              onClick={() => {
+                if (!toolName || !toolDocString) {
+                  messageManager.error(
+                    "Please fill in the tool name and description"
+                  );
+                  return;
+                }
 
-          <div className="content grow flex flex-col items-center justify-center relative pl-8">
-            {tool.code ? (
+                handleSubmit();
+              }}
+            >
+              {loading ? (
+                <div>
+                  <SpinningLoader classNames="text-gray-300" />
+                  Generating
+                </div>
+              ) : (
+                "Generate"
+              )}
+            </Button>
+          </div>
+          {tool.code ? (
+            <div className="content grow flex flex-col items-center justify-center relative pl-8">
               <>
                 <div className="flex flex-row items-start justify-between w-full mb-4 ">
                   <Toggle
-                    onToggle={(v) => setToolAssistMode(v)}
-                    defaultOn={toolAssistMode}
-                    offLabel="Code"
-                    onLabel={
+                    onToggle={(v) => setShowCode(v)}
+                    defaultOn={showCode}
+                    onLabel="Code"
+                    offLabel={
                       <span className="flex flex-row items-center">
                         <SparklesIcon className="text-yellow-400 inline w-4 h-4 mr-2"></SparklesIcon>
                         Playground
@@ -213,19 +225,19 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
                   </Button>
                 </div>
 
-                {toolAssistMode ? (
-                  <ToolCreatorAssistant
-                    loading={loading}
-                    tool={tool}
-                    handleChange={handleChange}
-                    testingResults={testingResults}
-                  />
-                ) : (
+                {showCode ? (
                   <NewToolCodeEditor
                     className="w-full"
                     editable={!loading}
                     toolCode={tool.code}
                     onChange={(v) => handleChange("code", v)}
+                  />
+                ) : (
+                  <ToolPlayground
+                    loading={loading}
+                    tool={tool}
+                    handleChange={handleChange}
+                    testingResults={testingResults}
                   />
                 )}
                 <Input
@@ -245,34 +257,10 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
                   }}
                 />
               </>
-            ) : (
-              <div className="">
-                <Button
-                  className={"p-2 m-4 text-sm border w-60"}
-                  disabled={!toolName || !toolDocString || loading}
-                  onClick={() => {
-                    if (!toolName || !toolDocString) {
-                      messageManager.error(
-                        "Please fill in the tool name and description"
-                      );
-                      return;
-                    }
-
-                    handleSubmit();
-                  }}
-                >
-                  {loading ? (
-                    <div>
-                      <SpinningLoader classNames="text-gray-300" />
-                      Generating
-                    </div>
-                  ) : (
-                    "Generate"
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
+            </div>
+          ) : (
+            <></>
+          )}
         </div>
       </Modal>
     </>

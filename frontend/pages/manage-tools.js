@@ -2,20 +2,14 @@
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import { addTool } from "$utils/utils";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import {
   MessageManagerContext,
   Button,
   Modal,
 } from "@defogdotai/agents-ui-components/core-ui";
+
 import { DefineTool } from "$components/tool-editor/DefineTool";
 import { AddTool } from "$components/tool-editor/AddTool";
 
