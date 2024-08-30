@@ -9,8 +9,8 @@ import requests
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
 from agents.planner_executor.tool_helpers.core_functions import analyse_data
 import pandas as pd
-from backend.agents.planner_executor.planner_executor_agent import rerun_step
-from utils import log_msg, snake_case
+from agents.planner_executor.planner_executor_agent import rerun_step
+from utils import snake_case
 import logging
 from generic_utils import get_api_key_from_key_name
 from db_utils import execute_code, get_db_type_creds
@@ -27,15 +27,9 @@ from db_utils import (
     get_doc_data,
     get_analysis_data,
     store_feedback,
-    store_tool_run,
     toggle_disable_tool,
     update_doc_data,
-    update_analysis_data,
-    update_table_chart_data,
-    get_table_data,
     get_all_analyses,
-    update_tool,
-    update_tool_run_data,
     delete_doc,
     get_all_tools,
 )
@@ -314,8 +308,10 @@ async def download_csv(request: Request):
         f_name = step_id + "_output-" + output_storage_key + ".feather"
         f_path = os.path.join(analysis_assets_dir, "datasets", f_name)
 
+        logging.info("lansdfgljansdl")
+
         if not os.path.isfile(f_path):
-            log_msg(
+            logging.info(
                 f"Input {output_storage_key} not found in the file system. Rerunning step: {step_id}"
             )
             # re run this step
@@ -351,7 +347,7 @@ async def download_csv(request: Request):
                 temp=False,
             )
         else:
-            log_msg(
+            logging.info(
                 f"Input {output_storage_key} found in the file system. No need to rerun step."
             )
 
