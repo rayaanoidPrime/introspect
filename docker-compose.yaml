@@ -1,9 +1,7 @@
 version: "3"
 services:
   agents-postgres:
-    build:
-      context: .
-      dockerfile: dockerfile.agents-postgres
+    image: postgres:16-alpine
     networks:
       - agents-network
     environment:
@@ -30,6 +28,7 @@ services:
       - DATABASE=${DEFOG_DATABASE:-postgres}
       - DBUSER=${DEFOG_DBUSER:-postgres}
       - DBPASSWORD=${DEFOG_DBPASSWORD:-postgres}
+      - PARSED_TABLES_DBNAME=${PARSED_TABLES_DBNAME}
       - REDIS_INTERNAL_PORT=${REDIS_INTERNAL_PORT}
       - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
       - LOG_LEVEL=${LOG_LEVEL:-info}
