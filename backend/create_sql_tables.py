@@ -258,13 +258,37 @@ def create_postgres_tables():
     conn.close()
 
 
+def create_sqlserver_tables():
+    """
+    Create tables in SQL Server database
+    """
+    db_creds = {
+        "user": os.environ.get("DBUSER", "sa"),
+        "password": os.environ.get("DBPASSWORD", "Password1"),
+        "host": os.environ.get("DBHOST", "localhost"),
+        "database": os.environ.get("DATABASE", "defog"),
+        "port": os.environ.get("DBPORT", "1433"),
+    }
+
+    # if using sqlserver
+    connection_uri = f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server"
+
+    # Create an engine (SQL Server in this example)
+    engine = create_engine(connection_uri, echo=True)
+
+    # Create tables in the database
+    metadata.create_all(engine)
+
+
 # see from the command line arg if we are creating tables in sqlite or postgres
 if __name__ == "__main__":
-    internal_db = os.getenv("INTERNAL_DB", "sqlite")
+    internal_db = os.getenv("INTERNAL_DB", "postgres")
 
     if internal_db == "sqlite":
         create_sqlite_tables()
     elif internal_db == "postgres":
         create_postgres_tables()
+    elif internal_db == "sqlserver":
+        create_sqlserver_tables()
     else:
         raise ValueError("Invalid db_type")
