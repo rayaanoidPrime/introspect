@@ -553,7 +553,7 @@ async def update_golden_queries(request: Request):
 
     # update golden queries
     r = await asyncio.to_thread(
-        defog.update_golden_queries, golden_queries, dev=dev, scrub=False
+        defog.update_golden_queries, golden_queries=golden_queries, dev=dev, scrub=False
     )
     return r
 
