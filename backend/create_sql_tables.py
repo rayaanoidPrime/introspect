@@ -237,7 +237,7 @@ def create_postgres_tables():
     metadata.create_all(engine)
 
     parsed_tables_db = os.environ.get("PARSED_TABLES_DBNAME", "postgres")
-    if parsed_tables_db == "":
+    if parsed_tables_db == "" or parsed_tables_db is None:
         parsed_tables_db = "postgres"
     print(f"Creating database {parsed_tables_db}")
     # create psycopg2 connection

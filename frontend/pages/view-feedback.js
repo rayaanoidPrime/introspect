@@ -204,7 +204,7 @@ const ViewFeedback = () => {
               feedbackColumns={feedbackColumns}
               feedback={feedback}
               filter={filter}
-              goldenQueries={goldenQueries}
+              goldenQueries={goldenQueries || []}
               setGoldenQueries={setGoldenQueries}
               handleNegativeFeedback={handleNegativeFeedback}
             />
