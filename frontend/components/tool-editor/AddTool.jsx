@@ -1,5 +1,5 @@
 import { addTool, arrayOfObjectsToObject } from "$utils/utils";
-import { useCallback, useContext, useState } from "react";
+import { useCallback, useContext, useMemo, useState } from "react";
 import ToolPlayground from "./ToolPlayground";
 import { SparklesIcon } from "@heroicons/react/20/solid";
 import { DefineTool } from "./DefineTool";
@@ -13,6 +13,7 @@ import {
   Input,
   Button,
   SpinningLoader,
+  Tabs,
 } from "@defogdotai/agents-ui-components/core-ui";
 
 import { parseData } from "@defogdotai/agents-ui-components/agent";
@@ -146,6 +147,111 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
     }
   };
 
+  const input = useMemo(() => {
+    return (
+      tool.code && (
+        <Input
+          placeholder="What should we change?"
+          disabled={loading}
+          rootClassNames="mb-4"
+          onPressEnter={(ev) => {
+            if (!ev.target.value) {
+              messageManager.error("Can't be blank!");
+              return;
+            }
+            handleSubmit(ev.target.value);
+          }}
+        />
+      )
+    );
+  }, [tool]);
+
+  const tabs = useMemo(() => {
+    return [
+      {
+        name: "Details",
+        content: (
+          <div className="p-4 bg-gray-50 sm:block">
+            {input}
+            <DefineTool
+              disabled={loading}
+              toolName={toolName}
+              handleChange={handleChange}
+              toolDocString={tool.description}
+            />
+            {!tool.code ? (
+              <Button
+                className={"text-sm border w-60"}
+                disabled={!toolName || !toolDocString || loading}
+                onClick={() => {
+                  if (!toolName || !toolDocString) {
+                    messageManager.error(
+                      "Please fill in the tool name and description"
+                    );
+                    return;
+                  }
+
+                  handleSubmit();
+                }}
+              >
+                {loading ? (
+                  <div>
+                    <SpinningLoader classNames="text-gray-300" />
+                    Generating
+                  </div>
+                ) : (
+                  "Generate"
+                )}
+              </Button>
+            ) : (
+              <Button className={"px-2 text-sm"} onClick={tryAddTool}>
+                Save
+              </Button>
+            )}
+          </div>
+        ),
+      },
+      {
+        name: "Code",
+        headerClassNames: !tool.code
+          ? "text-gray-300 hover:bg-white pointer-events-none "
+          : "",
+        content: tool.code ? (
+          <>
+            {input}
+            <NewToolCodeEditor
+              className="w-full"
+              editable={!loading}
+              toolCode={tool.code}
+              onChange={(v) => handleChange("code", v)}
+            />
+          </>
+        ) : (
+          <></>
+        ),
+      },
+      {
+        name: "Playground",
+        headerClassNames: !tool.code
+          ? "text-gray-300 hover:bg-white pointer-events-none "
+          : "",
+        content: tool.code ? (
+          <>
+            {input}
+            <ToolPlayground
+              loading={loading}
+              tool={tool}
+              handleChange={handleChange}
+              testingResults={testingResults}
+            />
+          </>
+        ) : (
+          <></>
+        ),
+      },
+    ];
+  }, [tool, loading, testingResults, input]);
+
   return (
     <>
       <div
@@ -165,102 +271,13 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
           setModalOpen(false);
         }}
         footer={null}
-        className={"w-8/12"}
+        className={"w-8/12 h-96"}
+        rootClassNames="h-96"
       >
         <h1 className="text-lg font-bold mb-4">Add a custom tool</h1>
 
-        <div className="flex flex-row relative ">
-          <div className="p-4 bg-gray-50 sm:block grow">
-            <DefineTool
-              disabled={loading}
-              toolName={toolName}
-              handleChange={handleChange}
-              toolDocString={tool.description}
-            />
-            <Button
-              className={"text-sm border w-60"}
-              disabled={!toolName || !toolDocString || loading}
-              onClick={() => {
-                if (!toolName || !toolDocString) {
-                  messageManager.error(
-                    "Please fill in the tool name and description"
-                  );
-                  return;
-                }
-
-                handleSubmit();
-              }}
-            >
-              {loading ? (
-                <div>
-                  <SpinningLoader classNames="text-gray-300" />
-                  Generating
-                </div>
-              ) : (
-                "Generate"
-              )}
-            </Button>
-          </div>
-          {tool.code ? (
-            <div className="content grow flex flex-col items-center justify-center relative pl-8">
-              <>
-                <div className="flex flex-row items-start justify-between w-full mb-4 ">
-                  <Toggle
-                    onToggle={(v) => setShowCode(v)}
-                    defaultOn={showCode}
-                    onLabel="Code"
-                    offLabel={
-                      <span className="flex flex-row items-center">
-                        <SparklesIcon className="text-yellow-400 inline w-4 h-4 mr-2"></SparklesIcon>
-                        Playground
-                      </span>
-                    }
-                    rootClassNames="self-start"
-                  />
-                  <Button
-                    className={"px-2 text-sm bg-blue-400"}
-                    onClick={tryAddTool}
-                  >
-                    Save
-                  </Button>
-                </div>
-
-                {showCode ? (
-                  <NewToolCodeEditor
-                    className="w-full"
-                    editable={!loading}
-                    toolCode={tool.code}
-                    onChange={(v) => handleChange("code", v)}
-                  />
-                ) : (
-                  <ToolPlayground
-                    loading={loading}
-                    tool={tool}
-                    handleChange={handleChange}
-                    testingResults={testingResults}
-                  />
-                )}
-                <Input
-                  placeholder="What should we change?"
-                  rootClassNames="sticky bottom-0 mt-4 w-full lg:w-6/12 shadow-lg rounded-md"
-                  inputClassNames={twMerge(
-                    "bg-white border mx-auto h-16 hover:border-blue-500 focus:border-blue-500",
-                    loading ? "hover:border-gray-400 focus:border-gray-400" : ""
-                  )}
-                  disabled={loading}
-                  onPressEnter={(ev) => {
-                    if (!ev.target.value) {
-                      messageManager.error("Can't be blank!");
-                      return;
-                    }
-                    handleSubmit(ev.target.value);
-                  }}
-                />
-              </>
-            </div>
-          ) : (
-            <></>
-          )}
+        <div className="grow relative p-2">
+          <Tabs tabs={tabs} />
         </div>
       </Modal>
     </>
