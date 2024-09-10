@@ -16,6 +16,8 @@ import { parseData } from "@defogdotai/agents-ui-components/agent";
 import NewToolCodeEditor from "./NewToolCodeEditor";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import { Steps } from "antd";
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import { twMerge } from "tailwind-merge";
 
 export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
   const generateToolCodeEndpoint = setupBaseUrl("http", "generate_tool_code");
@@ -42,8 +44,24 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
 
   const [currentStep, setCurrentStep] = useState(0);
 
-  const generateToolBtn = useMemo(
-    () => (
+  const next = () => {
+    if (currentStep === 0 && (!toolName || !toolDocString)) {
+      messageManager.info("Please fill in the tool name and description");
+      return;
+    }
+    if (currentStep === 1 && (!tool.code || !toolName || !toolDocString)) {
+      messageManager.info("Please create the tool first");
+      return;
+    }
+    setCurrentStep((d) => Math.min(steps.length - 1, d + 1));
+  };
+
+  const prev = () => {
+    setCurrentStep((d) => Math.max(0, d - 1));
+  };
+
+  const generateToolBtn = useMemo(() => {
+    return (
       <Button
         disabled={!toolName || !toolDocString || loading}
         onClick={() => {
@@ -66,8 +84,36 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
           "Create tool"
         )}
       </Button>
+    );
+  }, [currentStep, toolName, toolDocString, loading]);
+
+  const footer = useMemo(
+    () => (
+      <div className="flex flex-row items-center">
+        <div className="grow">{currentStep > 0 ? null : generateToolBtn}</div>
+        <div className="flex flex-row self-end items-center">
+          <ChevronLeftIcon
+            onClick={prev}
+            className={twMerge(
+              "w-5 h-5 text-gray-400 cursor-pointer hover:text-gray-800",
+              (currentStep === 0 || !toolDocString || !toolName) &&
+                "cursor-not-allowed hover:text-gray-300"
+            )}
+          />
+          <ChevronRightIcon
+            onClick={next}
+            className={twMerge(
+              "w-5 h-5 text-gray-400 cursor-pointer hover:text-gray-800",
+              (!toolDocString ||
+                !toolName ||
+                (currentStep === 1 && !tool.code)) &&
+                "cursor-not-allowed hover:text-gray-300"
+            )}
+          />
+        </div>
+      </div>
     ),
-    [toolName, toolDocString, loading]
+    [currentStep, toolName, toolDocString, loading]
   );
 
   const handleChange = useCallback(
@@ -199,8 +245,8 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
       {
         title: "Describe your tool",
         content: (
-          <div className="sm:block">
-            <p className="text-sm my-4">
+          <div className="sm:block min-h-80">
+            <p className="text-xs my-4 text-gray-500">
               Describe what your tool does. This will help us generate the
               tool's code.
             </p>
@@ -210,7 +256,6 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
               handleChange={handleChange}
               toolDocString={tool.description}
             />
-            {generateToolBtn}
           </div>
         ),
       },
@@ -218,7 +263,7 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
         title: "Test",
         content: tool.code ? (
           <>
-            <p className="text-sm my-4">
+            <p className="text-xs my-4 text-gray-500">
               Test your tool. Edit the tool's code.
             </p>
             <Tabs
@@ -265,33 +310,40 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
           </>
         ) : (
           <div className="min-h-80 flex items-center justify-center">
-            <p className="text-gray-400">
-              {toolDocString && toolName
-                ? generateToolBtn
-                : "Please complete the previous step"}
-            </p>
+            {toolDocString && toolName ? (
+              generateToolBtn
+            ) : (
+              <p className="text-sm text-gray-400">
+                Please complete the previous step
+              </p>
+            )}
           </div>
         ),
       },
       {
         title: "Save",
         content: (
-          <div className="min-h-80 flex items-center justify-center">
-            {" "}
-            <Button onClick={tryAddTool}>Save</Button>
+          <div className=" min-h-80 flex items-center justify-center">
+            {toolDocString && toolName && tool.code ? (
+              <Button onClick={tryAddTool}>Save</Button>
+            ) : (
+              <p className="text-sm text-gray-400">
+                Please complete the previous steps
+              </p>
+            )}
           </div>
         ),
       },
     ];
   }, [tool, loading, testingResults, input]);
 
-  const next = () => {
-    setCurrentStep((d) => Math.min(steps.length - 1, d + 1));
-  };
-
-  const prev = () => {
-    setCurrentStep((d) => Math.max(0, d - 1));
-  };
+  const status = useMemo(() => {
+    if (currentStep === 0 || currentStep == 1) {
+      return "process";
+    } else {
+      return tool.code && toolName && toolDocString ? "process" : "error";
+    }
+  }, [currentStep, tool, loading, toolDocString, toolName]);
 
   return (
     <>
@@ -311,9 +363,7 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
         onCancel={(ev) => {
           setModalOpen(false);
         }}
-        footer={null}
-        className={"w-8/12 h-96"}
-        rootClassNames="h-96"
+        footer={footer}
       >
         <h1 className="text-lg font-bold mb-4">Add a custom tool</h1>
 
@@ -321,9 +371,8 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
           <Steps
             items={steps}
             current={currentStep}
-            onChange={(stepNum) => {
-              setCurrentStep(stepNum);
-            }}
+            status={status}
+            size="small"
           />
           <div className="mt-4">{steps[currentStep].content}</div>
         </div>

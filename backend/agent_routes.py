@@ -14,7 +14,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-from backend.utils import snake_case
+from utils import snake_case
 from db_utils import (
     execute_code,
     get_all_tools,
@@ -589,8 +589,17 @@ async def edit_chart(request: Request):
         return {"success": False, "error_message": str(e)[:300]}
 
 
-@router.post("/generate_tool_code")
-async def generate_tool_code_endpoint(request: Request):
+@router.post("/generate_and_test_new_tool")
+async def generate_and_test_new_tool(request: Request):
+    """
+    This function/endpoint does two things:
+    1. Generates a new tool or tweaks an existing tool based on some user question.
+    2. The endpoint that generates the tool on the api, will also return a sample question based on the user's tool library and ddl. This sample question will then be used to create a new plan using this tool.
+
+    The first step above can have two modes:
+    1. Generate a new tool based on either based on a tool name and description.
+    2. Or given already existing tool code (`current_code` parameter), will tweak the tool code according to the `user_question` parameter, which contains the user's request for what tweak has to be made.
+    """
     try:
         data = await request.json()
         tool_name = data.get("tool_name")
@@ -607,7 +616,7 @@ async def generate_tool_code_endpoint(request: Request):
             user_question = "Please write the tool code."
 
         payload = {
-            "request_type": "generate_tool_code",
+            "request_type": "generate_and_test_new_tool",
             "tool_name": tool_name,
             "tool_description": tool_description,
             "user_question": user_question,
