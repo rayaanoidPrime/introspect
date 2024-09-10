@@ -27,7 +27,11 @@ if os.environ.get("INTERNAL_DB") == "sqlite":
     # if using sqlite
     connection_uri = "sqlite:///defog_local.db"
     engine = create_engine(connection_uri, connect_args={"timeout": 3})
-else:
+    parsed_tables_dbname = os.environ.get("PARSED_TABLES_DBNAME", "defog_local")
+    parsed_tables_engine = create_engine(
+        f"sqlite:///{parsed_tables_dbname}.db", connect_args={"timeout": 3}
+    )
+elif os.environ.get("INTERNAL_DB") == "postgres":
     db_creds = {
         "user": os.environ.get("DBUSER", "postgres"),
         "password": os.environ.get("DBPASSWORD", "postgres"),
@@ -40,6 +44,34 @@ else:
     print("using postgres as our internal db")
     connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
     engine = create_engine(connection_uri)
+    parsed_tables_dbname = os.environ.get("PARSED_TABLES_DBNAME", "postgres")
+    if parsed_tables_dbname == db_creds["database"]:
+        print(
+            f"PARSED_TABLES_DBNAME is the same as the main database: {parsed_tables_dbname}. Consider use a different database name."
+        )
+    parsed_tables_engine = create_engine(
+        f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{parsed_tables_dbname}"
+    )
+elif os.environ.get("INTERNAL_DB") == "sqlserver":
+    db_creds = {
+        "user": os.environ.get("DBUSER", "sa"),
+        "password": os.environ.get("DBPASSWORD", "Password1"),
+        "host": os.environ.get("DBHOST", "localhost"),
+        "database": os.environ.get("DATABASE", "defog"),
+        "port": os.environ.get("DBPORT", "1433"),
+    }
+
+    # if using sqlserver
+    connection_uri = f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server"
+    engine = create_engine(connection_uri)
+    parsed_tables_dbname = os.environ.get("PARSED_TABLES_DBNAME", "defog")
+    if parsed_tables_dbname == db_creds["database"]:
+        print(
+            f"PARSED_TABLES_DBNAME is the same as the main database: {parsed_tables_dbname}. Consider using a different database name."
+        )
+    parsed_tables_engine = create_engine(
+        f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{parsed_tables_dbname}?driver=ODBC+Driver+18+for+SQL+Server"
+    )
 
 Base = automap_base()
 
@@ -57,6 +89,7 @@ DbCreds = Base.classes.defog_db_creds
 OracleSources = Base.classes.oracle_sources
 OracleClarifications = Base.classes.oracle_clarifications
 OracleReports = Base.classes.oracle_reports
+ParsedTables = Base.classes.parsed_tables
 
 
 def save_csv_to_db(table_name, data):
@@ -114,7 +147,7 @@ def validate_user(token, user_type=None, get_username=False):
 
     if user:
         if user_type == "admin":
-            if user[0] == "admin":
+            if user.user_type == "admin":
                 if get_username:
                     return user[1]
                 else:

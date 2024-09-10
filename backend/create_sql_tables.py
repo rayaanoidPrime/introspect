@@ -1,5 +1,6 @@
 # read a sql file, and create tables in sqlite database
 
+import psycopg2
 from sqlalchemy import (
     create_engine,
     MetaData,
@@ -150,7 +151,7 @@ defog_db_creds = Table(
 oracle_reports = Table(
     "oracle_reports",
     metadata,
-    Column("report_id", Text, primary_key=True),
+    Column("report_id", Integer, primary_key=True, autoincrement=True),
     Column("report_name", Text),
     Column("status", Text),
     Column("created_ts", DateTime),
@@ -183,6 +184,15 @@ oracle_sources = Table(
     Column("snippet", Text),
     Column("text_parsed", Text),
     Column("text_summary", Text),
+)
+
+parsed_tables = Table(
+    "parsed_tables",
+    metadata,
+    Column("table_url", Text, primary_key=True),
+    Column("table_position", Integer, primary_key=True),
+    Column("table_name", Text),
+    Column("table_description", Text),
 )
 
 
@@ -223,14 +233,59 @@ def create_postgres_tables():
     # Create tables in the database
     metadata.create_all(engine)
 
+    parsed_tables_db = os.environ.get("PARSED_TABLES_DBNAME", "postgres")
+    if parsed_tables_db == "" or parsed_tables_db is None:
+        parsed_tables_db = "postgres"
+    print(f"Creating database {parsed_tables_db}")
+    # create psycopg2 connection
+    conn = psycopg2.connect(
+        dbname=db_creds["database"],
+        user=db_creds["user"],
+        password=db_creds["password"],
+        host=db_creds["host"],
+        port=db_creds["port"],
+    )
+    conn.autocommit = True
+    try:
+        cur = conn.cursor()
+        cur.execute(f"CREATE DATABASE {parsed_tables_db}")
+        print(f"Created database {parsed_tables_db}")
+    except psycopg2.errors.DuplicateDatabase:
+        print(f"Database {parsed_tables_db} already exists")
+    conn.close()
+
+
+def create_sqlserver_tables():
+    """
+    Create tables in SQL Server database
+    """
+    db_creds = {
+        "user": os.environ.get("DBUSER", "sa"),
+        "password": os.environ.get("DBPASSWORD", "Password1"),
+        "host": os.environ.get("DBHOST", "localhost"),
+        "database": os.environ.get("DATABASE", "defog"),
+        "port": os.environ.get("DBPORT", "1433"),
+    }
+
+    # if using sqlserver
+    connection_uri = f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server"
+
+    # Create an engine (SQL Server in this example)
+    engine = create_engine(connection_uri, echo=True)
+
+    # Create tables in the database
+    metadata.create_all(engine)
+
 
 # see from the command line arg if we are creating tables in sqlite or postgres
 if __name__ == "__main__":
-    internal_db = os.getenv("INTERNAL_DB", "sqlite")
+    internal_db = os.getenv("INTERNAL_DB", "postgres")
 
     if internal_db == "sqlite":
         create_sqlite_tables()
     elif internal_db == "postgres":
         create_postgres_tables()
+    elif internal_db == "sqlserver":
+        create_sqlserver_tables()
     else:
         raise ValueError("Invalid db_type")

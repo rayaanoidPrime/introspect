@@ -8,10 +8,31 @@ import RecommendationsModal from "../components/view-feedback/RecommendationsMod
 import { HistoryOutlined } from "@ant-design/icons";
 
 const ViewFeedback = () => {
-  const apiKeyNames = (
-    process.env.NEXT_PUBLIC_API_KEY_NAMES || "Your Database"
-  ).split(",");
+  const [apiKeyNames, setApiKeyNames] = useState([]);
   const [apiKeyName, setApiKeyName] = useState(null);
+
+  const getApiKeyNames = async (token) => {
+    const res = await fetch(
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token,
+        }),
+      }
+    );
+    if (!res.ok) {
+      throw new Error(
+        "Failed to get api key names - are you sure your network is working?"
+      );
+    }
+    const data = await res.json();
+    setApiKeyNames(data.api_key_names);
+  };
+
   const [token, setToken] = useState();
 
   // feedback data
@@ -35,6 +56,7 @@ const ViewFeedback = () => {
   useEffect(() => {
     const apiKeyName = localStorage.getItem("defogDbSelected");
     const token = localStorage.getItem("defogToken");
+    getApiKeyNames(token);
     if (apiKeyName) {
       setApiKeyName(apiKeyName);
     } else {
@@ -74,7 +96,35 @@ const ViewFeedback = () => {
     setLoading(false);
   };
 
-  const fetchCurrentGlossaryAndGoldenQueries = async (token, apiKeyName) => {
+  const fetchDynamicGlossary = async (question, token, apiKeyName) => {
+    const res = await fetch(
+      setupBaseUrl("http", `integration/get_dynamic_glossary`),
+      {
+        method: "POST",
+        body: JSON.stringify({
+          question: question,
+          token: token,
+          key_name: apiKeyName,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    const data = await res.json();
+    return data;
+  };
+
+  const getCurrentGlossary = async (question) => {
+    if (!token || !apiKeyName) {
+      return;
+    }
+    const dets = await fetchDynamicGlossary(question, token, apiKeyName);
+    const glossary = dets["pruned_glossary"];
+    return glossary;
+  };
+
+  const fetchGoldenQueries = async (token, apiKeyName) => {
     const res = await fetch(
       setupBaseUrl("http", `integration/get_glossary_golden_queries`),
       {
@@ -89,31 +139,14 @@ const ViewFeedback = () => {
       }
     );
     const data = await res.json();
-    return {
-      glossary: data["glossary"] || "",
-      goldenQueries: data["golden_queries"] || "",
-    };
-  };
-
-  const getCurrentGlossary = async () => {
-    if (!token || !apiKeyName) {
-      return;
-    }
-    const { glossary } = await fetchCurrentGlossaryAndGoldenQueries(
-      token,
-      apiKeyName
-    );
-    return glossary;
+    return data["golden_queries"];
   };
 
   const getGoldenQueries = async () => {
     if (!token || !apiKeyName) {
       return;
     }
-    const { goldenQueries } = await fetchCurrentGlossaryAndGoldenQueries(
-      token,
-      apiKeyName
-    );
+    const { goldenQueries } = await fetchGoldenQueries(token, apiKeyName);
     setGoldenQueries(goldenQueries);
   };
 
@@ -171,7 +204,7 @@ const ViewFeedback = () => {
               feedbackColumns={feedbackColumns}
               feedback={feedback}
               filter={filter}
-              goldenQueries={goldenQueries}
+              goldenQueries={goldenQueries || []}
               setGoldenQueries={setGoldenQueries}
               handleNegativeFeedback={handleNegativeFeedback}
             />

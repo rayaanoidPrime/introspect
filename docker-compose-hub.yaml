@@ -15,7 +15,8 @@ services:
   agents-python-server:
     image: defogai/agents-python-server:latest
     environment:
-      - DEFOG_API_KEY=${DEFOG_API_KEY}
+      - DEFOG_API_KEY=${DEFOG_API_KEY} # for backwards compatibility. avoid using DEFOG_API_KEY going forward due to potential conflicts with usage in defog-python
+      - DEFOG_API_KEYS=${DEFOG_API_KEYS}
       - DEFOG_API_KEY_NAMES=${DEFOG_API_KEY_NAMES}
       - DEFOG_BASE_URL=${DEFOG_BASE_URL:-https://api.defog.ai}
       - DEFOG_GENERATE_URL=${DEFOG_GENERATE_URL:-https://api.defog.ai/generate_query_chat}
@@ -29,6 +30,7 @@ services:
       - DATABASE=${DEFOG_DATABASE:-postgres}
       - DBUSER=${DEFOG_DBUSER:-postgres}
       - DBPASSWORD=${DEFOG_DBPASSWORD:-postgres}
+      - PARSED_TABLES_DBNAME=${PARSED_TABLES_DBNAME:-postgres}
       - REDIS_INTERNAL_PORT=${REDIS_INTERNAL_PORT}
       - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
       - LOG_LEVEL=${LOG_LEVEL:-info}

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import pandas as pd
 import random
 import time
 import traceback
@@ -9,12 +10,14 @@ from datetime import datetime
 from typing import Any, Dict, List
 
 from celery.utils.log import get_task_logger
-from db_utils import OracleReports, OracleSources, engine
+from db_utils import OracleReports, OracleSources, ParsedTables, engine, get_db_type_creds, parsed_tables_engine
 from generic_utils import make_request
 from markdown_pdf import MarkdownPdf, Section
 from sqlalchemy import insert, select, update
 from sqlalchemy.orm import Session
 from utils_logging import LOG_LEVEL, save_and_log, save_timing
+from utils_md import mk_create_table_ddl
+from .utils_explore_data import gen_sql, execute_sql, get_chart_type, plot_chart, gen_data_analysis
 
 from .celery_app import celery_app
 
@@ -104,7 +107,7 @@ async def begin_generation_async_task(
                 report.status = "error"
                 session.commit()
             continue_generation = False
-        
+
         if stage == "done":
             continue_generation = False
         # perform logging for current stage
@@ -117,8 +120,6 @@ async def begin_generation_async_task(
 
 def next_stage(stage: str, task_type: str) -> str:
     if stage == "gather_context":
-        return "wait_clarifications"
-    elif stage == "wait_clarifications":
         return "explore"
     elif stage == "explore":
         if task_type == EXPLORATION:
@@ -151,7 +152,7 @@ async def execute_stage(
     function to handle the stage. The stage functions will perform the necessary
     actions to complete the stage and return the result.
     We prefer explicit function references rather than calling `exec` or `eval`
-    over the same set of input arguments to facilitate easier reading and also 
+    over the same set of input arguments to facilitate easier reading and also
     for security reasons.
     """
     if stage == "gather_context":
@@ -165,15 +166,6 @@ async def execute_stage(
         )
     elif stage == "explore":
         stage_result = await explore_data(
-            api_key=api_key,
-            username=username,
-            report_id=report_id,
-            task_type=task_type,
-            inputs=inputs,
-            outputs=outputs,
-        )
-    elif stage == "wait_clarifications":
-        stage_result = await wait_clarifications(
             api_key=api_key,
             username=username,
             report_id=report_id,
@@ -228,9 +220,13 @@ async def gather_context(
     This function will gather the context for the report, by consolidating
     information from the glossary, metadata, and unstructured data sources,
     which are relevant to the question and metric_sql provided.
-    
+
+    One of the key side effects is that it will save the tables from the parsed
+    sources into the database, creating new tables, and updating the metadata
+    in the backend with the new metadata.
+
     Returns a dictionary with the following outputs:
-    
+
     Always present across task types:
     - problem_statement: str. The summarized brief of the problem at hand to solve. first to be generated.
     - context: str. The context of the problem, described qualitatively. second to be generated.
@@ -248,6 +244,7 @@ async def gather_context(
     - constraints: List[str]. A list of constraints for the formulation.
     - variables: List[str]. A list of decision variables that the user can control.
     """
+    ts, timings = time.time(), []
     LOGGER.debug(f"Gathering context for report {report_id}")
     user_question = inputs["user_question"]
     LOGGER.debug("Got the following sources:")
@@ -300,9 +297,130 @@ async def gather_context(
                 session.execute(stmt)
                 LOGGER.debug(f"Updated source {source['link']} in the database.")
         session.commit()
+    LOGGER.debug(f"Inserted {len(sources_to_insert)} sources into the database.")
+    ts = save_timing(ts, "Sources parsed", timings)
+
+    parse_table_tasks = []
+    table_keys = []
+    for source in sources_parsed:
+        for i, table in enumerate(source.get("tables", [])):
+            column_names = table.get("column_names")
+            rows = table.get("rows")
+            if not column_names or not rows:
+                LOGGER.error(f"No column names or rows found in table {i}. Skipping table:\n{table}")
+                continue
+            table_data = {
+                "api_key": api_key,
+                "all_rows": [table["column_names"]] + table["rows"],
+                "previous_text": table.get("previous_text"),
+            }
+            table_keys.append((source["link"], i))
+            parse_table_tasks.append(
+                make_request(
+                    DEFOG_BASE_URL + "/unstructured_data/infer_table_properties",
+                    table_data,
+                )
+            )
+    parsed_tables = await asyncio.gather(*parse_table_tasks)
+    inserted_tables = {}
+    with engine.connect() as connection:
+        for (url, table_index), parsed_table in zip(table_keys, parsed_tables):
+            try:
+                # input validation
+                if "table_name" not in parsed_table:
+                    LOGGER.error("No table name found in parsed table.")
+                    continue
+                table_name = parsed_table["table_name"]
+                table_description = parsed_table.get("table_description", None)
+                if "columns" not in parsed_table:
+                    LOGGER.error(f"No columns found in parsed table {table_name}.")
+                    continue
+                columns = parsed_table["columns"]
+                column_names = [column["column_name"] for column in columns]
+                num_cols = len(columns)
+                if "rows" not in parsed_table:
+                    LOGGER.error(f"No rows found in parsed table {table_name}.")
+                    continue
+                rows = parsed_table["rows"]  # 2D list of data
+                # check if url and table_index already exist in parsed_tables
+                stmt = select(ParsedTables).where(
+                    ParsedTables.table_url == url,
+                    ParsedTables.table_position == table_index,
+                )
+                result = connection.execute(stmt)
+                if result.scalar() is not None:
+                    LOGGER.debug(f"Table {table_name} already exists in the database.")
+                    # get the existing table_name and drop it
+                    table_name = result.scalar().table_name
+                    with parsed_tables_engine.connect() as parsed_tables_connection:
+                        drop_stmt = f"DROP TABLE IF EXISTS {table_name}"
+                        parsed_tables_connection.execute(drop_stmt)
+                        LOGGER.debug(f"Dropped table {table_name} from the database.")
+                    # update the table_name and table_description using the new data
+                    update_stmt = (
+                        update(ParsedTables)
+                        .where(
+                            ParsedTables.table_url == url,
+                            ParsedTables.table_position == table_index,
+                        )
+                        .values(
+                            table_name=table_name, table_description=table_description
+                        )
+                    )
+                    connection.execute(update_stmt)
+                    LOGGER.debug(f"Updated table {table_name} in the database.")
+                else:
+                    # insert the table's info into parsed_tables
+                    table_data = {
+                        "table_url": url,
+                        "table_position": table_index,
+                        "table_name": table_name,
+                        "table_description": table_description,
+                    }
+                    stmt = insert(ParsedTables).values(table_data)
+                    connection.execute(stmt)
+                    LOGGER.debug(f"Inserted table {table_name} into the database.")
+
+                # create the table and insert the rows
+                with parsed_tables_engine.connect() as parsed_tables_connection:
+                    create_table_ddl = mk_create_table_ddl(table_name, columns)
+                    parsed_tables_connection.execute(create_table_ddl)
+                    LOGGER.debug(f"Created table {table_name} in the database.")
+                    insert_stmt = f"INSERT INTO {table_name} ({', '.join(column_names)}) VALUES ({', '.join(['%s'] * num_cols)})"
+                    rows_to_insert = []
+                    for i, row in enumerate(rows):
+                        # check if the row has the correct number of columns
+                        if len(row) != num_cols:
+                            LOGGER.error(
+                                f"Row {i} has {len(row)} columns, but expected {num_cols}. Skipping row.\n{row}"
+                            )
+                            continue
+                        rows_to_insert.append(tuple(row))
+                    parsed_tables_connection.execute(insert_stmt, rows)
+                    LOGGER.debug(f"Inserted {len(rows)} rows into table {table_name}.")
+                inserted_tables[table_name] = columns
+            except Exception as e:
+                LOGGER.error(
+                    f"Error occurred in parsing table: {e}\n{traceback.format_exc()}"
+                )
+    ts = save_timing(ts, "Tables saved", timings)
+    # get and update metadata if inserted_tables is not empty
+    if inserted_tables:
+        response = await make_request(
+            DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key, "parsed": True}
+        )
+        md = response.get("table_metadata", {})
+        md.update(inserted_tables)
+        response = await make_request(
+            DEFOG_BASE_URL + "/update_metadata", {"api_key": api_key, "table_metadata": md, "parsed": True}
+        )
+        LOGGER.info(f"Updated metadata for api_key {api_key}")
+        ts = save_timing(ts, "Metadata updated", timings)
+    else:
+        LOGGER.error("No parsed tables to save.")
+
     # summarize all sources. we only need the title, type, and summary
     sources_summary = []
-    
     for source in sources_parsed:
         source_summary = {
             "title": source.get("title", ""),
@@ -320,7 +438,9 @@ async def gather_context(
         DEFOG_BASE_URL + "/unstructured_data/combine_summaries", json_data
     )
     if "error" in combined_summary:
-        LOGGER.error(f"Error occurred in combining summaries: {combined_summary['error']}")
+        LOGGER.error(
+            f"Error occurred in combining summaries: {combined_summary['error']}"
+        )
         return
 
     # validate response from backend
@@ -346,6 +466,7 @@ async def gather_context(
         if "variables" not in combined_summary:
             LOGGER.error("No variables found in combined summary.")
     LOGGER.debug(f"Context gathered for report {report_id}:\n{combined_summary}")
+    save_and_log(ts, "Combined summary", timings)
     return combined_summary
 
 
@@ -362,31 +483,176 @@ async def explore_data(
     data analysis (EDA) plots and tables, which are relevant to the data provided.
     Side Effects:
     - Intermediate data and plots will be saved in the report_id's directory.
+
+    Outputs a list of data analyses, each containing the following keys:
+    - analysis_id: int
+    - generated_qn: str
+    - artifacts: List[Dict[str, str]]
+        - artifact_type: str, e.g. table csv, image
+        - artifact_content: str, e.g. csv content, image path
+        - artifact_description: str, e.g. table of prices, scatter plot of x vs y
+    - working: Dict[str, str]
+        - generated_sql: str
+        - reason_for_qn: str
+        - reason_for_analysis: str
+    - title: str, title of the data analysis
+    - summary: str, summary of the data analysis
+    - evaluation: Dict[str, float, bool, bool]
+        - qn_relevance: float
+        - analysis_usefulness: bool
+        - analysis_newness: bool
     """
-    # TODO implement this function
-    # dummy print statement for now
     LOGGER.info(f"Exploring data for report {report_id}")
+    LOGGER.info(f"Task type: {task_type}")
+    user_question = inputs["user_question"]
+    gather_context = outputs["gather_context"]
+    context = gather_context.get("context", "")
+    problem_statement = gather_context.get("problem_statement", "")
+    glossary_dict = await make_request(DEFOG_BASE_URL + "/prune_glossary", json={"question": user_question, "api_key": api_key})
+    glossary = f"{glossary_dict.get('glossary_compulsory', '')}\n{glossary_dict.get('glossary', '')}\n{context}"
+    db_type, db_creds = get_db_type_creds(api_key)
+    LOGGER.info(f"DB type: {db_type}")
+    LOGGER.info(f"DB creds: {db_creds}")
 
+    # generate explorer questions
+    json_data = {
+                "api_key": api_key,
+                "user_question": user_question,
+                "n_gen_qns": 10,
+                "task_type": task_type,
+                "gather_context": gather_context,
+            }
+    LOGGER.info(f"Generating explorer questions")
+    generated_qns = await make_request(DEFOG_BASE_URL + "/oracle/gen_explorer_qns", json_data)
+    if "error" in generated_qns:
+        LOGGER.error(f"Error occurred in generating explorer questions: {generated_qns['error']}")
+        return
+    generated_qns = generated_qns["generated_questions"]
+    LOGGER.info(f"Generated questions: {generated_qns}\n")
+    
+    generated_qns = [q for q in generated_qns if q["data_available"]]  # remove questions where data_available is False
+    generated_qns = sorted(generated_qns, key=lambda x: x["relevancy_score"], reverse=True)  # sort questions by relevancy score
 
-async def wait_clarifications(
-    api_key: str,
-    username: str,
-    report_id: str,
-    task_type: str,
-    inputs: Dict[str, Any],
-    outputs: Dict[str, Any],
-):
-    """
-    This function will check the `clarifications` table in the SQLite3 database,
-    polling every x seconds to see if all the clarifications for a given
-    `report_id` have been addressed before proceeding to the next stage.
-    """
-    # TODO implement this function
-    # dummy print statement for now
-    LOGGER.info(f"Waiting for clarifications for report {report_id}")
-    # sleep for a random amount of time to simulate work
-    await asyncio.sleep(random.random() * 2)
-    return {"clarifications": "all clarifications addressed"}
+    final_analyses = []
+    max_analyses = 5
+    while len(final_analyses) < max_analyses and len(generated_qns) > 0: # terminated when max_analyses is reached or all generated_qns are exhausted
+        # get the top k questions from generated_qns
+        k = min(max_analyses, len(generated_qns), max_analyses - len(final_analyses))
+        topk_qns = generated_qns[:k]
+        generated_qns = generated_qns[k:]
+        
+        LOGGER.info(f"Generating SQL for {len(topk_qns)} questions")
+        # generate SQL for each question concurrently
+        gen_sql_tasks = [gen_sql(api_key, db_type, q["question"], glossary) for q in topk_qns]
+        topk_sqls = await asyncio.gather(*gen_sql_tasks)
+        # filter out questions/sql where sql is not generated
+        filtered_data = [(q, sql) for q, sql in zip(topk_qns, topk_sqls) if sql is not None]
+        if filtered_data:
+            topk_qns, topk_sqls = zip(*filtered_data)
+        else:
+            continue
+
+        # fetch data in dataframes for each SQL query concurrently
+        exec_sql_tasks = [execute_sql(api_key, db_type, db_creds, q["question"], sql) for q, sql in zip(topk_qns, topk_sqls)] #TODO: add execute_sql within db_utils instead of using defog python library
+        topk_data = await asyncio.gather(*exec_sql_tasks)
+        LOGGER.debug(f"Data fetched from client's DB: {topk_data}\n")
+        # filter out questions/sql/data where data is not an empty dataframe
+        filtered_data = [(q, sql, data) for q, sql, data in zip(topk_qns, topk_sqls, topk_data) if data is not None and not data.empty]
+        if filtered_data:
+            topk_qns, topk_sqls, topk_data = zip(*filtered_data)
+        else:
+            continue
+        LOGGER.debug("Filtered Data fetched from client's DB:" + "\n".join(str(data) for data in topk_data) + "\n")
+        # choose appropriate visualization for each question
+        get_chart_type_tasks = [get_chart_type(api_key, data.columns.to_list(),  q["question"]) for q, data in zip(topk_qns, topk_data)]
+        topk_chart_types = await asyncio.gather(*get_chart_type_tasks)
+        LOGGER.info(f"Suitable chart types: {topk_chart_types}\n")
+
+        # generate charts for each question concurrently TODO: add more supported chart types
+        plot_chart_tasks = [plot_chart(api_key, report_id, data, chart_type["chart_type"], chart_type["xAxisColumns"], chart_type["yAxisColumns"]) for data, chart_type in zip(topk_data, topk_chart_types)]
+        topk_chart_paths = await asyncio.gather(*plot_chart_tasks)
+        LOGGER.info(f"Chart paths: {topk_chart_paths}\n")
+
+        # generate data analyses concurrently
+        gen_data_analysis_tasks = [gen_data_analysis(api_key, user_question, q["question"], data, chart_path) for q, data, chart_path in zip(topk_qns, topk_data, topk_chart_paths)]
+        topk_data_analyses = await asyncio.gather(*gen_data_analysis_tasks)
+        # filter out questions/sql/data/chart/analyses where data analysis is not generated
+        filtered_data = [(q, sql, data, chart_path, data_analysis) for q, sql, data, chart_path, data_analysis in zip(topk_qns, topk_sqls, topk_data, topk_chart_paths, topk_data_analyses) if data_analysis["title"] is not None]
+        if filtered_data:
+            topk_qns, topk_sqls, topk_data, topk_chart_paths, topk_data_analyses = zip(*filtered_data)
+        LOGGER.info(f"Data analyses: {topk_data_analyses}\n")
+
+        # package the question, sql, data, chart, and data analysis
+        analyses_for_eval = []
+        analyses_for_eval.extend(
+            [
+                {
+                    "analysis_id": None,
+                    "generated_qn": q["question"],
+                    "artifacts": [
+                        {
+                            "artifact_type": "table csv",
+                            "artifact_content": data.to_csv(float_format="%.3f", header=True),
+                            "artifact_description": data_analysis["table_description"],
+                        },
+                        {
+                            "artifact_type": "image",
+                            "artifact_location": chart_path,
+                            "artifact_description": data_analysis["image_description"],
+                        },
+                    ],
+                    "working": {
+                        "generated_sql": sql,
+                        "reason_for_qn": q["reason"],
+                    },
+
+                    "title": data_analysis["title"],
+                    "summary": data_analysis["summary"],
+                    "evaluation": {
+                        "qn_relevance": q["relevancy_score"],
+                    }
+                }
+                for q, sql, data, chart_path, data_analysis in zip(topk_qns, topk_sqls, topk_data, topk_chart_paths, topk_data_analyses)
+            ]
+        )
+        LOGGER.info(f"Analyses for evaluation count: {len(analyses_for_eval)}")
+
+        # evaluate the analyses sequentially 
+        final_summaries = []
+        for analysis in analyses_for_eval:
+            final_summaries_str = "\n".join(f"{i + 1}. {summary}" for i, summary in enumerate(final_summaries))
+
+            json_data = {
+                "api_key": api_key,
+                "user_question": user_question,
+                "problem_statement": problem_statement,
+                "generated_qn": analysis["generated_qn"],
+                "summary": analysis["summary"],
+                "final_summaries_str": final_summaries_str,
+            }
+            resp = await make_request(f"{DEFOG_BASE_URL}/oracle/eval_explorer_data_analysis", json=json_data)
+            if "error" in resp:
+                LOGGER.error(f"Error occurred in evaluating analysis: {resp['error']}")
+                continue
+            reason = resp.get("reason", "")
+            usefulness = resp.get("usefulness", False)
+            newness = resp.get("newness", False)
+            LOGGER.info(f"Generated question: {analysis['generated_qn']}, Reason: {reason}, Usefulness: {usefulness}, Newness: {newness}\n")
+            if usefulness and newness:
+                analysis["evaluation"]["analysis_usefulness"] = usefulness
+                analysis["evaluation"]["analysis_newness"] = newness
+                analysis["working"]["reason_for_analysis_eval"] = reason
+                final_summaries.append(analysis["summary"])
+                final_analyses.append(analysis)
+                if len(final_analyses) >= max_analyses:
+                    break
+        
+        # add analysis_id to final_analyses
+        for i, analysis in enumerate(final_analyses):
+            analysis["analysis_id"] = i + 1
+
+    LOGGER.info(f"Final analyses count: {len(final_analyses)}\n{final_analyses}")
+    return final_analyses
 
 
 async def predict(
@@ -452,7 +718,7 @@ async def export(
         "api_key": api_key,
         "task_type": task_type,
         "inputs": inputs,
-        "outputs": outputs
+        "outputs": outputs,
     }
     response = await make_request(DEFOG_BASE_URL + "/oracle/generate_report", json_data)
     mdx = response.get("mdx")
@@ -460,7 +726,7 @@ async def export(
         LOGGER.error("No MDX returned from backend.")
     else:
         LOGGER.debug(f"MDX generated for report {report_id}\n{mdx}")
-    pdf = MarkdownPdf(toc_level=2)
+    pdf = MarkdownPdf(toc_level=1)
     pdf.add_section(Section(mdx))
     report_file_path = get_report_file_path(api_key, report_id)
     pdf.meta["author"] = "Oracle"

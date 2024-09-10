@@ -41,8 +41,6 @@ const FeedbackTable = ({
       return;
     }
 
-    (goldenQueries || []).push({ question, sql: sqlquery });
-
     const res = await fetch(
       setupBaseUrl("http", `integration/update_golden_queries`),
       {
@@ -50,7 +48,7 @@ const FeedbackTable = ({
         body: JSON.stringify({
           token: token,
           key_name: apiKeyName,
-          golden_queries: goldenQueries,
+          golden_queries: [...goldenQueries, { question, sql: sqlquery }],
         }),
         headers: {
           "Content-Type": "application/json",
@@ -58,7 +56,7 @@ const FeedbackTable = ({
       }
     );
     const data = await res.json();
-    setGoldenQueries(goldenQueries);
+    setGoldenQueries([...goldenQueries, { question, sql: sqlquery }]);
     return data;
   };
 

@@ -34,7 +34,11 @@ def login_user(username, password):
             ).fetchone()
 
     if user:
-        return {"status": "success", "user_type": user[0], "token": hashed_password}
+        return {
+            "status": "success",
+            "user_type": user.user_type,
+            "token": hashed_password,
+        }
     else:
         return JSONResponse(
             status_code=401,
