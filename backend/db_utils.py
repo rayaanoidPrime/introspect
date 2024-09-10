@@ -11,8 +11,14 @@ from sqlalchemy import (
     update,
     insert,
     delete,
+    inspect as sql_inspect,
+    Table,
+    MetaData,
 )
+from sqlalchemy.schema import DropTable
 from sqlalchemy.ext.automap import automap_base
+from utils_logging import LOGGER
+from utils_md import mk_create_table_ddl
 
 import asyncio
 from utils import warn_str, YieldList, make_request
@@ -21,13 +27,15 @@ import os
 analysis_assets_dir = os.environ.get(
     "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
 )
+INTERNAL_DB = os.environ.get("INTERNAL_DB", None)
+PARSED_TABLES_DBNAME = os.environ.get("PARSED_TABLES_DBNAME", "defog_local")
 
-if os.environ.get("INTERNAL_DB") == "sqlite":
+if INTERNAL_DB == "sqlite":
     print("using sqlite as our internal db")
     # if using sqlite
     connection_uri = "sqlite:///defog_local.db"
     engine = create_engine(connection_uri, connect_args={"timeout": 3})
-    parsed_tables_dbname = os.environ.get("PARSED_TABLES_DBNAME", "defog_local")
+    parsed_tables_dbname = PARSED_TABLES_DBNAME
     parsed_tables_engine = create_engine(
         f"sqlite:///{parsed_tables_dbname}.db", connect_args={"timeout": 3}
     )
@@ -94,11 +102,95 @@ OracleReports = Base.classes.oracle_reports
 ParsedTables = Base.classes.parsed_tables
 
 
-def save_csv_to_db(table_name, data):
+def update_parsed_tables_db(table_name: str, data: list[list[str, str]]) -> bool:
+    """
+    Updates the PARSED_TABLES_DBNAME database with the new table.
+    Removes table from PARSED_TABLES_DBNAME database if it already exists.
+    data is a list of lists where the first list consists of the column names and the rest are the rows.
+    """
+    with parsed_tables_engine.connect() as parsed_tables_connection:
+        # check if table already exists in parsed_tables database
+        inspector = sql_inspect(parsed_tables_engine)
+        table_exists = inspector.has_table(table_name)
+        if table_exists:
+            table = Table(table_name, MetaData())
+            drop_stmt = DropTable(table, if_exists=True)
+            parsed_tables_connection.execute(drop_stmt)
+        try:
+            # insert the table into parsed_tables database
+            save_csv_to_db(table_name, data, db=PARSED_TABLES_DBNAME) 
+            LOGGER.info(f"Inserted table `{table_name}` into {PARSED_TABLES_DBNAME} database")
+            return True
+        except Exception as e:
+            LOGGER.error(f"Error inserting table `{table_name}` into {PARSED_TABLES_DBNAME} database: {e}")
+            return False
+
+
+def update_parsed_tables(url: str, table_index: int, table_name: str, table_description: str) -> bool:
+    """
+    Updates the parsed_tables table in the internal database with the table's info.
+    Removes entry from parsed_tables of the internal database if it already exists.
+    """
+    with engine.connect() as conn:
+        # check if url and table_index already exist in parsed_tables of internal database
+        stmt = select(ParsedTables).where(
+            ParsedTables.table_url == url,
+            ParsedTables.table_position == table_index,
+        )
+        result = conn.execute(stmt)
+        scalar_result = result.scalar()
+
+        if scalar_result is not None:
+            try:
+                # update parsed_tables of the internal database
+                update_stmt = (
+                    update(ParsedTables)
+                    .where(
+                        ParsedTables.table_url == url,
+                        ParsedTables.table_position == table_index,
+                    )
+                    .values(
+                        table_name=table_name, table_description=table_description
+                    )
+                )
+                conn.execute(update_stmt)
+                LOGGER.info(f"Updated entry `{table_name}` in parsed_tables of the internal database.")
+                return True
+            except Exception as e:
+                LOGGER.error(
+                    f"Error occurred in updating entry `{table_name}` in parsed_tables of the internal database.: {e}"
+                )
+                return False
+        else:
+            try:
+                # insert the table's info into parsed_tables of the internal database
+                table_data = {
+                    "table_url": url,
+                    "table_position": table_index,
+                    "table_name": table_name,
+                    "table_description": table_description,
+                }
+                stmt = insert(ParsedTables).values(table_data)
+                conn.execute(stmt)
+                LOGGER.info(f"Inserted entry `{table_name}` into parsed_tables of the internal database.")
+                return True
+            except Exception as e:
+                LOGGER.error(
+                    f"Error occurred in inserting entry `{table_name}` into parsed_tables of the internal database: {e}"
+                )
+                return False
+
+
+def save_csv_to_db(table_name: str, data: list[list[str, str]], db: str = INTERNAL_DB) -> bool:
+    """
+    Saves a csv file to either the internal db or the parsed_tables db.
+    data is a list of lists where the first list consists of the column names and the rest are the rows.
+    """
     df = pd.DataFrame(data[1:], columns=data[0])
     if "" in df.columns:
         del df[""]
-    print(df)
+    if db == PARSED_TABLES_DBNAME:
+        engine = parsed_tables_engine
     try:
         df.to_sql(table_name, engine, if_exists="replace", index=False)
         return True
