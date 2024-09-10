@@ -1,6 +1,7 @@
 import traceback
 from uuid import uuid4
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 from agents.clarifier.clarifier_agent import get_clarification
 
 from agents.planner_executor.planner_executor_agent import (
@@ -13,7 +14,9 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+from backend.utils import snake_case
 from db_utils import (
+    execute_code,
     get_all_tools,
     get_analysis_data,
     get_assignment_understanding,
@@ -33,6 +36,8 @@ REDIS_PORT = os.getenv("REDIS_INTERNAL_PORT", 6379)
 redis_client = redis.Redis(
     host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True
 )
+
+llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 
 redis_available = False
 question_cache = {}
@@ -582,3 +587,125 @@ async def edit_chart(request: Request):
         logging.error("Error creating chart state: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
+
+
+@router.post("/generate_tool_code")
+async def generate_tool_code_endpoint(request: Request):
+    try:
+        data = await request.json()
+        tool_name = data.get("tool_name")
+        tool_description = data.get("tool_description")
+        user_question = data.get("user_question")
+        current_code = data.get("current_code")
+        key_name = data.get("key_name")
+        api_key = get_api_key_from_key_name(key_name)
+
+        if not tool_name:
+            raise Exception("Invalid parameters.")
+
+        if not user_question or user_question == "":
+            user_question = "Please write the tool code."
+
+        payload = {
+            "request_type": "generate_tool_code",
+            "tool_name": tool_name,
+            "tool_description": tool_description,
+            "user_question": user_question,
+            "current_code": current_code,
+            "api_key": api_key,
+        }
+
+        retries = 0
+        error = None
+        messages = None
+        while retries < 3:
+            try:
+                logging.info(payload)
+                resp = make_request(
+                    llm_calls_url,
+                    payload,
+                )
+
+                # testing code has two functions: generate_sample_inputs and test_tool
+                if resp.get("error_message"):
+                    raise Exception(resp.get("error_message"))
+
+                tool_code = resp["tool_code"]
+                testing_code = resp["testing_code"]
+                messages = resp["messages"]
+
+                print(tool_code)
+                print(testing_code, flush=True)
+
+                # find the function name in tool_code
+                try:
+                    function_name = tool_code.split("def ")[1].split("(")[0]
+                except Exception as e:
+                    logging.error("Error finding function name: " + str(e))
+                    # default to snake case tool name
+                    function_name = snake_case(tool_name)
+                    logging.error(
+                        "Defaulting to snake case tool name: " + function_name
+                    )
+
+                # try running this code
+                err, testing_details, _ = await execute_code(
+                    [tool_code, testing_code], "test_tool"
+                )
+
+                if err:
+                    raise Exception(err)
+
+                # unfortunately testing_details has outputs, and inside of it is another outputs which is returned by the tool :tear:
+                testing_details["outputs"] = testing_details["outputs"]["outputs"]
+
+                # convert inputs to a format we can send back to the user
+                # convert pandas dfs to csvs in both inoputs and outputs
+                for i, input in enumerate(testing_details["inputs"]):
+                    value = input["value"]
+                    if type(value) == pd.DataFrame:
+                        testing_details["inputs"][i]["value"] = value.to_csv(
+                            index=False
+                        )
+
+                for output in testing_details["outputs"]:
+                    output["data"] = output["data"].to_csv(index=False)
+
+                return JSONResponse(
+                    {
+                        "success": True,
+                        "tool_name": tool_name,
+                        "tool_description": tool_description,
+                        "generated_code": tool_code,
+                        "testing_code": testing_code,
+                        "function_name": function_name,
+                        "testing_results": {
+                            "inputs": testing_details["inputs"],
+                            "outputs": testing_details["outputs"],
+                        },
+                    }
+                )
+            except Exception as e:
+                error = str(e)[:300]
+                logging.info("Error generating tool code: " + str(e))
+                traceback.print_exc()
+            finally:
+                if error:
+                    payload = {
+                        "request_type": "fix_tool_code",
+                        "error": error,
+                        "messages": messages,
+                        "api_key": api_key,
+                    }
+                retries += 1
+
+        logging.info("Max retries reached but couldn't generate code.")
+        raise Exception("Max retries exceeded but couldn't generate code.")
+
+    except Exception as e:
+        logging.info("Error generating tool code: " + str(e))
+        traceback.print_exc()
+        return {
+            "success": False,
+            "error_message": "Unable to generate tool code: " + str(e)[:300],
+        }

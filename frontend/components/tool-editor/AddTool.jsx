@@ -1,15 +1,11 @@
 import { addTool, arrayOfObjectsToObject } from "$utils/utils";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useContext, useMemo, useRef, useState } from "react";
 import ToolPlayground from "./ToolPlayground";
-import { SparklesIcon } from "@heroicons/react/20/solid";
 import { DefineTool } from "./DefineTool";
 
-import { twMerge } from "tailwind-merge";
 import {
   MessageManagerContext,
   Modal,
-  Toggle,
-  Sidebar,
   Input,
   Button,
   SpinningLoader,
@@ -19,6 +15,7 @@ import {
 import { parseData } from "@defogdotai/agents-ui-components/agent";
 import NewToolCodeEditor from "./NewToolCodeEditor";
 import setupBaseUrl from "$utils/setupBaseUrl";
+import { Steps } from "antd";
 
 export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
   const generateToolCodeEndpoint = setupBaseUrl("http", "generate_tool_code");
@@ -42,6 +39,36 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
   const messageManager = useContext(MessageManagerContext);
 
   const [loading, setLoading] = useState(false);
+
+  const [currentStep, setCurrentStep] = useState(0);
+
+  const generateToolBtn = useMemo(
+    () => (
+      <Button
+        disabled={!toolName || !toolDocString || loading}
+        onClick={() => {
+          if (!toolName || !toolDocString) {
+            messageManager.error(
+              "Please fill in the tool name and description"
+            );
+            return;
+          }
+
+          handleSubmit();
+        }}
+      >
+        {loading ? (
+          <div>
+            <SpinningLoader classNames="text-gray-300" />
+            Creating your tool
+          </div>
+        ) : (
+          "Create tool"
+        )}
+      </Button>
+    ),
+    [toolName, toolDocString, loading]
+  );
 
   const handleChange = useCallback(
     (prop, val) => {
@@ -139,6 +166,7 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
 
       setTestingResults(newTestingResults);
       setTool(newTool);
+      setCurrentStep(1);
     } catch (error) {
       messageManager.error(error);
       console.error(error);
@@ -166,96 +194,109 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
     );
   }, [tool]);
 
-  const tabs = useMemo(() => {
+  const steps = useMemo(() => {
     return [
       {
-        name: "Details",
+        title: "Describe your tool",
         content: (
-          <div className="p-4 bg-gray-50 sm:block">
-            {input}
+          <div className="sm:block">
+            <p className="text-sm my-4">
+              Describe what your tool does. This will help us generate the
+              tool's code.
+            </p>
             <DefineTool
               disabled={loading}
               toolName={toolName}
               handleChange={handleChange}
               toolDocString={tool.description}
             />
-            {!tool.code ? (
-              <Button
-                className={"text-sm border w-60"}
-                disabled={!toolName || !toolDocString || loading}
-                onClick={() => {
-                  if (!toolName || !toolDocString) {
-                    messageManager.error(
-                      "Please fill in the tool name and description"
-                    );
-                    return;
-                  }
-
-                  handleSubmit();
-                }}
-              >
-                {loading ? (
-                  <div>
-                    <SpinningLoader classNames="text-gray-300" />
-                    Generating
-                  </div>
-                ) : (
-                  "Generate"
-                )}
-              </Button>
-            ) : (
-              <Button className={"px-2 text-sm"} onClick={tryAddTool}>
-                Save
-              </Button>
-            )}
+            {generateToolBtn}
           </div>
         ),
       },
       {
-        name: "Code",
-        headerClassNames: !tool.code
-          ? "text-gray-300 hover:bg-white pointer-events-none "
-          : "",
+        title: "Test",
         content: tool.code ? (
           <>
-            {input}
-            <NewToolCodeEditor
-              className="w-full"
-              editable={!loading}
-              toolCode={tool.code}
-              onChange={(v) => handleChange("code", v)}
+            <p className="text-sm my-4">
+              Test your tool. Edit the tool's code.
+            </p>
+            <Tabs
+              rootClassNames="min-h-80"
+              tabs={[
+                {
+                  name: "Code",
+                  headerClassNames: "w-4",
+                  content: tool.code ? (
+                    <>
+                      {input}
+                      <NewToolCodeEditor
+                        className="w-full"
+                        editable={!loading}
+                        toolCode={tool.code}
+                        onChange={(v) => handleChange("code", v)}
+                      />
+                    </>
+                  ) : (
+                    <></>
+                  ),
+                },
+                {
+                  name: "Sample",
+                  headerClassNames: !tool.code
+                    ? "text-gray-300 hover:bg-white pointer-events-none "
+                    : "",
+                  content: tool.code ? (
+                    <>
+                      {input}
+                      <ToolPlayground
+                        loading={loading}
+                        tool={tool}
+                        handleChange={handleChange}
+                        testingResults={testingResults}
+                      />
+                    </>
+                  ) : (
+                    <></>
+                  ),
+                },
+              ]}
             />
           </>
         ) : (
-          <></>
+          <div className="min-h-80 flex items-center justify-center">
+            <p className="text-gray-400">
+              {toolDocString && toolName
+                ? generateToolBtn
+                : "Please complete the previous step"}
+            </p>
+          </div>
         ),
       },
       {
-        name: "Playground",
-        headerClassNames: !tool.code
-          ? "text-gray-300 hover:bg-white pointer-events-none "
-          : "",
-        content: tool.code ? (
-          <>
-            {input}
-            <ToolPlayground
-              loading={loading}
-              tool={tool}
-              handleChange={handleChange}
-              testingResults={testingResults}
-            />
-          </>
-        ) : (
-          <></>
+        title: "Save",
+        content: (
+          <div className="min-h-80 flex items-center justify-center">
+            {" "}
+            <Button onClick={tryAddTool}>Save</Button>
+          </div>
         ),
       },
     ];
   }, [tool, loading, testingResults, input]);
 
+  const next = () => {
+    setCurrentStep((d) => Math.min(steps.length - 1, d + 1));
+  };
+
+  const prev = () => {
+    setCurrentStep((d) => Math.max(0, d - 1));
+  };
+
   return (
     <>
       <div
-        className="tool rounded mr-3 mb-3  bg-blue-50 border border-blue-400 flex items-center p-3 cursor-pointer hover:shadow-lg"
+        className="rounded mr-3 mb-3  bg-blue-50 border border-blue-400 flex items-center p-3 cursor-pointer hover:shadow-lg"
         onClick={() => setModalOpen(true)}
       >
         <div className="flex items-center  justify-center text-blue-500">
@@ -277,7 +318,14 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
         <h1 className="text-lg font-bold mb-4">Add a custom tool</h1>
 
         <div className="grow relative p-2">
-          <Tabs tabs={tabs} />
+          <Steps
+            items={steps}
+            current={currentStep}
+            onChange={(stepNum) => {
+              setCurrentStep(stepNum);
+            }}
+          />
+          <div className="mt-4">{steps[currentStep].content}</div>
         </div>
       </Modal>
     </>
