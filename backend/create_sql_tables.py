@@ -239,6 +239,7 @@ def create_postgres_tables():
     parsed_tables_db = os.environ.get("PARSED_TABLES_DBNAME", "postgres")
     if parsed_tables_db == "" or parsed_tables_db is None:
         parsed_tables_db = "postgres"
+    print("The parsed tables db is", parsed_tables_db, flush=True)
     print(f"Creating database {parsed_tables_db}")
     # create psycopg2 connection
     conn = psycopg2.connect(
@@ -251,10 +252,11 @@ def create_postgres_tables():
     conn.autocommit = True
     try:
         cur = conn.cursor()
-        cur.execute(f"CREATE DATABASE {parsed_tables_db}")
+        cur.execute(f"CREATE DATABASE {parsed_tables_db};")
         print(f"Created database {parsed_tables_db}")
     except psycopg2.errors.DuplicateDatabase:
         print(f"Database {parsed_tables_db} already exists")
+    cur.close()
     conn.close()
 
 
