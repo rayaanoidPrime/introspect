@@ -31,7 +31,7 @@ class DataConnectorRequest(BaseModel):
 @router.post("/connector/get_google_analytics_data")
 async def get_google_analytics_data(request: DataConnectorRequest):
     """
-    Connect to Google Analytics, retrieve data and store in parsed_tables in the database.
+    Connect to Google Analytics, retrieve data and store in imported_tables in the database.
     """
     key_name = request.key_name
     token = request.token

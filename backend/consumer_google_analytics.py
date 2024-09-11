@@ -9,7 +9,7 @@ import pika
 from io import StringIO
 from utils_logging import LOGGER, save_and_log
 from utils_md import convert_data_type_postgres
-from db_utils import update_parsed_tables_db, update_parsed_tables
+from db_utils import update_imported_tables_db, update_imported_tables
 from generic_utils import make_request
 
 
@@ -113,8 +113,8 @@ async def callback(ch, method, properties, body):
     - Get Google Analytics data from the relevant streams
     - Drop unnecessary columns from the data
     - Parse the data into a dictionary of CSV strings
-    - Update the parsed_tables database with the new tables
-    - Update the parsed_tables table entries in the internal db
+    - Update the imported_tables database with the new schema and tables
+    - Update the imported_tables table entries in the internal db
     - Update the metadata for the api_key in the defog db
     """
     payload = json.loads(body)
@@ -157,21 +157,23 @@ async def callback(ch, method, properties, body):
         csv_data = csv_data.split("\n")
         csv_data = [row.split(",") for row in csv_data]
 
-        # update parsed_tables database with the new tables
-        update_parsed_tables_db(table_name, csv_data)
-        inserted_tables[table_name] = [
+        # update imported_tables database with the ga schema and tables
+        schema_name = "ga"
+        update_imported_tables_db(table_name, csv_data, schema_name)
+        schema_table_name = f"{schema_name}.{table_name}"
+        inserted_tables[schema_table_name] = [
             {"data_type": data_type, "column_name": col_name, "column_description": ""}
             for data_type, col_name in zip(data_types, df.columns)
         ]
 
-        # update parsed_tables table entries in internal db
-        url = f"google_analytics_{table_name}"
-        update_parsed_tables(url, table_index, table_name, table_description=None)
+        # update imported_tables table entries in internal db
+        url = "google_analytics"
+        update_imported_tables(url, table_index, schema_table_name, table_description=None)
 
-    # get and update metadata for {api_key}-parsed
+    # get and update metadata for {api_key}-imported
     try:
         response = await make_request(
-            DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key, "parsed": True}
+            DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key, "imported": True}
         )
     except Exception as e:
         LOGGER.error(f"Error in getting metadata for api_key {api_key}: {str(e)}")
@@ -183,11 +185,11 @@ async def callback(ch, method, properties, body):
     try:
         response = await make_request(
             DEFOG_BASE_URL + "/update_metadata",
-            {"api_key": api_key, "table_metadata": md, "parsed": True},
+            {"api_key": api_key, "table_metadata": md, "imported": True},
         )
         if response.get("status") == "success":
             LOGGER.info(
-                f"Updated metadata for api_key {api_key}-parsed with google analytics data"
+                f"Updated metadata for api_key {api_key}-imported with google analytics data"
             )
         else:
             LOGGER.error(
