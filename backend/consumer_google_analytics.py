@@ -182,7 +182,7 @@ async def callback(ch, method, properties, body):
             {"api_key": api_key, "table_metadata": md, "parsed": True},
         )
         if response.get("status") == "success":
-            LOGGER.info(f"Updated metadata for api_key {api_key}")
+            LOGGER.info(f"Updated metadata for api_key {api_key}-parsed with google analytics data")
         else:
             LOGGER.error(f"Error in updating metadata for api_key {api_key}: {response}")
     except Exception as e:
