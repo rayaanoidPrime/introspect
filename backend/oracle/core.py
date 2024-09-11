@@ -13,10 +13,12 @@ from celery.utils.log import get_task_logger
 from db_utils import (
     OracleReports,
     OracleSources,
-    ParsedTables,
+    ImportedTables,
     engine,
     get_db_type_creds,
-    parsed_tables_engine,
+    imported_tables_engine, 
+    update_imported_tables, 
+    update_imported_tables_db,
 )
 from generic_utils import make_request
 from markdown2 import Markdown
@@ -363,64 +365,17 @@ async def gather_context(
                 if "rows" not in parsed_table:
                     LOGGER.error(f"No rows found in parsed table {table_name}.")
                     continue
-                rows = parsed_table["rows"]  # 2D list of data
-                # check if url and table_index already exist in parsed_tables
-                stmt = select(ParsedTables).where(
-                    ParsedTables.table_url == url,
-                    ParsedTables.table_position == table_index,
-                )
-                result = connection.execute(stmt)
-                if result.scalar() is not None:
-                    LOGGER.debug(f"Table {table_name} already exists in the database.")
-                    # get the existing table_name and drop it
-                    table_name = result.scalar().table_name
-                    with parsed_tables_engine.connect() as parsed_tables_connection:
-                        drop_stmt = f"DROP TABLE IF EXISTS {table_name}"
-                        parsed_tables_connection.execute(drop_stmt)
-                        LOGGER.debug(f"Dropped table {table_name} from the database.")
-                    # update the table_name and table_description using the new data
-                    update_stmt = (
-                        update(ParsedTables)
-                        .where(
-                            ParsedTables.table_url == url,
-                            ParsedTables.table_position == table_index,
-                        )
-                        .values(
-                            table_name=table_name, table_description=table_description
-                        )
-                    )
-                    connection.execute(update_stmt)
-                    LOGGER.debug(f"Updated table {table_name} in the database.")
-                else:
-                    # insert the table's info into parsed_tables
-                    table_data = {
-                        "table_url": url,
-                        "table_position": table_index,
-                        "table_name": table_name,
-                        "table_description": table_description,
-                    }
-                    stmt = insert(ParsedTables).values(table_data)
-                    connection.execute(stmt)
-                    LOGGER.debug(f"Inserted table {table_name} into the database.")
+                rows = parsed_table["rows"]  # 2D list of data TODO: fix parsing of rows. currently splits on commas even if comma is within the same sentence or there's comma in value e.g. $10,000
+                data = [column_names] + rows
+                # check if url and table_index already exist in imported_tables table and update if necessary
+                schema_name = "parsed"
+                schema_table_name = f"{schema_name}.{table_name}"
+                update_imported_tables(url, table_index, schema_table_name, table_description)
 
-                # create the table and insert the rows
-                with parsed_tables_engine.connect() as parsed_tables_connection:
-                    create_table_ddl = mk_create_table_ddl(table_name, columns)
-                    parsed_tables_connection.execute(create_table_ddl)
-                    LOGGER.debug(f"Created table {table_name} in the database.")
-                    insert_stmt = f"INSERT INTO {table_name} ({', '.join(column_names)}) VALUES ({', '.join(['%s'] * num_cols)})"
-                    rows_to_insert = []
-                    for i, row in enumerate(rows):
-                        # check if the row has the correct number of columns
-                        if len(row) != num_cols:
-                            LOGGER.error(
-                                f"Row {i} has {len(row)} columns, but expected {num_cols}. Skipping row.\n{row}"
-                            )
-                            continue
-                        rows_to_insert.append(tuple(row))
-                    parsed_tables_connection.execute(insert_stmt, rows)
-                    LOGGER.debug(f"Inserted {len(rows)} rows into table {table_name}.")
-                inserted_tables[table_name] = columns
+                # create the table and insert the data into imported_tables database, parsed schema
+                update_imported_tables_db(table_name, data, schema_name)
+
+                inserted_tables[schema_table_name] = columns
             except Exception as e:
                 LOGGER.error(
                     f"Error occurred in parsing table: {e}\n{traceback.format_exc()}"
@@ -429,13 +384,13 @@ async def gather_context(
     # get and update metadata if inserted_tables is not empty
     if inserted_tables:
         response = await make_request(
-            DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key, "parsed": True}
+            DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key, "imported": True}
         )
         md = response.get("table_metadata", {})
         md.update(inserted_tables)
         response = await make_request(
             DEFOG_BASE_URL + "/update_metadata",
-            {"api_key": api_key, "table_metadata": md, "parsed": True},
+            {"api_key": api_key, "table_metadata": md, "imported": True},
         )
         LOGGER.info(f"Updated metadata for api_key {api_key}")
         ts = save_timing(ts, "Metadata updated", timings)
