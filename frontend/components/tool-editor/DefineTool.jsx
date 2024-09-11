@@ -1,4 +1,8 @@
-import { Input, TextArea } from "@defogdotai/agents-ui-components/core-ui";
+import {
+  Input,
+  TextArea,
+  SingleSelect,
+} from "@defogdotai/agents-ui-components/core-ui";
 import NewToolCodeEditor from "./NewToolCodeEditor";
 
 export function DefineTool({
@@ -6,9 +10,11 @@ export function DefineTool({
   handleChange = (...args) => {},
   toolDocString,
   toolCode = null,
+  apiKeyNames = [],
   hideName = false,
   hideDescription = false,
   hideCode = false,
+  hideApiKeyNames = true,
   disabled = false,
 }) {
   return (
@@ -48,6 +54,20 @@ export function DefineTool({
           />
         </>
       )}
+      {(apiKeyNames && apiKeyNames.length && !hideApiKeyNames && (
+        <SingleSelect
+          label="Which database is this tool intended for?"
+          disabled={disabled}
+          options={apiKeyNames.map((name) => ({ label: name, value: name }))}
+          allowCreateNewOption={false}
+          allowClear={false}
+          rootClassNames="mb-4 text-gray-600"
+          placeholder="Select Database"
+          onChange={(val) => handleChange("key_name", val)}
+          defaultValue={apiKeyNames[0]}
+        />
+      )) ||
+        null}
     </>
   );
 }

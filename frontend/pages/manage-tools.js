@@ -22,6 +22,30 @@ export default function ManageTools() {
 
   const messageManager = useContext(MessageManagerContext);
 
+  const [apiKeyNames, setApiKeyNames] = useState([]);
+
+  const getApiKeyNames = async (token) => {
+    const res = await fetch(
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token,
+        }),
+      }
+    );
+    if (!res.ok) {
+      throw new Error(
+        "Failed to get api key names - are you sure your network is working?"
+      );
+    }
+    const data = await res.json();
+    return data.api_key_names;
+  };
+
   const [loading, setLoading] = useState(false);
 
   const [selectedTool, setSelectedTool] = useState(null);
@@ -40,11 +64,16 @@ export default function ManageTools() {
       });
       const data = (await response.json())["tools"];
       initialTools.current = structuredClone(data);
+      const apiKeyNames = await getApiKeyNames();
+
       setTools(data);
+      setApiKeyNames(apiKeyNames);
     }
 
     fetchTools();
   }, []);
+
+  console.log(apiKeyNames);
 
   const handleSave = useCallback(async () => {
     if (loading) {
@@ -287,6 +316,7 @@ export default function ManageTools() {
                       apiEndpoint={
                         process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""
                       }
+                      apiKeyNames={apiKeyNames}
                     />
                   </div>
                 }

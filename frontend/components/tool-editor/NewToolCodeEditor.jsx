@@ -18,6 +18,7 @@ export default function NewToolCodeEditor({
       className={twMerge("*:outline-0 *:focus:outline-0", className)}
       value={toolCode}
       editable={editable}
+      theme={"dark"}
       extensions={[python(), EditorView.lineWrapping]}
       onChange={(val) => {
         onChange(val);

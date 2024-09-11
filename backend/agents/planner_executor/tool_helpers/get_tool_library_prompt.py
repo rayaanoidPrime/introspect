@@ -4,16 +4,43 @@ import yaml
 
 
 async def get_tool_library_prompt(user_question=None, extra_tools=[]):
-    print("User question while getting tool library:", user_question)
-    prompt = []
+    """
+    Get the prompt for the tool library.
 
-    # get pruned tools based on user question
+    `user_question` is currently not used. But it is intended to be used to prune the tools based on the user's question.
+
+    `extra_tools` is an array of objects with the following structure:
+    ```
+    {
+        "function_name": "my_tool",
+        "description": "My tool description",
+        "input_metadata": {
+            "input_1": {
+                "type": "pandas.core.frame.DataFrame",
+                "description": "Input 1 description"
+            },
+            ...
+        },
+        "output_metadata": [
+            {
+                "name": "output_1",
+                "type": "pandas.core.frame.DataFrame",
+                "description": "Output 1 description"
+            },
+            ...
+        ]
+    }
+    ```
+    """
+    prompt = []
     err, tools = get_all_tools()
 
     if err:
         return ""
 
-    print("Pruned tools:", [x["function_name"] for x in tools.values()])
+    # add extra tools
+    for tool in extra_tools:
+        tools[tool["function_name"]] = tool
 
     # now get the prompt for each
     for _, tool in tools.items():
@@ -43,11 +70,6 @@ async def get_tool_library_prompt(user_question=None, extra_tools=[]):
                 "outputs": tool_outputs_prompt,
             }
         )
-
-    # add the extra tools as well which is an array
-    # of objects with { tool_name, description, input_metadata, output_metadata }
-    for tool in extra_tools:
-        prompt.append(tool)
 
     prompt = yaml.dump(prompt, sort_keys=False)
 

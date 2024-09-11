@@ -614,6 +614,8 @@ async def generate_and_test_new_tool(request: Request):
         key_name = data.get("key_name")
         api_key = get_api_key_from_key_name(key_name)
 
+        logging.info(f"KEY NAME: {key_name}, API KEY: {api_key}")
+
         if not tool_name:
             raise Exception("Invalid parameters.")
 
@@ -635,7 +637,6 @@ async def generate_and_test_new_tool(request: Request):
         messages = None
         while retries < 3:
             try:
-                logging.info(payload)
                 resp = await make_request(
                     llm_calls_url,
                     payload,
@@ -649,7 +650,6 @@ async def generate_and_test_new_tool(request: Request):
                 messages = resp["messages"]
                 test_question = resp["test_question"]
 
-                print(tool_code)
                 # testing_code = resp["testing_code"]
                 # print(testing_code, flush=True)
 
