@@ -56,7 +56,7 @@ elif INTERNAL_DB == "postgres":
             f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider use a different database name."
         )
     imported_tables_engine = create_engine(
-        f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{imported_tables_dbname}"
+        f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}"
     )
 elif INTERNAL_DB == "sqlserver":
     db_creds = {
@@ -76,7 +76,7 @@ elif INTERNAL_DB == "sqlserver":
             f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider using a different database name."
         )
     imported_tables_engine = create_engine(
-        f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{imported_tables_dbname}?driver=ODBC+Driver+18+for+SQL+Server"
+        f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}?driver=ODBC+Driver+18+for+SQL+Server"
     )
 
 Base = automap_base()
