@@ -129,7 +129,7 @@ async def create_analysis(request: Request):
 
         print("create_analysis", params)
 
-        err, analysis_data = await initialise_analysis(
+        err, analysis_data = initialise_analysis(
             user_question="",
             token=token,
             api_key=api_key,

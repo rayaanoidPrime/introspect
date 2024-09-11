@@ -196,9 +196,7 @@ async def execute_code(
         return err, out, sandbox
 
 
-async def initialise_analysis(
-    user_question, token, api_key, custom_id=None, other_data={}
-):
+def initialise_analysis(user_question, token, api_key, custom_id=None, other_data={}):
     username = validate_user(token, get_username=True)
     if not username:
         return "Invalid token.", None
