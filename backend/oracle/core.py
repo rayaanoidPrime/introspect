@@ -77,6 +77,13 @@ async def begin_generation_async_task(
         # call the control function with the current stage
         try:
             LOGGER.info(f"Executing stage {stage} for report {report_id}")
+            with Session(engine) as session:
+                # update status of the report
+                stmt = select(OracleReports).where(OracleReports.report_id == report_id)
+                result = session.execute(stmt)
+                report = result.scalar_one()
+                report.status = stage
+                session.commit()
             stage_result = await execute_stage(
                 api_key=api_key,
                 username=username,
@@ -562,7 +569,9 @@ async def explore_data(
             topk_qns, topk_sqls, topk_data = zip(*filtered_data)
         else:
             continue
-        LOGGER.debug("Filtered Data fetched from client's DB:" + "\n".join(str(data) for data in topk_data) + "\n")
+        LOGGER.debug("Filtered Data fetched from client's DB:")
+        for df in topk_data:
+            LOGGER.debug(df.to_csv(sep="\t", index=False))
         # choose appropriate visualization for each question
         get_chart_type_tasks = [get_chart_type(api_key, data.columns.to_list(),  q["question"]) for q, data in zip(topk_qns, topk_data)]
         topk_chart_types = await asyncio.gather(*get_chart_type_tasks)
