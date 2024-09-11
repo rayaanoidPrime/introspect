@@ -196,7 +196,9 @@ async def execute_code(
         return err, out, sandbox
 
 
-def initialise_analysis(user_question, token, api_key, custom_id=None, other_data={}):
+def initialise_analysis(
+    user_question, token, api_key, custom_id=None, other_initialisation_details={}
+):
     username = validate_user(token, get_username=True)
     if not username:
         return "Invalid token.", None
@@ -220,17 +222,22 @@ def initialise_analysis(user_question, token, api_key, custom_id=None, other_dat
                 "api_key": api_key,
                 "username": username,
             }
-            if other_data is not None and type(other_data) is dict:
-                new_analysis_data.update(other_data)
+            if (
+                other_initialisation_details is not None
+                and type(other_initialisation_details) is dict
+            ):
+                new_analysis_data.update(other_initialisation_details)
 
             conn.execute(insert(Analyses).values(new_analysis_data))
             # if other data has parent_analyses, insert analysis_id into the follow_up_analyses column, which is an array, of all the parent analyses
             if (
-                other_data is not None
-                and type(other_data) is dict
-                and other_data.get("parent_analyses") is not None
+                other_initialisation_details is not None
+                and type(other_initialisation_details) is dict
+                and other_initialisation_details.get("parent_analyses") is not None
             ):
-                for parent_analysis_id in other_data.get("parent_analyses"):
+                for parent_analysis_id in other_initialisation_details.get(
+                    "parent_analyses"
+                ):
                     # get the parent analysis
                     parent_analysis = conn.execute(
                         select(Analyses).where(

@@ -51,7 +51,7 @@ class DefogAnalysisAgent:
                 api_key=self.api_key,
                 custom_id=self.analysis_id,
                 # TODO: allow for parent analyses here
-                other_data={},
+                other_initialisation_details={},
             )
             if err:
                 raise ValueError(err)

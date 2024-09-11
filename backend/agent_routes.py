@@ -642,16 +642,13 @@ async def generate_and_test_new_tool(request: Request):
                     payload,
                 )
 
-                # testing code has two functions: generate_sample_inputs and test_tool
                 if resp.get("error_message"):
                     raise Exception(resp.get("error_message"))
 
                 tool_code = resp["tool_code"]
                 messages = resp["messages"]
                 test_question = resp["test_question"]
-
-                # testing_code = resp["testing_code"]
-                # print(testing_code, flush=True)
+                tool_metadata = resp["tool_metadata"]
 
                 # find the function name in tool_code
                 try:
@@ -664,29 +661,6 @@ async def generate_and_test_new_tool(request: Request):
                         "Defaulting to snake case tool name: " + function_name
                     )
 
-                # try running this code
-                # err, testing_details, _ = await execute_code(
-                #     [tool_code, testing_code], "test_tool"
-                # )
-
-                # if err:
-                #     raise Exception(err)
-
-                # unfortunately testing_details has outputs, and inside of it is another outputs which is returned by the tool :tear:
-                # testing_details["outputs"] = testing_details["outputs"]["outputs"]
-
-                # # convert inputs to a format we can send back to the user
-                # # convert pandas dfs to csvs in both inoputs and outputs
-                # for i, input in enumerate(testing_details["inputs"]):
-                #     value = input["value"]
-                #     if type(value) == pd.DataFrame:
-                #         testing_details["inputs"][i]["value"] = value.to_csv(
-                #             index=False
-                #         )
-
-                # for output in testing_details["outputs"]:
-                #     output["data"] = output["data"].to_csv(index=False)
-
                 return JSONResponse(
                     {
                         "success": True,
@@ -695,11 +669,7 @@ async def generate_and_test_new_tool(request: Request):
                         "generated_code": tool_code,
                         "function_name": function_name,
                         "test_question": test_question,
-                        # "testing_code": testing_code,
-                        # "testing_results": {
-                        #     "inputs": testing_details["inputs"],
-                        #     "outputs": testing_details["outputs"],
-                        # },
+                        "tool_metadata": tool_metadata,
                     }
                 )
             except Exception as e:

@@ -159,7 +159,9 @@ export function AddTool({
     }
   };
 
-  const handleSubmit = async (userQuestion = null) => {
+  // fixToolRequest is true when the user is trying to fix the tool
+  // if they re click the create tool button in the first tab, we need to re generate it from scratch
+  const handleSubmit = async (userQuestion = null, fixToolRequest = false) => {
     setLoading(true);
     // if this is first submit
     try {
@@ -172,7 +174,7 @@ export function AddTool({
           tool_name: toolName,
           tool_description: toolDocString,
           user_question: userQuestion,
-          current_code: generatedCode || null,
+          current_code: fixToolRequest ? generatedCode || null : null,
           key_name: selectedKeyName || apiKeyNames[0],
         }),
       }).then((res) => res.json());
@@ -248,12 +250,11 @@ export function AddTool({
             <div className="text-sm my-4 text-gray-500 space-y-1">
               <p>
                 We have generated a tool as per the name and description, and
-                have created a sample analysis showing your tool's usage.
+                have started an analysis showing your tool's usage.
               </p>
               <p>
                 Please check if the workflow, inputs and outputs are as desired.
-                You can also run more analysis with your new tool. Just ask
-                questions with the search bar.
+                You can also run more analysis with a different question.
               </p>
               <p>
                 You can also edit the tool's code on the left, and run a new
@@ -270,16 +271,25 @@ export function AddTool({
                 library.
               </p>
             </div>
-            <div className="flex flex-row divide-x gap-2 border mb-8 max-h-96">
-              <div className="w-1/2 inline-block overflow-scroll">
+            <div className="divide-x mb-8 md:max-h-96 flex flex-row flex-wrap md:flex-nowrap">
+              <div className="w-full md:w-5/12 overflow-scroll relative">
+                <p className="text-sm font-bold text-gray-500 bg-gray-100 px-2 py-1 sticky top-0 z-10">
+                  Edit tool code
+                </p>
                 <NewToolCodeEditor
                   className="w-full"
                   editable={!loading}
                   toolCode={tool.code}
                   onChange={(v) => handleChange("code", v)}
                 />
+                <div className="absolute left-0 right-0 mx-4 bottom-10">
+                  <Input placeholder="What should we change?"></Input>
+                </div>
               </div>
-              <div className="w-1/2 p-4 overflow-scroll">
+              <div className="w-full mt-8 md:mt-0 md:w-7/12 overflow-scroll px-2 bg-gray-100">
+                <p className="text-sm font-bold text-gray-500 py-1 bg-gray-100 sticky top-0 z-10">
+                  Test it out
+                </p>
                 <Setup
                   token={token.current}
                   apiEndpoint={apiEndpoint}
@@ -300,7 +310,9 @@ export function AddTool({
                           output_metadata: tool.output_metadata,
                         },
                       ],
-                      other_data: { user_question: tool.test_question },
+                      initialisation_details: {
+                        user_question: tool.test_question,
+                      },
                     }}
                     initiateAutoSubmit={true}
                   />
