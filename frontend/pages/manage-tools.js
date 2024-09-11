@@ -73,8 +73,6 @@ export default function ManageTools() {
     fetchTools();
   }, []);
 
-  console.log(apiKeyNames);
-
   const handleSave = useCallback(async () => {
     if (loading) {
       return;

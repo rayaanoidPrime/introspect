@@ -190,6 +190,8 @@ export function AddTool({
       newTool.code = response.generated_code;
       newTool.function_name = response.function_name;
       newTool.test_question = response.test_question;
+      newTool.input_metadata = response.input_metadata;
+      newTool.output_metadata = response.output_metadata;
 
       setTool(newTool);
       setCurrentStep(1);
@@ -300,16 +302,17 @@ export function AddTool({
                   <AnalysisAgent
                     analysisId={analysisId.current}
                     keyName={selectedKeyName}
+                    plannerPromptSuffix={` Make sure to use the \`${toolName}\` tool in the analysis.`}
+                    extraTools={[
+                      {
+                        code: tool.code,
+                        tool_description: tool.description,
+                        function_name: tool.function_name,
+                        input_metadata: tool.input_metadata,
+                        output_metadata: tool.output_metadata,
+                      },
+                    ]}
                     createAnalysisRequestBody={{
-                      planner_prompt_suffix: ` Make sure to use the \`${toolName}\` tool in the analysis.`,
-                      extra_tools: [
-                        {
-                          code: tool.code,
-                          function_name: tool.function_name,
-                          input_metadata: tool.input_metadata,
-                          output_metadata: tool.output_metadata,
-                        },
-                      ],
                       initialisation_details: {
                         user_question: tool.test_question,
                       },
@@ -340,6 +343,8 @@ export function AddTool({
       },
     ];
   }, [tool, loading, input]);
+
+  console.log(tool);
 
   const status = useMemo(() => {
     if (currentStep === 0 || currentStep == 1) {

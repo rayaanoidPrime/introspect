@@ -14,7 +14,7 @@ from agents.planner_executor.planner_executor_agent import (
 )
 import logging
 
-logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger("server")
 
 from agents.planner_executor.tool_helpers.get_tool_library_prompt import (
     get_tool_library_prompt,
@@ -51,7 +51,7 @@ try:
     redis_client.ping()
     redis_available = True
 except Exception as e:
-    logging.error(f"Error connecting to redis. Using in-memory cache instead.")
+    LOGGER.error(f"Error connecting to redis. Using in-memory cache instead.")
 
 
 @router.post("/generate_step")
@@ -68,7 +68,7 @@ async def generate_step(request: Request):
     The mandatory inputs are analysis_id, a valid key_name and question.
     """
     try:
-        logging.info("Generating step")
+        LOGGER.info("Generating step")
         params = await request.json()
         key_name = params.get("key_name")
         question = params.get("user_question")
@@ -245,7 +245,7 @@ async def generate_step(request: Request):
             }
 
     except Exception as e:
-        logging.error(e)
+        LOGGER.error(e)
         traceback.print_exc()
         return {"success": False, "error_message": str(e) or "Incorrect request"}
 
@@ -264,7 +264,7 @@ async def clarify(request: Request):
     The mandatory inputs are a valid key_name and question.
     """
     try:
-        logging.info("Generating clarification questions")
+        LOGGER.info("Generating clarification questions")
         params = await request.json()
         key_name = params.get("key_name")
         question = params.get("user_question")
@@ -299,7 +299,7 @@ async def clarify(request: Request):
         }
 
     except Exception as e:
-        logging.error(e)
+        LOGGER.error(e)
         return {"success": False, "error_message": str(e) or "Incorrect request"}
 
 
@@ -374,7 +374,7 @@ async def rerun_step_endpoint(request: Request):
 
         return {"success": True, "steps": new_steps}
     except Exception as e:
-        logging.error(e)
+        LOGGER.error(e)
         return {"success": False, "error_message": str(e) or "Incorrect request"}
 
 
@@ -424,13 +424,13 @@ async def delete_steps(request: Request):
         return {"success": True, "new_steps": new_steps}
 
     except Exception as e:
-        logging.error("Error deleting steps: " + str(e))
+        LOGGER.error("Error deleting steps: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
 
 
-@router.post("/create_new_step")
-async def create_new_step(request: Request):
+@router.post("/manually_create_new_step")
+async def manually_create_new_step(request: Request):
     """
     This is called when a user adds a step on the front end.
 
@@ -454,6 +454,11 @@ async def create_new_step(request: Request):
         inputs = data.get("inputs")
         outputs_storage_keys = data.get("outputs_storage_keys")
         key_name = data.get("key_name")
+        extra_tools = data.get("extra_tools", [])
+        planner_prompt_suffix = data.get("planner_prompt_suffix", None)
+
+        LOGGER.info(planner_prompt_suffix)
+        LOGGER.info(extra_tools)
 
         if not key_name or key_name == "":
             raise Exception("Invalid request. Must have API key name.")
@@ -529,7 +534,7 @@ async def create_new_step(request: Request):
         return {"success": True, "new_steps": new_steps}
 
     except Exception as e:
-        logging.error("Error creating new step: " + str(e))
+        LOGGER.error("Error creating new step: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
 
@@ -567,9 +572,9 @@ async def edit_chart(request: Request):
             os.getenv("DEFOG_BASE_URL", "https://api.defog.ai") + "/edit_chart"
         )
 
-        logging.info(f"Editing chart with request: {user_request}")
-        logging.info(f"Columns: {columns}")
-        logging.info(f"Current chart state: {current_chart_state}")
+        LOGGER.info(f"Editing chart with request: {user_request}")
+        LOGGER.info(f"Columns: {columns}")
+        LOGGER.info(f"Current chart state: {current_chart_state}")
 
         res = await make_request(
             url=edit_chart_url,
@@ -589,7 +594,7 @@ async def edit_chart(request: Request):
         return {"success": True, "chart_state_edits": chart_state_edits}
 
     except Exception as e:
-        logging.error("Error creating chart state: " + str(e))
+        LOGGER.error("Error creating chart state: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
 
@@ -614,7 +619,7 @@ async def generate_and_test_new_tool(request: Request):
         key_name = data.get("key_name")
         api_key = get_api_key_from_key_name(key_name)
 
-        logging.info(f"KEY NAME: {key_name}, API KEY: {api_key}")
+        LOGGER.info(f"KEY NAME: {key_name}, API KEY: {api_key}")
 
         if not tool_name:
             raise Exception("Invalid parameters.")
@@ -654,12 +659,10 @@ async def generate_and_test_new_tool(request: Request):
                 try:
                     function_name = tool_code.split("def ")[1].split("(")[0]
                 except Exception as e:
-                    logging.error("Error finding function name: " + str(e))
+                    LOGGER.error("Error finding function name: " + str(e))
                     # default to snake case tool name
                     function_name = snake_case(tool_name)
-                    logging.error(
-                        "Defaulting to snake case tool name: " + function_name
-                    )
+                    LOGGER.error("Defaulting to snake case tool name: " + function_name)
 
                 return JSONResponse(
                     {
@@ -674,7 +677,7 @@ async def generate_and_test_new_tool(request: Request):
                 )
             except Exception as e:
                 error = str(e)[:300]
-                logging.info("Error generating tool code: " + str(e))
+                LOGGER.info("Error generating tool code: " + str(e))
                 traceback.print_exc()
             finally:
                 if error:
@@ -686,11 +689,11 @@ async def generate_and_test_new_tool(request: Request):
                     }
                 retries += 1
 
-        logging.info("Max retries reached but couldn't generate code.")
+        LOGGER.info("Max retries reached but couldn't generate code.")
         raise Exception("Max retries exceeded but couldn't generate code.")
 
     except Exception as e:
-        logging.info("Error generating tool code: " + str(e))
+        LOGGER.info("Error generating tool code: " + str(e))
         traceback.print_exc()
         return {
             "success": False,
