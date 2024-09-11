@@ -214,8 +214,7 @@ export default function ManageTools() {
                                 "Content-Type": "application/json",
                               },
                               body: JSON.stringify({
-                                function_name:
-                                  tools[selectedTool].function_name,
+                                tool_name: tools[selectedTool].tool_name,
                               }),
                             }).then((d) => d.json());
 

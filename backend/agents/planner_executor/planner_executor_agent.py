@@ -541,6 +541,7 @@ async def generate_single_step(
     dev=False,
     temp=False,
     assignment_understanding="",
+    planner_prompt_suffix="",
     # NOTE: we will remove this feature of "parent/nested/follow-on" analysis.
     # Keeping this here for now, but will remove it once we reach a stable point.
     # parent_analyses=[],
@@ -574,6 +575,7 @@ async def generate_single_step(
     # if err:
     #     user_question_context = None
 
+    # NOTE: we don't need extra_tools here because the extra_tools have already been added to the DB in the calling function
     tool_library_prompt = await get_tool_library_prompt(user_question)
 
     # make calls to the LLM to get the next step
@@ -626,6 +628,7 @@ async def generate_single_step(
         "temp": temp,
         "parent_questions": [],
         "assignment_understanding": assignment_understanding,
+        "planner_prompt_suffix": planner_prompt_suffix,
         # NOTE: disabled for now. See note above.
         # "parent_questions": [p["user_question"] for p in parent_analyses],
         # "similar_plans": similar_plans[:2],

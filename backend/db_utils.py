@@ -1015,6 +1015,24 @@ def get_all_tools():
         return err, tools
 
 
+async def check_tool_exists(tool_name):
+    err = None
+    exists = False
+    try:
+        with engine.begin() as conn:
+            row = conn.execute(
+                select(Tools).where(Tools.tool_name == tool_name)
+            ).fetchone()
+            if row:
+                exists = True
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        err = str(e)
+    finally:
+        return err, exists
+
+
 async def add_tool(
     api_key,
     tool_name,
@@ -1025,6 +1043,7 @@ async def add_tool(
     output_metadata,
     cannot_delete=False,
     cannot_disable=False,
+    replace_if_exists=True,
 ):
     err = None
     try:
@@ -1032,13 +1051,18 @@ async def add_tool(
         # insert into the tools table
         with engine.begin() as conn:
             # first check if it exists
-            row = conn.execute(
-                select(Tools).where(Tools.tool_name == tool_name)
-            ).fetchone()
+            err, row = await check_tool_exists(tool_name)
+            if err:
+                raise Exception(err)
 
-        # check if latest tool code is same as the code we are trying to insert
         no_changes = False
         if row:
+            # if this exists, and we're allowed to replace the tool
+            # check if latest tool code is same as the code we are trying to insert
+            # if we're not allowed to replace, raise an error
+            if not replace_if_exists:
+                raise ValueError(f"Tool {tool_name} already exists.")
+
             no_changes = row.code == code
 
         if no_changes:
@@ -1170,10 +1194,10 @@ async def delete_tool(function_name):
             ).fetchone()
             if rows is None:
                 raise ValueError(f"Tool {function_name} does not exist.")
-            elif rows.cannot_delete:
-                raise ValueError(
-                    f"Tool {function_name} cannot be deleted. Please contact admin."
-                )
+            # elif rows.cannot_delete:
+            #     raise ValueError(
+            #         f"Tool {function_name} cannot be deleted. Please contact admin."
+            #     )
             else:
                 conn.execute(delete(Tools).where(Tools.function_name == function_name))
     except Exception as e:

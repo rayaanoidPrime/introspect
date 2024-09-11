@@ -21,7 +21,9 @@ from agents.planner_executor.tool_helpers.get_tool_library_prompt import (
 )
 from utils import snake_case
 from db_utils import (
-    execute_code,
+    add_tool,
+    check_tool_exists,
+    delete_tool,
     get_all_tools,
     get_analysis_data,
     get_assignment_understanding,
@@ -78,6 +80,11 @@ async def generate_step(request: Request):
         clarification_questions = params.get("clarification_questions", [])
         sql_only = params.get("sql_only", False)
         previous_questions = params.get("previous_questions", [])
+        extra_tools = params.get("extra_tools", [])
+        planner_prompt_suffix = params.get("planner_prompt_suffix", None)
+
+        LOGGER.info(planner_prompt_suffix)
+        LOGGER.info(extra_tools)
 
         if len(previous_questions) > 0:
             previous_questions = previous_questions[:-1]
@@ -229,6 +236,33 @@ async def generate_step(request: Request):
 
                 print(f"*******\nUnified question: {question}\n********", flush=True)
 
+            # make sure the extra tools don't already exist in the db
+            for tool in extra_tools:
+                tool_name = tool.get("tool_name", "")
+                err, exists = await check_tool_exists(tool_name)
+                if err or exists:
+                    raise Exception(f"Tool with name {tool_name} already exists.")
+
+            # if we're here, add the extra tools to the db
+            for tool in extra_tools:
+                tool_name = tool.get("tool_name", "")
+                function_name = tool.get("function_name", "")
+                description = tool.get("description", "")
+                code = tool.get("code", "")
+                input_metadata = tool.get("input_metadata", {})
+                output_metadata = tool.get("output_metadata", [])
+                err = await add_tool(
+                    api_key=api_key,
+                    tool_name=tool_name,
+                    function_name=function_name,
+                    description=description,
+                    code=code,
+                    input_metadata=input_metadata,
+                    output_metadata=output_metadata,
+                )
+                if err:
+                    raise Exception(err)
+
             step = await generate_single_step(
                 dfg_api_key=api_key,
                 analysis_id=analysis_id,
@@ -248,6 +282,14 @@ async def generate_step(request: Request):
         LOGGER.error(e)
         traceback.print_exc()
         return {"success": False, "error_message": str(e) or "Incorrect request"}
+    finally:
+        # remove extra tools from the db
+        for tool in extra_tools:
+            function_name = tool.get("function_name", "")
+            # deletion happens using function name, not tool name
+            err = await delete_tool(function_name)
+            if err:
+                LOGGER.error(f"Error deleting tool {function_name}: {err}")
 
 
 @router.post("/clarify")
@@ -457,9 +499,6 @@ async def manually_create_new_step(request: Request):
         extra_tools = data.get("extra_tools", [])
         planner_prompt_suffix = data.get("planner_prompt_suffix", None)
 
-        LOGGER.info(planner_prompt_suffix)
-        LOGGER.info(extra_tools)
-
         if not key_name or key_name == "":
             raise Exception("Invalid request. Must have API key name.")
 
@@ -653,7 +692,8 @@ async def generate_and_test_new_tool(request: Request):
                 tool_code = resp["tool_code"]
                 messages = resp["messages"]
                 test_question = resp["test_question"]
-                tool_metadata = resp["tool_metadata"]
+                input_metadata = resp["input_metadata"]
+                output_metadata = resp["output_metadata"]
 
                 # find the function name in tool_code
                 try:
@@ -672,7 +712,8 @@ async def generate_and_test_new_tool(request: Request):
                         "generated_code": tool_code,
                         "function_name": function_name,
                         "test_question": test_question,
-                        "tool_metadata": tool_metadata,
+                        "input_metadata": input_metadata,
+                        "output_metadata": output_metadata,
                     }
                 )
             except Exception as e:

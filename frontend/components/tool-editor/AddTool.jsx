@@ -32,6 +32,7 @@ export function AddTool({
   );
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [testQuestion, setTestQuestion] = useState("");
   const [tool, setTool] = useState({
     code: "",
     description: "",
@@ -40,7 +41,6 @@ export function AddTool({
     output_metadata: [],
     tool_name: "",
     key_name: apiKeyNames.length ? apiKeyNames[0] : "",
-    test_question: "",
   });
 
   const analysisId = useRef(v4());
@@ -189,11 +189,11 @@ export function AddTool({
 
       newTool.code = response.generated_code;
       newTool.function_name = response.function_name;
-      newTool.test_question = response.test_question;
       newTool.input_metadata = response.input_metadata;
       newTool.output_metadata = response.output_metadata;
 
       setTool(newTool);
+      setTestQuestion(response.test_question);
       setCurrentStep(1);
     } catch (error) {
       messageManager.error(error);
@@ -202,8 +202,6 @@ export function AddTool({
       setLoading(false);
     }
   };
-
-  console.log(tool);
 
   const input = useMemo(() => {
     return (
@@ -284,15 +282,16 @@ export function AddTool({
                   toolCode={tool.code}
                   onChange={(v) => handleChange("code", v)}
                 />
-                <div className="absolute left-0 right-0 mx-4 bottom-10">
+                <div className="sticky mx-4 bottom-10">
                   <Input placeholder="What should we change?"></Input>
                 </div>
               </div>
-              <div className="w-full mt-8 md:mt-0 md:w-7/12 overflow-scroll px-2 bg-gray-100">
+              <div className="relative w-full mt-8 md:mt-0 md:w-7/12 overflow-scroll px-2 bg-gray-100">
                 <p className="text-sm font-bold text-gray-500 py-1 bg-gray-100 sticky top-0 z-10">
                   Test it out
                 </p>
                 <Setup
+                  key={analysisId.current + "-" + testQuestion}
                   token={token.current}
                   apiEndpoint={apiEndpoint}
                   // these are the ones that will be shown for new csvs uploaded
@@ -306,6 +305,7 @@ export function AddTool({
                     extraTools={[
                       {
                         code: tool.code,
+                        tool_name: tool.tool_name,
                         tool_description: tool.description,
                         function_name: tool.function_name,
                         input_metadata: tool.input_metadata,
@@ -314,11 +314,25 @@ export function AddTool({
                     ]}
                     createAnalysisRequestBody={{
                       initialisation_details: {
-                        user_question: tool.test_question,
+                        user_question: testQuestion,
                       },
                     }}
                     initiateAutoSubmit={true}
                   />
+                  <div className="sticky mx-4 bottom-10 z-10">
+                    <Input
+                      placeholder="Test with a different question"
+                      onPressEnter={(ev) => {
+                        if (!ev.target.value) {
+                          messageManager.error("Query can't be empty");
+                        }
+
+                        // create a new analysis id and reset the test question
+                        analysisId.current = v4();
+                        setTestQuestion(ev.target.value);
+                      }}
+                    ></Input>
+                  </div>
                 </Setup>
               </div>
             </div>
@@ -342,17 +356,7 @@ export function AddTool({
         ),
       },
     ];
-  }, [tool, loading, input]);
-
-  console.log(tool);
-
-  const status = useMemo(() => {
-    if (currentStep === 0 || currentStep == 1) {
-      return "process";
-    } else {
-      return tool.code && toolName && toolDocString ? "process" : "error";
-    }
-  }, [currentStep, tool, loading, toolDocString, toolName]);
+  }, [tool, loading, input, testQuestion]);
 
   return (
     <>
