@@ -24,22 +24,25 @@ channel.queue_declare(queue=queue_name)
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 STREAMS = [
-        "pages",
-        "traffic_sources",
-        "events_report",
-        "locations",
-        "devices",
-        "daily_active_users",
-        "weekly_active_users",
-        "four_weekly_active_users",
-        "website_overview",
-        "pages_path_report",
-        "demographic_country_report",
-        "demographic_age_report",
-        "tech_browser_report",
-    ]
+    "pages",
+    "traffic_sources",
+    "events_report",
+    "locations",
+    "devices",
+    "daily_active_users",
+    "weekly_active_users",
+    "four_weekly_active_users",
+    "website_overview",
+    "pages_path_report",
+    "demographic_country_report",
+    "demographic_age_report",
+    "tech_browser_report",
+]
 
-def get_google_analytics_data(ga_property_ids: list, ga_creds_content: dict, data_start_date: str ="1900-01-01") -> dict:
+
+def get_google_analytics_data(
+    ga_property_ids: list, ga_creds_content: dict, data_start_date: str = "1900-01-01"
+) -> dict:
     try:
         source = ab.get_source(
             "source-google-analytics-data-api",
@@ -84,7 +87,7 @@ def get_google_analytics_data(ga_property_ids: list, ga_creds_content: dict, dat
         existing_cols_to_drop = [col for col in cols_to_drop if col in df.columns]
         df = df.drop(columns=existing_cols_to_drop)
         csv_dict[stream] = df.to_csv(index=False)
-    
+
     return csv_dict
 
 
@@ -92,6 +95,7 @@ def sync(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
         return asyncio.get_event_loop().run_until_complete(f(*args, **kwargs))
+
     return wrapper
 
 
@@ -130,12 +134,12 @@ async def callback(ch, method, properties, body):
         LOGGER.error(f"Error in getting Google Analytics data: {str(e)}")
         ch.basic_ack(delivery_tag=method.delivery_tag)
         return
-    
+
     if not csv_dict:
         LOGGER.info("No data retrieved")
         ch.basic_ack(delivery_tag=method.delivery_tag)
         return
-    
+
     inserted_tables = {}
     for table_index, (table_name, csv_data) in enumerate(csv_dict.items()):
         # read csv data into a pandas dataframe
@@ -182,14 +186,18 @@ async def callback(ch, method, properties, body):
             {"api_key": api_key, "table_metadata": md, "parsed": True},
         )
         if response.get("status") == "success":
-            LOGGER.info(f"Updated metadata for api_key {api_key}-parsed with google analytics data")
+            LOGGER.info(
+                f"Updated metadata for api_key {api_key}-parsed with google analytics data"
+            )
         else:
-            LOGGER.error(f"Error in updating metadata for api_key {api_key}: {response}")
+            LOGGER.error(
+                f"Error in updating metadata for api_key {api_key}: {response}"
+            )
     except Exception as e:
         LOGGER.error(f"Error in updating metadata for api_key {api_key}: {str(e)}")
         ch.basic_ack(delivery_tag=method.delivery_tag)
         return
-    
+
     ch.basic_ack(delivery_tag=method.delivery_tag)
 
 

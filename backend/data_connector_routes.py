@@ -85,7 +85,13 @@ async def get_google_analytics_data(request: DataConnectorRequest):
     with open(ga_creds_path, "r") as f:
         ga_creds_content = json.load(f)
     body["ga_creds_content"] = ga_creds_content
-    
+
     publish("google_analytics", json.dumps(body))
 
-    return JSONResponse(content={"status": "success", "message": "Request sent to `google_analytics` queue"}, status_code=200)
+    return JSONResponse(
+        content={
+            "status": "success",
+            "message": "Request sent to `google_analytics` queue",
+        },
+        status_code=200,
+    )
