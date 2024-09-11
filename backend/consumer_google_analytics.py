@@ -57,13 +57,13 @@ def get_google_analytics_data(
             },
         )
     except Exception as e:
-        LOGGER.error(f"Error in creating Google Analytics source: {str(e)}")
+        LOGGER.error(f"Error in creating Google Analytics source: {str(e)}. Please check that GOOGLE_ANALYTICS_CREDS_PATH and GOOGLE_ANALYTICS_PROPERTY_IDS are set correctly.")
         return {"error": str(e)}
 
     try:
         source.check()
     except Exception as e:
-        LOGGER.error(f"Error in accessing Google Analytics data: {str(e)}")
+        LOGGER.error(f"Error in accessing Google Analytics data: {str(e)}. Please check that GOOGLE_ANALYTICS_CREDS_PATH and GOOGLE_ANALYTICS_PROPERTY_IDS are set correctly.")
         return {"error": str(e)}
 
     cache = ab.get_default_cache()
