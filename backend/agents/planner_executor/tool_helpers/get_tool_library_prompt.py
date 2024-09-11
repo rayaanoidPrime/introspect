@@ -3,7 +3,7 @@ from utils import create_simple_tool_types
 import yaml
 
 
-async def get_tool_library_prompt(user_question=None):
+async def get_tool_library_prompt(user_question=None, extra_tools=[]):
     print("User question while getting tool library:", user_question)
     prompt = []
 
@@ -43,6 +43,11 @@ async def get_tool_library_prompt(user_question=None):
                 "outputs": tool_outputs_prompt,
             }
         )
+
+    # add the extra tools as well which is an array
+    # of objects with { tool_name, description, input_metadata, output_metadata }
+    for tool in extra_tools:
+        prompt.append(tool)
 
     prompt = yaml.dump(prompt, sort_keys=False)
 

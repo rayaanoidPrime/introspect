@@ -15,12 +15,21 @@ import {
 import { parseData } from "@defogdotai/agents-ui-components/agent";
 import NewToolCodeEditor from "./NewToolCodeEditor";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { Steps } from "antd";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
+import { Breadcrumb, Steps } from "antd";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ArrowRightIcon,
+} from "@heroicons/react/20/solid";
 import { twMerge } from "tailwind-merge";
 
+const createToolText = "Create tool";
+
 export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
-  const generateToolCodeEndpoint = setupBaseUrl("http", "generate_tool_code");
+  const generateToolCodeEndpoint = setupBaseUrl(
+    "http",
+    "generate_and_test_new_tool"
+  );
 
   const [modalOpen, setModalOpen] = useState(false);
   const [showCode, setShowCode] = useState(false);
@@ -44,26 +53,20 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
 
   const [currentStep, setCurrentStep] = useState(0);
 
-  const next = () => {
-    if (currentStep === 0 && (!toolName || !toolDocString)) {
-      messageManager.info("Please fill in the tool name and description");
-      return;
-    }
-    if (currentStep === 1 && (!tool.code || !toolName || !toolDocString)) {
+  const changeStep = (targetStepIdx) => {
+    if (targetStepIdx > 0 && (!toolName || !toolDocString || !tool.code)) {
       messageManager.info("Please create the tool first");
       return;
     }
-    setCurrentStep((d) => Math.min(steps.length - 1, d + 1));
+
+    setCurrentStep(targetStepIdx);
   };
 
-  const prev = () => {
-    setCurrentStep((d) => Math.max(0, d - 1));
-  };
-
-  const generateToolBtn = useMemo(() => {
+  const createToolBtn = useMemo(() => {
     return (
       <Button
         disabled={!toolName || !toolDocString || loading}
+        className="bg-blue-500 hover:bg-blue-600 text-white hover:text-white"
         onClick={() => {
           if (!toolName || !toolDocString) {
             messageManager.error(
@@ -81,7 +84,7 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
             Creating your tool
           </div>
         ) : (
-          "Create tool"
+          createToolText
         )}
       </Button>
     );
@@ -90,10 +93,10 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
   const footer = useMemo(
     () => (
       <div className="flex flex-row items-center">
-        <div className="grow">{currentStep > 0 ? null : generateToolBtn}</div>
+        <div className="grow">{currentStep > 0 ? null : createToolBtn}</div>
         <div className="flex flex-row self-end items-center">
           <ChevronLeftIcon
-            onClick={prev}
+            // onClick={prev}
             className={twMerge(
               "w-5 h-5 text-gray-400 cursor-pointer hover:text-gray-800",
               (currentStep === 0 || !toolDocString || !toolName) &&
@@ -101,7 +104,7 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
             )}
           />
           <ChevronRightIcon
-            onClick={next}
+            // onClick={next}
             className={twMerge(
               "w-5 h-5 text-gray-400 cursor-pointer hover:text-gray-800",
               (!toolDocString ||
@@ -140,7 +143,9 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
         messageManager.success("Tool added successfully");
         onAddTool(tool);
       } else {
-        messageManager.error("Failed to submit tool" + res.error_message);
+        messageManager.error(
+          "Failed to submit tool" + (res.error_message || "")
+        );
       }
     } catch (e) {
       console.error(e);
@@ -169,7 +174,7 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
 
       if (!response.success) {
         throw new Error(
-          "Failed to generate tool code. " + response.error_message
+          "Failed to generate tool code. " + (response.error_message || "")
         );
       }
 
@@ -178,39 +183,39 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
       newTool.code = response.generated_code;
       newTool.function_name = response.function_name;
 
-      const newTestingResults = response.testing_results;
+      // const newTestingResults = response.testing_results;
 
-      newTestingResults.generatedCode = response.generated_code;
+      // newTestingResults.generatedCode = response.generated_code;
 
-      newTool.input_metadata = arrayOfObjectsToObject(
-        newTestingResults.inputs,
-        "name",
-        ["name", "description", "type"]
-      );
+      // newTool.input_metadata = arrayOfObjectsToObject(
+      //   newTestingResults.inputs,
+      //   "name",
+      //   ["name", "description", "type"]
+      // );
 
-      newTool.output_metadata = newTestingResults.outputs.map((d) => ({
-        name: "output_df",
-        description: "pandas df",
-        type: "pandas.core.frame.DataFrame",
-      }));
+      // newTool.output_metadata = newTestingResults.outputs.map((d) => ({
+      //   name: "output_df",
+      //   description: "pandas df",
+      //   type: "pandas.core.frame.DataFrame",
+      // }));
 
-      // go through testing inputs and outputs, and parse all csvs
-      newTestingResults.inputs.forEach((input) => {
-        // input type contains DataFrame and is string
-        if (input.type.indexOf("DataFrame") !== -1) {
-          input.parsed = parseData(input.value);
-        }
-      });
+      // // go through testing inputs and outputs, and parse all csvs
+      // newTestingResults.inputs.forEach((input) => {
+      //   // input type contains DataFrame and is string
+      //   if (input.type.indexOf("DataFrame") !== -1) {
+      //     input.parsed = parseData(input.value);
+      //   }
+      // });
 
-      // go through outputs, and parse the data property on all outputs
-      newTestingResults.outputs.forEach((output) => {
-        // output type contains DataFrame and is string
-        if (output.data) {
-          output.parsed = parseData(output.data);
-        }
-      });
+      // // go through outputs, and parse the data property on all outputs
+      // newTestingResults.outputs.forEach((output) => {
+      //   // output type contains DataFrame and is string
+      //   if (output.data) {
+      //     output.parsed = parseData(output.data);
+      //   }
+      // });
 
-      setTestingResults(newTestingResults);
+      // setTestingResults(newTestingResults);
       setTool(newTool);
       setCurrentStep(1);
     } catch (error) {
@@ -246,9 +251,8 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
         title: "Describe your tool",
         content: (
           <div className="sm:block min-h-80">
-            <p className="text-xs my-4 text-gray-500">
-              Describe what your tool does. This will help us generate the
-              tool's code.
+            <p className="text-sm my-4 text-gray-500">
+              The model needs this information to generate your tool.
             </p>
             <DefineTool
               disabled={loading}
@@ -256,6 +260,7 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
               handleChange={handleChange}
               toolDocString={tool.description}
             />
+            {toolDocString && toolName && createToolBtn}
           </div>
         ),
       },
@@ -263,72 +268,63 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
         title: "Test",
         content: tool.code ? (
           <>
-            <p className="text-xs my-4 text-gray-500">
-              Test your tool. Edit the tool's code.
-            </p>
-            <Tabs
-              rootClassNames="min-h-80"
-              tabs={[
-                {
-                  name: "Code",
-                  headerClassNames: "w-4",
-                  content: tool.code ? (
-                    <>
-                      {input}
-                      <NewToolCodeEditor
-                        className="w-full"
-                        editable={!loading}
-                        toolCode={tool.code}
-                        onChange={(v) => handleChange("code", v)}
-                      />
-                    </>
-                  ) : (
-                    <></>
-                  ),
-                },
-                {
-                  name: "Sample",
-                  headerClassNames: !tool.code
-                    ? "text-gray-300 hover:bg-white pointer-events-none "
-                    : "",
-                  content: tool.code ? (
-                    <>
-                      {input}
-                      <ToolPlayground
-                        loading={loading}
-                        tool={tool}
-                        handleChange={handleChange}
-                        testingResults={testingResults}
-                      />
-                    </>
-                  ) : (
-                    <></>
-                  ),
-                },
-              ]}
-            />
+            <div className="text-sm my-4 text-gray-500 space-y-1">
+              <p>
+                We have generated a tool as per the name and description, and
+                have created a sample analysis showing your tool's usage.
+              </p>
+              <p>
+                Please check if the workflow, inputs and outputs are as desired.
+                You can also run more analysis with your new tool. Just ask
+                questions with the search bar.
+              </p>
+              <p>
+                You can also edit the tool's code on the left, and run a new
+                analysis to see your changes reflected. Note that older analyses
+                will not be affected until you re run them.
+              </p>
+              <p>
+                If you changed your mind, go back to the describe step and
+                change the tool's name or description and click "
+                {createToolText}" again.
+              </p>
+              <p>
+                When you're happy, click Save to add the tool to your tool
+                library.
+              </p>
+            </div>
+            <div className="flex flex-row divide-x gap-2 border mb-8">
+              <div className="w-1/3 max-h-80 inline-block overflow-scroll">
+                <NewToolCodeEditor
+                  className="w-full"
+                  editable={!loading}
+                  toolCode={tool.code}
+                  onChange={(v) => handleChange("code", v)}
+                />
+              </div>
+              {/* <div className="w-2/3 inline-block">
+                <ToolPlayground
+                  loading={loading}
+                  tool={tool}
+                  handleChange={handleChange}
+                  testingResults={testingResults}
+                />
+              </div> */}
+            </div>
+            <Button
+              className="mt-8 px-3 text-white bg-blue-500 border-0 hover:bg-blue-600 hover:text-white"
+              onClick={tryAddTool}
+            >
+              Save your tool
+            </Button>
           </>
         ) : (
           <div className="min-h-80 flex items-center justify-center">
             {toolDocString && toolName ? (
-              generateToolBtn
+              createToolBtn
             ) : (
               <p className="text-sm text-gray-400">
                 Please complete the previous step
-              </p>
-            )}
-          </div>
-        ),
-      },
-      {
-        title: "Save",
-        content: (
-          <div className=" min-h-80 flex items-center justify-center">
-            {toolDocString && toolName && tool.code ? (
-              <Button onClick={tryAddTool}>Save</Button>
-            ) : (
-              <p className="text-sm text-gray-400">
-                Please complete the previous steps
               </p>
             )}
           </div>
@@ -363,17 +359,54 @@ export function AddTool({ apiEndpoint, onAddTool = (...args) => {} }) {
         onCancel={(ev) => {
           setModalOpen(false);
         }}
-        footer={footer}
+        footer={false}
       >
         <h1 className="text-lg font-bold mb-4">Add a custom tool</h1>
 
         <div className="grow relative p-2">
-          <Steps
-            items={steps}
-            current={currentStep}
-            status={status}
-            size="small"
-          />
+          <div className="relative">
+            {/* dividing line */}
+            <div className="h-[1px] w-full bg-gray-500 absolute top-1/2 z-[2]"></div>
+            <div className="z-[3] flex flex-row relative">
+              {steps.map((step, idx) => {
+                const isActive = idx === currentStep;
+
+                return (
+                  <div
+                    className={twMerge(
+                      "grow group cursor-pointer",
+                      idx === steps.length - 1 ? "bg-white" : ""
+                    )}
+                    onClick={() => changeStep(idx)}
+                  >
+                    <div
+                      className={twMerge(
+                        "px-4 inline-block bg-white relative justify-self-center",
+                        idx === 0 ? "pl-0" : ""
+                      )}
+                    >
+                      <span
+                        className={twMerge(
+                          "text-sm p-3 rounded-[50%] border text-gray-400 border-gray-200 bg-gray-100 inline-flex items-center justify-center h-4 w-4 mr-2",
+                          isActive
+                            ? "bg-blue-100 text-blue-500"
+                            : "group-hover:bg-gray-200"
+                        )}
+                      >
+                        {idx + 1}
+                      </span>
+                      <span
+                        className={isActive ? "text-blue-500" : "text-gray-400"}
+                      >
+                        {step.title}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="mt-4">{steps[currentStep].content}</div>
         </div>
       </Modal>

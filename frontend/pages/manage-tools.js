@@ -87,8 +87,6 @@ export default function ManageTools() {
     }
   }, [tools, selectedTool, messageManager, setLoading, loading]);
 
-  console.log(selectedTool && tools[selectedTool]);
-
   return (
     <>
       <Meta />

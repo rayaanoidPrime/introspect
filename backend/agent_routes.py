@@ -4,6 +4,8 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from agents.clarifier.clarifier_agent import get_clarification
 
+import pandas as pd
+
 from agents.planner_executor.planner_executor_agent import (
     generate_assignment_understanding,
     generate_single_step,
@@ -14,6 +16,9 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
+from agents.planner_executor.tool_helpers.get_tool_library_prompt import (
+    get_tool_library_prompt,
+)
 from utils import snake_case
 from db_utils import (
     execute_code,
@@ -621,6 +626,7 @@ async def generate_and_test_new_tool(request: Request):
             "tool_description": tool_description,
             "user_question": user_question,
             "current_code": current_code,
+            "tool_library_prompt": await get_tool_library_prompt(),
             "api_key": api_key,
         }
 
@@ -630,7 +636,7 @@ async def generate_and_test_new_tool(request: Request):
         while retries < 3:
             try:
                 logging.info(payload)
-                resp = make_request(
+                resp = await make_request(
                     llm_calls_url,
                     payload,
                 )
@@ -640,11 +646,12 @@ async def generate_and_test_new_tool(request: Request):
                     raise Exception(resp.get("error_message"))
 
                 tool_code = resp["tool_code"]
-                testing_code = resp["testing_code"]
                 messages = resp["messages"]
+                test_question = resp["test_question"]
 
                 print(tool_code)
-                print(testing_code, flush=True)
+                # testing_code = resp["testing_code"]
+                # print(testing_code, flush=True)
 
                 # find the function name in tool_code
                 try:
@@ -658,27 +665,27 @@ async def generate_and_test_new_tool(request: Request):
                     )
 
                 # try running this code
-                err, testing_details, _ = await execute_code(
-                    [tool_code, testing_code], "test_tool"
-                )
+                # err, testing_details, _ = await execute_code(
+                #     [tool_code, testing_code], "test_tool"
+                # )
 
-                if err:
-                    raise Exception(err)
+                # if err:
+                #     raise Exception(err)
 
                 # unfortunately testing_details has outputs, and inside of it is another outputs which is returned by the tool :tear:
-                testing_details["outputs"] = testing_details["outputs"]["outputs"]
+                # testing_details["outputs"] = testing_details["outputs"]["outputs"]
 
-                # convert inputs to a format we can send back to the user
-                # convert pandas dfs to csvs in both inoputs and outputs
-                for i, input in enumerate(testing_details["inputs"]):
-                    value = input["value"]
-                    if type(value) == pd.DataFrame:
-                        testing_details["inputs"][i]["value"] = value.to_csv(
-                            index=False
-                        )
+                # # convert inputs to a format we can send back to the user
+                # # convert pandas dfs to csvs in both inoputs and outputs
+                # for i, input in enumerate(testing_details["inputs"]):
+                #     value = input["value"]
+                #     if type(value) == pd.DataFrame:
+                #         testing_details["inputs"][i]["value"] = value.to_csv(
+                #             index=False
+                #         )
 
-                for output in testing_details["outputs"]:
-                    output["data"] = output["data"].to_csv(index=False)
+                # for output in testing_details["outputs"]:
+                #     output["data"] = output["data"].to_csv(index=False)
 
                 return JSONResponse(
                     {
@@ -686,12 +693,13 @@ async def generate_and_test_new_tool(request: Request):
                         "tool_name": tool_name,
                         "tool_description": tool_description,
                         "generated_code": tool_code,
-                        "testing_code": testing_code,
                         "function_name": function_name,
-                        "testing_results": {
-                            "inputs": testing_details["inputs"],
-                            "outputs": testing_details["outputs"],
-                        },
+                        "test_question": test_question,
+                        # "testing_code": testing_code,
+                        # "testing_results": {
+                        #     "inputs": testing_details["inputs"],
+                        #     "outputs": testing_details["outputs"],
+                        # },
                     }
                 )
             except Exception as e:
