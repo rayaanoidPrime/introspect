@@ -98,8 +98,17 @@ async def get_google_analytics_data(request: DataConnectorRequest):
     body["ga_property_ids"] = ga_property_ids
     body["data_start_date"] = data_start_date
 
-    with open(ga_creds_path, "r") as f:
-        ga_creds_content = json.load(f)
+    try:
+        with open(ga_creds_path, "r") as f:
+            ga_creds_content = json.load(f)
+    except FileNotFoundError:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Server Error",
+                "message": "GOOGLE_ANALYTICS_CREDS_PATH file not found",
+            },
+        )
     body["ga_creds_content"] = ga_creds_content
 
     publish("google_analytics", json.dumps(body))
