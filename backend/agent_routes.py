@@ -81,9 +81,9 @@ async def generate_step(request: Request):
         sql_only = params.get("sql_only", False)
         previous_questions = params.get("previous_questions", [])
         extra_tools = params.get("extra_tools", [])
-        planner_prompt_suffix = params.get("planner_prompt_suffix", None)
+        planner_question_suffix = params.get("planner_question_suffix", None)
 
-        LOGGER.info(planner_prompt_suffix)
+        LOGGER.info(planner_question_suffix)
         LOGGER.info(extra_tools)
 
         if len(previous_questions) > 0:
@@ -266,7 +266,12 @@ async def generate_step(request: Request):
             step = await generate_single_step(
                 dfg_api_key=api_key,
                 analysis_id=analysis_id,
-                user_question=question,
+                user_question=question
+                + (
+                    f"Note: ${planner_question_suffix}"
+                    if planner_question_suffix
+                    else ""
+                ),
                 dev=dev,
                 temp=temp,
                 assignment_understanding=assignment_understanding,
@@ -497,7 +502,7 @@ async def manually_create_new_step(request: Request):
         outputs_storage_keys = data.get("outputs_storage_keys")
         key_name = data.get("key_name")
         extra_tools = data.get("extra_tools", [])
-        planner_prompt_suffix = data.get("planner_prompt_suffix", None)
+        planner_question_suffix = data.get("planner_question_suffix", None)
 
         if not key_name or key_name == "":
             raise Exception("Invalid request. Must have API key name.")
@@ -665,6 +670,11 @@ async def generate_and_test_new_tool(request: Request):
 
         if not user_question or user_question == "":
             user_question = "Please write the tool code."
+
+        # if a tool with this tool name already exists, return an error
+        err, exists = await check_tool_exists(tool_name)
+        if exists:
+            raise Exception(f"Tool with name {tool_name} already exists.")
 
         payload = {
             "request_type": "generate_and_test_new_tool",

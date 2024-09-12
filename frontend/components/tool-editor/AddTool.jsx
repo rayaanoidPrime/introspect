@@ -1,4 +1,4 @@
-import { addTool, arrayOfObjectsToObject } from "$utils/utils";
+import { addTool, arrayOfObjectsToObject, toLowerCase } from "$utils/utils";
 import { useCallback, useContext, useMemo, useRef, useState } from "react";
 import ToolPlayground from "./ToolPlayground";
 import { DefineTool } from "./DefineTool";
@@ -22,6 +22,7 @@ import { v4 } from "uuid";
 const createToolText = "Create tool";
 
 export function AddTool({
+  allTools = {},
   apiEndpoint,
   onAddTool = (...args) => {},
   apiKeyNames = [],
@@ -163,8 +164,15 @@ export function AddTool({
   // if they re click the create tool button in the first tab, we need to re generate it from scratch
   const handleSubmit = async (userQuestion = null, fixToolRequest = false) => {
     setLoading(true);
-    // if this is first submit
     try {
+      // if this tool name exists in the library, give an error
+      Object.values(allTools).some((t) => {
+        if (t.tool_name === toolName) {
+          throw new Error(
+            `Another tool with the name ${toolName} already exists in the library. Please choose a different name.`
+          );
+        }
+      });
       const response = await fetch(generateToolCodeEndpoint, {
         method: "POST",
         headers: {
@@ -301,7 +309,7 @@ export function AddTool({
                   <AnalysisAgent
                     analysisId={analysisId.current}
                     keyName={selectedKeyName}
-                    plannerPromptSuffix={` Make sure to use the \`${toolName}\` tool in the analysis.`}
+                    plannerQuestionSuffix={` Make sure to use the \`${toolName}\` tool in the analysis.`}
                     extraTools={[
                       {
                         code: tool.code,

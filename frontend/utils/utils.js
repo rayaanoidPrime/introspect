@@ -80,3 +80,15 @@ export function arrayOfObjectsToObject(arr, key, includeKeys = null) {
     return acc;
   }, {});
 }
+
+/**
+ * Converts a string to lower case. Returns the passed parameter as is if it can't convert.
+ * @param {string} str - The string to convert to lower case
+ */
+export function toLowerCase(str) {
+  try {
+    return str.toLowerCase();
+  } catch (e) {
+    return str;
+  }
+}

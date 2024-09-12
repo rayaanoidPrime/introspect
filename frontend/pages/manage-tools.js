@@ -309,6 +309,7 @@ export default function ManageTools() {
                     })}
 
                     <AddTool
+                      allTools={tools}
                       onAddTool={onAddTool}
                       apiEndpoint={
                         process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""
