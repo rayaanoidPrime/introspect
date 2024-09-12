@@ -189,8 +189,8 @@ oracle_sources = Table(
     Column("text_summary", Text),
 )
 
-parsed_tables = Table(
-    "parsed_tables",
+imported_tables = Table(
+    "imported_tables",
     metadata,
     Column("table_url", Text, primary_key=True),
     Column("table_position", Integer, primary_key=True),
@@ -236,10 +236,10 @@ def create_postgres_tables():
     # Create tables in the database
     metadata.create_all(engine)
 
-    parsed_tables_db = os.environ.get("PARSED_TABLES_DBNAME", "postgres")
-    if parsed_tables_db == "" or parsed_tables_db is None:
-        parsed_tables_db = "postgres"
-    print(f"Creating database {parsed_tables_db}")
+    imported_tables_db = os.environ.get("IMPORTED_TABLES_DBNAME", "imported_tables")
+    if imported_tables_db == "" or imported_tables_db is None:
+        imported_tables_db = "postgres"
+    print(f"Creating database {imported_tables_db}")
     # create psycopg2 connection
     conn = psycopg2.connect(
         dbname=db_creds["database"],
@@ -251,10 +251,10 @@ def create_postgres_tables():
     conn.autocommit = True
     try:
         cur = conn.cursor()
-        cur.execute(f"CREATE DATABASE {parsed_tables_db}")
-        print(f"Created database {parsed_tables_db}")
+        cur.execute(f"CREATE DATABASE {imported_tables_db}")
+        print(f"Created database {imported_tables_db}")
     except psycopg2.errors.DuplicateDatabase:
-        print(f"Database {parsed_tables_db} already exists")
+        print(f"Database {imported_tables_db} already exists")
     conn.close()
 
 

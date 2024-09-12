@@ -12,9 +12,9 @@ def convert_data_type_postgres(dtype: str) -> str:
     """
     # remove any question marks from dtype and convert to lowercase
     dtype = re.sub(r"[\/\?]", "", dtype.lower())
-    if dtype in {"int", "tinyint", "integer"}:
+    if dtype in {"int", "tinyint", "integer", "int64"}:
         return "integer"
-    elif dtype == "double":
+    elif dtype in {"double", "float64"}:
         return "double precision"
     elif dtype in {"varchar", "user-defined", "enum", "longtext", "string"}:
         return "text"
@@ -26,6 +26,8 @@ def convert_data_type_postgres(dtype: str) -> str:
     elif dtype == "array":
         return "text[]"
     elif "byte" in dtype:
+        return "text"
+    elif dtype == "object":
         return "text"
     else:
         return dtype
