@@ -721,6 +721,7 @@ async def generate_tool_code_endpoint(request: Request):
                 resp = requests.post(
                     llm_calls_url,
                     json=payload,
+                    verify=False,
                 ).json()
 
                 # testing code has two functions: generate_sample_inputs and test_tool

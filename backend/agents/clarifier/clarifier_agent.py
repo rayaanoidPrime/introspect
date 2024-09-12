@@ -134,7 +134,7 @@ class Clarifier:
                 "clarification_questions": clarification_questions,
                 "api_key": dfg_api_key,
             }
-            r = await asyncio.to_thread(requests.post, url, json=payload)
+            r = await asyncio.to_thread(requests.post, url, json=payload, verify=False)
             statements = r.json()["statements"]
             ret = {"assignment_understanding": statements}
 
@@ -162,7 +162,7 @@ class Clarifier:
                 "temp": self.temp,
             }
             print(payload)
-            r = await asyncio.to_thread(requests.post, url, json=payload)
+            r = await asyncio.to_thread(requests.post, url, json=payload, verify=False)
             res = r.json()
             print(res, flush=True)
             clarifying_questions = res["clarifications"]
