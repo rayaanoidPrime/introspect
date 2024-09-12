@@ -66,6 +66,22 @@ async def get_google_analytics_data(request: DataConnectorRequest):
         )
     else:
         ga_property_ids = ga_property_ids.split(",")
+    if not os.environ.get("RABBITMQ_HOST"):
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Server Error",
+                "message": "RABBITMQ_HOST env var not set",
+            },
+        )
+    if not os.environ.get("RABBITMQ_PORT"):
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "Server Error",
+                "message": "RABBITMQ_PORT env var not set",
+            },
+        )
     # check that the data_start_date is in the correct format YYYY-MM-DD
     try:
         datetime.strptime(data_start_date, "%Y-%m-%d")
