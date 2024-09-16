@@ -189,8 +189,8 @@ oracle_sources = Table(
     Column("text_summary", Text),
 )
 
-parsed_tables = Table(
-    "parsed_tables",
+imported_tables = Table(
+    "imported_tables",
     metadata,
     Column("table_url", Text, primary_key=True),
     Column("table_position", Integer, primary_key=True),

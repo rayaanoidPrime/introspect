@@ -7,7 +7,7 @@ from ..toolboxes.plots.tools import *
 
 import inspect
 
-tool_name_dict = tools = {
+tools = {
     "data_fetcher_and_aggregator": {
         "function_name": "data_fetcher_and_aggregator",
         "tool_name": "Fetch data from database",
@@ -608,5 +608,5 @@ tool_name_dict = tools = {
                 "type": "pandas.core.frame.DataFrame",
             }
         ],
-    },
+    }
 }
