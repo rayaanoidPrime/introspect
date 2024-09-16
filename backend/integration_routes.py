@@ -506,7 +506,6 @@ async def update_glossary(request: Request):
         if new_instructions:
             glossary_prunable_units += new_instructions.split("\n")
 
-
         defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
         defog.base_url = DEFOG_BASE_URL
 
@@ -694,10 +693,14 @@ async def preview_table(request: Request):
         return {"error": "invalid table name"}
 
     # in these select statements, add quotes around the table name to prevent SQL injection using a space in the table name
+    if "." not in table_name:
+        table_name = f'"{table_name}"'
+    else:
+        table_name = ".".join([f'"{t}"' for t in table_name.split(".")])
     if db_type not in ["sqlserver", "bigquery"]:
-        sql_query = f'SELECT * FROM "{table_name}" LIMIT 10'
+        sql_query = f"SELECT * FROM {table_name} LIMIT 10"
     elif db_type == "sqlserver":
-        sql_query = f'SELECT TOP 10 * FROM "{table_name}"'
+        sql_query = f"SELECT TOP 10 * FROM {table_name}"
     elif db_type == "bigquery":
         sql_query = f"SELECT * FROM `{table_name}` LIMIT 10"
 
