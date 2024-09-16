@@ -236,15 +236,15 @@ def create_postgres_tables():
     # Create tables in the database
     metadata.create_all(engine)
 
-    parsed_tables_db = os.environ.get("PARSED_TABLES_DBNAME", "postgres")
-    if parsed_tables_db == "" or parsed_tables_db is None:
-        parsed_tables_db = "postgres"
-    print("The parsed tables db is", parsed_tables_db, flush=True)
-    print(f"Creating database {parsed_tables_db}")
-    if parsed_tables_db != "postgres":
+    imported_tables_db = os.environ.get("IMPORTED_TABLES_DBNAME", "postgres")
+    if imported_tables_db == "" or imported_tables_db is None:
+        imported_tables_db = "postgres"
+    print("The imported tables db is", imported_tables_db, flush=True)
+    print(f"Creating database {imported_tables_db}")
+    if imported_tables_db != db_creds["database"]:
         # create a new database if it doesn't exist
         conn = psycopg2.connect(
-            dbname=parsed_tables_db,
+            dbname=imported_tables_db,
             user=db_creds["user"],
             password=db_creds["password"],
             host=db_creds["host"],
@@ -253,10 +253,10 @@ def create_postgres_tables():
         conn.autocommit = True
         try:
             cur = conn.cursor()
-            cur.execute(f"CREATE DATABASE {parsed_tables_db};")
-            print(f"Created database {parsed_tables_db}")
+            cur.execute(f"CREATE DATABASE {imported_tables_db};")
+            print(f"Created database {imported_tables_db}")
         except psycopg2.errors.DuplicateDatabase:
-            print(f"Database {parsed_tables_db} already exists")
+            print(f"Database {imported_tables_db} already exists")
         cur.close()
         conn.close()
 
