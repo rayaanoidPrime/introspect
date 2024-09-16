@@ -229,7 +229,7 @@ export function AddTool({
         />
       )
     );
-  }, [tool]);
+  }, [tool, loading]);
 
   const steps = useMemo(() => {
     return [
@@ -283,7 +283,17 @@ export function AddTool({
             <div className="divide-x mb-8 md:h-96 flex flex-row flex-wrap md:flex-nowrap gap-1">
               <div className="w-full overflow-scroll relative px-2 bg-gray-800 md:w-5/12">
                 <div className="py-2 text-sm text-gray-500 sticky top-0 z-10 bg-gray-800">
-                  <Input placeholder="Suggest a change and press Enter to generate new code for your tool"></Input>
+                  <Input
+                    placeholder="Suggest a change and press Enter to generate new code for your tool"
+                    disabled={loading}
+                    onPressEnter={(ev) => {
+                      if (!ev.target.value) {
+                        messageManager.error("Suggestion can't be empty");
+                      }
+
+                      handleSubmit(ev.target.value, true);
+                    }}
+                  ></Input>
                 </div>
                 <NewToolCodeEditor
                   className="w-full"
@@ -310,7 +320,7 @@ export function AddTool({
                         ? "Test with a another question"
                         : "Test your tool with a question"
                     }
-                    inputClassNames={testQuestion ? "ring-gray-500" : ""}
+                    disabled={loading}
                     onPressEnter={(ev) => {
                       if (!ev.target.value) {
                         messageManager.error("Query can't be empty");
@@ -334,6 +344,7 @@ export function AddTool({
                   >
                     <AnalysisAgent
                       analysisId={analysisId}
+                      disabled={loading}
                       keyName={selectedKeyName}
                       plannerQuestionSuffix={` Make sure to use the \`${toolName}\` tool in the analysis.`}
                       extraTools={[
