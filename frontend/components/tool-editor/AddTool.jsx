@@ -27,10 +27,7 @@ export function AddTool({
   onAddTool = (...args) => {},
   apiKeyNames = [],
 }) {
-  const generateToolCodeEndpoint = setupBaseUrl(
-    "http",
-    "generate_and_test_new_tool"
-  );
+  const generateToolCodeEndpoint = setupBaseUrl("http", "generate_new_tool");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [testQuestion, setTestQuestion] = useState("");
