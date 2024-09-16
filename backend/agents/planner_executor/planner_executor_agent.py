@@ -28,7 +28,7 @@ import os
 
 import logging
 
-logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger("server")
 
 
 # some helper functions for prettier logging
@@ -53,17 +53,17 @@ def reset_indent_level():
 
 def info(msg):
     global indent_level
-    logging.info(add_indent(indent_level) + " " + str(msg))
+    LOGGER.info(add_indent(indent_level) + " " + str(msg))
 
 
 def error(msg):
     global indent_level
-    logging.error(add_indent(indent_level) + " " + str(msg))
+    LOGGER.error(add_indent(indent_level) + " " + str(msg))
 
 
 def warn(msg):
     global indent_level
-    logging.warn(add_indent(indent_level) + " " + str(msg))
+    LOGGER.warn(add_indent(indent_level) + " " + str(msg))
 
 
 # store the outputs of multiple analysis in a global variable
@@ -560,6 +560,8 @@ async def generate_single_step(
 
     unique_id = str(uuid4())
 
+    LOGGER.info("Question: " + user_question)
+
     # prepare the cache
     analysis_execution_cache = await prepare_cache(
         analysis_id,
@@ -731,7 +733,7 @@ async def rerun_step(
 
     dependent_steps = find_dependent_steps(step, all_steps)
 
-    logging.info(
+    LOGGER.info(
         f"{len(dependent_steps)} dependent steps found: {[[x['id'], x['tool_name']]for x in dependent_steps]}"
     )
 

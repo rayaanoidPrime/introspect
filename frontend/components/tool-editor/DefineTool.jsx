@@ -25,7 +25,7 @@ export function DefineTool({
           type="text"
           disabled={disabled}
           rootClassNames="mb-4 text-gray-600"
-          placeholder="Give your tool a name"
+          placeholder="Give your tool a name. Helps the model understand XXX"
           status={toolName ? "" : "error"}
           onChange={(ev) => handleChange("tool_name", ev.target.value)}
           defaultValue={toolName}
@@ -36,7 +36,7 @@ export function DefineTool({
           rootClassNames="mb-4 w-full "
           label="Description"
           disabled={disabled}
-          placeholder="What does this tool do?"
+          placeholder="What does this tool do? Helps the model understand XXX"
           status={toolDocString ? "" : "error"}
           onChange={(ev) => handleChange("description", ev.target.value)}
           defaultValue={toolDocString}
@@ -56,7 +56,7 @@ export function DefineTool({
       )}
       {(apiKeyNames && apiKeyNames.length && !hideApiKeyNames && (
         <SingleSelect
-          label="Which database is this tool intended for?"
+          label="Which database do you want to test this tool on?"
           disabled={disabled}
           options={apiKeyNames.map((name) => ({ label: name, value: name }))}
           allowCreateNewOption={false}

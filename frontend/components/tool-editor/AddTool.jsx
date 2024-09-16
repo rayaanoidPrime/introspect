@@ -44,7 +44,7 @@ export function AddTool({
     key_name: apiKeyNames.length ? apiKeyNames[0] : "",
   });
 
-  const analysisId = useRef(v4());
+  const [analysisId, setAnalysisId] = useState(v4());
 
   const toolName = tool.tool_name;
   const toolDocString = tool.description;
@@ -201,7 +201,6 @@ export function AddTool({
       newTool.output_metadata = response.output_metadata;
 
       setTool(newTool);
-      setTestQuestion(response.test_question);
       setCurrentStep(1);
     } catch (error) {
       messageManager.error(error);
@@ -210,6 +209,8 @@ export function AddTool({
       setLoading(false);
     }
   };
+
+  console.log(testQuestion);
 
   const input = useMemo(() => {
     return (
@@ -257,17 +258,17 @@ export function AddTool({
           <>
             <div className="text-sm my-4 text-gray-500 space-y-1">
               <p>
-                We have generated a tool as per the name and description, and
-                have started an analysis showing your tool's usage.
+                We've created your tool based on the provided name and
+                description and generated an analysis to demonstrate its usage.
               </p>
               <p>
-                Please check if the workflow, inputs and outputs are as desired.
-                You can also run more analysis with a different question.
+                You can test the tool with a question by typing it in the search
+                box on the right.
               </p>
               <p>
-                You can also edit the tool's code on the left, and run a new
-                analysis to see your changes reflected. Note that older analyses
-                will not be affected until you re run them.
+                On the left, you can either edit your tool's code directly, or
+                suggest a change in the search box to generate a new version of
+                your tool.
               </p>
               <p>
                 If you changed your mind, go back to the describe step and
@@ -275,77 +276,91 @@ export function AddTool({
                 {createToolText}" again.
               </p>
               <p>
-                When you're happy, click Save to add the tool to your tool
+                Once you're satisfied, click "Save" to add the tool to your
                 library.
               </p>
             </div>
-            <div className="divide-x mb-8 md:max-h-96 flex flex-row flex-wrap md:flex-nowrap">
-              <div className="w-full md:w-5/12 overflow-scroll relative">
-                <p className="text-sm font-bold text-gray-500 bg-gray-100 px-2 py-1 sticky top-0 z-10">
-                  Edit tool code
-                </p>
+            <div className="divide-x mb-8 md:h-96 flex flex-row flex-wrap md:flex-nowrap gap-1">
+              <div className="w-full overflow-scroll relative px-2 bg-gray-800 md:w-5/12">
+                <div className="py-2 text-sm text-gray-500 sticky top-0 z-10 bg-gray-800">
+                  <Input placeholder="Suggest a change and press Enter to generate new code for your tool"></Input>
+                </div>
                 <NewToolCodeEditor
                   className="w-full"
                   editable={!loading}
                   toolCode={tool.code}
                   onChange={(v) => handleChange("code", v)}
                 />
-                <div className="sticky mx-4 bottom-10">
-                  <Input placeholder="What should we change?"></Input>
-                </div>
               </div>
-              <div className="relative w-full mt-8 md:mt-0 md:w-7/12 overflow-scroll px-2 bg-gray-100">
-                <p className="text-sm font-bold text-gray-500 py-1 bg-gray-100 sticky top-0 z-10">
-                  Test it out
-                </p>
-                <Setup
-                  key={analysisId.current + "-" + testQuestion}
-                  token={token.current}
-                  apiEndpoint={apiEndpoint}
-                  // these are the ones that will be shown for new csvs uploaded
-                  showAnalysisUnderstanding={true}
-                  disableMessages={false}
+              <div
+                className={twMerge(
+                  "relative w-full mt-8 px-2 pb-2 md:mt-0 md:w-7/12 bg-gray-200 overflow-scroll",
+                  testQuestion ? "" : "flex items-center"
+                )}
+              >
+                <div
+                  className={twMerge(
+                    "w-full py-2 text-sm text-gray-500 sticky top-0 z-50 bg-gray-200",
+                    testQuestion ? "" : "p-6 bg-gray-100 rounded-3xl"
+                  )}
                 >
-                  <AnalysisAgent
-                    analysisId={analysisId.current}
-                    keyName={selectedKeyName}
-                    plannerQuestionSuffix={` Make sure to use the \`${toolName}\` tool in the analysis.`}
-                    extraTools={[
-                      {
-                        code: tool.code,
-                        tool_name: tool.tool_name,
-                        tool_description: tool.description,
-                        function_name: tool.function_name,
-                        input_metadata: tool.input_metadata,
-                        output_metadata: tool.output_metadata,
-                      },
-                    ]}
-                    createAnalysisRequestBody={{
-                      initialisation_details: {
-                        user_question: testQuestion,
-                      },
-                    }}
-                    initiateAutoSubmit={true}
-                  />
-                  <div className="sticky mx-4 bottom-10 z-10">
-                    <Input
-                      placeholder="Test with a different question"
-                      onPressEnter={(ev) => {
-                        if (!ev.target.value) {
-                          messageManager.error("Query can't be empty");
-                        }
+                  <Input
+                    placeholder={
+                      testQuestion
+                        ? "Test with a another question"
+                        : "Test your tool with a question"
+                    }
+                    inputClassNames={testQuestion ? "ring-gray-500" : ""}
+                    onPressEnter={(ev) => {
+                      if (!ev.target.value) {
+                        messageManager.error("Query can't be empty");
+                      }
 
-                        // create a new analysis id and reset the test question
-                        analysisId.current = v4();
-                        setTestQuestion(ev.target.value);
+                      // create a new analysis id and reset the test question
+                      setAnalysisId(v4());
+                      setTestQuestion(ev.target.value);
+                    }}
+                  ></Input>
+                </div>
+
+                {testQuestion ? (
+                  <Setup
+                    key={analysisId + "-" + testQuestion}
+                    token={token.current}
+                    apiEndpoint={apiEndpoint}
+                    // these are the ones that will be shown for new csvs uploaded
+                    showAnalysisUnderstanding={true}
+                    disableMessages={false}
+                  >
+                    <AnalysisAgent
+                      analysisId={analysisId}
+                      keyName={selectedKeyName}
+                      plannerQuestionSuffix={` Make sure to use the \`${toolName}\` tool in the analysis.`}
+                      extraTools={[
+                        {
+                          code: tool.code,
+                          tool_name: tool.tool_name,
+                          tool_description: tool.description,
+                          function_name: tool.function_name,
+                          input_metadata: tool.input_metadata,
+                          output_metadata: tool.output_metadata,
+                        },
+                      ]}
+                      createAnalysisRequestBody={{
+                        initialisation_details: {
+                          user_question: testQuestion,
+                        },
                       }}
-                    ></Input>
-                  </div>
-                </Setup>
+                      initiateAutoSubmit={true}
+                    />
+                  </Setup>
+                ) : (
+                  <></>
+                )}
               </div>
             </div>
             <Button
-              className="mt-8 px-3 text-white bg-blue-500 border-0 hover:bg-blue-600 hover:text-white"
+              className=" px-3 text-white bg-blue-500 border-0 hover:bg-blue-600 hover:text-white"
               onClick={tryAddTool}
             >
               Save your tool
@@ -364,7 +379,7 @@ export function AddTool({
         ),
       },
     ];
-  }, [tool, loading, input, testQuestion]);
+  }, [tool, loading, input, testQuestion, analysisId]);
 
   return (
     <>

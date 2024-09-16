@@ -83,9 +83,6 @@ async def generate_step(request: Request):
         extra_tools = params.get("extra_tools", [])
         planner_question_suffix = params.get("planner_question_suffix", None)
 
-        LOGGER.info(planner_question_suffix)
-        LOGGER.info(extra_tools)
-
         if len(previous_questions) > 0:
             previous_questions = previous_questions[:-1]
 
@@ -245,20 +242,14 @@ async def generate_step(request: Request):
 
             # if we're here, add the extra tools to the db
             for tool in extra_tools:
-                tool_name = tool.get("tool_name", "")
-                function_name = tool.get("function_name", "")
-                description = tool.get("description", "")
-                code = tool.get("code", "")
-                input_metadata = tool.get("input_metadata", {})
-                output_metadata = tool.get("output_metadata", [])
                 err = await add_tool(
                     api_key=api_key,
-                    tool_name=tool_name,
-                    function_name=function_name,
-                    description=description,
-                    code=code,
-                    input_metadata=input_metadata,
-                    output_metadata=output_metadata,
+                    tool_name=tool.get("tool_name", ""),
+                    function_name=tool.get("function_name", ""),
+                    description=tool.get("description", ""),
+                    code=tool.get("code", ""),
+                    input_metadata=tool.get("input_metadata", {}),
+                    output_metadata=tool.get("output_metadata", []),
                 )
                 if err:
                     raise Exception(err)
@@ -268,7 +259,7 @@ async def generate_step(request: Request):
                 analysis_id=analysis_id,
                 user_question=question
                 + (
-                    f"Note: ${planner_question_suffix}"
+                    f"Note: {planner_question_suffix}"
                     if planner_question_suffix
                     else ""
                 ),
@@ -371,6 +362,8 @@ async def rerun_step_endpoint(request: Request):
         analysis_id = params.get("analysis_id")
         step_id = params.get("step_id")
         edited_step = params.get("edited_step")
+        extra_tools = params.get("extra_tools", [])
+        planner_question_suffix = params.get("planner_question_suffix", None)
 
         if not key_name or key_name == "":
             raise Exception("Invalid request. Must have API key name.")
@@ -392,6 +385,27 @@ async def rerun_step_endpoint(request: Request):
         err, analysis_data = get_analysis_data(analysis_id=analysis_id)
         if err:
             raise Exception("Error fetching analysis data from database")
+
+        # make sure the extra tools don't already exist in the db
+        for tool in extra_tools:
+            tool_name = tool.get("tool_name", "")
+            err, exists = await check_tool_exists(tool_name)
+            if err or exists:
+                raise Exception(f"Tool with name {tool_name} already exists.")
+
+        # if we're here, add the extra tools to the db
+        for tool in extra_tools:
+            err = await add_tool(
+                api_key=api_key,
+                tool_name=tool.get("tool_name", ""),
+                function_name=tool.get("function_name", ""),
+                description=tool.get("description", ""),
+                code=tool.get("code", ""),
+                input_metadata=tool.get("input_metadata", {}),
+                output_metadata=tool.get("output_metadata", []),
+            )
+            if err:
+                raise Exception(err)
 
         # we use the original versions of all steps but the one being rerun
         all_steps = analysis_data.get("gen_steps", {}).get("steps", [])
@@ -423,6 +437,14 @@ async def rerun_step_endpoint(request: Request):
     except Exception as e:
         LOGGER.error(e)
         return {"success": False, "error_message": str(e) or "Incorrect request"}
+    finally:
+        # remove extra tools from the db
+        for tool in extra_tools:
+            function_name = tool.get("function_name", "")
+            # deletion happens using function name, not tool name
+            err = await delete_tool(function_name)
+            if err:
+                LOGGER.error(f"Error deleting tool {function_name}: {err}")
 
 
 @router.post("/delete_steps")
@@ -460,7 +482,7 @@ async def delete_steps(request: Request):
         # remove the steps with these tool run ids
         new_steps = [s for s in steps if s["id"] not in step_ids]
 
-        # # # update analysis data
+        # update analysis data
         update_err = await update_analysis_data(
             analysis_id, "gen_steps", new_steps, replace=True
         )
@@ -534,10 +556,28 @@ async def manually_create_new_step(request: Request):
 
         # if any of the outputs are empty or aren't strings
         if any([not o or type(o) != str for o in outputs_storage_keys]):
-            return {
-                "success": False,
-                "error_message": "Outputs provided are either blank or incorrect.",
-            }
+            raise Exception("Outputs provided are either blank or incorrect.")
+
+        # make sure the extra tools don't already exist in the db
+        for tool in extra_tools:
+            tool_name = tool.get("tool_name", "")
+            err, exists = await check_tool_exists(tool_name)
+            if err or exists:
+                raise Exception(f"Tool with name {tool_name} already exists.")
+
+        # if we're here, add the extra tools to the db
+        for tool in extra_tools:
+            err = await add_tool(
+                api_key=api_key,
+                tool_name=tool.get("tool_name", ""),
+                function_name=tool.get("function_name", ""),
+                description=tool.get("description", ""),
+                code=tool.get("code", ""),
+                input_metadata=tool.get("input_metadata", {}),
+                output_metadata=tool.get("output_metadata", []),
+            )
+            if err:
+                raise Exception(err)
 
         # a new empty step
         new_step = {
@@ -581,6 +621,14 @@ async def manually_create_new_step(request: Request):
         LOGGER.error("Error creating new step: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
+    finally:
+        # remove extra tools from the db
+        for tool in extra_tools:
+            function_name = tool.get("function_name", "")
+            # deletion happens using function name, not tool name
+            err = await delete_tool(function_name)
+            if err:
+                LOGGER.error(f"Error deleting tool {function_name}: {err}")
 
 
 @router.post("/edit_chart")
@@ -701,7 +749,6 @@ async def generate_and_test_new_tool(request: Request):
 
                 tool_code = resp["tool_code"]
                 messages = resp["messages"]
-                test_question = resp["test_question"]
                 input_metadata = resp["input_metadata"]
                 output_metadata = resp["output_metadata"]
 
@@ -721,7 +768,6 @@ async def generate_and_test_new_tool(request: Request):
                         "tool_description": tool_description,
                         "generated_code": tool_code,
                         "function_name": function_name,
-                        "test_question": test_question,
                         "input_metadata": input_metadata,
                         "output_metadata": output_metadata,
                     }
