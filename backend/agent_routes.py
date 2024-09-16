@@ -691,8 +691,8 @@ async def edit_chart(request: Request):
         return {"success": False, "error_message": str(e)[:300]}
 
 
-@router.post("/generate_new_tool")
-async def generate_new_tool(request: Request):
+@router.post("/generate_or_edit_tool_code")
+async def generate_or_edit_tool_code(request: Request):
     """
     This function/endpoint does two things:
     1. Generates a new tool or tweaks an existing tool based on some user question.
@@ -725,7 +725,7 @@ async def generate_new_tool(request: Request):
             raise Exception(f"Tool with name {tool_name} already exists.")
 
         payload = {
-            "request_type": "generate_new_tool",
+            "request_type": "generate_or_edit_tool_code",
             "tool_name": tool_name,
             "tool_description": tool_description,
             "user_question": user_question,
