@@ -43,8 +43,6 @@ export function AddTool({
     key_name: apiKeyNames.length ? apiKeyNames[0] : "",
   });
 
-  console.log(tool);
-
   const [analysisId, setAnalysisId] = useState(v4());
 
   const toolName = tool.tool_name;
@@ -81,6 +79,7 @@ export function AddTool({
             return;
           }
 
+          setTestQuestion(null);
           handleSubmit();
         }}
       >
@@ -241,7 +240,11 @@ export function AddTool({
             </div>
             <div className="divide-x mb-8 md:h-96 flex flex-row flex-wrap md:flex-nowrap gap-1">
               <div className="w-full overflow-scroll relative px-2 bg-gray-800 md:w-5/12">
-                <div className="py-2 text-sm text-gray-500 sticky top-0 z-10 bg-gray-800">
+                <div
+                  className={
+                    "w-full pt-2 pb-3 px-6 text-sm text-gray-500 sticky top-0 z-50 bg-gray-600 border-b border-gray-600 rounded-b-3xl shadow-md mb-4"
+                  }
+                >
                   <Input
                     placeholder="Suggest a change and press Enter to generate new code for your tool"
                     disabled={loading}
@@ -251,6 +254,7 @@ export function AddTool({
                       }
 
                       handleSubmit(ev.target.value, true);
+                      ev.target.value = "";
                     }}
                   ></Input>
                 </div>
@@ -263,20 +267,18 @@ export function AddTool({
               </div>
               <div
                 className={twMerge(
-                  "relative w-full mt-8 px-2 pb-2 md:mt-0 md:w-7/12 bg-gray-200 overflow-scroll",
-                  testQuestion ? "" : "flex items-center"
+                  "relative w-full mt-8 px-2 pb-2 md:mt-0 md:w-7/12 bg-gray-200 overflow-scroll"
                 )}
               >
                 <div
                   className={twMerge(
-                    "w-full py-2 text-sm text-gray-500 sticky top-0 z-50 bg-gray-200",
-                    testQuestion ? "" : "p-6 bg-gray-100 rounded-3xl"
+                    "w-full text-sm text-gray-500 sticky top-0 z-50 bg-gray-100 shadow-md pt-2 pb-3 px-6 rounded-b-3xl mb-4 border-b border-gray-400"
                   )}
                 >
                   <Input
                     placeholder={
                       testQuestion
-                        ? "Test with a another question. Type here and press Enter."
+                        ? "Test with another question. Type here and press Enter."
                         : "Test your tool with a question. Type here and press Enter."
                     }
                     disabled={loading}
@@ -288,6 +290,7 @@ export function AddTool({
                       // create a new analysis id and reset the test question
                       setAnalysisId(v4());
                       setTestQuestion(ev.target.value);
+                      ev.target.value = "";
                     }}
                   ></Input>
                 </div>
@@ -325,7 +328,9 @@ export function AddTool({
                     />
                   </Setup>
                 ) : (
-                  <></>
+                  <div className="rounded-3xl w-full h-20 flex items-center justify-center text-sm text-gray-400">
+                    Ask a quesion above to test your tool
+                  </div>
                 )}
               </div>
             </div>
