@@ -241,23 +241,24 @@ def create_postgres_tables():
         parsed_tables_db = "postgres"
     print("The parsed tables db is", parsed_tables_db, flush=True)
     print(f"Creating database {parsed_tables_db}")
-    # create psycopg2 connection
-    conn = psycopg2.connect(
-        dbname=db_creds["database"],
-        user=db_creds["user"],
-        password=db_creds["password"],
-        host=db_creds["host"],
-        port=db_creds["port"],
-    )
-    conn.autocommit = True
-    try:
-        cur = conn.cursor()
-        cur.execute(f"CREATE DATABASE {parsed_tables_db};")
-        print(f"Created database {parsed_tables_db}")
-    except psycopg2.errors.DuplicateDatabase:
-        print(f"Database {parsed_tables_db} already exists")
-    cur.close()
-    conn.close()
+    if parsed_tables_db != "postgres":
+        # create a new database if it doesn't exist
+        conn = psycopg2.connect(
+            dbname=parsed_tables_db,
+            user=db_creds["user"],
+            password=db_creds["password"],
+            host=db_creds["host"],
+            port=db_creds["port"],
+        )
+        conn.autocommit = True
+        try:
+            cur = conn.cursor()
+            cur.execute(f"CREATE DATABASE {parsed_tables_db};")
+            print(f"Created database {parsed_tables_db}")
+        except psycopg2.errors.DuplicateDatabase:
+            print(f"Database {parsed_tables_db} already exists")
+        cur.close()
+        conn.close()
 
 
 def create_sqlserver_tables():
