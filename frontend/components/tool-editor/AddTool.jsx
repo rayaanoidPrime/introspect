@@ -1,6 +1,5 @@
-import { addTool, arrayOfObjectsToObject, toLowerCase } from "$utils/utils";
+import { addTool } from "$utils/utils";
 import { useCallback, useContext, useMemo, useRef, useState } from "react";
-import ToolPlayground from "./ToolPlayground";
 import { DefineTool } from "./DefineTool";
 
 import {
@@ -13,11 +12,11 @@ import {
 
 import NewToolCodeEditor from "./NewToolCodeEditor";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
 import { twMerge } from "tailwind-merge";
-import { TestDrive } from "$components/TestDrive";
 import { AnalysisAgent, Setup } from "@defogdotai/agents-ui-components/agent";
 import { v4 } from "uuid";
+import ErrorBoundary from "$components/layout/ErrorBoundary";
+import { ToolFlow } from "./ToolFlow";
 
 const createToolText = "Create tool";
 
@@ -43,6 +42,8 @@ export function AddTool({
     tool_name: "",
     key_name: apiKeyNames.length ? apiKeyNames[0] : "",
   });
+
+  console.log(tool);
 
   const [analysisId, setAnalysisId] = useState(v4());
 
@@ -94,35 +95,6 @@ export function AddTool({
       </Button>
     );
   }, [currentStep, toolName, toolDocString, loading]);
-
-  const footer = useMemo(
-    () => (
-      <div className="flex flex-row items-center">
-        <div className="grow">{currentStep > 0 ? null : createToolBtn}</div>
-        <div className="flex flex-row self-end items-center">
-          <ChevronLeftIcon
-            // onClick={prev}
-            className={twMerge(
-              "w-5 h-5 text-gray-400 cursor-pointer hover:text-gray-800",
-              (currentStep === 0 || !toolDocString || !toolName) &&
-                "cursor-not-allowed hover:text-gray-300"
-            )}
-          />
-          <ChevronRightIcon
-            // onClick={next}
-            className={twMerge(
-              "w-5 h-5 text-gray-400 cursor-pointer hover:text-gray-800",
-              (!toolDocString ||
-                !toolName ||
-                (currentStep === 1 && !tool.code)) &&
-                "cursor-not-allowed hover:text-gray-300"
-            )}
-          />
-        </div>
-      </div>
-    ),
-    [currentStep, toolName, toolDocString, loading]
-  );
 
   const handleChange = useCallback(
     (prop, val) => {
@@ -210,27 +182,6 @@ export function AddTool({
     }
   };
 
-  console.log(testQuestion);
-
-  const input = useMemo(() => {
-    return (
-      tool.code && (
-        <Input
-          placeholder="What should we change?"
-          disabled={loading}
-          rootClassNames="mb-4"
-          onPressEnter={(ev) => {
-            if (!ev.target.value) {
-              messageManager.error("Can't be blank!");
-              return;
-            }
-            handleSubmit(ev.target.value);
-          }}
-        />
-      )
-    );
-  }, [tool, loading]);
-
   const steps = useMemo(() => {
     return [
       {
@@ -256,29 +207,37 @@ export function AddTool({
         title: "Test",
         content: tool.code ? (
           <>
-            <div className="text-sm my-4 text-gray-500 space-y-1">
-              <p>
-                We've created your tool based on the provided name and
-                description and generated an analysis to demonstrate its usage.
-              </p>
-              <p>
-                You can test the tool with a question by typing it in the search
-                box on the right.
-              </p>
-              <p>
-                On the left, you can either edit your tool's code directly, or
-                suggest a change in the search box to generate a new version of
-                your tool.
-              </p>
-              <p>
-                If you changed your mind, go back to the describe step and
-                change the tool's name or description and click "
-                {createToolText}" again.
-              </p>
-              <p>
-                Once you're satisfied, click "Save" to add the tool to your
-                library.
-              </p>
+            <div className="text-sm gap-8 text-gray-500 md:flex md:flex-row-reverse">
+              <ul className="my-4 w-full md:w-1/2 *:my-1">
+                <li className="list-disc">
+                  We've created your tool based on the provided name and
+                  description. You can test the tool with a question by typing
+                  it in the search box on the right.
+                </li>
+                <li className="list-disc">
+                  On the left, you can either edit your tool's code directly, or
+                  suggest a change in the search box to generate a new version
+                  of your tool.
+                </li>
+                <li className="list-disc">
+                  If you changed your mind, go back to the describe step and
+                  change the tool's name or description and click "
+                  {createToolText}" again.
+                </li>
+                <li className="list-disc">
+                  Once you're satisfied, click "Save" to add the tool to your
+                  library.
+                </li>
+              </ul>
+              <div className="grow w-1/2 my-4">
+                <ErrorBoundary>
+                  <ToolFlow
+                    toolName={tool.tool_name}
+                    inputMetadata={tool.input_metadata}
+                    outputMetadata={tool.output_metadata}
+                  />
+                </ErrorBoundary>
+              </div>
             </div>
             <div className="divide-x mb-8 md:h-96 flex flex-row flex-wrap md:flex-nowrap gap-1">
               <div className="w-full overflow-scroll relative px-2 bg-gray-800 md:w-5/12">
@@ -317,8 +276,8 @@ export function AddTool({
                   <Input
                     placeholder={
                       testQuestion
-                        ? "Test with a another question"
-                        : "Test your tool with a question"
+                        ? "Test with a another question. Type here and press Enter."
+                        : "Test your tool with a question. Type here and press Enter."
                     }
                     disabled={loading}
                     onPressEnter={(ev) => {
@@ -390,7 +349,7 @@ export function AddTool({
         ),
       },
     ];
-  }, [tool, loading, input, testQuestion, analysisId]);
+  }, [tool, loading, testQuestion, analysisId]);
 
   return (
     <>

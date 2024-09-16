@@ -1,21 +1,40 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { ToolEditorInput } from "./ToolEditorInput";
-import { Table, Modal } from "@defogdotai/agents-ui-components/core-ui";
-import { CodeBracketSquareIcon } from "@heroicons/react/20/solid";
-import NewToolCodeEditor from "./NewToolCodeEditor";
 
-export function ToolFlow({
-  toolName,
-  testingResults,
-  code,
-  handleCodeChange = (...args) => {},
-  showCode = true,
-}) {
+// Sample input and output metadata:
+// {{
+//   "input_metadata": {{
+//     "input_1": {{
+//         "name": "input_1",
+//         "description": "input 1 description",
+//         "type": "input_1_type",
+//     }},
+//     ...
+// }},
+// "output_metadata": [
+//     {{
+//         "name": "output_1",
+//         "description": "pandas dataframe",
+//         "type": "pandas.core.frame.DataFrame",
+//     }}
+// ],
+// }}
+/**
+ * @typedef {Object} ToolFlowProps
+ * @property {string} toolName - Name of the tool
+ * @property {{[key: string]: {name: string, description: string, type: string}}} inputMetadata - Metadata of the inputs
+ * @property {{name: string, description: string, type: string}[]} outputMetadata - Metadata of the outputs
+ */
+
+/**
+ * Tool flow diagram
+ * @param {ToolFlowProps} props
+ */
+export function ToolFlow({ toolName, inputMetadata, outputMetadata }) {
   const inputsCtr = useRef(null);
   const outputsCtr = useRef(null);
   const toolNameNode = useRef(null);
   const svg = useRef(null);
-  const [activeInput, setActiveInput] = useState(null);
 
   const redraw = useCallback(() => {
     if (
@@ -102,7 +121,7 @@ export function ToolFlow({
 
   useEffect(() => {
     redraw();
-  }, [testingResults]);
+  }, [outputMetadata, inputMetadata]);
 
   useEffect(() => {
     window.addEventListener("resize", redraw);
@@ -111,61 +130,16 @@ export function ToolFlow({
 
   return (
     <>
-      {activeInput && (
-        <Modal
-          open={activeInput}
-          onCancel={() => setActiveInput(null)}
-          footer={null}
-          title={activeInput.type.toUpperCase()}
-        >
-          {activeInput.type === "table" && (
-            <Table
-              rows={activeInput.data}
-              columns={activeInput.columns}
-              skipColumns={["index"]}
-              rootClassNames="w-full h-96 border border-gray-200 px-1"
-            />
-          )}
-          {/* render base64 data of the image using input.data */}
-          {activeInput.type === "image" && (
-            <img
-              src={`data:image/png;base64,${activeInput.data}`}
-              alt="chart"
-            />
-          )}
-          {/* if code, just show a mono div with code inside */}
-          {activeInput.type === "code" && (
-            <>
-              <NewToolCodeEditor
-                editable
-                toolCode={activeInput.code}
-                className="h-96 overflow-auto"
-                onChange={handleCodeChange}
-              />
-            </>
-          )}
-        </Modal>
-      )}
       <div className="flex flex-row items-center justify-between">
         <div className="absolute left-0 right-0 w-full h-full pointer-events-none">
           <svg ref={svg} width={"100%"} height={"100%"} />
         </div>
-        {/* <div className="mb-4 font-bold">Inputs</div> */}
-        <div
-          className="flex flex-col overflow-auto justify-center items-start z-[1]"
-          ref={inputsCtr}
-        >
-          {testingResults.inputs.map((input, i) => (
-            <div
-              className="flex flex-col m-4 rounded-md min-w-20 h-20 border shadow-sm"
-              key={i}
-            >
+        <div className="flex flex-col gap-2 z-[1]" ref={inputsCtr}>
+          {Object.values(inputMetadata).map((input, i) => (
+            <div className="min-w-20 rounded-md border shadow-sm" key={i}>
               <ToolEditorInput
-                input={input}
-                onClick={(inp) =>
-                  setActiveInput({ type: "table", ...inp.parsed })
-                }
-                isTable={input.type.indexOf("DataFrame") > -1}
+                name={input.name}
+                description={input.description}
               />
             </div>
           ))}
@@ -174,50 +148,15 @@ export function ToolFlow({
         <div
           className="font-bold flex flex-row items-center "
           ref={toolNameNode}
-        >
-          <div className="rounded-md bg-blue-500 text-white p-1 px-2 ">
-            {toolName}
-          </div>
-          {showCode && (
-            <CodeBracketSquareIcon
-              className="h-6 w-6 inline-block ml-2 text-blue-200 cursor-pointer hover:text-blue-400 z-[2] bg-white"
-              onClick={() => setActiveInput({ type: "code", code: code })}
-            />
-          )}
-        </div>
+        ></div>
 
-        <div className="flex flex-col" ref={outputsCtr}>
-          {testingResults.outputs.map((output, i) => (
-            <div className="flex flex-row m-4" key={i}>
-              <div className="flex flex-col m-4 min-w-20 h-20 rounded-md border shadow-sm">
-                {output.data && output.parsed && (
-                  <ToolEditorInput
-                    name="Table"
-                    isTable={true}
-                    input={output}
-                    onClick={(out) =>
-                      setActiveInput({ type: "table", ...out.parsed })
-                    }
-                  />
-                )}
-              </div>
-              {output?.chart_images?.length ? (
-                <div className="m-4 w-20 rounded-md border shadow-sm">
-                  {output.chart_images.map((d) => (
-                    <ToolEditorInput
-                      key={d.data}
-                      name="Image"
-                      isImage={true}
-                      input={d}
-                      onClick={(d) => {
-                        setActiveInput({ type: "image", data: d.data });
-                      }}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <></>
-              )}
+        <div className="flex flex-col gap-2" ref={outputsCtr}>
+          {Object.values(outputMetadata).map((output, i) => (
+            <div className="min-w-20 rounded-md border shadow-sm" key={i}>
+              <ToolEditorInput
+                name={output.name}
+                description={output.description}
+              />
             </div>
           ))}
         </div>
