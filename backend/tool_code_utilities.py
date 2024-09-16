@@ -4,7 +4,6 @@
 
 import asyncio
 import yaml
-from defog import Defog
 from defog.query import execute_query
 import re
 import json

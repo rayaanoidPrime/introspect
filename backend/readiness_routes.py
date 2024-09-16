@@ -2,7 +2,6 @@ from fastapi import APIRouter, Request
 import os
 from db_utils import validate_user, get_db_type_creds
 from generic_utils import make_request, get_api_key_from_key_name
-from defog import Defog
 from fastapi.responses import JSONResponse
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
