@@ -39,7 +39,7 @@ async def turn_into_statements(clarification_questions, dfg_api_key):
         "api_key": dfg_api_key,
     }
     r = await make_request(url, data=payload)
-    statements = r.json()["statements"]
+    statements = r["statements"]
     return statements
 
 
@@ -81,12 +81,13 @@ async def get_clarification(question, api_key, dev=False, temp=False):
         data=payload,
     )
 
-    if r.status_code == 200:
-        clarifying_questions = r.json()["clarifications"]
+    try:
+        clarifying_questions = r["clarifications"]
         parsed_clarifying_questions = parse_q(clarifying_questions)
         return parsed_clarifying_questions
-    else:
-        raise Exception(f"Error getting clarifications: {r.status_code}")
+    except Exception as e:
+        print(e)
+        return []
 
 
 class Clarifier:
