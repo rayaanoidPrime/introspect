@@ -242,35 +242,12 @@ async def generate_metadata(request: Request):
     defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
     defog.base_url = DEFOG_BASE_URL
 
-    # ugly hack here for now
-    # need to fix in defog-python later
-    schemas = []
-    for table in tables:
-        if "." in table:
-            if table.split(".")[0] not in schemas:
-                schemas.append(table.split(".")[0])
-        else:
-            if "public" not in schemas:
-                schemas.append("public")
-
-    print(schemas)
-    print(tables)
-
-    if schemas != ["public"] and defog.db_type == "postgres":
-        table_metadata = await asyncio.to_thread(
-            defog.generate_postgres_schema,
-            tables=tables,
-            schemas=schemas,
-            upload=False,
-            scan=False,
-        )
-    else:
-        table_metadata = await asyncio.to_thread(
-            defog.generate_db_schema,
-            tables=tables,
-            upload=False,
-            scan=False,
-        )
+    table_metadata = await asyncio.to_thread(
+        defog.generate_db_schema,
+        tables=tables,
+        upload=False,
+        scan=False,
+    )
 
     md = await make_request(
         f"{DEFOG_BASE_URL}/get_metadata", {"api_key": api_key, "dev": dev}
@@ -418,16 +395,10 @@ async def get_glossary_golden_queries(request: Request):
     else:
         return {"error": "no db creds found"}
 
-    defog = Defog(api_key, db_type, db_creds)
-    defog.base_url = DEFOG_BASE_URL
-
     # get glossary
     url = DEFOG_BASE_URL + "/get_glossary"
     resp = await make_request(url, {"api_key": api_key, "dev": dev})
     resp = resp.get("glossary", {})
-
-    # get golden queries
-    golden_queries = await asyncio.to_thread(defog.get_golden_queries, dev=dev)
 
     # for backwards compatibility
     glossary = resp.get("glossary", "")
@@ -438,6 +409,11 @@ async def get_glossary_golden_queries(request: Request):
     # if `glossary` is non empty and glossary compulsory is empty, set glossary compulsory to glossary
     if glossary_compulsory == "" and glossary != "":
         glossary_compulsory = glossary
+
+    # get golden queries
+    url = DEFOG_BASE_URL + "/get_golden_queries"
+    resp = await make_request(url, {"api_key": api_key, "dev": dev})
+    golden_queries = resp.get("golden_queries", [])
 
     return {
         "glossary_compulsory": glossary_compulsory,
@@ -478,15 +454,15 @@ async def update_glossary(request: Request):
         if glossary_prunable_units:
             glossary_prunable_units = glossary_prunable_units.split("\n")
 
-        defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
-        defog.base_url = DEFOG_BASE_URL
-
-        # update glossary
-        r = await asyncio.to_thread(
-            defog.update_glossary,
-            glossary_compulsory=glossary_compulsory,
-            glossary_prunable_units=glossary_prunable_units,
-            dev=dev,
+        url = DEFOG_BASE_URL + "/update_glossary"
+        r = await make_request(
+            url,
+            {
+                "api_key": api_key,
+                "glossary_compulsory": glossary_compulsory,
+                "glossary_prunable_units": glossary_prunable_units,
+                "dev": dev,
+            },
         )
     else:
         dev = params.get("dev", False)
@@ -506,15 +482,15 @@ async def update_glossary(request: Request):
         if new_instructions:
             glossary_prunable_units += new_instructions.split("\n")
 
-        defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
-        defog.base_url = DEFOG_BASE_URL
-
-        # update glossary
-        r = await asyncio.to_thread(
-            defog.update_glossary,
-            glossary_compulsory=glossary_compulsory,
-            glossary_prunable_units=glossary_prunable_units,
-            dev=dev,
+        url = DEFOG_BASE_URL + "/update_glossary"
+        r = await make_request(
+            url,
+            {
+                "api_key": api_key,
+                "glossary_compulsory": glossary_compulsory,
+                "glossary_prunable_units": glossary_prunable_units,
+                "dev": dev,
+            },
         )
     return r
 
@@ -543,98 +519,22 @@ async def update_golden_queries(request: Request):
     golden_queries = params.get("golden_queries")
     dev = params.get("dev", False)
 
-    defog = Defog(api_key=api_key, db_type=db_type, db_creds=db_creds)
-    defog.base_url = DEFOG_BASE_URL
-
     # first, delete the existing golden queries
-    r = await asyncio.to_thread(
-        defog.delete_golden_queries,
-        all=True,
-        dev=dev,
-    )
+    url = DEFOG_BASE_URL + "/delete_golden_queries"
+    r = await make_request(url, {"api_key": api_key, "dev": dev, "all": True})
 
-    # update golden queries
-    r = await asyncio.to_thread(
-        defog.update_golden_queries, golden_queries=golden_queries, dev=dev, scrub=False
+    # now, update the golden queries
+    url = DEFOG_BASE_URL + "/update_golden_queries"
+    r = await make_request(
+        url,
+        {
+            "api_key": api_key,
+            "golden_queries": golden_queries,
+            "dev": dev,
+            "scrub": False,
+        },
     )
     return r
-
-
-@router.post("/integration/upload_csv")
-async def upload_csv(request: Request):
-    params = await request.json()
-    token = params.get("token")
-    if not validate_user(token):
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-
-    key_name = params.get("key_name", params.get("keyName"))
-    if not key_name:
-        print("No key name found", flush=True)
-        print("Defaulting to first key name", flush=True)
-    api_key = get_api_key_from_key_name(key_name)
-    res = get_db_type_creds(api_key)
-    if res:
-        db_type, db_creds = res
-    else:
-        return {"error": "no db creds found"}
-
-    data = params.get("data", [])
-
-    defog = Defog(
-        api_key=api_key,
-        db_type=db_type,
-        db_creds={
-            "host": "agents-postgres",
-            "port": 5432,
-            "database": "postgres",
-            "user": "postgres",
-            "password": "postgres",
-        },
-    )
-    defog.base_url = DEFOG_BASE_URL
-
-    # save the csv file as a table to the local database
-    save_csv_to_db(
-        table_name="temp_table",
-        data=data,
-    )
-
-    csv = await asyncio.to_thread(
-        defog.generate_db_schema,
-        tables=["temp_table"],
-        upload=True,
-        scan=False,
-        return_format="other",
-    )
-
-    schema_df = pd.read_csv(StringIO(csv))
-    schema_df.dropna(subset=["column_name"], inplace=True)
-    schema_df.fillna("", inplace=True)
-    schema = {}
-    for table_name in schema_df["table_name"].unique():
-        schema[table_name] = schema_df[schema_df["table_name"] == table_name][
-            ["column_name", "data_type", "column_description"]
-        ].to_dict(orient="records")
-
-    resp = await make_request(
-        DEFOG_BASE_URL + "/update_metadata",
-        data={
-            "api_key": api_key,
-            "table_metadata": schema,
-            "db_type": db_type,
-            "temp": True,
-            "dev": False,
-        },
-    )
-
-    print("reached the upload_csv route", flush=True)
-    return resp
 
 
 @router.post("/integration/preview_table")
