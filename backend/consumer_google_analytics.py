@@ -13,7 +13,7 @@ from db_utils import update_imported_tables_db, update_imported_tables
 from generic_utils import make_request
 
 
-rabbitmq_host = os.environ.get("RABBITMQ_HOST", "localhost")
+rabbitmq_host = os.environ.get("RABBITMQ_HOST", "agents-rabbitmq")
 parameters = pika.ConnectionParameters(host=rabbitmq_host)
 connection = pika.BlockingConnection(parameters)
 channel = connection.channel()
@@ -57,13 +57,17 @@ def get_google_analytics_data(
             },
         )
     except Exception as e:
-        LOGGER.error(f"Error in creating Google Analytics source: {str(e)}. Please check that GOOGLE_ANALYTICS_CREDS_PATH and GOOGLE_ANALYTICS_PROPERTY_IDS are set correctly.")
+        LOGGER.error(
+            f"Error in creating Google Analytics source: {str(e)}. Please check that GOOGLE_ANALYTICS_CREDS_PATH and GOOGLE_ANALYTICS_PROPERTY_IDS are set correctly."
+        )
         return {"error": str(e)}
 
     try:
         source.check()
     except Exception as e:
-        LOGGER.error(f"Error in accessing Google Analytics data: {str(e)}. Please check that GOOGLE_ANALYTICS_CREDS_PATH and GOOGLE_ANALYTICS_PROPERTY_IDS are set correctly.")
+        LOGGER.error(
+            f"Error in accessing Google Analytics data: {str(e)}. Please check that GOOGLE_ANALYTICS_CREDS_PATH and GOOGLE_ANALYTICS_PROPERTY_IDS are set correctly."
+        )
         return {"error": str(e)}
 
     cache = ab.get_default_cache()
@@ -168,7 +172,9 @@ async def callback(ch, method, properties, body):
 
         # update imported_tables table entries in internal db
         url = "google_analytics"
-        update_imported_tables(url, table_index, schema_table_name, table_description=None)
+        update_imported_tables(
+            url, table_index, schema_table_name, table_description=None
+        )
 
     # get and update metadata for {api_key}-imported
     try:
