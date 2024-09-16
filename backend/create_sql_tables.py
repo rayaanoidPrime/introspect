@@ -186,8 +186,8 @@ oracle_sources = Table(
     Column("text_summary", Text),
 )
 
-parsed_tables = Table(
-    "parsed_tables",
+imported_tables = Table(
+    "imported_tables",
     metadata,
     Column("table_url", Text, primary_key=True),
     Column("table_position", Integer, primary_key=True),
@@ -233,26 +233,29 @@ def create_postgres_tables():
     # Create tables in the database
     metadata.create_all(engine)
 
-    parsed_tables_db = os.environ.get("PARSED_TABLES_DBNAME", "postgres")
-    if parsed_tables_db == "" or parsed_tables_db is None:
-        parsed_tables_db = "postgres"
-    print(f"Creating database {parsed_tables_db}")
-    # create psycopg2 connection
-    conn = psycopg2.connect(
-        dbname=db_creds["database"],
-        user=db_creds["user"],
-        password=db_creds["password"],
-        host=db_creds["host"],
-        port=db_creds["port"],
-    )
-    conn.autocommit = True
-    try:
-        cur = conn.cursor()
-        cur.execute(f"CREATE DATABASE {parsed_tables_db}")
-        print(f"Created database {parsed_tables_db}")
-    except psycopg2.errors.DuplicateDatabase:
-        print(f"Database {parsed_tables_db} already exists")
-    conn.close()
+    imported_tables_db = os.environ.get("IMPORTED_TABLES_DBNAME", "postgres")
+    if imported_tables_db == "" or imported_tables_db is None:
+        imported_tables_db = "postgres"
+    print("The imported tables db is", imported_tables_db, flush=True)
+    print(f"Creating database {imported_tables_db}")
+    if imported_tables_db != db_creds["database"]:
+        # create a new database if it doesn't exist
+        conn = psycopg2.connect(
+            dbname=imported_tables_db,
+            user=db_creds["user"],
+            password=db_creds["password"],
+            host=db_creds["host"],
+            port=db_creds["port"],
+        )
+        conn.autocommit = True
+        try:
+            cur = conn.cursor()
+            cur.execute(f"CREATE DATABASE {imported_tables_db};")
+            print(f"Created database {imported_tables_db}")
+        except psycopg2.errors.DuplicateDatabase:
+            print(f"Database {imported_tables_db} already exists")
+        cur.close()
+        conn.close()
 
 
 def create_sqlserver_tables():

@@ -1,4 +1,4 @@
-from backend.agents.planner_executor.tools.all_tools import tools
+from agents.planner_executor.tools.all_tools import tools
 from db_utils import add_tool, delete_all_tools
 from generic_utils import DEFOG_API_KEYS
 import os

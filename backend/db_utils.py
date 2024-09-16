@@ -11,27 +11,34 @@ from sqlalchemy import (
     update,
     insert,
     delete,
+    inspect as sql_inspect,
+    Table,
+    MetaData,
 )
+from sqlalchemy.schema import DropTable
 from sqlalchemy.ext.automap import automap_base
+from utils_logging import LOGGER
 
 import asyncio
-from utils import warn_str, YieldList, make_request
+from utils import warn_str, YieldList
+from generic_utils import make_request
 import os
 
 analysis_assets_dir = os.environ.get(
     "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
 )
+INTERNAL_DB = os.environ.get("INTERNAL_DB", None)
+IMPORTED_TABLES_DBNAME = os.environ.get("IMPORTED_TABLES_DBNAME", "imported_tables")
 
-if os.environ.get("INTERNAL_DB") == "sqlite":
+if INTERNAL_DB == "sqlite":
     print("using sqlite as our internal db")
     # if using sqlite
     connection_uri = "sqlite:///defog_local.db"
     engine = create_engine(connection_uri, connect_args={"timeout": 3})
-    parsed_tables_dbname = os.environ.get("PARSED_TABLES_DBNAME", "defog_local")
-    parsed_tables_engine = create_engine(
-        f"sqlite:///{parsed_tables_dbname}.db", connect_args={"timeout": 3}
+    imported_tables_engine = create_engine(
+        f"sqlite:///{IMPORTED_TABLES_DBNAME}.db", connect_args={"timeout": 3}
     )
-elif os.environ.get("INTERNAL_DB") == "postgres":
+elif INTERNAL_DB == "postgres":
     db_creds = {
         "user": os.environ.get("DBUSER", "postgres"),
         "password": os.environ.get("DBPASSWORD", "postgres"),
@@ -44,15 +51,14 @@ elif os.environ.get("INTERNAL_DB") == "postgres":
     print("using postgres as our internal db")
     connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
     engine = create_engine(connection_uri)
-    parsed_tables_dbname = os.environ.get("PARSED_TABLES_DBNAME", "postgres")
-    if parsed_tables_dbname == db_creds["database"]:
+    if IMPORTED_TABLES_DBNAME == db_creds["database"]:
         print(
-            f"PARSED_TABLES_DBNAME is the same as the main database: {parsed_tables_dbname}. Consider use a different database name."
+            f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider use a different database name."
         )
-    parsed_tables_engine = create_engine(
-        f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{parsed_tables_dbname}"
+    imported_tables_engine = create_engine(
+        f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}"
     )
-elif os.environ.get("INTERNAL_DB") == "sqlserver":
+elif INTERNAL_DB == "sqlserver":
     db_creds = {
         "user": os.environ.get("DBUSER", "sa"),
         "password": os.environ.get("DBPASSWORD", "Password1"),
@@ -64,13 +70,13 @@ elif os.environ.get("INTERNAL_DB") == "sqlserver":
     # if using sqlserver
     connection_uri = f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server"
     engine = create_engine(connection_uri)
-    parsed_tables_dbname = os.environ.get("PARSED_TABLES_DBNAME", "defog")
-    if parsed_tables_dbname == db_creds["database"]:
+    
+    if IMPORTED_TABLES_DBNAME == db_creds["database"]:
         print(
-            f"PARSED_TABLES_DBNAME is the same as the main database: {parsed_tables_dbname}. Consider using a different database name."
+            f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider using a different database name."
         )
-    parsed_tables_engine = create_engine(
-        f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{parsed_tables_dbname}?driver=ODBC+Driver+18+for+SQL+Server"
+    imported_tables_engine = create_engine(
+        f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}?driver=ODBC+Driver+18+for+SQL+Server"
     )
 
 Base = automap_base()
@@ -89,16 +95,114 @@ DbCreds = Base.classes.defog_db_creds
 OracleSources = Base.classes.oracle_sources
 OracleClarifications = Base.classes.oracle_clarifications
 OracleReports = Base.classes.oracle_reports
-ParsedTables = Base.classes.parsed_tables
+ImportedTables = Base.classes.imported_tables
 
 
-def save_csv_to_db(table_name, data):
+def update_imported_tables_db(table_name: str, data: list[list[str, str]], schema_name: str) -> bool:
+    """
+    Updates the IMPORTED_TABLES_DBNAME database with the new schema and table.
+    Removes table from IMPORTED_TABLES_DBNAME database if it already exists.
+    data is a list of lists where the first list consists of the column names and the rest are the rows.
+    """
+    with imported_tables_engine.connect() as imported_tables_connection:
+        # create schema in imported_tables db if it doesn't exist
+        try:
+            if INTERNAL_DB == "postgres":
+                create_schema_stmt = f"CREATE SCHEMA IF NOT EXISTS {schema_name};"
+                imported_tables_connection.execute(create_schema_stmt)
+                LOGGER.info(f"Created schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database.")
+            else:
+                LOGGER.error(f"INTERNAL_DB is not postgres. Cannot create schema.")
+                return False
+        except Exception as e:
+            LOGGER.error(f"Error creating schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database: {e}")
+            return False
+
+        # check if table already exists in imported_tables database
+        inspector = sql_inspect(imported_tables_engine)
+        table_exists = inspector.has_table(table_name, schema=schema_name)
+        if table_exists:
+            table = Table(table_name, MetaData(), schema=schema_name)
+            drop_stmt = DropTable(table, if_exists=True)
+            imported_tables_connection.execute(drop_stmt)
+            LOGGER.info(f"Dropped existing table `{table_name}` from {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`.")
+        try:
+            # insert the table into imported_tables database
+            save_csv_to_db(table_name, data, db=IMPORTED_TABLES_DBNAME, schema_name=schema_name) 
+            LOGGER.info(f"Inserted table `{table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`.")
+            return True
+        except Exception as e:
+            LOGGER.error(f"Error inserting table `{table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`: {e}\n Data: {data}")
+            return False
+
+
+def update_imported_tables(url: str, table_index: int, table_name: str, table_description: str) -> bool:
+    """
+    Updates the imported_tables table in the internal database with the table's info.
+    Removes entry from imported_tables of the internal database if it already exists.
+    """
+    with engine.connect() as conn:
+        # check if url and table_index already exist in imported_tables of internal database
+        stmt = select(ImportedTables).where(
+            ImportedTables.table_url == url,
+            ImportedTables.table_position == table_index,
+        )
+        result = conn.execute(stmt)
+        scalar_result = result.scalar()
+
+        if scalar_result is not None:
+            try:
+                # update imported_tables of the internal database
+                update_stmt = (
+                    update(ImportedTables)
+                    .where(
+                        ImportedTables.table_url == url,
+                        ImportedTables.table_position == table_index,
+                    )
+                    .values(
+                        table_name=table_name, table_description=table_description
+                    )
+                )
+                conn.execute(update_stmt)
+                LOGGER.info(f"Updated entry `{table_name}` in imported_tables of the internal database.")
+                return True
+            except Exception as e:
+                LOGGER.error(
+                    f"Error occurred in updating entry `{table_name}` in imported_tables of the internal database.: {e}"
+                )
+                return False
+        else:
+            try:
+                # insert the table's info into imported_tables of the internal database
+                table_data = {
+                    "table_url": url,
+                    "table_position": table_index,
+                    "table_name": table_name,
+                    "table_description": table_description,
+                }
+                stmt = insert(ImportedTables).values(table_data)
+                conn.execute(stmt)
+                LOGGER.info(f"Inserted entry `{table_name}` into imported_tables of the internal database.")
+                return True
+            except Exception as e:
+                LOGGER.error(
+                    f"Error occurred in inserting entry `{table_name}` into imported_tables of the internal database: {e}"
+                )
+                return False
+
+
+def save_csv_to_db(table_name: str, data: list[list[str, str]], db: str = INTERNAL_DB, schema_name: str = None) -> bool:
+    """
+    Saves a csv file to either the internal db or the imported_tables db.
+    data is a list of lists where the first list consists of the column names and the rest are the rows.
+    """
     df = pd.DataFrame(data[1:], columns=data[0])
     if "" in df.columns:
         del df[""]
-    print(df)
+    if db == IMPORTED_TABLES_DBNAME:
+        engine = imported_tables_engine
     try:
-        df.to_sql(table_name, engine, if_exists="replace", index=False)
+        df.to_sql(table_name, engine, if_exists="replace", index=False, schema=schema_name)
         return True
     except Exception as e:
         print(e)
@@ -1098,7 +1202,7 @@ async def add_tool(
         asyncio.create_task(
             make_request(
                 url=f"{os.environ.get('DEFOG_BASE_URL', 'https://api.defog.ai')}/update_tool",
-                payload={
+                data={
                     "api_key": api_key,
                     "tool_name": tool_name,
                     "function_name": function_name,
@@ -1114,7 +1218,6 @@ async def add_tool(
                     "cannot_delete": cannot_delete,
                     "cannot_disable": cannot_disable,
                 },
-                verbose=True,
             )
         )
     except ValueError as e:

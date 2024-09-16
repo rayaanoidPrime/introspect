@@ -5,7 +5,7 @@ from .data_fetching import data_fetcher_and_aggregator, send_email
 
 import inspect
 
-tool_name_dict = tools = {
+tools = {
     "data_fetcher_and_aggregator": {
         "function_name": "data_fetcher_and_aggregator",
         "tool_name": "Fetch data from database",

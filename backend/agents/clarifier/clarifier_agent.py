@@ -7,7 +7,7 @@ import asyncio
 import requests
 import os
 
-from utils import make_request
+from generic_utils import make_request
 
 default_values_formatted = {
     "multi select": [],
@@ -38,8 +38,8 @@ async def turn_into_statements(clarification_questions, dfg_api_key):
         ],
         "api_key": dfg_api_key,
     }
-    r = await make_request(url, payload=payload)
-    statements = r.json()["statements"]
+    r = await make_request(url, data=payload)
+    statements = r["statements"]
     return statements
 
 
@@ -78,15 +78,16 @@ async def get_clarification(question, api_key, dev=False, temp=False):
 
     r = await make_request(
         llm_calls_url,
-        payload=payload,
+        data=payload,
     )
 
-    if r.status_code == 200:
-        clarifying_questions = r.json()["clarifications"]
+    try:
+        clarifying_questions = r["clarifications"]
         parsed_clarifying_questions = parse_q(clarifying_questions)
         return parsed_clarifying_questions
-    else:
-        raise Exception(f"Error getting clarifications: {r.status_code}")
+    except Exception as e:
+        print(e)
+        return []
 
 
 class Clarifier:
@@ -134,7 +135,7 @@ class Clarifier:
                 "clarification_questions": clarification_questions,
                 "api_key": dfg_api_key,
             }
-            r = await asyncio.to_thread(requests.post, url, json=payload)
+            r = await asyncio.to_thread(requests.post, url, json=payload, verify=False)
             statements = r.json()["statements"]
             ret = {"assignment_understanding": statements}
 
@@ -162,7 +163,7 @@ class Clarifier:
                 "temp": self.temp,
             }
             print(payload)
-            r = await asyncio.to_thread(requests.post, url, json=payload)
+            r = await asyncio.to_thread(requests.post, url, json=payload, verify=False)
             res = r.json()
             print(res, flush=True)
             clarifying_questions = res["clarifications"]

@@ -198,7 +198,7 @@ CREATE TABLE IF NOT EXISTS oracle_reports (
 
 -- this table keeps track of the mapping between the table's source url + position
 -- within it and the table's name and description
-CREATE TABLE IF NOT EXISTS parsed_tables (
+CREATE TABLE IF NOT EXISTS imported_tables (
     table_url TEXT,
     table_position INT,
     table_name TEXT,

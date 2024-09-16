@@ -2,7 +2,6 @@ from fastapi import APIRouter, Request
 import os
 from db_utils import validate_user, get_db_type_creds
 from generic_utils import make_request, get_api_key_from_key_name
-from defog import Defog
 from fastapi.responses import JSONResponse
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
@@ -14,7 +13,7 @@ router = APIRouter()
 async def check_basic_readiness(request: Request):
     params = await request.json()
     token = params.get("token")
-    dev = params.get("dev")
+    dev = params.get("dev", False)
     if not validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
@@ -59,7 +58,7 @@ async def check_basic_readiness(request: Request):
 async def check_golden_queries_validity(request: Request):
     params = await request.json()
     token = params.get("token")
-    dev = params.get("dev")
+    dev = params.get("dev", False)
     if not validate_user(token, user_type="admin"):
         return JSONResponse(
             status_code=401,
@@ -79,7 +78,7 @@ async def check_golden_queries_validity(request: Request):
 
     resp = await make_request(
         f"{DEFOG_BASE_URL}/check_gold_queries_valid",
-        json={"api_key": api_key, "db_type": db_type, "dev": dev},
+        data={"api_key": api_key, "db_type": db_type, "dev": dev},
     )
     return resp
 
@@ -103,7 +102,7 @@ async def check_glossary_consistency(request: Request):
 
     resp = await make_request(
         f"{DEFOG_BASE_URL}/check_glossary_consistency",
-        json={"api_key": api_key, "dev": dev},
+        data={"api_key": api_key, "dev": dev},
     )
     return resp
 
@@ -132,6 +131,6 @@ async def check_golden_query_coverage(request: Request):
 
     resp = await make_request(
         f"{DEFOG_BASE_URL}/get_golden_queries_coverage",
-        json={"api_key": api_key, "dev": dev, "db_type": db_type},
+        data={"api_key": api_key, "dev": dev, "db_type": db_type},
     )
     return resp
