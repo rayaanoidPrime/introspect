@@ -51,9 +51,10 @@ const DbCredentialsForm = ({
   };
 
   useEffect(() => {
+    console.log("CALLING");
     const fetchData = async () => {
       if (Object.keys(dbData).length > 0) {
-        console.log(dbData);
+        // console.log(dbData);
         setDbType(dbData.db_type);
         form.setFieldsValue({
           db_type: dbData.db_type,
@@ -65,7 +66,7 @@ const DbCredentialsForm = ({
             dbData.db_type,
             dbData.db_creds
           );
-          console.log("res", res);
+          // console.log("res", res);
           if (res.status === "success") {
             setDbConnectionStatus(true);
             message.success("Database connection validated!");
@@ -133,7 +134,7 @@ const DbCredentialsForm = ({
   };
 
   return (
-    <div className="mx-auto bg-white shadow-md rounded-md p-6 mt-8 w-2/3">
+    <div className="mx-auto bg-white shadow-md rounded-md p-6 mt-8 w-full md:w-2/3">
       <div className="text-2xl mb-4 text-center">
         <DatabaseOutlined className="text-2xl mr-2" />
         Database Credentials

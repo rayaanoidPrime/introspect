@@ -7,7 +7,7 @@ from celery.utils.log import get_task_logger
 from utils_logging import LOG_LEVEL
 from defog.query import execute_query
 from generic_utils import is_sorry, make_request, normalize_sql
-from agents.planner_executor.toolboxes.plots.tools import (
+from agents.planner_executor.tools.plotting import (
     bar_plot,
     line_plot,
     boxplot,

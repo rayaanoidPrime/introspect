@@ -3,8 +3,6 @@ const setupBaseUrl = (protocol, path) => {
     throw new Error("Protocol not supported");
   }
 
-  console.log(process.env.NEXT_PUBLIC_AGENTS_ENDPOINT);
-
   if (path !== "") {
     if (protocol === "ws") {
       return `${(process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "").replace(

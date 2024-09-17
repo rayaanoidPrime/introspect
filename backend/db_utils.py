@@ -88,8 +88,6 @@ Docs = Base.classes.defog_docs
 RecentlyViewedDocs = Base.classes.defog_recently_viewed_docs
 Analyses = Base.classes.defog_analyses
 TableCharts = Base.classes.defog_table_charts
-ToolRuns = Base.classes.defog_tool_runs
-Toolboxes = Base.classes.defog_toolboxes
 Tools = Base.classes.defog_tools
 Users = Base.classes.defog_users
 Feedback = Base.classes.defog_plans_feedback
@@ -382,7 +380,7 @@ async def execute_code(
 
 
 async def initialise_analysis(
-    user_question, token, api_key, custom_id=None, other_data={}
+    user_question, token, api_key, custom_id=None, other_initialisation_details={}
 ):
     username = validate_user(token, get_username=True)
     if not username:
@@ -407,17 +405,22 @@ async def initialise_analysis(
                 "api_key": api_key,
                 "username": username,
             }
-            if other_data is not None and type(other_data) is dict:
-                new_analysis_data.update(other_data)
+            if (
+                other_initialisation_details is not None
+                and type(other_initialisation_details) is dict
+            ):
+                new_analysis_data.update(other_initialisation_details)
 
             conn.execute(insert(Analyses).values(new_analysis_data))
             # if other data has parent_analyses, insert analysis_id into the follow_up_analyses column, which is an array, of all the parent analyses
             if (
-                other_data is not None
-                and type(other_data) is dict
-                and other_data.get("parent_analyses") is not None
+                other_initialisation_details is not None
+                and type(other_initialisation_details) is dict
+                and other_initialisation_details.get("parent_analyses") is not None
             ):
-                for parent_analysis_id in other_data.get("parent_analyses"):
+                for parent_analysis_id in other_initialisation_details.get(
+                    "parent_analyses"
+                ):
                     # get the parent analysis
                     parent_analysis = conn.execute(
                         select(Analyses).where(
@@ -1105,376 +1108,6 @@ async def get_all_analyses(api_key: str):
         return err, analyses
 
 
-async def get_toolboxes(token):
-    username = validate_user(token, get_username=True)
-    if not username:
-        return "Invalid token.", None
-    # table is defog_agent_toolboxes
-    # get all toolboxes available to a user using the username
-    err = None
-    toolboxes = []
-    try:
-        with engine.begin() as conn:
-            rows = conn.execute(
-                select(Toolboxes).where(Toolboxes.username == username)
-            ).fetchall()
-
-            for row in rows:
-                row_dict = row._mapping
-
-                if len(row_dict["toolboxes"]) == 0:
-                    continue
-
-                if row_dict["toolboxes"][0] == "*":
-                    toolboxes = ["data-fetching", "stats", "plots", "cancer-survival"]
-                    break
-
-                else:
-                    toolboxes += row_dict["toolboxes"]
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        err = "Could not fetch toolboxes for the user."
-        toolboxes = []
-    finally:
-        return err, toolboxes
-
-
-async def update_particular_step(analysis_id, tool_run_id, prop, new_val):
-    if tool_run_id is None or prop is None or analysis_id is None:
-        return "Invalid tool run data"
-
-    # get the analyis data
-    with engine.begin() as conn:
-        analysis_data = conn.execute(
-            select(Analyses).where(Analyses.analysis_id == analysis_id)
-        ).fetchone()
-
-        if analysis_data is not None:
-            # copy row mapping
-            analyis = analysis_data._mapping
-            # update the property
-            new_steps = analyis.gen_steps
-            for step in new_steps:
-                if step["tool_run_id"] == tool_run_id:
-                    step[prop] = new_val
-                    break
-
-            # update the row
-            conn.execute(
-                update(Analyses)
-                .where(Analyses.analysis_id == analysis_id)
-                .values(gen_steps=new_steps)
-            )
-
-
-# skip_step_update helps us skip a step update when createing a new step
-# we first run the tool, and only if it runs fully, we create a new step in the analysis.
-async def store_tool_run(analysis_id, step, run_result, skip_step_update=False):
-    try:
-        insert_data = {
-            "analysis_id": analysis_id,
-            "tool_run_id": step["tool_run_id"],
-            "tool_name": step["tool_name"],
-            "step": step,
-            "tool_run_details": {},
-            "outputs": {},
-            "error_message": run_result.get("error_message"),
-            "edited": False,
-        }
-        # store everything but the "outputs" key in tool_run_details
-        for k, v in run_result.items():
-            if k != "outputs":
-                insert_data["tool_run_details"][k] = v
-
-        # we will store chart images right now
-        files_to_store_in_gcs = []
-        # feather files later
-        files_for_rabbitmq_queue = []
-
-        # could have been an error, if so, no outputs
-        if "outputs" in run_result:
-            for i, k in enumerate(step["outputs_storage_keys"]):
-                # if output is a pandas df, convert to csv
-                out = run_result["outputs"][i]
-                data = out.get("data")
-                chart_images = out.get("chart_images")
-                reactive_vars = out.get("reactive_vars")
-                analysis = out.get("analysis")
-
-                insert_data["outputs"][k] = {}
-
-                if data is not None and type(data) == type(pd.DataFrame()):
-                    # save this dataset on local disk in feather format in analysis_dataset_dir/datasets
-                    db_path = step["tool_run_id"] + "_output-" + k + ".feather"
-
-                    # for sending to client, store max 1000 rows
-                    if len(data) > 1000:
-                        print(
-                            warn_str(
-                                "More than 1000 rows in output. Storing full db as feather, but sending only 1000 rows to client."
-                            )
-                        )
-
-                    insert_data["outputs"][k]["data"] = data.head(1000).to_csv(
-                        float_format="%.3f", index=False
-                    )
-
-                    # de-duplicate column names
-                    # if the same column name exists more than once, add a suffix
-                    columns = data.columns.tolist()
-                    seen = {}
-                    for i, item in enumerate(columns):
-                        if item in seen:
-                            columns[i] = f"{item}_{seen[item]}"
-                            seen[item] += 1
-                        else:
-                            seen[item] = 1
-
-                    data.columns = columns
-
-                    # have to reset index for feather to work
-                    data.reset_index(drop=True).to_feather(
-                        analysis_assets_dir + "/datasets/" + db_path
-                    )
-
-                    # also store this in gcs
-                    files_for_rabbitmq_queue.append(
-                        analysis_assets_dir + "/datasets/" + db_path
-                    )
-
-                # check if it has reactive_vars
-                if reactive_vars is not None:
-                    insert_data["outputs"][k]["reactive_vars"] = reactive_vars
-
-                # check if it has chart images
-                if chart_images is not None:
-                    insert_data["outputs"][k]["chart_images"] = chart_images
-                    try:
-                        # i fear some error here someday
-                        files_to_store_in_gcs += [
-                            analysis_assets_dir + "/" + img["path"]
-                            for img in chart_images
-                        ]
-                    except Exception as e:
-                        print(e)
-                        traceback.print_exc()
-                        print("Could not store chart images to gcs")
-
-                # check if it has analysis
-                if analysis is not None and analysis != "":
-                    insert_data["outputs"][k]["analysis"] = analysis
-
-            # add files to rabbitmq queue
-            # if len(files_for_rabbitmq_queue) > 0:
-            #     err = await add_files_to_rabbitmq_queue(files_for_rabbitmq_queue)
-            #     if err is not None:
-            #         print(error_str(err))
-
-            # # store images to gcs now
-            # if len(files_to_store_in_gcs) > 0:
-            #     await store_files_to_gcs(files_to_store_in_gcs)
-
-        with engine.begin() as conn:
-            # first check if this tool run already exists
-            rows = conn.execute(
-                select(ToolRuns).where(ToolRuns.tool_run_id == step["tool_run_id"])
-            ).fetchone()
-            if rows is not None:
-                # update the row
-                conn.execute(
-                    update(ToolRuns)
-                    .where(ToolRuns.tool_run_id == step["tool_run_id"])
-                    .values(insert_data)
-                )
-            else:
-                conn.execute(insert(ToolRuns).values(insert_data))
-
-        if not skip_step_update:
-            # also update the error message in gen_steps in the analyses table
-            await update_particular_step(
-                analysis_id,
-                step["tool_run_id"],
-                "error_message",
-                run_result.get("error_message"),
-            )
-
-        return {"success": True, "tool_run_data": insert_data}
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        print("Could not store tool run")
-        return {"success": False, "error_message": str(e)}
-
-
-async def get_tool_run(tool_run_id):
-    error = None
-    tool_run_data = None
-    try:
-        with engine.begin() as conn:
-            rows = conn.execute(
-                select(ToolRuns).where(ToolRuns.tool_run_id == tool_run_id)
-            ).fetchall()
-
-            if len(rows) == 0:
-                return "Tool run not found", None
-
-            row = rows[0]
-            tool_run_data = row._mapping
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        print("Could not fetch tool run")
-        tool_run_data = None
-        error = str(e)
-    finally:
-        return error, tool_run_data
-
-
-async def update_tool_run_data(analysis_id, tool_run_id, prop, new_val):
-    """
-    Update a single property of a tool run.
-    """
-
-    error = None
-    new_data = None
-
-    # if new_val is a pandas df, only print the shape and columns
-    if type(new_val) == type(pd.DataFrame()):
-        print(
-            "Updating property: ", prop, " with value: ", new_val.shape, new_val.columns
-        )
-    else:
-        print("Updating property: ", prop, " with value: ", new_val)
-
-    try:
-        if tool_run_id is None or prop is None or analysis_id is None:
-            raise Exception("Invalid tool run data")
-
-        with engine.begin() as conn:
-            # get tool run data
-            row = conn.execute(
-                select(ToolRuns).where(ToolRuns.tool_run_id == tool_run_id)
-            ).fetchone()
-            if row is None:
-                error = "Tool run not found"
-                raise Exception(error)
-
-        step = row._mapping.step
-
-        if prop == "sql" or prop == "code_str" or prop == "analysis":
-            # these exist in tool_run_details
-            # copy row mapping
-            tool_run_details = row._mapping.tool_run_details
-            # update the property
-            tool_run_details[prop] = new_val
-            # also set edited to True
-            # update the row
-            with engine.begin() as conn:
-                conn.execute(
-                    update(ToolRuns)
-                    .where(ToolRuns.tool_run_id == tool_run_id)
-                    .values(tool_run_details=tool_run_details, edited=True)
-                )
-        elif prop == "error_message":
-            # update the row
-            # probably after a re run, so set edited to false
-            # tool_run_data also unfortunately has error message in it's "step"
-            new_step = row._mapping.step
-            new_step["error_message"] = new_val
-            with engine.begin() as conn:
-                conn.execute(
-                    update(ToolRuns)
-                    .where(ToolRuns.tool_run_id == tool_run_id)
-                    .values(error_message=new_val, edited=False, step=new_step)
-                )
-            # also remove errors from the steps in the analysis_data
-            await update_particular_step(
-                analysis_id, tool_run_id, "error_message", new_val
-            )
-
-        elif prop == "inputs":
-            # these exist in step
-            # copy row mapping
-            # update the property
-            step[prop] = new_val
-            # also set edited to True
-            # update the row
-            with engine.begin() as conn:
-                conn.execute(
-                    update(ToolRuns)
-                    .where(ToolRuns.tool_run_id == tool_run_id)
-                    .values(step=step, analysis_id=analysis_id, edited=True)
-                )
-            # we should also update this in the defog_analyses table in the gen_steps column
-            await update_particular_step(analysis_id, tool_run_id, "inputs", new_val)
-
-        elif prop == "outputs":
-            files_for_rabbitmq_queue = []
-            # set edited to false because this is most probably after a re run
-            # this will only be called if data_Fetcher was re run with a new sql.
-            # all other tools re runs will use the store_tool_run function.
-            # don't need to check for chart_images or reactive_vars
-            for k in new_val:
-                # update the row
-                # save this dataset on local disk in feather format in analysis_dataset_dir/datasets
-                db_path = step["tool_run_id"] + "_output-" + k + ".feather"
-                data = new_val[k]["data"]
-
-                if data is not None and type(data) == type(pd.DataFrame()):
-                    if len(data) > 1000:
-                        print(
-                            warn_str(
-                                "More than 1000 rows in output. Storing full db as feather, but sending only 1000 rows to client."
-                            )
-                        )
-
-                    # for sending to client, store max 1000 rows
-                    new_val[k]["data"] = data.head(1000).to_csv(
-                        float_format="%.3f", index=False
-                    )
-
-                    # have to reset index for feather to work
-                    data.reset_index(drop=True).to_feather(
-                        analysis_assets_dir + "/datasets/" + db_path
-                    )
-
-                    # also store this in gcs
-
-                    files_for_rabbitmq_queue.append(
-                        analysis_assets_dir + "/datasets/" + db_path
-                    )
-
-            # add files to rabbitmq queue
-            # if len(files_for_rabbitmq_queue) > 0:
-            #     err = await add_files_to_rabbitmq_queue(files_for_rabbitmq_queue)
-            #     if err is not None:
-            #         print(error_str(err))
-
-            with engine.begin() as conn:
-                conn.execute(
-                    update(ToolRuns)
-                    .where(ToolRuns.tool_run_id == tool_run_id)
-                    .values(outputs=new_val, edited=False)
-                )
-
-        with engine.begin() as conn:
-            row = conn.execute(
-                select(ToolRuns).where(ToolRuns.tool_run_id == tool_run_id)
-            ).fetchone()
-
-        if row is not None:
-            new_data = dict(row._mapping)
-
-        return {"success": True, "tool_run_data": new_data}
-    except Exception as e:
-        print(e)
-        traceback.print_exc()
-        print("Could not fetch tool run")
-        error = str(e)
-        return {"success": False, "error_message": str(e)}
-
-
 def get_multiple_analyses(analysis_ids=[], columns=["analysis_id", "user_question"]):
     err = None
     analyses = []
@@ -1544,7 +1177,6 @@ def get_all_tools():
                     "function_name": tool.function_name,
                     "description": tool.description,
                     "code": tool.code,
-                    "toolbox": tool.toolbox,
                     "input_metadata": tool.input_metadata,
                     "output_metadata": tool.output_metadata,
                     "cannot_delete": tool.cannot_delete,
@@ -1566,6 +1198,25 @@ def get_all_tools():
         return err, tools
 
 
+async def check_tool_exists(tool_name):
+    err = None
+    exists = False
+    row = None
+    try:
+        with engine.begin() as conn:
+            row = conn.execute(
+                select(Tools).where(Tools.tool_name == tool_name)
+            ).fetchone()
+            if row:
+                exists = True
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        err = str(e)
+    finally:
+        return err, exists, row
+
+
 async def add_tool(
     api_key,
     tool_name,
@@ -1574,9 +1225,9 @@ async def add_tool(
     code,
     input_metadata,
     output_metadata,
-    toolbox,
     cannot_delete=False,
     cannot_disable=False,
+    replace_if_exists=True,
 ):
     err = None
     try:
@@ -1584,14 +1235,19 @@ async def add_tool(
         # insert into the tools table
         with engine.begin() as conn:
             # first check if it exists
-            row = conn.execute(
-                select(Tools).where(Tools.tool_name == tool_name)
-            ).fetchone()
+            err, exists, existing_tool = await check_tool_exists(tool_name)
+            if err:
+                raise Exception(err)
 
-        # check if latest tool code is same as the code we are trying to insert
         no_changes = False
-        if row:
-            no_changes = row.code == code
+        if exists and existing_tool:
+            # if this exists, and we're allowed to replace the tool
+            # check if latest tool code is same as the code we are trying to insert
+            # if we're not allowed to replace, raise an error
+            if not replace_if_exists:
+                raise ValueError(f"Tool {tool_name} already exists.")
+
+            no_changes = existing_tool.code == code
 
         if no_changes:
             print(f"Tool {tool_name} already exists and no code changes detected.")
@@ -1599,7 +1255,7 @@ async def add_tool(
             print(f"Adding tool {function_name} to local postgres database.")
             with engine.begin() as conn:
                 # delete if exists
-                if row:
+                if existing_tool:
                     conn.execute(delete(Tools).where(Tools.tool_name == tool_name))
 
                 # update with latest
@@ -1610,7 +1266,9 @@ async def add_tool(
                             "function_name": function_name,
                             "description": description,
                             "code": code,
-                            "toolbox": toolbox,
+                            # we don't use toolboxes anymore
+                            # this defaults to None so no need to set it
+                            # "toolbox": toolbox,
                             "input_metadata": input_metadata,
                             "output_metadata": output_metadata,
                             "cannot_delete": cannot_delete,
@@ -1633,7 +1291,9 @@ async def add_tool(
                     "embedding": embedding,
                     "input_metadata": input_metadata,
                     "output_metadata": output_metadata,
-                    "toolbox": toolbox,
+                    # we don't use toolboxes anymore
+                    # this defaults to None so no need to set it
+                    # "toolbox": toolbox,
                     "disabled": False,
                     "cannot_delete": cannot_delete,
                     "cannot_disable": cannot_disable,
@@ -1717,10 +1377,10 @@ async def delete_tool(function_name):
             ).fetchone()
             if rows is None:
                 raise ValueError(f"Tool {function_name} does not exist.")
-            elif rows.cannot_delete:
-                raise ValueError(
-                    f"Tool {function_name} cannot be deleted. Please contact admin."
-                )
+            # elif rows.cannot_delete:
+            #     raise ValueError(
+            #         f"Tool {function_name} cannot be deleted. Please contact admin."
+            #     )
             else:
                 conn.execute(delete(Tools).where(Tools.function_name == function_name))
     except Exception as e:

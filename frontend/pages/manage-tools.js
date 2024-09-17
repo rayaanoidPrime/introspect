@@ -1,15 +1,8 @@
 "use client";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
-import { addTool, toolboxDisplayNames } from "$utils/utils";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { addTool } from "$utils/utils";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import setupBaseUrl from "$utils/setupBaseUrl";
 import {
   MessageManagerContext,
@@ -17,37 +10,43 @@ import {
   Modal,
 } from "@defogdotai/agents-ui-components/core-ui";
 
-import {
-  DefineTool,
-  AddTool,
-} from "@defogdotai/agents-ui-components/tool-editor";
+import { DefineTool } from "$components/tool-editor/DefineTool";
+import { AddTool } from "$components/tool-editor/AddTool";
 
 const toggleDisableToolEndpoint = setupBaseUrl("http", "toggle_disable_tool");
 const deleteToolEndpoint = setupBaseUrl("http", "delete_tool");
 
 export default function ManageTools() {
-  // group tools by "toolbox"
   const [tools, setTools] = useState(null);
   const initialTools = useRef(null);
 
   const messageManager = useContext(MessageManagerContext);
 
-  const [loading, setLoading] = useState(false);
+  const [apiKeyNames, setApiKeyNames] = useState([]);
 
-  const groupedTools = useMemo(() => {
-    if (tools) {
-      // group tools by toolbox
-      const grouped = {};
-      Object.values(tools).forEach((tool) => {
-        if (!grouped[tool.toolbox]) {
-          grouped[tool.toolbox] = {};
-        }
-        grouped[tool.toolbox][tool.function_name] = tool;
-      });
-      return grouped;
+  const getApiKeyNames = async (token) => {
+    const res = await fetch(
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token,
+        }),
+      }
+    );
+    if (!res.ok) {
+      throw new Error(
+        "Failed to get api key names - are you sure your network is working?"
+      );
     }
-    return null;
-  }, [tools]);
+    const data = await res.json();
+    return data.api_key_names;
+  };
+
+  const [loading, setLoading] = useState(false);
 
   const [selectedTool, setSelectedTool] = useState(null);
 
@@ -65,7 +64,10 @@ export default function ManageTools() {
       });
       const data = (await response.json())["tools"];
       initialTools.current = structuredClone(data);
+      const apiKeyNames = await getApiKeyNames();
+
       setTools(data);
+      setApiKeyNames(apiKeyNames);
     }
 
     fetchTools();
@@ -84,7 +86,6 @@ export default function ManageTools() {
         code: tools[selectedTool].code,
         input_metadata: tools[selectedTool].input_metadata,
         output_metadata: tools[selectedTool].output_metadata,
-        toolbox: tools[selectedTool].toolbox,
       });
 
       if (!res.success) {
@@ -92,6 +93,20 @@ export default function ManageTools() {
       } else {
         messageManager.success("Tool updated successfully");
       }
+
+      setTools((prevTools) => {
+        const newTools = { ...prevTools };
+        newTools[selectedTool] = {
+          ...newTools[selectedTool],
+          edited: false,
+        };
+        // also change this in initialTools
+        initialTools.current[selectedTool] = {
+          ...newTools[selectedTool],
+        };
+
+        return newTools;
+      });
     } catch (e) {
       messageManager.error(e);
     } finally {
@@ -103,7 +118,7 @@ export default function ManageTools() {
     <>
       <Meta />
       <Scaffolding id={"add-tools"} userType={"admin"}>
-        {!tools || !groupedTools ? (
+        {!tools ? (
           <div>Fetching your tools...</div>
         ) : (
           <>
@@ -113,21 +128,7 @@ export default function ManageTools() {
               onCancel={(ev) => {
                 setSelectedTool(null);
               }}
-              contentClassNames="z-[5]"
-              footer={
-                tools?.[selectedTool]?.edited ? (
-                  <Button
-                    className="absolute animate-fade-in bottom-10 shadow-md right-10 w-40 text-center rounded-md p-2 cursor-pointer z-[6]"
-                    onClick={handleSave}
-                    disabled={loading}
-                  >
-                    Save
-                  </Button>
-                ) : (
-                  false
-                )
-              }
-              className={"w-10/12 overflow-scroll h-[90%]"}
+              footer={false}
             >
               {selectedTool ? (
                 <div className="relative">
@@ -211,8 +212,7 @@ export default function ManageTools() {
                                 "Content-Type": "application/json",
                               },
                               body: JSON.stringify({
-                                function_name:
-                                  tools[selectedTool].function_name,
+                                tool_name: tools[selectedTool].tool_name,
                               }),
                             }).then((d) => d.json());
 
@@ -268,6 +268,19 @@ export default function ManageTools() {
                       }}
                     />
                   </div>
+                  {tools?.[selectedTool]?.edited ? (
+                    <div className="w-full sticky bottom-10 text-center px-2">
+                      <Button
+                        className="shadow-lg w-40 h-12 text-lg text-white bg-blue-400 border-blue-500 hover:bg-blue-500 hover:text-white"
+                        onClick={handleSave}
+                        disabled={loading}
+                      >
+                        Save
+                      </Button>
+                    </div>
+                  ) : (
+                    false
+                  )}
                 </div>
               ) : (
                 "Please select a tool"
@@ -275,52 +288,34 @@ export default function ManageTools() {
             </Modal>
 
             <div>
-              <h1 className="text-2xl font-bold mb-4">Tool management</h1>
+              <h1 className="text-2xl text-center my-8">Manage tools</h1>
               <div className="tool-list">
-                {Object.keys(groupedTools).map((toolbox) => {
-                  const columns = [
-                    {
-                      title: "tool_name",
-                      dataIndex: 0,
-                    },
-                    { dataIndex: 1, title: "function_name" },
-                  ];
+                {
+                  <div className="flex flex-wrap flex-row mb-10">
+                    {Object.keys(tools).map((tool) => {
+                      return (
+                        <div
+                          className="tool rounded-md mr-3 mb-3 bg-gray-50 border border-gray-400 p-3 w-60 cursor-pointer hover:shadow-md"
+                          key={tool}
+                          onClick={() => setSelectedTool(tool)}
+                        >
+                          <div className="tool-name text-md">
+                            {tools[tool].tool_name}
+                          </div>
+                        </div>
+                      );
+                    })}
 
-                  const rows = Object.keys(groupedTools[toolbox]).map(
-                    (tool) => [tools[tool].tool_name, tools[tool].function_name]
-                  );
-
-                  return (
-                    <div key={toolbox}>
-                      <h1 className="text-md font-bold mb-4">
-                        {toolboxDisplayNames[toolbox]}
-                      </h1>
-                      <div className="toolbox flex flex-wrap flex-row mb-10">
-                        {Object.keys(groupedTools[toolbox]).map((tool) => {
-                          return (
-                            <div
-                              className="tool rounded-md mr-3 mb-3 bg-gray-50 border border-gray-400 p-3 w-60 cursor-pointer hover:shadow-md"
-                              key={tool}
-                              onClick={() => setSelectedTool(tool)}
-                            >
-                              <div className="tool-name text-md">
-                                {tools[tool].tool_name}
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                        <AddTool
-                          toolbox={toolbox}
-                          onAddTool={onAddTool}
-                          apiEndpoint={
-                            process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""
-                          }
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+                    <AddTool
+                      allTools={tools}
+                      onAddTool={onAddTool}
+                      apiEndpoint={
+                        process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""
+                      }
+                      apiKeyNames={apiKeyNames}
+                    />
+                  </div>
+                }
               </div>
             </div>
           </>

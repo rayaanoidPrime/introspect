@@ -1,10 +1,12 @@
 # the executor converts the user's task to steps and maps those steps to tools.
 # also runs those steps
 from copy import deepcopy
+from io import StringIO
 import traceback
 from uuid import uuid4
 
 from colorama import Fore, Style
+from regex import D
 
 from agents.planner_executor.execute_tool import execute_tool
 from agents.clarifier.clarifier_agent import turn_into_statements
@@ -16,7 +18,7 @@ from db_utils import (
     update_assignment_understanding,
 )
 from utils import deduplicate_columns, warn_str, YieldList, add_indent
-from .tool_helpers.toolbox_manager import get_tool_library_prompt
+from .tool_helpers.get_tool_library_prompt import get_tool_library_prompt
 from .tool_helpers.tool_param_types import ListWithDefault
 import asyncio
 import requests
@@ -28,7 +30,7 @@ import os
 
 import logging
 
-logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger("server")
 
 
 # some helper functions for prettier logging
@@ -53,17 +55,17 @@ def reset_indent_level():
 
 def info(msg):
     global indent_level
-    logging.info(add_indent(indent_level) + " " + str(msg))
+    LOGGER.info(add_indent(indent_level) + " " + str(msg))
 
 
 def error(msg):
     global indent_level
-    logging.error(add_indent(indent_level) + " " + str(msg))
+    LOGGER.error(add_indent(indent_level) + " " + str(msg))
 
 
 def warn(msg):
     global indent_level
-    logging.warn(add_indent(indent_level) + " " + str(msg))
+    LOGGER.warn(add_indent(indent_level) + " " + str(msg))
 
 
 # store the outputs of multiple analysis in a global variable
@@ -74,7 +76,6 @@ def warn(msg):
 #   "analysis_id_1": {
 #     "user_question": user_question,
 #     "dfg_api_key": dfg_api_key,
-#     "toolboxes": toolboxes,
 #     "assignment_understanding": assignment_understanding,
 #     "dfg": None,
 #     "llm_calls_url": llm_calls_url,
@@ -231,9 +232,11 @@ async def run_step(
 
         # these retries are only triggered if we get a MissingDependencyException
         # I.e., if the LLM does not give us the right inputs to this step
+        # NOTE and TODO: this does limit a tool to only have, say, 4 dependencies that cause a missing dep error
+        # so if a tool, uses 0-4 global_dict.XXX inputs, this will work
+        # but if it uses 5, it will fail. even though it SHOULD succeed.
         while max_resolve_tries > 0:
             # keep doing till we either resolve the inputs or raise an error while resolving
-            # NOTE: we only decrease the above max_resolve_tries in case of exceptions
             try:
                 # resolve the inputs
                 resolved_inputs = resolve_step_inputs(
@@ -509,7 +512,6 @@ async def prepare_cache(
     analysis_id,
     dfg_api_key,
     user_question,
-    toolboxes=[],
     dev=False,
     temp=False,
 ):
@@ -517,7 +519,6 @@ async def prepare_cache(
     analysis_execution_cache = {}
     analysis_execution_cache["dfg_api_key"] = dfg_api_key
     analysis_execution_cache["user_question"] = user_question
-    analysis_execution_cache["toolboxes"] = toolboxes
     analysis_execution_cache["dev"] = dev
     analysis_execution_cache["temp"] = temp
 
@@ -541,7 +542,6 @@ async def generate_single_step(
     dfg_api_key,
     analysis_id,
     user_question,
-    toolboxes=[],
     dev=False,
     temp=False,
     assignment_understanding="",
@@ -564,12 +564,13 @@ async def generate_single_step(
 
     unique_id = str(uuid4())
 
+    LOGGER.info("Question: " + user_question)
+
     # prepare the cache
     analysis_execution_cache = await prepare_cache(
         analysis_id,
         dfg_api_key,
         user_question,
-        toolboxes,
         dev,
         temp,
     )
@@ -579,7 +580,8 @@ async def generate_single_step(
     # if err:
     #     user_question_context = None
 
-    tool_library_prompt = await get_tool_library_prompt(toolboxes, user_question)
+    # NOTE: we don't need extra_tools here because the extra_tools have already been added to the DB in the calling function
+    tool_library_prompt = await get_tool_library_prompt(user_question)
 
     # make calls to the LLM to get the next step
     llm_server_url = os.environ.get("LLM_SERVER_ENDPOINT", None)
@@ -609,8 +611,44 @@ async def generate_single_step(
         previous_steps
     )
 
-    # TODO: construct using previous steps' outputs
-    next_step_data_description = ""
+    # store number of rows and list of columns for all data in previous steps
+    previous_steps_output_descriptions = {}
+    for step in previous_steps:
+        outputs = step.get("outputs", {})
+        for df_name, out in outputs.items():
+            df_csv = out.get("data", None)
+            try:
+                # try to parse the csv string
+                df = pd.read_csv(StringIO(df_csv))
+                previous_steps_output_descriptions[df_name] = {
+                    "num_rows": len(df),
+                    "columns": list(df.columns),
+                }
+            except Exception as e:
+                warn(f"Could not parse csv for df: {df_name}. Error: {e}")
+                warn(f"Expected csv. Found: {df_csv}")
+                warn(f"This was the full output dict: {out}")
+
+    # if previous_steps_output_descriptions has keys,
+    # create a string from the object
+    if len(previous_steps_output_descriptions.keys()) > 0:
+        previous_steps_output_descriptions = yaml.dump(
+            previous_steps_output_descriptions,
+            default_flow_style=False,
+            sort_keys=False,
+        ).strip()
+
+        previous_steps_output_descriptions = (
+            "Here are the outputs from the previous steps:"
+            + "\n"
+            + "```yaml\n"
+            + previous_steps_output_descriptions
+            + "\n```\n"
+        )
+    else:
+        previous_steps_output_descriptions = ""
+
+    info(f"Previous step output descriptions: \n {previous_steps_output_descriptions}")
 
     info(f"Previous responses: {previous_responses_yaml_for_prompt}")
 
@@ -622,7 +660,7 @@ async def generate_single_step(
             "assignment_understanding"
         ],
         "previous_responses": previous_responses_yaml_for_prompt,
-        "next_step_data_description": next_step_data_description,
+        "next_step_data_description": previous_steps_output_descriptions,
         "api_key": dfg_api_key,
         "plan_id": analysis_id,
         "llm_server_url": llm_server_url,
@@ -702,7 +740,6 @@ async def rerun_step(
     dfg_api_key,
     analysis_id,
     user_question,
-    toolboxes=[],
     dev=False,
     temp=False,
 ):
@@ -723,7 +760,6 @@ async def rerun_step(
         analysis_id,
         dfg_api_key,
         user_question,
-        toolboxes,
         dev,
         temp,
     )
@@ -737,7 +773,7 @@ async def rerun_step(
 
     dependent_steps = find_dependent_steps(step, all_steps)
 
-    logging.info(
+    LOGGER.info(
         f"{len(dependent_steps)} dependent steps found: {[[x['id'], x['tool_name']]for x in dependent_steps]}"
     )
 

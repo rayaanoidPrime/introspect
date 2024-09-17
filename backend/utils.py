@@ -2,12 +2,14 @@ from datetime import datetime
 import inspect
 import re
 import json
-import traceback
 from colorama import Fore, Style
 import httpx
 import os
 
 import pandas as pd
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 
 # custom list class with a overwrite_key attribute
@@ -74,19 +76,19 @@ def warn_str(msg=""):
 
 
 def log_success(msg=""):
-    print(f"{Fore.GREEN}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
+    logging.info(f"{Fore.GREEN}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
 
 
 def log_error(msg=""):
-    print(f"{Fore.RED}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
+    logging.error(f"{Fore.RED}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
 
 
 def log_msg(msg=""):
-    print(f"{Fore.BLUE}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
+    logging.info(f"{Fore.BLUE}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
 
 
 def log_warn(msg=""):
-    print(f"{Fore.YELLOW}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
+    logging.warning(f"{Fore.YELLOW}{Style.BRIGHT}{msg}{Style.RESET_ALL}")
 
 
 simple_tool_types = {

@@ -92,13 +92,6 @@ defog_tool_runs = Table(
     Column("analysis_id", Text),
 )
 
-defog_toolboxes = Table(
-    "defog_toolboxes",
-    metadata,
-    Column("api_key", Text, primary_key=True),
-    Column("username", Text, nullable=False),
-    Column("toolboxes", JSON),
-)
 
 defog_tools = Table(
     "defog_tools",
@@ -109,7 +102,11 @@ defog_tools = Table(
     Column("code", Text, nullable=False),
     Column("input_metadata", JSON),
     Column("output_metadata", JSON),
-    Column("toolbox", Text),
+    # we're moving away from toolboxes
+    # but don't want to cause unnecessary changes to pg tables.
+    # so keeping this here anyway
+    # with a default
+    Column("toolbox", Text, default=None),
     Column("disabled", Boolean, default=False),
     Column("cannot_delete", Boolean, default=False),
     Column("cannot_disable", Boolean, default=False),

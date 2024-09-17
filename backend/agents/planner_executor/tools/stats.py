@@ -6,7 +6,7 @@ from agents.planner_executor.tool_helpers.tool_param_types import (
     ListWithDefault,
 )
 
-from agents.planner_executor.toolboxes.plots.tools import line_plot
+from agents.planner_executor.tools.plotting import line_plot
 
 
 async def t_test(

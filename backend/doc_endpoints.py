@@ -1,19 +1,14 @@
 import datetime
 import os
-from uuid import uuid4
-from colorama import Fore, Style
 import traceback
 
-from fastapi.responses import JSONResponse
-import requests
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Request
-from agents.planner_executor.tool_helpers.rerun_step import rerun_step_and_dependents
 from agents.planner_executor.tool_helpers.core_functions import analyse_data
 import pandas as pd
-from utils import log_msg, snake_case
+from agents.planner_executor.planner_executor_agent import rerun_step
 import logging
 from generic_utils import get_api_key_from_key_name
-from db_utils import execute_code, get_db_type_creds
+from db_utils import get_db_type_creds
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,18 +21,10 @@ from db_utils import (
     get_analysis_versions,
     get_doc_data,
     get_analysis_data,
-    get_tool_run,
-    get_toolboxes,
     store_feedback,
-    store_tool_run,
     toggle_disable_tool,
     update_doc_data,
-    update_analysis_data,
-    update_table_chart_data,
-    get_table_data,
     get_all_analyses,
-    update_tool,
-    update_tool_run_data,
     delete_doc,
     get_all_tools,
 )
@@ -188,29 +175,6 @@ async def get_document(request: Request):
     return {"success": True, "doc_data": doc_data}
 
 
-@router.post("/get_toolboxes")
-async def get_toolboxes_endpoint(request: Request):
-    """
-    Get all toolboxes using the username.
-    """
-    try:
-        data = await request.json()
-        token = data.get("token")
-
-        if token is None or type(token) != str:
-            return {"success": False, "error_message": "Invalid token."}
-
-        err, toolboxes = await get_toolboxes(token)
-        if err:
-            return {"success": False, "error_message": err}
-
-        return {"success": True, "toolboxes": toolboxes}
-    except Exception as e:
-        logging.info("Error getting analyses: " + str(e))
-        traceback.print_exc()
-        return {"success": False, "error_message": "Unable to parse your request."}
-
-
 @router.post("/get_docs")
 async def get_docs(request: Request):
     """
@@ -253,31 +217,6 @@ async def get_analyses(request: Request):
             return {"success": False, "error_message": err}
 
         return {"success": True, "analyses": analyses}
-    except Exception as e:
-        logging.info("Error getting analyses: " + str(e))
-        traceback.print_exc()
-        return {"success": False, "error_message": "Unable to parse your request."}
-
-
-@router.post("/get_tool_run")
-async def get_tool_run_endpoint(request: Request):
-    """
-    Get the tool run using the id passed.
-    """
-    try:
-        data = await request.json()
-        tool_run_id = data.get("tool_run_id")
-        logging.info("getting tool run: " + tool_run_id)
-
-        if tool_run_id is None or type(tool_run_id) != str:
-            return {"success": False, "error_message": "Invalid tool run id."}
-
-        err, tool_run = await get_tool_run(tool_run_id)
-
-        if err:
-            return {"success": False, "error_message": err}
-
-        return {"success": True, "tool_run_data": tool_run}
     except Exception as e:
         logging.info("Error getting analyses: " + str(e))
         traceback.print_exc()
@@ -337,6 +276,93 @@ async def analyse_data_endpoint(websocket: WebSocket):
         await websocket.close()
 
 
+# download csv using step_id and output_storage_key
+@router.post("/download_csv")
+async def download_csv(request: Request):
+    """
+    Download a csv using the step id and output storage key.
+    """
+    try:
+        data = await request.json()
+        step_id = data.get("step_id")
+        output_storage_key = data.get("output_storage_key")
+        analysis_id = data.get("analysis_id")
+        key_name = data.get("key_name")
+        api_key = get_api_key_from_key_name(key_name)
+
+        if step_id is None or type(step_id) != str:
+            return {"success": False, "error_message": "Invalid tool run id."}
+
+        if output_storage_key is None or type(output_storage_key) != str:
+            return {"success": False, "error_message": "Invalid output storage key."}
+
+        if analysis_id is None or type(analysis_id) != str:
+            return {"success": False, "error_message": "Invalid analysis id."}
+
+        # first try to find this file in the file system
+        f_name = step_id + "_output-" + output_storage_key + ".feather"
+        f_path = os.path.join(analysis_assets_dir, "datasets", f_name)
+
+        logging.info("lansdfgljansdl")
+
+        if not os.path.isfile(f_path):
+            logging.info(
+                f"Input {output_storage_key} not found in the file system. Rerunning step: {step_id}"
+            )
+            # re run this step
+            # get steps from db
+            err, analysis_data = get_analysis_data(analysis_id)
+            if err:
+                raise Exception(err)
+
+            # get the steps
+            all_steps = analysis_data.get("gen_steps")
+            if all_steps and all_steps["success"]:
+                all_steps = all_steps["steps"]
+            else:
+                raise Exception("No steps found in analysis data")
+
+            # get the target step
+            target_step = None
+            for step in all_steps:
+                if step["step_id"] == step_id:
+                    target_step = step
+                    break
+
+            if target_step is None:
+                raise Exception("Request step not found in analysis data")
+
+            _ = await rerun_step(
+                step=target_step,
+                all_steps=all_steps,
+                dfg_api_key=api_key,
+                analysis_id=analysis_id,
+                user_question=None,
+                dev=False,
+                temp=False,
+            )
+        else:
+            logging.info(
+                f"Input {output_storage_key} found in the file system. No need to rerun step."
+            )
+
+        # now the file *should* be available
+        df = pd.read_feather(f_path)
+
+        return {
+            "success": True,
+            "step_id": step_id,
+            "output_storage_key": output_storage_key,
+            # get it as a csv string
+            "csv": df.to_csv(index=False),
+        }
+
+    except Exception as e:
+        logging.info("Error downloading csv: " + str(e))
+        traceback.print_exc()
+        return {"success": False, "error_message": str(e)[:300]}
+
+
 @router.post("/delete_doc")
 async def delete_doc_endpoint(request: Request):
     """
@@ -357,92 +383,6 @@ async def delete_doc_endpoint(request: Request):
         return {"success": True}
     except Exception as e:
         logging.info("Error deleting doc: " + str(e))
-        traceback.print_exc()
-        return {"success": False, "error_message": str(e)[:300]}
-
-
-# download csv using tool_run_id and output_storage_key
-@router.post("/download_csv")
-async def download_csv(request: Request):
-    """
-    Download a csv using the tool run id and output storage key.
-    """
-    try:
-        data = await request.json()
-        tool_run_id = data.get("tool_run_id")
-        output_storage_key = data.get("output_storage_key")
-        analysis_id = data.get("analysis_id")
-        key_name = data.get("key_name")
-        api_key = get_api_key_from_key_name(key_name)
-
-        if tool_run_id is None or type(tool_run_id) != str:
-            return {"success": False, "error_message": "Invalid tool run id."}
-
-        if output_storage_key is None or type(output_storage_key) != str:
-            return {"success": False, "error_message": "Invalid output storage key."}
-
-        if analysis_id is None or type(analysis_id) != str:
-            return {"success": False, "error_message": "Invalid analysis id."}
-
-        # first try to find this file in the file system
-        f_name = tool_run_id + "_output-" + output_storage_key + ".feather"
-        f_path = os.path.join(analysis_assets_dir, "datasets", f_name)
-
-        if not os.path.isfile(f_path):
-            log_msg(
-                f"Input {output_storage_key} not found in the file system. Rerunning step: {tool_run_id}"
-            )
-            # re run this step
-            # get steps from db
-            err, analysis_data = get_analysis_data(analysis_id)
-            if err:
-                return {"success": False, "error_message": err}
-
-            global_dict = {
-                "user_question": analysis_data["user_question"],
-                "llm_calls_url": llm_calls_url,
-                "analysis_assets_dir": analysis_assets_dir,
-                "dfg_api_key": api_key,
-            }
-
-            if err:
-                return {"success": False, "error_message": err}
-
-            steps = analysis_data.get("gen_steps")
-            if steps and steps.get("success") and steps.get("steps"):
-                steps = steps["steps"]
-            else:
-                return {"success": False, "error_message": steps["error_message"]}
-
-            async for err, reran_id, new_data in rerun_step_and_dependents(
-                dfg_api_key=api_key,
-                analysis_id=analysis_id,
-                tool_run_id=tool_run_id,
-                steps=steps,
-                global_dict=global_dict,
-            ):
-                # don't need to yield unless there's an error
-                # if error, then bail
-                if err:
-                    return {"success": False, "error_message": err}
-        else:
-            log_msg(
-                f"Input {output_storage_key} found in the file system. No need to rerun step."
-            )
-
-        # now the file *should* be available
-        df = pd.read_feather(f_path)
-
-        return {
-            "success": True,
-            "tool_run_id": tool_run_id,
-            "output_storage_key": output_storage_key,
-            # get it as a csv string
-            "csv": df.to_csv(index=False),
-        }
-
-    except Exception as e:
-        logging.info("Error downloading csv: " + str(e))
         traceback.print_exc()
         return {"success": False, "error_message": str(e)[:300]}
 
@@ -521,7 +461,6 @@ async def add_tool_endpoint(request: Request):
         code = data.get("code")
         input_metadata = data.get("input_metadata")
         output_metadata = data.get("output_metadata")
-        toolbox = data.get("toolbox")
         no_code = data.get("no_code", False)
         key_name = data.get("key_name")
         api_key = get_api_key_from_key_name(key_name)
@@ -555,9 +494,6 @@ async def add_tool_endpoint(request: Request):
         if tool_name is None or type(tool_name) != str or len(tool_name) == 0:
             return {"success": False, "error_message": "Invalid display name."}
 
-        if toolbox is None or type(toolbox) != str or len(toolbox) == 0:
-            return {"success": False, "error_message": "Invalid toolbox."}
-
         if no_code is None or type(no_code) != bool:
             return {"success": False, "error_message": "Invalid no code."}
 
@@ -569,7 +505,6 @@ async def add_tool_endpoint(request: Request):
             code=code,
             input_metadata=input_metadata,
             output_metadata=output_metadata,
-            toolbox=toolbox,
         )
 
         if err:
@@ -683,127 +618,4 @@ async def update_dashboard_data_endpoint(request: Request):
         return {
             "success": False,
             "error_message": "Unable to add analysis to dashboard: " + str(e)[:300],
-        }
-
-
-@router.post("/generate_tool_code")
-async def generate_tool_code_endpoint(request: Request):
-    try:
-        data = await request.json()
-        tool_name = data.get("tool_name")
-        tool_description = data.get("tool_description")
-        user_question = data.get("user_question")
-        current_code = data.get("current_code")
-        key_name = data.get("key_name")
-        api_key = get_api_key_from_key_name(key_name)
-
-        if not tool_name:
-            raise Exception("Invalid parameters.")
-
-        if not user_question or user_question == "":
-            user_question = "Please write the tool code."
-
-        payload = {
-            "request_type": "generate_tool_code",
-            "tool_name": tool_name,
-            "tool_description": tool_description,
-            "user_question": user_question,
-            "current_code": current_code,
-            "api_key": api_key,
-        }
-
-        retries = 0
-        error = None
-        messages = None
-        while retries < 3:
-            try:
-                logging.info(payload)
-                resp = requests.post(
-                    llm_calls_url,
-                    json=payload,
-                    verify=False,
-                ).json()
-
-                # testing code has two functions: generate_sample_inputs and test_tool
-                if resp.get("error_message"):
-                    raise Exception(resp.get("error_message"))
-
-                tool_code = resp["tool_code"]
-                testing_code = resp["testing_code"]
-                messages = resp["messages"]
-
-                print(tool_code)
-                print(testing_code, flush=True)
-
-                # find the function name in tool_code
-                try:
-                    function_name = tool_code.split("def ")[1].split("(")[0]
-                except Exception as e:
-                    logging.error("Error finding function name: " + str(e))
-                    # default to snake case tool name
-                    function_name = snake_case(tool_name)
-                    logging.error(
-                        "Defaulting to snake case tool name: " + function_name
-                    )
-
-                # try running this code
-                err, testing_details, _ = await execute_code(
-                    [tool_code, testing_code], "test_tool"
-                )
-
-                if err:
-                    raise Exception(err)
-
-                # unfortunately testing_details has outputs, and inside of it is another outputs which is returned by the tool :tear:
-                testing_details["outputs"] = testing_details["outputs"]["outputs"]
-
-                # convert inputs to a format we can send back to the user
-                # convert pandas dfs to csvs in both inoputs and outputs
-                for i, input in enumerate(testing_details["inputs"]):
-                    value = input["value"]
-                    if type(value) == pd.DataFrame:
-                        testing_details["inputs"][i]["value"] = value.to_csv(
-                            index=False
-                        )
-
-                for output in testing_details["outputs"]:
-                    output["data"] = output["data"].to_csv(index=False)
-
-                return JSONResponse(
-                    {
-                        "success": True,
-                        "tool_name": tool_name,
-                        "tool_description": tool_description,
-                        "generated_code": tool_code,
-                        "testing_code": testing_code,
-                        "function_name": function_name,
-                        "testing_results": {
-                            "inputs": testing_details["inputs"],
-                            "outputs": testing_details["outputs"],
-                        },
-                    }
-                )
-            except Exception as e:
-                error = str(e)[:300]
-                logging.info("Error generating tool code: " + str(e))
-                traceback.print_exc()
-            finally:
-                if error:
-                    payload = {
-                        "request_type": "fix_tool_code",
-                        "error": error,
-                        "messages": messages,
-                        "api_key": api_key,
-                    }
-                retries += 1
-
-        logging.info("Max retries reached but couldn't generate code.")
-        raise Exception("Max retries exceeded but couldn't generate code.")
-
-    except Exception as e:
-        logging.info("Error generating tool code: " + str(e))
-        traceback.print_exc()
-        return {
-            "success": False,
-            "error_message": "Unable to generate tool code: " + str(e)[:300],
         }

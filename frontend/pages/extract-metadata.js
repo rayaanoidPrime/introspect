@@ -1,14 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
 import DbCredentialsForm from "../components/extract-metadata/DBCredentialsForm";
 import MetadataTable from "../components/extract-metadata/MetadataTable";
 import SetupStatus from "../components/extract-metadata/SetupStatus"; // Adjust the import path as needed
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { Select, Row, Col, Tabs, message } from "antd";
+import { Select, Row, Col, message } from "antd";
 import Scaffolding from "$components/layout/Scaffolding";
-
-const { TabPane } = Tabs;
+import { Tabs } from "@defogdotai/agents-ui-components/core-ui";
 
 const ExtractMetadata = () => {
   const router = useRouter();
@@ -168,6 +167,48 @@ const ExtractMetadata = () => {
     (item) => item.column_description && item.column_description.trim() !== ""
   );
 
+  const tabs = useMemo(() => {
+    return [
+      {
+        name: "Update Database Credentials",
+        content: (
+          <DbCredentialsForm
+            token={token}
+            apiKeyName={apiKeyName}
+            validateDatabaseConnection={validateDatabaseConnection}
+            setDbConnectionStatus={setDbConnectionStatus}
+            dbData={dbData}
+            setDbData={setDbData}
+            setDbCredsUpdatedToggle={setDbCredsUpdatedToggle}
+          />
+        ),
+      },
+      {
+        name: "Extract Metadata",
+        content: (
+          <MetadataTable
+            token={token}
+            apiKeyName={apiKeyName}
+            tablesData={tablesData}
+            metadata={metadata} // Pass metadata as
+            setColumnDescriptionCheck={setColumnDescriptionCheck}
+          />
+        ),
+      },
+    ];
+  }, [
+    token,
+    apiKeyName,
+    validateDatabaseConnection,
+    setDbConnectionStatus,
+    dbData,
+    setDbData,
+    setDbCredsUpdatedToggle,
+    tablesData,
+    metadata,
+    setColumnDescriptionCheck,
+  ]);
+
   return (
     <>
       <Meta />
@@ -200,30 +241,11 @@ const ExtractMetadata = () => {
             />
           </div>
 
-          <Tabs defaultActiveKey="1" className="w-full mt-4">
-            <TabPane tab="Update Database Credentials" key="1">
-              <DbCredentialsForm
-                token={token}
-                apiKeyName={apiKeyName}
-                validateDatabaseConnection={validateDatabaseConnection}
-                setDbConnectionStatus={setDbConnectionStatus}
-                dbData={dbData}
-                setDbData={setDbData}
-                setDbCredsUpdatedToggle={setDbCredsUpdatedToggle}
-              />
-            </TabPane>
-            <TabPane tab="Extract Metadata" key="2">
-              <MetadataTable
-                token={token}
-                user={user}
-                userType={userType}
-                apiKeyName={apiKeyName}
-                tablesData={tablesData}
-                metadata={metadata} // Pass metadata as prop
-                setColumnDescriptionCheck={setColumnDescriptionCheck}
-              />
-            </TabPane>
-          </Tabs>
+          <Tabs
+            rootClassNames="w-full mt-4"
+            tabs={tabs}
+            disableSingleSelect={true}
+          />
         </div>
       </Scaffolding>
     </>
