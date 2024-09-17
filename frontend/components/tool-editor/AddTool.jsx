@@ -272,12 +272,19 @@ export function AddTool({
                     }}
                   ></Input>
                 </div>
-                <NewToolCodeEditor
-                  className="w-full"
-                  editable={!loading}
-                  toolCode={tool.code}
-                  onChange={(v) => handleChange("code", v)}
-                />
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center text-xs text-gray-400">
+                    <SpinningLoader classNames="text-gray-400 mb-2" />
+                    Generating new code
+                  </div>
+                ) : (
+                  <NewToolCodeEditor
+                    className="w-full"
+                    editable={!loading}
+                    toolCode={tool.code}
+                    onChange={(v) => handleChange("code", v)}
+                  />
+                )}
               </div>
               <div
                 className={twMerge(
@@ -360,7 +367,13 @@ export function AddTool({
                   </Setup>
                 ) : (
                   <div className="rounded-3xl w-full h-20 flex items-center justify-center text-sm text-gray-400">
-                    Ask a quesion above to test your tool
+                    {loading ? (
+                      <div className="flex items-center justify-center">
+                        <SpinningLoader classNames="text-gray-400" />
+                      </div>
+                    ) : (
+                      "Ask a quesion above to test your tool"
+                    )}
                   </div>
                 )}
               </div>
@@ -368,6 +381,7 @@ export function AddTool({
             <Button
               className=" px-3 text-white bg-blue-500 border-0 hover:bg-blue-600 hover:text-white"
               onClick={tryAddTool}
+              disabled={loading}
             >
               Save your tool
             </Button>
