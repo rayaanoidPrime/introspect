@@ -356,7 +356,7 @@ async def execute_code(
         return err, out, sandbox
 
 
-def initialise_analysis(
+async def initialise_analysis(
     user_question, token, api_key, custom_id=None, other_initialisation_details={}
 ):
     username = validate_user(token, get_username=True)
