@@ -15,7 +15,6 @@ matplotlib
 mysql-connector-python
 numpy
 pandas
-pandasql
 pdfkit==1.0.0
 pgvector
 pika
