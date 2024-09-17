@@ -16,8 +16,6 @@ services:
     image: rabbitmq:3-alpine
     networks:
       - agents-network
-    ports:
-      - "${RABBITMQ_PORT}:5672"
     volumes:
       - agents-rabbitmq:/var/lib/rabbitmq
     deploy:
@@ -35,7 +33,6 @@ services:
       - DEFOG_GENERATE_URL=${DEFOG_GENERATE_URL:-https://api.defog.ai/generate_query_chat}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ANALYSIS_ASSETS_DIR=${ANALYSIS_ASSETS_DIR}
       - DBHOST=${DEFOG_DBHOST:-agents-postgres}
       - DBPORT=${DEFOG_DBPORT:-5432}
@@ -43,7 +40,7 @@ services:
       - DBUSER=${DEFOG_DBUSER:-postgres}
       - DBPASSWORD=${DEFOG_DBPASSWORD:-postgres}
       - IMPORTED_TABLES_DBNAME=${IMPORTED_TABLES_DBNAME:-imported_tables}
-      - REDIS_INTERNAL_PORT=${REDIS_INTERNAL_PORT}
+      - REDIS_INTERNAL_PORT=${REDIS_INTERNAL_PORT:-6379}
       - PYTHONUNBUFFERED=${PYTHONUNBUFFERED}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LLM_CALLS_URL=${LLM_CALLS_URL}
@@ -57,7 +54,7 @@ services:
       - GOOGLE_ANALYTICS_CREDS_PATH=${GOOGLE_ANALYTICS_CREDS_PATH}
       - GOOGLE_ANALYTICS_PROPERTY_IDS=${GOOGLE_ANALYTICS_PROPERTY_IDS}
       - RABBITMQ_HOST=${RABBITMQ_HOST:-agents-rabbitmq}
-      - RABBITMQ_PORT=${RABBITMQ_PORT}
+      - ORACLE_ENABLED=yes
 
       # Email configuration
       - EMAIL_OPTION=${EMAIL_OPTION:-DEFOG}
@@ -70,8 +67,6 @@ services:
     build:
       context: .
       dockerfile: dockerfile.agents-python-server
-      args:
-        OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
     restart: always
     ports:
       - "1235:1235"
@@ -101,19 +96,17 @@ services:
     image: redis:7-alpine
     networks:
       - agents-network
-    ports:
-      - "${REDIS_EXTERNAL_PORT}:${REDIS_INTERNAL_PORT}"
     deploy:
       resources:
         limits:
           cpus: "1"
-          memory: 256M
+          memory: 128M
     command: >
-      redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+      redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
     environment:
-      - REDIS_MAXMEMORY=256mb
+      - REDIS_MAXMEMORY=128mb
 
 volumes:
   agents-postgres:

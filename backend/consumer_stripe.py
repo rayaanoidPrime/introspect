@@ -19,31 +19,31 @@ from db_utils import (
 from generic_utils import make_request
 
 
-rabbitmq_host = os.environ.get("RABBITMQ_HOST", "agents-rabbitmq")
+rabbitmq_host = os.environ.get("RABBITMQ_HOST", "localhost")
 parameters = pika.ConnectionParameters(host=rabbitmq_host)
 connection = pika.BlockingConnection(parameters)
 channel = connection.channel()
 
 # Declare a queue
-queue_name = "google_analytics"
+queue_name = "stripe"
 channel.queue_declare(queue=queue_name)
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 INTERNAL_DB = os.environ.get("INTERNAL_DB", "postgres")
 STREAMS = [
-    "pages",
-    "traffic_sources",
-    "events_report",
-    "locations",
-    "devices",
-    "daily_active_users",
-    "weekly_active_users",
-    "four_weekly_active_users",
-    "website_overview",
-    "pages_path_report",
-    "demographic_country_report",
-    "demographic_age_report",
-    "tech_browser_report",
+    "customers",
+    "persons",
+    "accounts",
+    "refunds",
+    "charges",
+    "invoices",
+    "payouts",
+    "plans",
+    "prices",
+    "products",
+    "subscriptions",
+    "transactions",
+    "subscription_items",
 ]
 
 # Specify column names to drop from all streams
@@ -51,41 +51,158 @@ COLS_TO_DROP = [
     "_airbyte_raw_id",
     "_airbyte_raw_id",
     "_airbyte_meta",
-    "property_id",
     "_airbyte_extracted_at",
 ]
 # Leave empty to include all columns. Otherwise specify key-value pairs of stream name and list of columns to include.
-COLS_IN_STREAMS = {}
+COLS_IN_STREAMS = {
+    "customers": [
+        "id",
+        "name",
+        "delinquent",
+        "email",
+        "phone",
+        "created",
+        "updated",
+        "address",
+    ],
+    "refunds": [
+        "id",
+        "amount",
+        "charge",
+        "created",
+        "updated",
+        "currency",
+        "reason",
+        "receipt_number",
+        "status",
+    ],
+    "charges": [
+        "id",
+        "failure_message",
+        "status",
+        "currency",
+        "created",
+        "updated",
+        "refunded",
+        "receipt_number",
+        "paid",
+        "invoice",
+        "amount",
+        "customer",
+        "payment_method",
+    ],
+    "invoices": [
+        "id",
+        "created",
+        "updated",
+        "charge",
+        "receipt_number",
+        "attempt_count",
+        "amount_paid",
+        "hosted_invoice_url",
+        "period_start",
+        "period_end",
+        "amount_remaining",
+        "number",
+        "billing_reason",
+        "ending_balance",
+        "attempted",
+        "invoice_pdf",
+        "customer",
+        "amount_due",
+        "currency",
+        "total",
+        "subscription",
+        "total_excluding_tax",
+    ],
+    "payouts": [
+        "id",
+        "amount",
+        "created",
+        "updated",
+        "currency",
+        "status",
+        "arrival_date",
+        "description",
+        "reconciliation_status",
+    ],
+    "prices": [
+        "id",
+        "active",
+        "billing_scheme",
+        "created",
+        "updated",
+        "currency",
+        "product",
+        "type",
+        "unit_amount",
+        "is_deleted",
+    ],
+    "subscriptions": [
+        "id",
+        "start_date",
+        "ended_at",
+        "customer",
+        "status",
+        "created",
+        "updated",
+        "trial_start",
+        "trial_end",
+        "collection_method",
+        "latest_invoice",
+        "items",
+    ],
+}
 
 # Leave empty to keep column names as is. Otherwise specify key-value pairs of stream name and dictionary mapping old column name to new column name.
-RENAMED_COLS = {}
+RENAMED_COLS = {
+    "refunds": {"charge": "charge_id"},
+    "charges": {"customer": "customer_id", "subscription": "subscription_id"},
+    "invoices": {
+        "customer": "customer_id",
+        "subscription": "subscription_id",
+        "charge": "charge_id",
+    },
+    "prices": {"product": "product_id"},
+    "subscriptions": {"customer": "customer_id"},
+}
 
 # Specify names of columns not containing 'date' that should be converted to datetime type
-DATE_COLS = []
+DATE_COLS = [
+    "created",
+    "updated",
+    "period_start",
+    "period_end",
+    "trial_start",
+    "trial_end",
+    "ended_at",
+]
 
 # Specify key-value pairs of stream name and list of columns that are json columns to be converted to dict type
-JSON_COLS = {}
+JSON_COLS = {
+    "customers": ["address"],
+    "subscriptions": ["items"],
+}
 
 
-def get_google_analytics_data(
-    ga_property_ids: list, ga_creds_content: dict, data_start_date: str = "1900-01-01"
+def get_stripe_data(
+    stripe_account_id: str,
+    stripe_client_secret: str,
+    data_start_date: str = "1900-01-01",
 ) -> dict:
     try:
         source = ab.get_source(
-            "source-google-analytics-data-api",
+            "source-stripe",
             install_if_missing=True,
             config={
-                "property_ids": ga_property_ids,
-                "credentials": {
-                    "credentials_json": json.dumps(ga_creds_content),
-                    "auth_type": "Service",
-                },
-                "date_ranges_start_date": data_start_date,
+                "account_id": stripe_account_id,
+                "client_secret": stripe_client_secret,
+                "start_date": data_start_date,
             },
         )
     except Exception as e:
         LOGGER.error(
-            f"Error in creating Google Analytics source: {str(e)}. Please check that GOOGLE_ANALYTICS_CREDS_PATH and GOOGLE_ANALYTICS_PROPERTY_IDS are set correctly."
+            f"Error in creating Stripe source: {str(e)}. Please check that STRIPE_ACCOUNT_ID and STRIPE_CLIENT_SECRET are set correctly."
         )
         return {"error": str(e)}
 
@@ -93,7 +210,7 @@ def get_google_analytics_data(
         source.check()
     except Exception as e:
         LOGGER.error(
-            f"Error in accessing Google Analytics data: {str(e)}. Please check that GOOGLE_ANALYTICS_CREDS_PATH and GOOGLE_ANALYTICS_PROPERTY_IDS are set correctly."
+            f"Error in accessing Stripe data: {str(e)}. Please check that STRIPE_ACCOUNT_ID and STRIPE_CLIENT_SECRET are set correctly."
         )
         return {"error": str(e)}
 
@@ -135,15 +252,15 @@ def sync(f):
 @sync
 async def callback(ch, method, properties, body):
     """
-    Process the get_google_analytics_data queue
+    Process the get_stripe_data queue
     This callback expects the following fields in the payload:
     - api_key: str
-    - ga_property_ids: list
-    - ga_creds_content: dict
+    - stripe_account_id: str
+    - stripe_client_secret: str
     - data_start_date: str
 
     The callback will:
-    - Get Google Analytics data from the relevant streams
+    - Get Stripe data from the relevant streams
     - Drop unnecessary columns from the data
     - Parse the data into a dictionary of CSV strings
     - Update the imported_tables database with the new schema and tables
@@ -153,18 +270,18 @@ async def callback(ch, method, properties, body):
     payload = json.loads(body)
     LOGGER.info(f"Received message")
     api_key = payload["api_key"]
-    ga_property_ids = payload["ga_property_ids"]
-    ga_creds_content = payload["ga_creds_content"]
+    stripe_account_id = payload["stripe_account_id"]
+    stripe_client_secret = payload["stripe_client_secret"]
     data_start_date = payload["data_start_date"]
 
     try:
         ts, timings = time.time(), []
-        csv_dict = get_google_analytics_data(
-            ga_property_ids, ga_creds_content, data_start_date
+        csv_dict = get_stripe_data(
+            stripe_account_id, stripe_client_secret, data_start_date
         )
-        save_and_log(ts, "Retrieved google analytics data", timings)
+        save_and_log(ts, "Retrieved stripe data", timings)
     except Exception as e:
-        LOGGER.error(f"Error in getting Google Analytics data: {str(e)}")
+        LOGGER.error(f"Error in getting Stripe data: {str(e)}")
         ch.basic_ack(delivery_tag=method.delivery_tag)
         return
 
@@ -205,6 +322,32 @@ async def callback(ch, method, properties, body):
                     lambda x: json.loads(x) if pd.notnull(x) else None
                 )
 
+        # create new columns from json columns
+        if table_name == "subscriptions":
+            df["plan_id"] = df["items"].apply(
+                lambda x: x["data"][0]["plan"]["id"] if pd.notnull(x) else None
+            )
+            df["product_id"] = df["items"].apply(
+                lambda x: x["data"][0]["plan"]["product"] if pd.notnull(x) else None
+            )
+            # drop items column
+            df = df.drop(columns=["items"])
+        elif table_name == "customers":
+            df["city"] = df["address"].apply(
+                lambda x: x.get("city", None) if pd.notnull(x) else None
+            )
+            df["country"] = df["address"].apply(
+                lambda x: x.get("country", None) if pd.notnull(x) else None
+            )
+            df["state"] = df["address"].apply(
+                lambda x: x.get("state", None) if pd.notnull(x) else None
+            )
+            df["postal_code"] = df["address"].apply(
+                lambda x: x.get("postal_code", None) if pd.notnull(x) else None
+            )
+            # drop address column
+            df = df.drop(columns=["address"])
+
         # get data types of columns
         data_types = {}
         for col in df.columns:
@@ -241,7 +384,7 @@ async def callback(ch, method, properties, body):
         csv_data.insert(0, df.columns.tolist())
 
         # update imported_tables database with the ga schema and tables
-        schema_name = "ga"
+        schema_name = "stripe"
         update_imported_tables_db(table_name, csv_data, schema_name)
         schema_table_name = f"{schema_name}.{table_name}"
         inserted_tables[schema_table_name] = [
@@ -258,7 +401,7 @@ async def callback(ch, method, properties, body):
             convert_cols_to_jsonb(table_name, jsonb_cols, schema_name)
 
         # update imported_tables table entries in internal db
-        url = "google_analytics"
+        url = "stripe"
         update_imported_tables(
             url, table_index, schema_table_name, table_description=None
         )
@@ -282,7 +425,7 @@ async def callback(ch, method, properties, body):
         )
         if response.get("status") == "success":
             LOGGER.info(
-                f"Updated metadata for api_key {api_key}-imported with google analytics data"
+                f"Updated metadata for api_key {api_key}-imported with stripe data"
             )
         else:
             LOGGER.error(

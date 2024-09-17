@@ -110,11 +110,16 @@ def update_imported_tables_db(
         # create schema in imported_tables db if it doesn't exist
         try:
             if INTERNAL_DB == "postgres":
-                create_schema_stmt = f"CREATE SCHEMA IF NOT EXISTS {schema_name};"
-                imported_tables_connection.execute(create_schema_stmt)
-                LOGGER.info(
-                    f"Created schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database."
-                )
+                # check if schema exists
+                inspector = sql_inspect(imported_tables_engine)
+                schema_names = inspector.get_schema_names()
+                schema_exists = schema_name in schema_names
+                if not schema_exists:
+                    create_schema_stmt = f"CREATE SCHEMA IF NOT EXISTS {schema_name};"
+                    imported_tables_connection.execute(create_schema_stmt)
+                    LOGGER.info(
+                        f"Created schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database."
+                    )
             else:
                 LOGGER.error(f"INTERNAL_DB is not postgres. Cannot create schema.")
                 return False
@@ -148,6 +153,32 @@ def update_imported_tables_db(
                 f"Error inserting table `{table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`: {e}\n Data: {data}"
             )
             return False
+
+
+def convert_cols_to_jsonb(
+    table_name: str, json_cols: list[str], schema_name: str
+) -> bool:
+    """
+    Converts the columns in json_cols to jsonb in the table in the schema of the imported_tables database.
+    """
+    if INTERNAL_DB == "postgres":
+        try:
+            with imported_tables_engine.connect() as imported_tables_connection:
+                for col in json_cols:
+                    stmt = f"ALTER TABLE {schema_name}.{table_name} ALTER COLUMN {col} SET DATA TYPE JSONB USING {col}::JSONB;"
+                    imported_tables_connection.execute(stmt)
+                    LOGGER.info(
+                        f"Converted column `{col}` to jsonb in table `{table_name}` in schema `{schema_name}` of {IMPORTED_TABLES_DBNAME} database."
+                    )
+                return True
+        except Exception as e:
+            LOGGER.error(
+                f"Error converting column `{col}` to jsonb in table `{table_name}` in schema `{schema_name}` of {IMPORTED_TABLES_DBNAME} database: {e}"
+            )
+            return False
+    else:
+        LOGGER.error(f"INTERNAL_DB is not postgres. Cannot convert columns to jsonb.")
+        return False
 
 
 def update_imported_tables(
