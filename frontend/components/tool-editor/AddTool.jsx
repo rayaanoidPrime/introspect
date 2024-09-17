@@ -404,6 +404,7 @@ export function AddTool({
           setModalOpen(false);
         }}
         footer={false}
+        contentClassNames="max-w-[1500px]"
       >
         <h1 className="text-lg font-bold mb-4">Add a custom tool</h1>
 

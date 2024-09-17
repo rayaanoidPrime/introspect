@@ -129,8 +129,6 @@ export default function ManageTools() {
                 setSelectedTool(null);
               }}
               footer={false}
-              contentClassNames="z-[5]"
-              className={"w-10/12 overflow-scroll h-[90%]"}
             >
               {selectedTool ? (
                 <div className="relative">
@@ -271,9 +269,9 @@ export default function ManageTools() {
                     />
                   </div>
                   {tools?.[selectedTool]?.edited ? (
-                    <div className="w-full sticky bottom-0 text-right px-2">
+                    <div className="w-full sticky bottom-10 text-center px-2">
                       <Button
-                        className="ml-auto shadow-lg w-40 rounded-md p-2 cursor-pointer z-[6]"
+                        className="shadow-lg w-40 h-12 text-lg text-white bg-blue-400 border-blue-500 hover:bg-blue-500 hover:text-white"
                         onClick={handleSave}
                         disabled={loading}
                       >
