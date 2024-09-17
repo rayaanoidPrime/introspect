@@ -23,7 +23,7 @@ export function DefineTool({
           type="text"
           disabled={disabled}
           rootClassNames="mb-4 text-gray-600"
-          placeholder="Give your tool a name. Helps the model understand XXX"
+          placeholder="Give your tool a name. This helps the model create a better plan."
           status={toolName ? "" : "error"}
           onChange={(ev) => handleChange("tool_name", ev.target.value)}
           defaultValue={toolName}
@@ -34,7 +34,7 @@ export function DefineTool({
           rootClassNames="mb-4 w-full "
           label="Description"
           disabled={disabled}
-          placeholder="What does this tool do? Helps the model understand XXX"
+          placeholder="What does this tool do? This helps the model create a better plan."
           status={toolDocString ? "" : "error"}
           onChange={(ev) => handleChange("description", ev.target.value)}
           defaultValue={toolDocString}

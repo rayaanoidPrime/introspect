@@ -236,7 +236,7 @@ async def generate_step(request: Request):
             # make sure the extra tools don't already exist in the db
             for tool in extra_tools:
                 tool_name = tool.get("tool_name", "")
-                err, exists = await check_tool_exists(tool_name)
+                err, exists, existing_tool = await check_tool_exists(tool_name)
                 if err or exists:
                     raise Exception(f"Tool with name {tool_name} already exists.")
 
@@ -389,7 +389,7 @@ async def rerun_step_endpoint(request: Request):
         # make sure the extra tools don't already exist in the db
         for tool in extra_tools:
             tool_name = tool.get("tool_name", "")
-            err, exists = await check_tool_exists(tool_name)
+            err, exists, existing_tool = await check_tool_exists(tool_name)
             if err or exists:
                 raise Exception(f"Tool with name {tool_name} already exists.")
 
@@ -561,7 +561,7 @@ async def manually_create_new_step(request: Request):
         # make sure the extra tools don't already exist in the db
         for tool in extra_tools:
             tool_name = tool.get("tool_name", "")
-            err, exists = await check_tool_exists(tool_name)
+            err, exists, existing_tool = await check_tool_exists(tool_name)
             if err or exists:
                 raise Exception(f"Tool with name {tool_name} already exists.")
 
@@ -720,7 +720,7 @@ async def generate_or_edit_tool_code(request: Request):
             user_question = "Please write the tool code."
 
         # if a tool with this tool name already exists, return an error
-        err, exists = await check_tool_exists(tool_name)
+        err, exists, existing_tool = await check_tool_exists(tool_name)
         if exists:
             raise Exception(f"Tool with name {tool_name} already exists.")
 

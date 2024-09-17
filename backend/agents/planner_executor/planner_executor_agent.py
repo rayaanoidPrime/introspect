@@ -1,10 +1,12 @@
 # the executor converts the user's task to steps and maps those steps to tools.
 # also runs those steps
 from copy import deepcopy
+from io import StringIO
 import traceback
 from uuid import uuid4
 
 from colorama import Fore, Style
+from regex import D
 
 from agents.planner_executor.execute_tool import execute_tool
 from agents.clarifier.clarifier_agent import turn_into_statements
@@ -230,9 +232,11 @@ async def run_step(
 
         # these retries are only triggered if we get a MissingDependencyException
         # I.e., if the LLM does not give us the right inputs to this step
+        # NOTE and TODO: this does limit a tool to only have, say, 4 dependencies that cause a missing dep error
+        # so if a tool, uses 0-4 global_dict.XXX inputs, this will work
+        # but if it uses 5, it will fail. even though it SHOULD succeed.
         while max_resolve_tries > 0:
             # keep doing till we either resolve the inputs or raise an error while resolving
-            # NOTE: we only decrease the above max_resolve_tries in case of exceptions
             try:
                 # resolve the inputs
                 resolved_inputs = resolve_step_inputs(
@@ -607,8 +611,44 @@ async def generate_single_step(
         previous_steps
     )
 
-    # TODO: construct using previous steps' outputs
-    next_step_data_description = ""
+    # store number of rows and list of columns for all data in previous steps
+    previous_steps_output_descriptions = {}
+    for step in previous_steps:
+        outputs = step.get("outputs", {})
+        for df_name, out in outputs.items():
+            df_csv = out.get("data", None)
+            try:
+                # try to parse the csv string
+                df = pd.read_csv(StringIO(df_csv))
+                previous_steps_output_descriptions[df_name] = {
+                    "num_rows": len(df),
+                    "columns": list(df.columns),
+                }
+            except Exception as e:
+                warn(f"Could not parse csv for df: {df_name}. Error: {e}")
+                warn(f"Expected csv. Found: {df_csv}")
+                warn(f"This was the full output dict: {out}")
+
+    # if previous_steps_output_descriptions has keys,
+    # create a string from the object
+    if len(previous_steps_output_descriptions.keys()) > 0:
+        previous_steps_output_descriptions = yaml.dump(
+            previous_steps_output_descriptions,
+            default_flow_style=False,
+            sort_keys=False,
+        ).strip()
+
+        previous_steps_output_descriptions = (
+            "Here are the outputs from the previous steps:"
+            + "\n"
+            + "```yaml\n"
+            + previous_steps_output_descriptions
+            + "\n```\n"
+        )
+    else:
+        previous_steps_output_descriptions = ""
+
+    info(f"Previous step output descriptions: \n {previous_steps_output_descriptions}")
 
     info(f"Previous responses: {previous_responses_yaml_for_prompt}")
 
@@ -620,7 +660,7 @@ async def generate_single_step(
             "assignment_understanding"
         ],
         "previous_responses": previous_responses_yaml_for_prompt,
-        "next_step_data_description": next_step_data_description,
+        "next_step_data_description": previous_steps_output_descriptions,
         "api_key": dfg_api_key,
         "plan_id": analysis_id,
         "llm_server_url": llm_server_url,

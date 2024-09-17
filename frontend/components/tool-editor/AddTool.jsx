@@ -264,6 +264,7 @@ export function AddTool({
                     onPressEnter={(ev) => {
                       if (!ev.target.value) {
                         messageManager.error("Suggestion can't be empty");
+                        return;
                       }
 
                       handleSubmit(ev.target.value, true);
@@ -314,6 +315,7 @@ export function AddTool({
                     onPressEnter={(ev) => {
                       if (!ev.target.value) {
                         messageManager.error("Query can't be empty");
+                        return;
                       }
 
                       // create a new analysis id and reset the test question

@@ -70,7 +70,7 @@ elif INTERNAL_DB == "sqlserver":
     # if using sqlserver
     connection_uri = f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server"
     engine = create_engine(connection_uri)
-    
+
     if IMPORTED_TABLES_DBNAME == db_creds["database"]:
         print(
             f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider using a different database name."
@@ -98,7 +98,9 @@ OracleReports = Base.classes.oracle_reports
 ImportedTables = Base.classes.imported_tables
 
 
-def update_imported_tables_db(table_name: str, data: list[list[str, str]], schema_name: str) -> bool:
+def update_imported_tables_db(
+    table_name: str, data: list[list[str, str]], schema_name: str
+) -> bool:
     """
     Updates the IMPORTED_TABLES_DBNAME database with the new schema and table.
     Removes table from IMPORTED_TABLES_DBNAME database if it already exists.
@@ -110,12 +112,16 @@ def update_imported_tables_db(table_name: str, data: list[list[str, str]], schem
             if INTERNAL_DB == "postgres":
                 create_schema_stmt = f"CREATE SCHEMA IF NOT EXISTS {schema_name};"
                 imported_tables_connection.execute(create_schema_stmt)
-                LOGGER.info(f"Created schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database.")
+                LOGGER.info(
+                    f"Created schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database."
+                )
             else:
                 LOGGER.error(f"INTERNAL_DB is not postgres. Cannot create schema.")
                 return False
         except Exception as e:
-            LOGGER.error(f"Error creating schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database: {e}")
+            LOGGER.error(
+                f"Error creating schema `{schema_name}` in {IMPORTED_TABLES_DBNAME} database: {e}"
+            )
             return False
 
         # check if table already exists in imported_tables database
@@ -125,18 +131,28 @@ def update_imported_tables_db(table_name: str, data: list[list[str, str]], schem
             table = Table(table_name, MetaData(), schema=schema_name)
             drop_stmt = DropTable(table, if_exists=True)
             imported_tables_connection.execute(drop_stmt)
-            LOGGER.info(f"Dropped existing table `{table_name}` from {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`.")
+            LOGGER.info(
+                f"Dropped existing table `{table_name}` from {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`."
+            )
         try:
             # insert the table into imported_tables database
-            save_csv_to_db(table_name, data, db=IMPORTED_TABLES_DBNAME, schema_name=schema_name) 
-            LOGGER.info(f"Inserted table `{table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`.")
+            save_csv_to_db(
+                table_name, data, db=IMPORTED_TABLES_DBNAME, schema_name=schema_name
+            )
+            LOGGER.info(
+                f"Inserted table `{table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`."
+            )
             return True
         except Exception as e:
-            LOGGER.error(f"Error inserting table `{table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`: {e}\n Data: {data}")
+            LOGGER.error(
+                f"Error inserting table `{table_name}` into {IMPORTED_TABLES_DBNAME} database, schema `{schema_name}`: {e}\n Data: {data}"
+            )
             return False
 
 
-def update_imported_tables(url: str, table_index: int, table_name: str, table_description: str) -> bool:
+def update_imported_tables(
+    url: str, table_index: int, table_name: str, table_description: str
+) -> bool:
     """
     Updates the imported_tables table in the internal database with the table's info.
     Removes entry from imported_tables of the internal database if it already exists.
@@ -159,12 +175,12 @@ def update_imported_tables(url: str, table_index: int, table_name: str, table_de
                         ImportedTables.table_url == url,
                         ImportedTables.table_position == table_index,
                     )
-                    .values(
-                        table_name=table_name, table_description=table_description
-                    )
+                    .values(table_name=table_name, table_description=table_description)
                 )
                 conn.execute(update_stmt)
-                LOGGER.info(f"Updated entry `{table_name}` in imported_tables of the internal database.")
+                LOGGER.info(
+                    f"Updated entry `{table_name}` in imported_tables of the internal database."
+                )
                 return True
             except Exception as e:
                 LOGGER.error(
@@ -182,7 +198,9 @@ def update_imported_tables(url: str, table_index: int, table_name: str, table_de
                 }
                 stmt = insert(ImportedTables).values(table_data)
                 conn.execute(stmt)
-                LOGGER.info(f"Inserted entry `{table_name}` into imported_tables of the internal database.")
+                LOGGER.info(
+                    f"Inserted entry `{table_name}` into imported_tables of the internal database."
+                )
                 return True
             except Exception as e:
                 LOGGER.error(
@@ -191,7 +209,12 @@ def update_imported_tables(url: str, table_index: int, table_name: str, table_de
                 return False
 
 
-def save_csv_to_db(table_name: str, data: list[list[str, str]], db: str = INTERNAL_DB, schema_name: str = None) -> bool:
+def save_csv_to_db(
+    table_name: str,
+    data: list[list[str, str]],
+    db: str = INTERNAL_DB,
+    schema_name: str = None,
+) -> bool:
     """
     Saves a csv file to either the internal db or the imported_tables db.
     data is a list of lists where the first list consists of the column names and the rest are the rows.
@@ -202,7 +225,9 @@ def save_csv_to_db(table_name: str, data: list[list[str, str]], db: str = INTERN
     if db == IMPORTED_TABLES_DBNAME:
         engine = imported_tables_engine
     try:
-        df.to_sql(table_name, engine, if_exists="replace", index=False, schema=schema_name)
+        df.to_sql(
+            table_name, engine, if_exists="replace", index=False, schema=schema_name
+        )
         return True
     except Exception as e:
         print(e)
@@ -1122,6 +1147,7 @@ def get_all_tools():
 async def check_tool_exists(tool_name):
     err = None
     exists = False
+    row = None
     try:
         with engine.begin() as conn:
             row = conn.execute(
@@ -1134,7 +1160,7 @@ async def check_tool_exists(tool_name):
         traceback.print_exc()
         err = str(e)
     finally:
-        return err, exists
+        return err, exists, row
 
 
 async def add_tool(
@@ -1155,19 +1181,19 @@ async def add_tool(
         # insert into the tools table
         with engine.begin() as conn:
             # first check if it exists
-            err, row = await check_tool_exists(tool_name)
+            err, exists, existing_tool = await check_tool_exists(tool_name)
             if err:
                 raise Exception(err)
 
         no_changes = False
-        if row:
+        if exists and existing_tool:
             # if this exists, and we're allowed to replace the tool
             # check if latest tool code is same as the code we are trying to insert
             # if we're not allowed to replace, raise an error
             if not replace_if_exists:
                 raise ValueError(f"Tool {tool_name} already exists.")
 
-            no_changes = row.code == code
+            no_changes = existing_tool.code == code
 
         if no_changes:
             print(f"Tool {tool_name} already exists and no code changes detected.")
@@ -1175,7 +1201,7 @@ async def add_tool(
             print(f"Adding tool {function_name} to local postgres database.")
             with engine.begin() as conn:
                 # delete if exists
-                if row:
+                if existing_tool:
                     conn.execute(delete(Tools).where(Tools.tool_name == tool_name))
 
                 # update with latest
