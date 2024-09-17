@@ -66,6 +66,7 @@ async def add_user(request: Request):
             "username": user.get("username", user.get("user_email")).lower(),
             "user_type": user.get("user_type", user.get("user_role")).lower(),
             "password": user.get("password", user.get("user_password")),
+            "allowed_dbs": user.get("allowed_dbs", ""),
         }
         userdets.append(dets)
 
@@ -91,7 +92,9 @@ async def add_user(request: Request):
                     update(Users)
                     .where(Users.username == dets["username"])
                     .values(
-                        hashed_password=hashed_password, user_type=dets["user_type"]
+                        hashed_password=hashed_password,
+                        user_type=dets["user_type"],
+                        allowed_dbs=dets["allowed_dbs"],
                     )
                 )
             else:
@@ -101,6 +104,7 @@ async def add_user(request: Request):
                         hashed_password=hashed_password,
                         token=INTERNAL_API_KEY,
                         user_type=dets["user_type"],
+                        allowed_dbs=dets["allowed_dbs"],
                         is_premium=True,
                     )
                 )
@@ -124,7 +128,9 @@ async def get_users(request: Request):
     with engine.begin() as conn:
         users = conn.execute(select(Users)).fetchall()
 
-    users = pd.DataFrame(users)[["username", "user_type"]].to_dict(orient="records")
+    users = pd.DataFrame(users)[["username", "user_type", "allowed_dbs"]].to_dict(
+        orient="records"
+    )
     return {"users": users}
 
 

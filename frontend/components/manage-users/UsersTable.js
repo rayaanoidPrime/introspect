@@ -2,7 +2,13 @@ import { Table, Space, message, Button, Modal, Spin } from "antd";
 import { DeleteOutlined } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
 
-const UsersTable = ({ userDets, context, getUserDets, loading, setLoading }) => {
+const UsersTable = ({
+  userDets,
+  context,
+  getUserDets,
+  loading,
+  setLoading,
+}) => {
   const showDeleteConfirm = (username) => {
     Modal.confirm({
       title: "Are you sure you want to delete this user?",
@@ -40,41 +46,48 @@ const UsersTable = ({ userDets, context, getUserDets, loading, setLoading }) => 
   return (
     <div className="w-4/6 max-h-screen overflow-y-auto mb-4">
       <Spin spinning={loading} tip="Getting Latest Users Data">
-      <Table
-        className="mt-10 border border-gray-200 rounded-lg shadow-lg bg-gray-100"
-        dataSource={userDets}
-        columns={[
-          {
-            title: "User ID",
-            dataIndex: "username",
-            key: "username",
-            width: "33%",
-            align: "center",
-          },
-          {
-            title: "User Type",
-            dataIndex: "user_type",
-            key: "user_type",
-            width: "33%",
-            align: "center",
-          },
-          {
-            title: "Action",
-            key: "delete_user",
-            width: "33%",
-            align: "center",
-            render: (text, record) => (
-              <Space size="middle">
-                <Button
-                  type="default"
-                  icon={<DeleteOutlined />}
-                  onClick={() => showDeleteConfirm(record.username)}
-                />
-              </Space>
-            ),
-          },
-        ]}
-      />
+        <Table
+          className="mt-10 border border-gray-200 rounded-lg shadow-lg bg-gray-100"
+          dataSource={userDets}
+          columns={[
+            {
+              title: "User ID",
+              dataIndex: "username",
+              key: "username",
+              width: "30%",
+              align: "center",
+            },
+            {
+              title: "User Type",
+              dataIndex: "user_type",
+              key: "user_type",
+              width: "30%",
+              align: "center",
+            },
+            {
+              title: "Allowed DBs",
+              dataIndex: "allowed_dbs",
+              key: "allowed_dbs",
+              width: "30%",
+              align: "center",
+            },
+            {
+              title: "Action",
+              key: "delete_user",
+              width: "10%",
+              align: "center",
+              render: (text, record) => (
+                <Space size="middle">
+                  <Button
+                    type="default"
+                    icon={<DeleteOutlined />}
+                    onClick={() => showDeleteConfirm(record.username)}
+                  />
+                </Space>
+              ),
+            },
+          ]}
+        />
       </Spin>
     </div>
   );

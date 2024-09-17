@@ -7,16 +7,46 @@ const { Option } = Select;
 
 const AddUsersViaForm = ({ loading, context, getUserDets }) => {
   const [users, setUsers] = useState([
-    { username: "", password: "", userType: "" },
+    { username: "", password: "", userType: "", userDb: [] },
   ]);
-  const [csvString, setCsvString] = useState("username,password,user_type\n");
+  const [csvString, setCsvString] = useState(
+    "username,password,user_type,allowed_dbs\n"
+  );
+  const [allowedDbs, setAllowedDbs] = useState([]);
+
+  const getApiKeyNames = async () => {
+    const token = localStorage.getItem("defogToken");
+    const res = await fetch(
+      (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+        }),
+      }
+    );
+    if (!res.ok) {
+      throw new Error(
+        "Failed to get api key names - are you sure your network is working?"
+      );
+    }
+    const data = await res.json();
+    setAllowedDbs(data.api_key_names);
+  };
 
   useEffect(() => {
+    getApiKeyNames();
     const csv = users
       .filter((user) => user.username && user.userType)
-      .map((user) => `${user.username},${user.password || ""},${user.userType}`)
+      .map(
+        (user) =>
+          `${user.username},${user.password || ""},${user.userType},${user.userDb.join("|")}`
+      )
       .join("\n");
-    setCsvString(`username,password,user_type\n${csv}`);
+    setCsvString(`username,password,user_type,allowed_dbs\n${csv}`);
   }, [users]);
 
   const handleChange = (index, field, value) => {
@@ -34,7 +64,7 @@ const AddUsersViaForm = ({ loading, context, getUserDets }) => {
     const data = await res.json();
     if (data.status === "success") {
       message.success("Users added successfully! Refreshing the user data...");
-      setUsers([{ username: "", password: "", userType: "" }]); // Clear the form values
+      setUsers([{ username: "", password: "", userType: "", userDb: [] }]); // Clear the form values
     } else {
       message.error("There was an error adding the users. Please try again.");
     }
@@ -60,7 +90,7 @@ const AddUsersViaForm = ({ loading, context, getUserDets }) => {
               label="Username"
               name={`username${index}`}
               required
-              className="w-1/3"
+              className="w-1/4"
             >
               <Input
                 className="border border-gray-200 h-9 rounded-md"
@@ -73,7 +103,7 @@ const AddUsersViaForm = ({ loading, context, getUserDets }) => {
             <Form.Item
               label="Password (leave blank for SSO users)"
               name={`password${index}`}
-              className="w-1/3"
+              className="w-1/4"
             >
               <Input.Password
                 className="h-9"
@@ -87,7 +117,7 @@ const AddUsersViaForm = ({ loading, context, getUserDets }) => {
               label="User Type"
               name={`userType${index}`}
               required
-              className="w-1/3"
+              className="w-1/4"
             >
               <Select
                 value={user.userType}
@@ -98,18 +128,39 @@ const AddUsersViaForm = ({ loading, context, getUserDets }) => {
                 <Option value="general">General</Option>
               </Select>
             </Form.Item>
+            <Form.Item
+              label="Allowed DBs (leave blank for all DBs)"
+              name={`userDbs${index}`}
+              required
+              className="w-1/4"
+            >
+              <Select
+                className="h-9"
+                mode="multiple"
+                onChange={(value) => handleChange(index, "userDb", value)}
+              >
+                {allowedDbs.map((db) => (
+                  <Option key={db} value={db}>
+                    {db}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
           </div>
         ))}
         <Button
           type="dashed"
           onClick={() =>
-            setUsers([...users, { username: "", password: "", userType: "" }])
+            setUsers([
+              ...users,
+              { username: "", password: "", userType: "", userDb: [] },
+            ])
           }
           block
         >
           Add Another User
         </Button>
-        {csvString.trim() !== "username,password,user_type" && (
+        {csvString.trim() !== "username,password,user_type,allowed_dbs" && (
           <Form.Item label="Generated CSV String" className="mt-4">
             <Input.TextArea
               value={csvString}
@@ -124,7 +175,9 @@ const AddUsersViaForm = ({ loading, context, getUserDets }) => {
             type="primary"
             htmlType="submit"
             className="w-1/3 mx-auto block mt-20"
-            disabled={csvString.trim() === "username,password,user_type"}
+            disabled={
+              csvString.trim() === "username,password,user_type,allowed_dbs"
+            }
           >
             Add Users
           </Button>

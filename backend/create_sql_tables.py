@@ -122,10 +122,8 @@ defog_users = Table(
     Column("hashed_password", Text),
     Column("token", Text, nullable=False),
     Column("user_type", Text, nullable=False),
-    Column("csv_tables", Text),
-    Column("is_premium", Boolean),
     Column("created_at", DateTime),
-    Column("is_verified", Boolean),
+    Column("allowed_dbs", Text, nullable=True),
 )
 
 defog_plans_feedback = Table(
@@ -199,6 +197,16 @@ imported_tables = Table(
 )
 
 
+def add_column(engine, table_name, column):
+    """
+    This function explicitly adds a column to a table in the database.
+    This is useful when the table already exists and you want to add a new column to it. For example, when you have released a new feature to Defog that requires that a new column be added to the database.
+    """
+    column_name = column.compile(dialect=engine.dialect)
+    column_type = column.type.compile(engine.dialect)
+    engine.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
+
+
 def create_sqlite_tables():
     """
     Create tables in SQLite database
@@ -235,6 +243,19 @@ def create_postgres_tables():
 
     # Create tables in the database
     metadata.create_all(engine)
+
+    # using sqlalchemy, check if the column `allowed_dbs` exists in the table `defog_users`
+    # if not, add the column
+    column_exists = True
+    with engine.connect() as conn:
+        result = conn.execute(
+            f"SELECT column_name FROM information_schema.columns WHERE table_name = 'defog_users' AND column_name = 'allowed_dbs';"
+        )
+        if not result.fetchone():
+            column_exists = False
+
+    if not column_exists:
+        add_column(engine, "defog_users", Column("allowed_dbs", Text, nullable=True))
 
     # if oracle is enabled, create the oracle database
     if os.environ.get("ORACLE_ENABLED", "no") == "yes":
@@ -285,6 +306,19 @@ def create_sqlserver_tables():
 
     # Create tables in the database
     metadata.create_all(engine)
+
+    # using sqlalchemy, check if the column `allowed_dbs` exists in the table `defog_users`
+    # if not, add the column
+    column_exists = True
+    with engine.connect() as conn:
+        result = conn.execute(
+            f"SELECT column_name FROM information_schema.columns WHERE table_name = 'defog_users' AND column_name = 'allowed_dbs';"
+        )
+        if not result.fetchone():
+            column_exists = False
+
+    if not column_exists:
+        add_column(engine, "defog_users", Column("allowed_dbs", Text, nullable=True))
 
 
 # see from the command line arg if we are creating tables in sqlite or postgres
