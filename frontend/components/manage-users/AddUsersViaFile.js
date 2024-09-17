@@ -112,7 +112,7 @@ const AddUsersViaFile = ({ loading, context, getUserDets }) => {
           label={
             isFileUploaded
               ? ""
-              : "Expected columns in the file: username,password,user_type. For users that must login via SSO, please set the password column to blank."
+              : "Expected columns in the file: username,password,user_type,allowed_dbs. For users that must login via SSO, please set the password column to blank."
           }
         >
           <Upload

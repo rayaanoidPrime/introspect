@@ -13,6 +13,7 @@ from db_utils import (
     get_all_analyses,
     get_analysis_data,
     initialise_analysis,
+    get_user_key_names,
 )
 from generic_utils import get_api_key_from_key_name, make_request
 import integration_routes, query_routes, admin_routes, auth_routes, readiness_routes, csv_routes, feedback_routes, slack_routes, agent_routes, imgo_routes
@@ -190,4 +191,17 @@ async def plan_and_execute(request: Request):
 @app.post("/get_api_key_names")
 async def get_api_key_names(request: Request):
     DEFOG_API_KEY_NAMES = os.environ.get("DEFOG_API_KEY_NAMES")
-    return {"api_key_names": DEFOG_API_KEY_NAMES.split(",")}
+    params = await request.json()
+    token = params.get("token")
+
+    api_key_names = get_user_key_names(token)
+
+    if api_key_names == "Invalid token":
+        return {"error": "Invalid token"}
+
+    if not api_key_names:
+        api_key_names = DEFOG_API_KEY_NAMES.split(",")
+    else:
+        api_key_names = api_key_names.split(",")
+
+    return {"api_key_names": api_key_names}

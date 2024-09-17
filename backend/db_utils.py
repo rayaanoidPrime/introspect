@@ -70,7 +70,7 @@ elif INTERNAL_DB == "sqlserver":
     # if using sqlserver
     connection_uri = f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server"
     engine = create_engine(connection_uri)
-    
+
     if IMPORTED_TABLES_DBNAME == db_creds["database"]:
         print(
             f"IMPORTED_TABLES_DBNAME is the same as the main database: {IMPORTED_TABLES_DBNAME}. Consider using a different database name."
@@ -323,6 +323,29 @@ def validate_user(token, user_type=None, get_username=False):
                 return True
     else:
         return False
+
+
+def get_user_key_names(token):
+    """
+    Returns the key names that a user can access based on their token.
+    If the user is an admin, they can access all the keys.
+    If the user is not an admin, they can only access the keys in their allowed_dbs list.
+    Returning `None` or an empty string means the user can access all keys.
+    Returning "Invalid token" means the token is invalid.
+    """
+    with engine.begin() as conn:
+        user = conn.execute(
+            select(Users).where(Users.hashed_password == token)
+        ).fetchone()
+
+    if not user:
+        return "Invalid token"
+
+    if user.user_type == "admin":
+        return None
+
+    else:
+        return user.allowed_dbs
 
 
 async def execute_code(
