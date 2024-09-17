@@ -2,18 +2,16 @@ from fastapi import APIRouter, Request
 import json
 import os
 from defog import Defog
-from io import StringIO
 from defog.query import execute_query
 import re
-import pandas as pd
 from fastapi.responses import JSONResponse
 from uuid import uuid4
+import sqlparse
 
 from db_utils import (
     validate_user,
     get_db_type_creds,
     update_db_type_creds,
-    save_csv_to_db,
 )
 import asyncio
 from generic_utils import (
@@ -414,6 +412,8 @@ async def get_glossary_golden_queries(request: Request):
     url = DEFOG_BASE_URL + "/get_golden_queries"
     resp = await make_request(url, {"api_key": api_key, "dev": dev})
     golden_queries = resp.get("golden_queries", [])
+    for item in golden_queries:
+        item["sql"] = sqlparse.format(item["sql"], reindent=True, keyword_case="upper")
 
     return {
         "glossary_compulsory": glossary_compulsory,
