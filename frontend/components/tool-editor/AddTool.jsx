@@ -8,6 +8,7 @@ import {
   Input,
   Button,
   SpinningLoader,
+  SingleSelect,
 } from "@defogdotai/agents-ui-components/core-ui";
 
 import NewToolCodeEditor from "./NewToolCodeEditor";
@@ -40,7 +41,7 @@ export function AddTool({
     input_metadata: {},
     output_metadata: [],
     tool_name: "",
-    key_name: apiKeyNames.length ? apiKeyNames[0] : "",
+    key_name: apiKeyNames.length ? apiKeyNames[0] : null,
   });
 
   const [analysisId, setAnalysisId] = useState(v4());
@@ -195,8 +196,20 @@ export function AddTool({
               toolName={toolName}
               handleChange={handleChange}
               toolDocString={tool.description}
-              apiKeyNames={apiKeyNames}
-              hideApiKeyNames={false}
+            />
+            <SingleSelect
+              label="Which database do you want to test this tool on?"
+              disabled={loading}
+              options={apiKeyNames.map((name) => ({
+                label: name,
+                value: name,
+              }))}
+              allowCreateNewOption={false}
+              allowClear={false}
+              rootClassNames="mb-4 text-gray-600"
+              placeholder="Select Database"
+              onChange={(val) => handleChange("key_name", val)}
+              value={tool.key_name}
             />
             {toolDocString && toolName && createToolBtn}
           </div>
@@ -272,10 +285,26 @@ export function AddTool({
               >
                 <div
                   className={twMerge(
-                    "w-full text-sm text-gray-500 sticky top-0 z-50 bg-gray-100 shadow-md pt-2 pb-3 px-6 rounded-b-3xl mb-4 border-b border-gray-400"
+                    "w-full text-sm text-gray-500 sticky top-0 z-50 bg-gray-100 shadow-md pt-2 pb-3 px-6 rounded-b-3xl mb-4 border-b border-gray-400 flex flex-row items-end gap-2"
                   )}
                 >
+                  <SingleSelect
+                    label="Database"
+                    disabled={loading}
+                    options={apiKeyNames.map((name) => ({
+                      label: name,
+                      value: name,
+                    }))}
+                    allowCreateNewOption={false}
+                    allowClear={false}
+                    placeholder="Select Database"
+                    onChange={(val) => handleChange("key_name", val)}
+                    value={tool.key_name}
+                  />
                   <Input
+                    label="Test question"
+                    rootClassNames="grow"
+                    inputClassNames="h-9"
                     placeholder={
                       testQuestion
                         ? "Test with another question. Type here and press Enter."
