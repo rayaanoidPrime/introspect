@@ -76,3 +76,6 @@ backend/bq.json
 
 # oracle reports
 backend/oracle/reports
+
+# package-lock
+frontend/package-lock.json
