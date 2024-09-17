@@ -139,7 +139,12 @@ async def create_analysis(request: Request):
             token=token,
             api_key=api_key,
             custom_id=params.get("custom_id"),
-            other_initialisation_details=params.get("initialisation_details"),
+            other_initialisation_details=params.get(
+                "initialisation_details",
+                params.get(
+                    "other_data",
+                ),
+            ),
         )
 
         if err is not None:
