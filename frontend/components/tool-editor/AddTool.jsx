@@ -119,6 +119,7 @@ export function AddTool({
       if (res.success) {
         messageManager.success("Tool added successfully");
         onAddTool(tool);
+        setModalOpen(false);
       } else {
         messageManager.error(
           "Failed to submit tool" + (res.error_message || "")
