@@ -369,12 +369,12 @@ const MetadataTable = ({
         <span>View and Update Metadata</span>
       </div>
       <Form
-        className="flex flex-row w-full mb-4"
+        className="flex flex-col w-full mb-4"
         form={form}
         onFinish={reIndexTables}
       >
         <Form.Item
-          className="w-3/4"
+          className="w-full"
           label="Select tables"
           name="tables"
           initialValue={selectedTablesForIndexing}
@@ -416,7 +416,7 @@ const MetadataTable = ({
         <Button
           type="dashed"
           htmlType="submit"
-          className="w-1/4 ml-2 bg-white border border-gray-300 text-blue-500 hover:bg-blue-500 hover:text-white"
+          className="w-64 bg-white border border-gray-300 text-blue-500 hover:bg-blue-500 hover:text-white self-center"
         >
           Extract Table Metadata
         </Button>
