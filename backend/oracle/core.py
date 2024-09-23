@@ -34,6 +34,7 @@ TASK_TYPES = [
     OPTIMIZATION,
 ]
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
+PARSED_SCHEMA = "parsed" # schema name to store parsed tables
 # celery requires a different logger object. we can still reuse utils_logging
 # which just assumes a LOGGER object is defined
 LOGGER = get_task_logger(__name__)
@@ -261,9 +262,11 @@ async def gather_context(
     LOGGER.debug("Got the following sources:")
     sources = []
     for source in inputs["sources"]:
-        if "link" in source:
+        if source.startswith("http"):
             source["type"] = "webpage"
-            sources.append(source)
+        elif source.endswith(".pdf"):
+            source["type"] = "pdf"
+        sources.append(source)
         LOGGER.debug(f"{source}")
     json_data = {
         "api_key": api_key,
@@ -327,7 +330,10 @@ async def gather_context(
                 "all_rows": [table["column_names"]] + table["rows"],
                 "previous_text": table.get("previous_text"),
             }
-            table_keys.append((source["link"], i))
+            if table.get("table_page", None):
+                table_keys.append((source["link"], table["table_page"])) # use table page as index if available
+            else:
+                table_keys.append((source["link"], i))
             parse_table_tasks.append(
                 make_request(
                     DEFOG_BASE_URL + "/unstructured_data/infer_table_properties",
@@ -337,7 +343,7 @@ async def gather_context(
     parsed_tables = await asyncio.gather(*parse_table_tasks)
     inserted_tables = {}
     with engine.connect() as connection:
-        for (url, table_index), parsed_table in zip(table_keys, parsed_tables):
+        for (link, table_index), parsed_table in zip(table_keys, parsed_tables):
             try:
                 # input validation
                 if "table_name" not in parsed_table:
@@ -346,28 +352,33 @@ async def gather_context(
                 table_name = parsed_table["table_name"]
                 table_description = parsed_table.get("table_description", None)
                 if "columns" not in parsed_table:
-                    LOGGER.error(f"No columns found in parsed table {table_name}.")
+                    LOGGER.error(f"No columns found in parsed table `{table_name}`.")
                     continue
                 columns = parsed_table["columns"]
                 column_names = [column["column_name"] for column in columns]
                 num_cols = len(columns)
                 if "rows" not in parsed_table:
-                    LOGGER.error(f"No rows found in parsed table {table_name}.")
+                    LOGGER.error(f"No rows found in parsed table `{table_name}`.")
                     continue
                 rows = parsed_table[
                     "rows"
-                ]  # 2D list of data TODO: fix parsing of rows. currently splits on commas even if comma is within the same sentence or there's comma in value e.g. $10,000
+                ]  # 2D list of data TODO: fix parsing of rows in self-hosted: infer_table_properties. currently splits on commas even if comma is within the same sentence or there's comma in value e.g. $10,000
                 data = [column_names] + rows
-                # check if url and table_index already exist in imported_tables table and update if necessary
-                schema_name = "parsed"
-                schema_table_name = f"{schema_name}.{table_name}"
-                update_imported_tables(
-                    url, table_index, schema_table_name, table_description
-                )
+                # check data has correct number of columns passed for each row
+                if not all(len(row) == len(data[0]) for row in data):
+                    LOGGER.error(
+                        f"Unable to insert table `{table_name}.` Data has mismatched number of columns for each row. Header has {len(data[0])} columns: {data[0]}, but data has {len(data[1])} columns: {data[1]}."
+                    )
+                    continue
 
+                schema_table_name = f"{PARSED_SCHEMA}.{table_name}"
                 # create the table and insert the data into imported_tables database, parsed schema
-                update_imported_tables_db(table_name, data, schema_name)
-
+                update_imported_tables_db(link, table_index, table_name, data, PARSED_SCHEMA)
+                # update the imported_tables table in internal db
+                update_imported_tables(
+                    link, table_index, schema_table_name, table_description
+                )    
+                [column.pop("fn", None) for column in columns] # remove "fn" key if present before updating metadata
                 inserted_tables[schema_table_name] = columns
             except Exception as e:
                 LOGGER.error(
@@ -379,7 +390,7 @@ async def gather_context(
         response = await make_request(
             DEFOG_BASE_URL + "/get_metadata", {"api_key": api_key, "imported": True}
         )
-        md = response.get("table_metadata", {})
+        md = response.get("table_metadata", {}) if response else {}
         md.update(inserted_tables)
         response = await make_request(
             DEFOG_BASE_URL + "/update_metadata",
