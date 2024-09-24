@@ -2,8 +2,10 @@
 import React, { useState, useEffect } from "react";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
-import { Toggle } from "@defogdotai/agents-ui-components/core-ui";
-import { Spin } from "antd";
+import {
+  SpinningLoader,
+  Toggle,
+} from "@defogdotai/agents-ui-components/core-ui";
 import { TestDrive } from "$components/TestDrive";
 
 const QueryDataPage = () => {
@@ -75,8 +77,10 @@ const QueryDataPage = () => {
           {/* </div> */}
 
           {token ? (
-            loading ? (
-              <Spin />
+            true ? (
+              <div className="w-full h-full flex justify-center items-center text-gray-400 text-sm">
+                Loading DBs <SpinningLoader classNames="ml-4" />
+              </div>
             ) : (
               <TestDrive
                 token={token}
