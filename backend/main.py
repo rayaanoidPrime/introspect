@@ -2,7 +2,7 @@ import logging
 import os
 import traceback
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from connection_manager import ConnectionManager
 from agents.planner_executor.planner_executor_agent_rest import RESTExecutor

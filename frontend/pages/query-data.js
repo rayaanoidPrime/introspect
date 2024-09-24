@@ -2,8 +2,10 @@
 import React, { useState, useEffect } from "react";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
-import { Toggle } from "@defogdotai/agents-ui-components/core-ui";
-
+import {
+  SpinningLoader,
+  Toggle,
+} from "@defogdotai/agents-ui-components/core-ui";
 import { TestDrive } from "$components/TestDrive";
 
 const QueryDataPage = () => {
@@ -12,8 +14,10 @@ const QueryDataPage = () => {
   const [userType, setUserType] = useState("");
   const [devMode, setDevMode] = useState(false);
   const [apiKeyNames, setApiKeyNames] = useState(["Default DB"]);
+  const [loading, setLoading] = useState(false);
 
   const getApiKeyNames = async (token) => {
+    setLoading(true);
     const res = await fetch(
       (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
       {
@@ -27,12 +31,14 @@ const QueryDataPage = () => {
       }
     );
     if (!res.ok) {
+      setLoading(false);
       throw new Error(
         "Failed to get api key names - are you sure your network is working?"
       );
     }
     const data = await res.json();
     setApiKeyNames(data.api_key_names);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -71,7 +77,11 @@ const QueryDataPage = () => {
           {/* </div> */}
 
           {token ? (
-            <>
+            loading ? (
+              <div className="w-full h-full flex justify-center items-center text-gray-400 text-sm">
+                Loading DBs <SpinningLoader classNames="ml-4" />
+              </div>
+            ) : (
               <TestDrive
                 token={token}
                 devMode={devMode}
@@ -102,7 +112,7 @@ const QueryDataPage = () => {
                   };
                 })}
               />
-            </>
+            )
           ) : null}
         </div>
       </Scaffolding>
