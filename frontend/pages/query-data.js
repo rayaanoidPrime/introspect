@@ -77,7 +77,7 @@ const QueryDataPage = () => {
           {/* </div> */}
 
           {token ? (
-            true ? (
+            loading ? (
               <div className="w-full h-full flex justify-center items-center text-gray-400 text-sm">
                 Loading DBs <SpinningLoader classNames="ml-4" />
               </div>
