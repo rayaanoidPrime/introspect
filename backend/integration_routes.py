@@ -575,7 +575,22 @@ async def update_single_golden_query(request: Request):
     api_key = get_api_key_from_key_name(key_name)
 
     dev = params.get("dev", False)
-    golden_query = params.get("golden_query")
+    question = params.get("question")
+    sql = params.get("sql")
+
+    if question is None:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "question is required"},
+        )
+
+    if sql is None:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "sql is required"},
+        )
+
+    print("Updating golden query for a question", flush=True)
 
     # update the golden query
     url = DEFOG_BASE_URL + "/update_golden_queries"
@@ -583,7 +598,12 @@ async def update_single_golden_query(request: Request):
         url,
         {
             "api_key": api_key,
-            "golden_queries": [golden_query],
+            "golden_queries": [
+                {
+                    "question": question,
+                    "sql": sql,
+                }
+            ],
             "dev": dev,
             "scrub": False,
         },
