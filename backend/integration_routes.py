@@ -558,6 +558,39 @@ async def update_golden_queries(request: Request):
     return r
 
 
+@router.post("/integration/add_single_golden_query")
+async def add_single_golden_query(request: Request):
+    params = await request.json()
+    token = params.get("token")
+    if not validate_user(token, user_type="admin"):
+        return JSONResponse(
+            status_code=401,
+            content={
+                "error": "unauthorized",
+                "message": "Invalid username or password",
+            },
+        )
+
+    key_name = params.get("key_name")
+    api_key = get_api_key_from_key_name(key_name)
+
+    dev = params.get("dev", False)
+    golden_query = params.get("golden_query")
+
+    # update the golden query
+    url = DEFOG_BASE_URL + "/update_golden_queries"
+    r = await make_request(
+        url,
+        {
+            "api_key": api_key,
+            "golden_queries": [golden_query],
+            "dev": dev,
+            "scrub": False,
+        },
+    )
+    return r
+
+
 @router.post("/integration/preview_table")
 async def preview_table(request: Request):
     """
