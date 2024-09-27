@@ -136,11 +136,13 @@ def next_stage(stage: str, task_type: str) -> str:
         return "explore"
     elif stage == "explore":
         if task_type == EXPLORATION:
-            return "export"
+            return "recommendations"
         elif task_type == PREDICTION:
             return "predict"
         elif task_type == OPTIMIZATION:
             return "optimize"
+    elif stage == "recommendations":
+        return "export"
     elif stage == "predict" and task_type == PREDICTION:
         return "export"
     elif stage == "optimize" and task_type == OPTIMIZATION:
@@ -179,6 +181,15 @@ async def execute_stage(
         )
     elif stage == "explore":
         stage_result = await explore_data(
+            api_key=api_key,
+            username=username,
+            report_id=report_id,
+            task_type=task_type,
+            inputs=inputs,
+            outputs=outputs,
+        )
+    elif stage == "recommendations":
+        stage_result = await get_recommendations(
             api_key=api_key,
             username=username,
             report_id=report_id,
@@ -332,7 +343,9 @@ async def gather_context(
                 "previous_text": table.get("previous_text"),
             }
             if table.get("table_page", None):
-                table_keys.append((source["link"], table["table_page"])) # use table page as index if available
+                table_keys.append(
+                    (source["link"], table["table_page"])
+                )  # use table page as index if available
             else:
                 table_keys.append((source["link"], i))
             parse_table_tasks.append(
@@ -374,12 +387,16 @@ async def gather_context(
 
                 schema_table_name = f"{PARSED_SCHEMA}.{table_name}"
                 # create the table and insert the data into imported_tables database, parsed schema
-                update_imported_tables_db(link, table_index, table_name, data, PARSED_SCHEMA)
+                update_imported_tables_db(
+                    link, table_index, table_name, data, PARSED_SCHEMA
+                )
                 # update the imported_tables table in internal db
                 update_imported_tables(
                     link, table_index, schema_table_name, table_description
-                )    
-                [column.pop("fn", None) for column in columns] # remove "fn" key if present before updating metadata
+                )
+                [
+                    column.pop("fn", None) for column in columns
+                ]  # remove "fn" key if present before updating metadata
                 inserted_tables[schema_table_name] = columns
             except Exception as e:
                 LOGGER.error(
@@ -451,6 +468,17 @@ async def gather_context(
     LOGGER.debug(f"Context gathered for report {report_id}:\n{combined_summary}")
     save_and_log(ts, "Combined summary", timings)
     return combined_summary
+
+
+async def get_recommendations(
+    api_key: str,
+    username: str,
+    report_id: str,
+    task_type: str,
+    inputs: Dict[str, Any],
+    outputs: Dict[str, Any],
+):
+    pass
 
 
 async def predict(
