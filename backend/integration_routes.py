@@ -558,8 +558,8 @@ async def update_golden_queries(request: Request):
     return r
 
 
-@router.post("/integration/add_single_golden_query")
-async def add_single_golden_query(request: Request):
+@router.post("/integration/update_single_golden_query")
+async def update_single_golden_query(request: Request):
     params = await request.json()
     token = params.get("token")
     if not validate_user(token, user_type="admin"):
