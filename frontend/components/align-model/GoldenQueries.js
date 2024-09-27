@@ -6,7 +6,7 @@ import AddQueryModal from "./AddQueryModal";
 import setupBaseUrl from "$utils/setupBaseUrl";
 
 const GoldenQueries = ({
-  token, 
+  token,
   apiKeyName,
   goldenQueries,
   setGoldenQueries,
@@ -20,7 +20,7 @@ const GoldenQueries = ({
   // add new question and query modal state
   const [isModalVisible, setIsModalVisible] = useState(false);
 
-  // states for the new question and query 
+  // states for the new question and query
   const [newQuestion, setNewQuestion] = useState("");
   const [newSql, setNewSql] = useState("");
   // states for the results from running the new query
@@ -143,40 +143,38 @@ const GoldenQueries = ({
       ),
     },
   ];
-// Generate and execute SQL query given a question
-const generateAndExecuteQuery = async (question) => {
-  try {
-    const response = await fetch(setupBaseUrl("http", `query`), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        token: token,
-        key_name: apiKeyName,
-        question: question,
-        previous_context: [],
-        dev_body: false,
-        ignore_cache: true,
-      }),
-    });
+  // Generate and execute SQL query given a question
+  const generateAndExecuteQuery = async (question) => {
+    try {
+      const response = await fetch(setupBaseUrl("http", `query`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token,
+          key_name: apiKeyName,
+          question: question,
+          previous_context: [],
+          dev_body: false,
+          ignore_cache: true,
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch data from server');
+      if (!response.ok) {
+        throw new Error("Failed to fetch data from server");
+      }
+
+      const data = await response.json();
+
+      setNewColumns(data.columns || []);
+      setNewData(data.data || []);
+      return data.query_generated || "";
+    } catch (error) {
+      console.error("Error generating and executing query:", error);
+      return "";
     }
-
-    const data = await response.json();
-
-    setNewColumns(data.columns || []);
-    setNewData(data.data || []);
-    return data.query_generated || "";
-
-  } catch (error) {
-    console.error("Error generating and executing query:", error);
-    return "";
-  }
-};
-
+  };
 
   return (
     <div className="w-full p-4 mb-4">
@@ -199,7 +197,7 @@ const generateAndExecuteQuery = async (question) => {
             columns={columns}
             dataSource={goldenQueries.map((query, index) => ({
               ...query,
-              key: index,
+              key: query.question,
             }))}
             pagination={false}
           />
