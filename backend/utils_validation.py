@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Tuple
 from utils_sql import compare_query_results
 from generic_utils import make_request
 from oracle.utils_explore_data import gen_sql
+import pandas as pd
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
@@ -55,18 +56,33 @@ async def validate_queries(
         if not golden_query.get("user_validated", False):
             continue
         test_query_task = test_query(
-            api_key,
-            db_type,
-            db_creds,
-            golden_query["question"],
-            golden_query["sql"],
-            "golden",
+            api_key=api_key,
+            db_type=db_type,
+            db_creds=db_creds,
+            question=golden_query["question"],
+            original_sql=golden_query["sql"],
+            source="golden",
         )
         tasks.append(test_query_task)
-    for feedback in feedback_response.get("data", []):
-        if str(feedback[1]).lower() == "good":
+
+    # de-duplicate feedback, since we only want to test the most recent feedback (customers can sometimes give multiple pieces of feedback for the same question)
+    feedback_df = pd.DataFrame(
+        feedback_response.get("data", []), columns=feedback_response.get("columns")
+    )
+    # keep the most recent feedback for each question, query pair
+    feedback_df = feedback_df.sort_values(
+        by="created_at", ascending=False
+    ).drop_duplicates(subset=["question", "query_generated"])
+
+    for feedback in feedback_df.to_dict(orient="records"):
+        if str(feedback["feedback_type"]).lower() == "good":
             test_query_task = test_query(
-                api_key, db_type, db_creds, feedback[2], feedback[3], "feedback"
+                api_key=api_key,
+                db_type=db_type,
+                db_creds=db_creds,
+                question=feedback["question"],
+                original_sql=feedback["query_generated"],
+                source="feedback",
             )
             tasks.append(test_query_task)
     # and run them together all at once
@@ -76,8 +92,8 @@ async def validate_queries(
             num_correct += 1
         if result["subset"]:
             num_subset += 1
-    return (
-        num_correct / len(results),
-        num_subset / len(results),
-        results,
-    )
+    return {
+        "correct": num_correct / len(results),
+        "subset": num_subset / len(results),
+        "results": results,
+    }

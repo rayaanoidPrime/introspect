@@ -172,11 +172,9 @@ async def check_golden_queries_with_generated_queries(request: Request):
             status_code=400,
         )
 
-    (correct, subset, reference_queries) = await validate_queries(
-        api_key, db_type, db_creds
-    )
+    query_validation_result = await validate_queries(api_key, db_type, db_creds)
     return {
-        "correct": correct,
-        "subset": subset,
-        "reference_queries": reference_queries,
+        "correct": query_validation_result["correct"],
+        "subset": query_validation_result["subset"],
+        "reference_queries": query_validation_result["results"],
     }
