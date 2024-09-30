@@ -3,7 +3,7 @@ import os
 from typing import Any, Dict, List, Tuple
 
 from utils_sql import compare_query_results
-from generic_utils import make_request
+from generic_utils import make_request, format_sql
 from oracle.utils_explore_data import gen_sql
 import pandas as pd
 
@@ -27,8 +27,8 @@ async def test_query(
         original_sql, sql_gen, question, api_key, db_type, db_creds
     )
     result["question"] = question
-    result["sql_golden"] = original_sql
-    result["sql_gen"] = sql_gen
+    result["sql_golden"] = format_sql(original_sql)
+    result["sql_gen"] = format_sql(sql_gen)
     result["source"] = source
     return result
 
@@ -52,19 +52,6 @@ async def validate_queries(
     num_correct = 0
     num_subset = 0
     tasks = []
-    for golden_query in golden_queries:
-        if not golden_query.get("user_validated", False):
-            continue
-        test_query_task = test_query(
-            api_key=api_key,
-            db_type=db_type,
-            db_creds=db_creds,
-            question=golden_query["question"],
-            original_sql=golden_query["sql"],
-            source="golden",
-        )
-        tasks.append(test_query_task)
-
     # de-duplicate feedback, since we only want to test the most recent feedback (customers can sometimes give multiple pieces of feedback for the same question)
     feedback_df = pd.DataFrame(
         feedback_response.get("data", []), columns=feedback_response.get("columns")
@@ -85,6 +72,20 @@ async def validate_queries(
                 source="feedback",
             )
             tasks.append(test_query_task)
+
+    for golden_query in golden_queries:
+        if not golden_query.get("user_validated", False):
+            continue
+        test_query_task = test_query(
+            api_key=api_key,
+            db_type=db_type,
+            db_creds=db_creds,
+            question=golden_query["question"],
+            original_sql=golden_query["sql"],
+            source="golden",
+        )
+        tasks.append(test_query_task)
+
     # and run them together all at once
     results = await asyncio.gather(*tasks)
     for result in results:
@@ -93,7 +94,8 @@ async def validate_queries(
         if result["subset"]:
             num_subset += 1
     return {
-        "correct": num_correct / len(results),
-        "subset": num_subset / len(results),
+        "total": len(results),
+        "correct": num_correct,
+        "subset": num_subset,
         "results": results,
     }
