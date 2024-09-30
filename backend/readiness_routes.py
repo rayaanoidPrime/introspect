@@ -137,8 +137,8 @@ async def check_golden_query_coverage(request: Request):
     return resp
 
 
-@router.post("/readiness/check_golden_queries_with_generated_queries")
-async def check_golden_queries_with_generated_queries(request: Request):
+@router.post("/readiness/regression_results")
+async def regression_results(request: Request):
     """
     Takes in the api key and for each golden query, regenerates the SQL
     and compares it with the golden query SQL, sending back the results.
@@ -174,7 +174,8 @@ async def check_golden_queries_with_generated_queries(request: Request):
 
     query_validation_result = await validate_queries(api_key, db_type, db_creds)
     return {
+        "total": query_validation_result["total"],
         "correct": query_validation_result["correct"],
         "subset": query_validation_result["subset"],
-        "reference_queries": query_validation_result["results"],
+        "regression_queries": query_validation_result["results"],
     }
