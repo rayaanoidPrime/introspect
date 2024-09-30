@@ -36,7 +36,6 @@ async def test_query(
         defog.generate_query_url = f"{DEFOG_BASE_URL}/generate_query_chat"
 
         res = await defog.run_query(question=question)
-        print(res, flush=True)
         sql_gen = res["query_generated"]
         df_gen = pd.DataFrame(res["data"], columns=res["columns"])
 
