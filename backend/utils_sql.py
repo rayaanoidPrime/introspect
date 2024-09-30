@@ -1,16 +1,71 @@
 import collections
 import re
-from typing import Dict, Tuple
+from typing import Dict
 
 import pandas as pd
-from oracle.utils_explore_data import execute_sql
 from pandas.testing import assert_frame_equal, assert_series_equal
 from sqlalchemy import text
 from utils_logging import LOGGER
+from sqlalchemy.ext.asyncio import create_async_engine
+from generic_utils import is_sorry
+from asyncio import Semaphore
 
 # Functions mostly lifted from https://github.com/defog-ai/sql-eval/blob/main/eval/eval.py
 # but adapted to use the engine from db_utils and without some extra labels like
 # query_category
+
+
+async def execute_sql(
+    db_type: str,
+    db_creds: Dict,
+    question: str,
+    sql: str,
+) -> pd.DataFrame | None:
+    """
+    Asynchronously run the SQL query on the user's database using SQLAlchemy and return the results as a dataframe.
+    """
+    if not sql:
+        LOGGER.error(f"No SQL generated to execute for question {question}")
+        return None
+
+    if is_sorry(sql):
+        LOGGER.error(f"Couldn't answer with a valid SQL query for question {question}")
+        return None
+
+    if db_type == "postgres":
+        connection_uri = f"postgresql+asyncpg://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
+        async_engine = create_async_engine(connection_uri)
+    elif db_type == "sqlite":
+        connection_uri = f"sqlite+aiosqlite:///{db_creds['database']}"
+        async_engine = create_async_engine(connection_uri)
+    elif db_type == "mysql":
+        connection_uri = f"mysql+aiomysql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
+        async_engine = create_async_engine(connection_uri)
+    elif db_type == "sqlserver":
+        connection_uri = f"mssql+aioodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
+        async_engine = create_async_engine(connection_uri)
+    else:
+        LOGGER.error(
+            f"Unsupported db_type for executing query: {db_type}. Must be one of 'postgres', 'sqlite', 'mysql', 'sqlserver'"
+        )
+        return None
+    LOGGER.debug(f"db_type: {db_type}, connection_uri: {connection_uri}")
+    try:
+        async with async_engine.connect() as conn:
+            result = await conn.execute(text(sql))
+            data = result.all()
+            colnames = list(result.keys())
+            LOGGER.info(
+                f"Query successfully executed. Col names: {colnames}, Data: {data}\nSQL: {sql}"
+            )
+    except Exception as e:
+        LOGGER.error(f"Error occurred in running SQL: {e}\nSQL: {sql}")
+        return None
+    finally:
+        await async_engine.dispose()
+
+    df = pd.DataFrame(data, columns=colnames)
+    return df
 
 
 def deduplicate_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -210,8 +265,8 @@ def subset_df(
 async def compare_query_results(
     query_gold: str,
     query_gen: str,
+    df_gen: pd.DataFrame,
     question: str,
-    api_key: str,
     db_type: str,
     db_creds: Dict[str, str],
 ) -> Dict[str, bool]:
@@ -223,7 +278,6 @@ async def compare_query_results(
     correct, subset = False, False
     try:
         df_gold = await execute_sql(db_type, db_creds, question, query_gold)
-        df_gen = await execute_sql(db_type, db_creds, question, query_gen)
         if compare_df(df_gold, df_gen, question, query_gold, query_gen):
             correct, subset = True, True
         elif subset_df(df_gold, df_gen, question, query_gen, query_gold):
