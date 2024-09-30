@@ -6,9 +6,8 @@ import base64
 
 from celery.utils.log import get_task_logger
 from utils_logging import LOG_LEVEL
-from generic_utils import format_sql, is_sorry, make_request, normalize_sql
+from generic_utils import format_sql, make_request, normalize_sql
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 import seaborn as sns
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
@@ -54,59 +53,6 @@ async def gen_sql(api_key: str, db_type: str, question: str, glossary: str) -> s
             f"Error occurred in generating SQL for question: {resp}\nQuestion: {question}"
         )
         return None
-
-
-async def execute_sql(
-    db_type: str,
-    db_creds: Dict,
-    question: str,
-    sql: str,
-) -> Optional[pd.DataFrame]:
-    """
-    Asynchronously run the SQL query on the user's database using SQLAlchemy and return the results as a dataframe.
-    """
-    if not sql:
-        LOGGER.error(f"No SQL generated to execute for question {question}")
-        return None
-
-    if is_sorry(sql):
-        LOGGER.error(f"Couldn't answer with a valid SQL query for question {question}")
-        return None
-
-    if db_type == "postgres":
-        connection_uri = f"postgresql+asyncpg://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
-        async_engine = create_async_engine(connection_uri)
-    elif db_type == "sqlite":
-        connection_uri = f"sqlite+aiosqlite:///{db_creds['database']}"
-        async_engine = create_async_engine(connection_uri)
-    elif db_type == "mysql":
-        connection_uri = f"mysql+aiomysql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
-        async_engine = create_async_engine(connection_uri)
-    elif db_type == "sqlserver":
-        connection_uri = f"mssql+aioodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
-        async_engine = create_async_engine(connection_uri)
-    else:
-        LOGGER.error(
-            f"Unsupported db_type for executing query: {db_type}. Must be one of 'postgres', 'sqlite', 'mysql', 'sqlserver'"
-        )
-        return None
-    LOGGER.debug(f"db_type: {db_type}, connection_uri: {connection_uri}")
-    try:
-        async with async_engine.connect() as conn:
-            result = await conn.execute(text(sql))
-            data = result.all()
-            colnames = list(result.keys())
-            LOGGER.info(
-                f"Query successfully executed. Col names: {colnames}, Data: {data}\nSQL: {sql}"
-            )
-    except Exception as e:
-        LOGGER.error(f"Error occurred in running SQL: {e}\nSQL: {sql}")
-        return None
-    finally:
-        await async_engine.dispose()
-
-    df = pd.DataFrame(data, columns=colnames)
-    return df
 
 
 async def retry_sql_gen(
