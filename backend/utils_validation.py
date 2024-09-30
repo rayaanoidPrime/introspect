@@ -32,6 +32,8 @@ async def test_query(
 
     async with Semaphore(5):
         defog = AsyncDefog(api_key=api_key, db_type=db_type, db_creds=db_creds)
+        defog.base_url = DEFOG_BASE_URL
+        defog.generate_query_url = f"{DEFOG_BASE_URL}/generate_query_chat"
 
         res = await defog.run_query(question=question)
         print(res, flush=True)
