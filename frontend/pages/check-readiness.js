@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
 import Meta from "$components/layout/Meta";
-import { Row, Col, Select, Tooltip, message } from "antd";
-import { SafetyCertificateOutlined, AuditOutlined } from "@ant-design/icons";
+import { Row, Col, Select, Tooltip, Table, message, Spin } from "antd";
+import {
+  SafetyCertificateOutlined,
+  AuditOutlined,
+  ApartmentOutlined,
+} from "@ant-design/icons";
 import BasicStatus from "$components/check-readiness/BasicStatus";
 import GoldenQueriesValidity from "$components/check-readiness/GoldenQueriesValidity";
 import InstructionConsistency from "$components/check-readiness/InstructionConsistency";
 import GoldenQueryCoverage from "$components/check-readiness/GoldenQueryCoverage";
+
+import CodeMirror, { EditorView } from "@uiw/react-codemirror";
+import { sql as codemirrorSql } from "@codemirror/lang-sql";
 
 import setupBaseUrl from "$utils/setupBaseUrl";
 import Scaffolding from "$components/layout/Scaffolding";
@@ -44,6 +51,13 @@ const CheckReadiness = () => {
   const [coveredTables, setCoveredTables] = useState(0);
   const [coveredColumns, setCoveredColumns] = useState(0);
   const [missingTables, setMissingTables] = useState([]);
+
+  // regression results
+  const [regressionLoading, setRegressionLoading] = useState(false);
+  const [totalRegressionQueries, setTotalRegressionQueries] = useState(0);
+  const [totalRegressionQueriesValid, setTotalRegressionQueriesValid] =
+    useState(0);
+  const [regressionQueries, setRegressionQueries] = useState([]);
 
   const [apiKeyNames, setApiKeyNames] = useState([]);
 
@@ -185,6 +199,28 @@ const CheckReadiness = () => {
     console.log(data);
   };
 
+  const getRegressionResults = async () => {
+    setRegressionLoading(true);
+    const res = await fetch(
+      setupBaseUrl("http", `readiness/regression_results`),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: token,
+          key_name: apiKeyName,
+        }),
+      }
+    );
+    const data = await res.json();
+    setTotalRegressionQueries(data.total);
+    setTotalRegressionQueriesValid(data.correct);
+    setRegressionQueries([...data.regression_queries]);
+    setRegressionLoading(false);
+  };
+
   useEffect(() => {
     const apiKeyName = localStorage.getItem("defogDbSelected");
     if (apiKeyName) {
@@ -232,9 +268,7 @@ const CheckReadiness = () => {
 
         <div className="flex justify-center items-center flex-col p-1 mt-1">
           <h1>
-            <SafetyCertificateOutlined
-              style={{ fontSize: "3em", color: "#52c41a" }}
-            />{" "}
+            <SafetyCertificateOutlined className="text-4xl text-blue-600" />{" "}
           </h1>
           <h1 className="text-2xl mt-4">System Readiness Check</h1>
           <p className="m-4">
@@ -262,7 +296,7 @@ const CheckReadiness = () => {
               style={{ display: "flex", alignItems: "center" }}
               className="text-lg font-semibold"
             >
-              <Tooltip title="Do regular quality checks to keep defog fully customised for databse">
+              <Tooltip title="Do regular quality checks to keep defog fully customised for your database">
                 <AuditOutlined
                   style={{
                     marginRight: "0.5em",
@@ -303,6 +337,116 @@ const CheckReadiness = () => {
             />
           </Col>
         </Row>
+
+        <div className="flex justify-center items-center flex-col p-1 mt-1">
+          <h1>
+            <ApartmentOutlined className="text-4xl text-blue-600" />{" "}
+          </h1>
+          <h1 className="text-2xl mt-4">Test for Regressions</h1>
+          <p className="m-4">
+            Check if Defog's performance might have regressed on golden queries
+            and/or questions that it previously performed well on.
+          </p>
+          <button
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            onClick={getRegressionResults}
+            disabled={regressionLoading}
+          >
+            Test for Regressions
+          </button>
+
+          {regressionLoading ? (
+            <>
+              Loading, the regression test can take up to 5 minutes... <Spin />
+            </>
+          ) : totalRegressionQueries > 0 ? (
+            <div className="flex justify-center items-center flex-col p-1 mt-1">
+              <p className="m-4">
+                Of the {totalRegressionQueries} queries that you have added as
+                golden queries or given feedback on, Defog got{" "}
+                {totalRegressionQueries === totalRegressionQueriesValid
+                  ? `all ${totalRegressionQueries}`
+                  : ""}{" "}
+                out of {totalRegressionQueriesValid} correct.
+              </p>
+
+              <h1 className="text-2xl mt-4">Queries</h1>
+              <Table
+                dataSource={regressionQueries}
+                columns={[
+                  {
+                    title: "Question",
+                    dataIndex: "question",
+                    key: "question",
+                  },
+                  {
+                    title: "Golden SQL",
+                    dataIndex: "sql_golden",
+                    key: "sql_golden",
+                    render: (text) => {
+                      return (
+                        <CodeMirror
+                          extensions={[
+                            codemirrorSql(),
+                            EditorView.lineWrapping,
+                          ]}
+                          value={text}
+                          basicSetup={{
+                            lineNumbers: false,
+                          }}
+                          editable={false}
+                        />
+                      );
+                    },
+                  },
+                  {
+                    title: "Generated SQL",
+                    dataIndex: "sql_gen",
+                    key: "sql_gen",
+                    render: (text) => {
+                      return (
+                        <CodeMirror
+                          extensions={[
+                            codemirrorSql(),
+                            EditorView.lineWrapping,
+                          ]}
+                          value={text}
+                          basicSetup={{
+                            lineNumbers: false,
+                          }}
+                          editable={false}
+                        />
+                      );
+                    },
+                  },
+                  {
+                    title: "Correct",
+                    dataIndex: "correct",
+                    key: "correct",
+                    render: (text) => {
+                      return text ? (
+                        <span className="bg-green p-2">Yes</span>
+                      ) : (
+                        <span className="bg-red p-2">No</span>
+                      );
+                    },
+                  },
+                  {
+                    title: "Source",
+                    dataIndex: "source",
+                    key: "source",
+                  },
+                ]}
+              />
+            </div>
+          ) : (
+            <p className="my-2">
+              Press the button above to test for regressions. If you have not
+              added any golden queries or given any feedback, this test will not
+              run.
+            </p>
+          )}
+        </div>
       </Scaffolding>
     </>
   );

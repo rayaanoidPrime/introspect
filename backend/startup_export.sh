@@ -16,7 +16,7 @@ while ! nc -z agents-redis $REDIS_INTERNAL_PORT; do
   echo "Waiting for ${REDIS_INTERNAL_PORT} to be available..."
   sleep 1
 done
-python3 -m hypercorn main:app -b 0.0.0.0:1235 --reload &
+python3 -m hypercorn main:app -b 0.0.0.0:1235 &
 
 # Wait for all background jobs to finish
 wait

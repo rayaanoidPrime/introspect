@@ -6,9 +6,8 @@ import base64
 
 from celery.utils.log import get_task_logger
 from utils_logging import LOG_LEVEL
-from generic_utils import format_sql, is_sorry, make_request, normalize_sql
+from generic_utils import format_sql, make_request, normalize_sql
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import create_async_engine
 import seaborn as sns
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
