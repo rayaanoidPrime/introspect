@@ -423,6 +423,13 @@ const CheckReadiness = () => {
                     title: "Correct",
                     dataIndex: "correct",
                     key: "correct",
+                    render: (text) => {
+                      return text ? (
+                        <span className="bg-green p-2">Yes</span>
+                      ) : (
+                        <span className="bg-red p-2">No</span>
+                      );
+                    },
                   },
                   {
                     title: "Source",
