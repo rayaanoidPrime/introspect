@@ -1,7 +1,7 @@
 from typing import Dict, List
 import base64
 import os
-from generic_utils import make_request
+from generic_utils import make_request, LOGGER
 import os
 import json
 
@@ -95,7 +95,10 @@ async def analyse_data(question: str, data_csv: str, sql: str, api_key: str) -> 
             import boto3
 
             bedrock = boto3.client(service_name="bedrock-runtime")
-            model_id = "meta.llama3-1-70b-instruct-v1:0"
+            model_id = os.environ.get("BEDROCK_MODEL")
+            if model_id is None or model_id == "":
+                LOGGER.warning("BEDROCK_MODEL not set, skipping data analysis")
+                return ""
             accept = "application/json"
             contentType = "application/json"
 
@@ -125,6 +128,6 @@ Here is a summary of the high-level trends in the data:
                 body=body, modelId=model_id, accept=accept, contentType=contentType
             )
             model_response = json.loads(response["body"].read())
-            print(model_response, flush=True)
+            LOGGER.info(model_response)
             generation = model_response["generation"]
             return generation
