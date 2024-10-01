@@ -8,7 +8,6 @@ from sqlalchemy import text
 from utils_logging import LOGGER
 from sqlalchemy.ext.asyncio import create_async_engine
 from generic_utils import is_sorry
-from asyncio import Semaphore
 
 # Functions mostly lifted from https://github.com/defog-ai/sql-eval/blob/main/eval/eval.py
 # but adapted to use the engine from db_utils and without some extra labels like

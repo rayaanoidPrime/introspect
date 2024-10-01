@@ -8,10 +8,9 @@ import pandas as pd
 from asyncio import Semaphore
 from defog import AsyncDefog
 
-generate_sql_semaphore = Semaphore(5)
-execute_sql_semaphore = Semaphore(5)
-
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
+
+test_query_semaphore = Semaphore(5)
 
 
 async def test_query(
@@ -30,7 +29,7 @@ async def test_query(
     # and so that it works regardless of the db type
     # we also want to be loudly notified on Slack if the SQL generation fails for this api key
 
-    async with Semaphore(5):
+    async with test_query_semaphore:
         defog = AsyncDefog(api_key=api_key, db_type=db_type, db_creds=db_creds)
         defog.base_url = DEFOG_BASE_URL
         defog.generate_query_url = f"{DEFOG_BASE_URL}/generate_query_chat"
