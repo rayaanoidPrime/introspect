@@ -125,6 +125,6 @@ Here is a summary of the high-level trends in the data:
                 body=body, modelId=model_id, accept=accept, contentType=contentType
             )
             model_response = json.loads(response["body"].read())
-            print(model_response, flush=True)
+            print("Bedrock analysis:\n", model_response, flush=True)
             generation = model_response["generation"]
             return generation

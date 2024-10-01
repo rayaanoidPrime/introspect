@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
 import { useRouter } from "next/router";
 import { message } from "antd";
 import Meta from "$components/layout/Meta";
@@ -9,6 +9,11 @@ import GoogleLoginButton from "$components/auth/GoogleLogin";
 const LogIn = () => {
   const [context, setContext] = useContext(UserContext);
   const router = useRouter();
+
+  useEffect(() => {
+    // remove analysis trees whenever on the log in page
+    localStorage.removeItem("analysisTrees");
+  });
 
   const handleLogin = async (event) => {
     event.preventDefault();
