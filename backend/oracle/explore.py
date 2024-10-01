@@ -11,12 +11,12 @@ from oracle.utils_explore_data import (
     TABLE_CSV,
     IMAGE,
     gen_sql,
-    execute_sql,
     get_chart_fn,
     gen_data_analysis,
     retry_sql_gen,
     run_chart_fn,
 )
+from utils_sql import execute_sql
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 MAX_ANALYSES = 5
