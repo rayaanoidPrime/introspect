@@ -1,7 +1,19 @@
 "use client";
 import { DefogAnalysisAgentEmbed } from "@defogdotai/agents-ui-components/agent";
+import { useMemo } from "react";
 
 export function TestDrive({ token, dbs, devMode }) {
+  const initialTrees = useMemo(() => {
+    try {
+      const storedTrees = localStorage.getItem("analysisTrees");
+      if (storedTrees) {
+        return JSON.parse(storedTrees);
+      }
+    } catch (e) {
+      return null;
+    }
+  }, []);
+
   return (
     <DefogAnalysisAgentEmbed
       apiEndpoint={process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}
@@ -13,6 +25,24 @@ export function TestDrive({ token, dbs, devMode }) {
       dbs={dbs}
       disableMessages={false}
       devMode={devMode}
+      initialTrees={initialTrees}
+      onTreeChange={(keyName, tree) => {
+        try {
+          // save in local storage in an object called analysisTrees
+          let trees = localStorage.getItem("analysisTrees");
+          if (!trees) {
+            trees = {};
+            localStorage.setItem("analysisTrees", "{}");
+          } else {
+            trees = JSON.parse(trees);
+          }
+
+          trees[keyName] = tree;
+          localStorage.setItem("analysisTrees", JSON.stringify(trees));
+        } catch (e) {
+          console.error(e);
+        }
+      }}
     />
   );
 }

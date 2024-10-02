@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useContext } from "react";
 import { UserContext } from "../context/UserContext";
-import { Layout } from "antd/lib";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { NavBar } from "@defogdotai/agents-ui-components/core-ui";
@@ -14,7 +13,6 @@ const Scaffolding = ({
   rootClassNames = "",
   contentClassNames = "",
 }) => {
-  const { Content, Sider } = Layout;
   const [items, setItems] = useState([]);
   const [context, setContext] = useContext(UserContext);
 
