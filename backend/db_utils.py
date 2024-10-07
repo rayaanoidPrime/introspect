@@ -106,12 +106,15 @@ Feedback = Base.classes.defog_plans_feedback
 DbCreds = Base.classes.defog_db_creds
 
 if os.getenv("ORACLE_ENABLED") == "yes":
-    OracleSources = Base.classes.oracle_sources
-    OracleClarifications = Base.classes.oracle_clarifications
-    OracleReports = Base.classes.oracle_reports
-    ImportedTablesBase = automap_base()
-    ImportedTablesBase.prepare(autoload_with=imported_tables_engine)
-    ImportedTables = ImportedTablesBase.classes.imported_tables
+    try:
+        OracleSources = Base.classes.oracle_sources
+        OracleClarifications = Base.classes.oracle_clarifications
+        OracleReports = Base.classes.oracle_reports
+        ImportedTablesBase = automap_base()
+        ImportedTablesBase.prepare(autoload_with=imported_tables_engine)
+        ImportedTables = ImportedTablesBase.classes.imported_tables
+    except Exception as e:
+        LOGGER.debug(f"Error loading oracle tables: {e}")
 
 
 def update_imported_tables_db(
