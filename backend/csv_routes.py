@@ -61,10 +61,25 @@ async def generate_column_descriptions_for_csv(request: Request):
             "schemas": schemas,
         },
     )
-    metadata_csv_string = r["csv"]
-    metadata_json = (
-        pd.read_csv(StringIO(metadata_csv_string)).fillna("").to_dict(orient="records")
-    )
+
+    if "csv" in r:
+        metadata_csv_string = r["csv"]
+        metadata_json = (
+            pd.read_csv(StringIO(metadata_csv_string))
+            .fillna("")
+            .to_dict(orient="records")
+        )
+    else:
+        metadata_json = [
+            {
+                "table_name": table_name,
+                "column_name": element["column_name"],
+                "data_type": element["data_type"],
+                "column_description": "",
+            }
+            for element in metadata
+        ]
+
     return metadata_json
 
 
