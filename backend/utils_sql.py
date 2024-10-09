@@ -274,13 +274,17 @@ async def compare_query_results(
     'correct' and 'subset' indicating if the queries are correct and if the result of the
     generated query is a subset of the golden query.
     """
-    correct, subset = False, False
+    correct = False
     try:
         df_gold = await execute_sql(db_type, db_creds, question, query_gold)
-        if compare_df(df_gold, df_gen, question, query_gold, query_gen):
-            correct, subset = True, True
+        # check if df_gold is an empty dataframe
+        # this is because the function errors out when df_gold is empty
+        if df_gold.empty and df_gen.empty:
+            correct = False
+        elif compare_df(df_gold, df_gen, question, query_gold, query_gen):
+            correct = True
         elif subset_df(df_gold, df_gen, question, query_gen, query_gold):
-            subset = True
+            correct = True
     except Exception as e:
         import traceback
 
@@ -289,4 +293,4 @@ async def compare_query_results(
     finally:
         if "dfg" in locals():
             del dfg
-        return {"correct": correct, "subset": subset}
+        return {"correct": correct}
