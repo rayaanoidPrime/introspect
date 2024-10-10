@@ -5,6 +5,7 @@ from generic_utils import make_request, LOGGER
 import os
 import json
 from db_utils import redis_client
+import asyncio
 
 analysis_assets_dir = os.environ.get(
     "ANALYSIS_ASSETS_DIR", "/agent-assets/analysis-assets"
@@ -133,8 +134,12 @@ async def analyse_data(question: str, data_csv: str, sql: str, api_key: str) -> 
                 }
             )
 
-            response = bedrock.invoke_model(
-                body=body, modelId=model_id, accept=accept, contentType=contentType
+            response = await asyncio.to_thread(
+                bedrock.invoke_model,
+                body=body,
+                modelId=model_id,
+                accept=accept,
+                contentType=contentType,
             )
             model_response = json.loads(response["body"].read())
             LOGGER.info(model_response)
