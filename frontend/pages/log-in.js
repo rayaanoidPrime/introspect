@@ -13,6 +13,8 @@ const LogIn = () => {
   useEffect(() => {
     // remove analysis trees whenever on the log in page
     localStorage.removeItem("analysisTrees");
+    // also remove stored analyse_data results (aka "step analysis")
+    localStorage.removeItem("analyseDataResults");
   });
 
   const handleLogin = async (event) => {
