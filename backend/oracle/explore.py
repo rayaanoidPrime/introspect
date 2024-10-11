@@ -176,6 +176,7 @@ async def explore_data(
             reason = resp.get("reason", "")
             usefulness = resp.get("usefulness", False)
             newness = resp.get("newness", False)
+            LOGGER.debug("----\n{resp}\n---")
             LOGGER.debug(
                 f"Generated question: {analysis['generated_qn']}, Reason: {reason}, Usefulness: {usefulness}, Newness: {newness}\n"
             )
@@ -339,6 +340,7 @@ async def explore_generated_question(
     error_str = None
     try:
         chart_fn_params = await get_chart_fn(api_key, generated_qn, data)
+        LOGGER.debug(chart_fn_params)
         run_chart_fn(chart_fn_params, data, chart_path)
         # TODO inspect the chart visually by sending it to a VLM for ensuring
         # that the chart is meaningful (not too cluttered, too many categories
