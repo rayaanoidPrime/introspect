@@ -5,6 +5,7 @@ from typing import Dict
 import pandas as pd
 from pandas.testing import assert_frame_equal, assert_series_equal
 from sqlalchemy import text
+from sqlglot import exp, parse_one
 from utils_df import mk_df
 from utils_logging import LOGGER
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -295,3 +296,19 @@ async def compare_query_results(
         if "dfg" in locals():
             del dfg
         return {"correct": correct}
+
+
+def add_schema_to_tables(query, schema):
+    # Parse the query into a SQL AST (Abstract Syntax Tree)
+    tree = parse_one(query)
+
+    # Traverse and modify all table nodes in the AST
+    for node in tree.find_all(exp.Table):
+        # If the table node has a schema, skip it
+        if node.catalog or node.db:
+            continue
+        # Modify the table name by prefixing it with the schema
+        node.set("this", f"{schema}.{node.this}")
+
+    # Return the modified SQL query as a string
+    return tree.sql()

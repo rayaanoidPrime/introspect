@@ -35,11 +35,12 @@ app.include_router(slack_routes.router)
 app.include_router(agent_routes.router)
 
 if ORACLE_ENABLED:
-    import data_connector_routes, imported_data_routes, oracle_routes
+    import oracle_routes, data_connector_routes, imported_data_routes, xdb_routes
 
     app.include_router(data_connector_routes.router)
     app.include_router(imported_data_routes.router)
     app.include_router(oracle_routes.router)
+    app.include_router(xdb_routes.router)
 
     from oracle.setup import setup_dir
 

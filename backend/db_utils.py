@@ -24,6 +24,8 @@ analysis_assets_dir = os.environ.get(
 )
 INTERNAL_DB = os.environ.get("INTERNAL_DB", None)
 IMPORTED_TABLES_DBNAME = os.environ.get("IMPORTED_TABLES_DBNAME", "imported_tables")
+TEMP_TABLES_DBNAME = os.environ.get("TEMP_TABLES_DBNAME", "temp_tables")
+
 ORACLE_ENABLED: bool = (os.environ.get("ORACLE_ENABLED", "no") == "yes")
 LOGGER.info(f"ORACLE_ENABLED: {ORACLE_ENABLED}")
 
@@ -36,6 +38,11 @@ if INTERNAL_DB == "sqlite":
         imported_tables_engine = create_engine(
             f"sqlite:///{IMPORTED_TABLES_DBNAME}.db", connect_args={"timeout": 3}
         )
+        LOGGER.info(f"Created imported tables engine for sqlite: {imported_tables_engine}")
+        temp_tables_engine = create_engine(
+            f"sqlite:///{TEMP_TABLES_DBNAME}.db", connect_args={"timeout": 3}
+        )
+        LOGGER.info(f"Created temp tables engine for sqlite: {temp_tables_engine}")
 elif INTERNAL_DB == "postgres":
     db_creds = {
         "user": os.environ.get("DBUSER", "postgres"),
@@ -59,6 +66,10 @@ elif INTERNAL_DB == "postgres":
             f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}"
         )
         LOGGER.info(f"Created imported tables engine for postgres: {imported_tables_engine}")
+        temp_tables_engine = create_engine(
+            f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{TEMP_TABLES_DBNAME}"
+        )
+        LOGGER.info(f"Created temp tables engine for postgres: {temp_tables_engine}")
 elif INTERNAL_DB == "sqlserver":
     db_creds = {
         "user": os.environ.get("DBUSER", "sa"),
@@ -80,6 +91,11 @@ elif INTERNAL_DB == "sqlserver":
         imported_tables_engine = create_engine(
             f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{IMPORTED_TABLES_DBNAME}?driver=ODBC+Driver+18+for+SQL+Server"
         )
+        LOGGER.info(f"Created imported tables engine for sqlserver: {imported_tables_engine}")
+        temp_tables_engine = create_engine(
+            f"mssql+pyodbc://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{TEMP_TABLES_DBNAME}?driver=ODBC+Driver+18+for+SQL+Server"
+        )
+        LOGGER.info(f"Created temp tables engine for sqlserver: {temp_tables_engine}")
 
 Base = automap_base()
 # reflect the tables
