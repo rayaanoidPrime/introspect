@@ -24,6 +24,7 @@ imported_tables = Table(
 # do this only if oracle is enabled
 if os.environ.get("ORACLE_ENABLED", "no") == "yes":
     imported_tables_db = os.environ.get("IMPORTED_TABLES_DBNAME", "imported_tables")
+    temp_tables_db = os.environ.get("TEMP_TABLES_DBNAME", "temp_tables")
 
     db_creds = {
         "user": os.environ.get("DBUSER", "postgres"),
@@ -37,8 +38,8 @@ if os.environ.get("ORACLE_ENABLED", "no") == "yes":
     connection_uri = f"postgresql://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
     engine = create_engine(connection_uri, echo=True)
 
-    # check if the IMPORTED_TABLES_DBNAME database exists, if not create it
     with engine.connect() as conn:
+        # check if the IMPORTED_TABLES_DBNAME database exists, if not create it
         result = conn.execute(
             text(f"SELECT 1 FROM pg_database WHERE datname = '{imported_tables_db}'")
         )
@@ -51,6 +52,21 @@ if os.environ.get("ORACLE_ENABLED", "no") == "yes":
                 with raw_conn.cursor() as cursor:
                     cursor.execute(f"CREATE DATABASE {imported_tables_db}")
                 print(f"Created database {imported_tables_db}.")
+            finally:
+                raw_conn.close()
+        # check if the TEMP_TABLES_DBNAME database exists, if not create it
+        result = conn.execute(
+            text(f"SELECT 1 FROM pg_database WHERE datname = '{temp_tables_db}'")
+        )
+        if not result.fetchone():
+            raw_conn = (
+                engine.raw_connection()
+            )
+            try:
+                raw_conn.set_isolation_level(0)
+                with raw_conn.cursor() as cursor:
+                    cursor.execute(f"CREATE DATABASE {temp_tables_db}")
+                print(f"Created database {temp_tables_db}.")
             finally:
                 raw_conn.close()
 
