@@ -1,8 +1,9 @@
+import json
 import logging
 from logging.config import dictConfig
 import os
 import time
-from typing import List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()  # Ensure uppercase for consistency
 
@@ -71,3 +72,65 @@ def save_and_log(t_start: float, msg: str, timings: List[Tuple[float, str]]) -> 
     """
     _ = save_timing(t_start, msg, timings)
     log_timings(timings)
+
+
+def truncate_list(l: List, max_len_list: int = 10, max_len_str: int = 100) -> str:
+    """
+    Returns a string of the first max_len elements of the list l.
+    This is avoid printing out large lists in the logs.
+    """
+    l_trunc = []
+    for item in l[:max_len_list]:
+        if isinstance(item, dict):
+            l_trunc.append(truncate_dict(item, max_len_list, max_len_str))
+        elif isinstance(item, list):
+            l_trunc.append(truncate_list(item, max_len_list, max_len_str))
+        elif isinstance(item, str) and len(item) > max_len_str:
+            l_trunc.append(item[:max_len_str] + f"...[{len(item)} chars]")
+        else:
+            l_trunc.append(item)
+    return l_trunc
+
+
+def truncate_dict(
+    obj: Dict, max_len_list: int = 10, max_len_str: int = 100
+) -> Union[str, Dict]:
+    """
+    Returns a string representation of a dictionary, truncating it if it's too long.
+    """
+    ret_obj = {}
+    for k, v in obj.items():
+        if isinstance(v, list):
+            ret_obj[k] = truncate_list(v, max_len_list, max_len_str)
+        elif isinstance(v, dict):
+            ret_obj[k] = truncate_dict(v, max_len_list, max_len_str)
+        elif isinstance(v, str) and len(str(v)) > max_len_str:
+            ret_obj[k] = str(v)[:max_len_str] + f"...[{len(v)} chars]"
+        else:
+            ret_obj[k] = v
+    return ret_obj
+
+
+def truncate_obj(
+    obj: Any, max_len_list: int = 10, max_len_str: int = 500, to_str: bool = True
+) -> Union[str, Dict]:
+    """
+    Returns a string representation of the object obj, truncating it if it's too long.
+    This is the generic function that can handle strings, lists, dictionaries,
+    and nested structures of these. Use this if you don't know what type you'll be receiving.
+    """
+    try:
+        if isinstance(obj, list):
+            obj_trunc = truncate_list(obj, max_len_list, max_len_str)
+        elif isinstance(obj, dict):
+            obj_trunc = truncate_dict(obj, max_len_list, max_len_str)
+        elif isinstance(obj, str) and len(obj) > max_len_str:
+            return obj[:max_len_str] + f"...[{len(obj)} chars]"
+        else:
+            return str(obj) if to_str else obj
+        if to_str:
+            return json.dumps(obj_trunc, indent=2, default=str)
+        return obj_trunc
+    except Exception as e:
+        LOGGER.error(f"Error in truncate_obj: {e}")
+        return "" if to_str else None

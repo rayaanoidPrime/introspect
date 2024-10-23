@@ -2,7 +2,6 @@ import os
 from typing import Any, Dict, Optional
 from matplotlib import pyplot as plt
 import pandas as pd
-import base64
 
 from celery.utils.log import get_task_logger
 from generic_utils import format_sql, make_request, normalize_sql
@@ -18,12 +17,9 @@ TABLE_CSV = "table_csv"
 IMAGE = "image"
 ARTIFACT_TYPES = [TABLE_CSV, IMAGE]
 SUPPORTED_CHART_TYPES = [
-    "Bar Chart",
-    "Table",
-    "Line Chart",
-    "Boxplot",
-    "Heatmap",
-    "Scatter Plot",
+    "relplot",
+    "catplot",
+    "displot",
 ]
 
 
@@ -88,6 +84,13 @@ async def get_chart_fn(
     """
     LOGGER.debug(f"Getting sns chart for question: {question}")
     LOGGER.debug(f"dtypes: {data.dtypes}")
+    # if we're showing the unique values for only 1 column, hardcode to use a
+    # histogram with the number of bins set to the number of unique values.
+    if len(data.columns) == 1 and "unique" in question:
+        return {
+            "name": "displot",
+            "parameters": {"kind": "hist", "x": data.columns[0], "bins": len(data)},
+        }
     # the statistic names (e.g. count, mean, etc) are in the index after calling
     # `describe` so we need to keep it when exporting to csv
     non_numeric_columns = data.select_dtypes(include="object").columns
@@ -117,6 +120,9 @@ async def get_chart_fn(
     resp = await make_request(f"{DEFOG_BASE_URL}/get_sns_chart", data=json_data)
     if "name" not in resp or "parameters" not in resp:
         LOGGER.error(f"Error occurred in getting sns chart: {resp}")
+        return None
+    if resp["name"] not in SUPPORTED_CHART_TYPES:
+        LOGGER.error(f"Unsupported chart type: {resp['name']}")
         return None
     return resp
 
@@ -199,19 +205,20 @@ async def gen_data_analysis(
     LOGGER.debug(f"Grouping columns: {grouping_cols}")
 
     agg_functions = {}
-    if chart_fn == "relplot" and kind == "line":
-        agg_functions[y_col] = "mean"
-    elif chart_fn == "catplot" and kind == "bar":
-        agg_functions[y_col] = "sum"
-    elif chart_fn == "catplot" and kind == "count":
-        agg_functions[y_col] = "count"
-    elif chart_fn == "catplot" and kind in ["box", "violin"]:
-        agg_functions[y_col] = [
-            lambda x: x.quantile(0.25),
-            lambda x: x.median(),
-            lambda x: x.quantile(0.75),
-        ]
-    LOGGER.debug(f"Agg functions: {agg_functions}")
+    if y_col:
+        if chart_fn == "relplot" and kind == "line":
+            agg_functions[y_col] = "mean"
+        elif chart_fn == "catplot" and kind == "bar":
+            agg_functions[y_col] = "sum"
+        elif chart_fn == "catplot" and kind == "count":
+            agg_functions[y_col] = "count"
+        elif chart_fn == "catplot" and kind in ["box", "violin"]:
+            agg_functions[y_col] = [
+                lambda x: x.quantile(0.25),
+                lambda x: x.median(),
+                lambda x: x.quantile(0.75),
+            ]
+        LOGGER.debug(f"Agg functions: {agg_functions}")
 
     if not grouping_cols or not agg_functions:
         data_grouped = data_fetched
