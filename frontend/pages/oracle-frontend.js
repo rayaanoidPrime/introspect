@@ -1,5 +1,5 @@
 import { Button, Input, Row, Col, Select, Spin, Checkbox } from "antd";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import Sources from "$components/oracle/Sources";
@@ -51,8 +51,10 @@ function OracleDashboard() {
   const [dataConnReady, setDataConnReady] = useState(false);
   const [dataConnErrorMsg, setDataConnErrorMsg] = useState("");
   const [userQuestion, setUserQuestion] = useState("");
+
+  const answers = useRef({});
   const [clarifications, setClarifications] = useState([]);
-  const [needNewClarifications, setNeedNewClarifications] = useState(false);
+  const [answerLastUpdateTs, setAnswerLastUpdateTs] = useState(Date.now());
   const [waitClarifications, setWaitClarifications] = useState(false);
   const [taskType, setTaskType] = useState(null);
   const [sources, setSources] = useState([]);
@@ -124,15 +126,10 @@ function OracleDashboard() {
     if (Array.isArray(answer)) {
       answer = answer.join(", ");
     }
-    let updatedClarifications = clarifications;
-    updatedClarifications.forEach((clarificationObject) => {
-      if (clarificationObject.clarification === clarification) {
-        clarificationObject.answer = answer;
-      }
-    });
-    console.log("Updated clarifications:", updatedClarifications);
-    setClarifications(updatedClarifications);
-    setNeedNewClarifications(true);
+
+    answers.current[clarification] = answer;
+
+    setAnswerLastUpdateTs(Date.now());
   };
 
   const getClarifications = async () => {
@@ -147,10 +144,18 @@ function OracleDashboard() {
     }
     // answeredClarifications would be a list of clarifications that have been answered
     // by the user.
-    let answeredClarifications = clarifications.filter(
-      (clarificationObject) => clarificationObject.answer
-    );
+    let answeredClarifications = clarifications
+      .filter(
+        (clarificationObject) =>
+          answers.current[clarificationObject.clarification]
+      )
+      .map((clarificationObject) => ({
+        ...clarificationObject,
+        answer: answers.current?.[clarificationObject.clarification],
+      }));
+
     console.log("answered clarifications:", answeredClarifications);
+
     const res = await fetch(setupBaseUrl("http", `oracle/clarify_question`), {
       method: "POST",
       headers: {
@@ -165,15 +170,16 @@ function OracleDashboard() {
       }),
     });
     setWaitClarifications(false);
-    setNeedNewClarifications(false);
     if (res.ok) {
       const data = await res.json();
       setTaskType(data.task_type);
       // get the updated answered clarifications, since the user might have
       // answered some clarifications while the request was processing
       let answeredClarifications = clarifications.filter(
-        (clarificationObject) => clarificationObject.answer
+        (clarificationObject) =>
+          answers.current[clarificationObject.clarification]
       );
+
       // concatenate the new clarifications with the answered clarifications
       setClarifications(answeredClarifications.concat(data.clarifications));
     } else {
@@ -181,11 +187,14 @@ function OracleDashboard() {
     }
   };
 
-  const deleteClarification = (index) => {
+  const deleteClarification = (index, clarificationObject) => {
     // remove the clarification from the list of clarifications
     setClarifications((prevClarifications) =>
       prevClarifications.filter((_, i) => i !== index)
     );
+
+    // remove from answers
+    answers.current[clarificationObject.clarification] = undefined;
   };
 
   const getSources = async () => {
@@ -228,9 +237,7 @@ function OracleDashboard() {
     );
   };
 
-  console.log(clarifications);
-
-  const getReports = async () => {
+  const getReports = useCallback(async () => {
     const token = localStorage.getItem("defogToken");
     let allFinished = false;
 
@@ -269,7 +276,7 @@ function OracleDashboard() {
 
     // Optionally, start the first poll immediately
     pollReports();
-  };
+  }, []);
 
   const downloadReport = async (report_id) => {
     // Fetch the token from localStorage
@@ -349,6 +356,8 @@ function OracleDashboard() {
     const selectedSources = sources.filter((source) => source.selected);
     console.log("Selected sources:", selectedSources);
 
+    //
+
     const res = await fetch(setupBaseUrl("http", `oracle/begin_generation`), {
       method: "POST",
       headers: {
@@ -360,7 +369,10 @@ function OracleDashboard() {
         user_question: userQuestion,
         sources: selectedSources,
         task_type: taskType,
-        clarifications: clarifications,
+        clarifications: clarifications.map((d) => ({
+          ...d,
+          answer: answers.current[d.clarification],
+        })),
       }),
     });
 
@@ -377,6 +389,8 @@ function OracleDashboard() {
       if (userQuestion.length < 5) {
         console.log("User task is too short, not fetching clarifications yet");
       } else {
+        // when doing this, clear the answers
+        answers.current = {};
         getClarifications();
         getSources();
       }
@@ -390,17 +404,14 @@ function OracleDashboard() {
   useEffect(() => {
     // after 1000ms, get clarifications
     const timeout = setTimeout(() => {
-      if (needNewClarifications) {
-        getClarifications();
-      }
+      getClarifications();
     }, 1000);
 
     return () => clearTimeout(timeout);
 
-    // the effect runs shortly only when needNewClarifications changes to true,
-    // which is only set to true when the user answers a clarification,
-    // not when we fetch clarifications
-  }, [needNewClarifications]);
+    // the effect runs shortly only when answerLastUpdateTs changes
+    // i.e. when the user answers a clarification
+  }, [answerLastUpdateTs]);
 
   useEffect(() => {
     // check DB readiness
@@ -434,7 +445,7 @@ function OracleDashboard() {
 
         <div className="bg-white p-6 rounded-lg shadow-lg max-w-3xl mx-auto">
           <div className="mb-6">
-            <h1 className="text-2xl font-semibold mb-2">The Oracle isss2222</h1>
+            <h1 className="text-2xl font-semibold mb-2">The Oracle</h1>
             <p className="text-gray-600">
               The Oracle is a background assistant, helping you to dig into your
               dataset for insights. To begin, please let us know what you are
@@ -481,60 +492,14 @@ function OracleDashboard() {
               <h2 className="text-xl font-semibold mb-2">Clarifications</h2>
               <TaskType taskType={taskType} />
               {clarifications.map((clarificationObject, index) => (
-                <div
+                <ClarificationItem
                   key={String(clarificationObject.clarification)}
-                  className="bg-amber-100 p-4 rounded-lg my-2 relative flex flex-row"
-                >
-                  <div className="text-amber-500 w-3/4">
-                    {clarificationObject.clarification}
-                  </div>
-                  <div className="w-1/4 mt-2 mx-2">
-                    {clarificationObject.input_type === "single_choice" ? (
-                      <Select
-                        allowClear={true}
-                        className="flex w-5/6"
-                        onChange={(value) =>
-                          updateAnsweredClarifications(
-                            clarificationObject.clarification,
-                            value
-                          )
-                        }
-                        options={clarificationObject.options.map((option) => ({
-                          value: option,
-                          label: option,
-                        }))}
-                      />
-                    ) : clarificationObject.input_type === "multiple_choice" ? (
-                      <Checkbox.Group
-                        className="flex w-5/6"
-                        options={clarificationObject.options.map((option) => ({
-                          label: option,
-                          value: option,
-                        }))}
-                        onChange={(value) =>
-                          updateAnsweredClarifications(
-                            clarificationObject.clarification,
-                            value
-                          )
-                        }
-                      />
-                    ) : (
-                      <Input
-                        className="flex w-5/6 rounded-lg"
-                        onChange={(value) =>
-                          updateAnsweredClarifications(
-                            clarificationObject.clarification,
-                            value.target.value
-                          )
-                        }
-                      />
-                    )}
-                  </div>
-                  <CloseOutlined
-                    className="text-amber-500 absolute top-2 right-2 cursor-pointer"
-                    onClick={() => deleteClarification(index)}
-                  />
-                </div>
+                  clarificationObject={clarificationObject}
+                  updateAnsweredClarifications={updateAnsweredClarifications}
+                  deleteClarification={() =>
+                    deleteClarification(index, clarificationObject)
+                  }
+                />
               ))}
             </div>
           )}
@@ -587,6 +552,116 @@ function OracleDashboard() {
         </div>
       </Scaffolding>
     </>
+  );
+}
+
+function ClarificationItem({
+  clarificationObject,
+  updateAnsweredClarifications,
+  deleteClarification,
+}) {
+  const [selectedChoice, setSelectedChoice] = useState(null);
+
+  const otherSelected = useMemo(
+    () => (selectedChoice || "").toLowerCase() === "other",
+    [selectedChoice]
+  );
+
+  const opts = clarificationObject.options;
+  // add an other option if it doesn't exist and the input type is single_choice
+  if (
+    clarificationObject.input_type === "single_choice" &&
+    opts.indexOf("Other") === -1 &&
+    opts.indexOf("other") === -1
+  ) {
+    opts.push("Other");
+  }
+
+  return (
+    <div className="bg-amber-100 p-4 rounded-lg my-2 relative flex flex-row">
+      <div className="text-amber-500 w-3/4">
+        {clarificationObject.clarification}
+      </div>
+      <div className="w-1/4 mt-2 mx-2">
+        {clarificationObject.input_type === "single_choice" ? (
+          <div>
+            <Select
+              allowClear={true}
+              className="flex w-5/6"
+              optionRender={(opt, info) => (
+                <div className="text-wrap break-words hyphens-auto">
+                  {opt.label}
+                </div>
+              )}
+              onChange={(value) => {
+                setSelectedChoice(value);
+                updateAnsweredClarifications(
+                  clarificationObject.clarification,
+                  value,
+                  true
+                );
+              }}
+              options={opts.map((option) => ({
+                value: option,
+                label: option,
+              }))}
+            />
+            {/* if other is selected, show a text input too */}
+            {otherSelected ? (
+              <TextArea
+                placeholder="Type here"
+                className="my-2 w-5/6"
+                autoSize={true}
+                onChange={(value) => {
+                  // if this is empty, then just set answer back to to selectedOption
+                  if (value.target.value === "") {
+                    updateAnsweredClarifications(
+                      clarificationObject.clarification,
+                      selectedChoice || null
+                    );
+                  } else {
+                    // else set answer to the value of this text area
+                    updateAnsweredClarifications(
+                      clarificationObject.clarification,
+                      value.target.value
+                    );
+                  }
+                }}
+              />
+            ) : null}
+          </div>
+        ) : clarificationObject.input_type === "multiple_choice" ? (
+          <Checkbox.Group
+            className="flex w-5/6"
+            options={clarificationObject.options.map((option) => ({
+              label: option,
+              value: option,
+            }))}
+            onChange={(value) =>
+              updateAnsweredClarifications(
+                clarificationObject.clarification,
+                value
+              )
+            }
+          />
+        ) : (
+          <TextArea
+            autoSize={true}
+            className="flex w-5/6 rounded-lg"
+            onChange={(value) =>
+              updateAnsweredClarifications(
+                clarificationObject.clarification,
+                value.target.value
+              )
+            }
+          />
+        )}
+      </div>
+      <CloseOutlined
+        className="text-amber-500 absolute top-2 right-2 cursor-pointer"
+        onClick={deleteClarification}
+      />
+    </div>
   );
 }
 
