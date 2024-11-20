@@ -201,7 +201,7 @@ function OracleDashboard() {
     }
   };
 
-  const fetchReports = async (apiKeyName, setReportsCallback) => {
+  const fetchReports = useCallback(async (apiKeyName, setReportsCallback) => {
     try {
       const token = localStorage.getItem("defogToken");
       if (!token || !apiKeyName) return;
@@ -229,7 +229,7 @@ function OracleDashboard() {
       console.error("An error occurred while fetching reports:", error);
       return null;
     }
-  };
+  }, []);
 
   useEffect(() => {
     const fetchInitialReports = async () => {
