@@ -257,14 +257,14 @@ function OracleDashboard() {
           clearInterval(intervalId);
         }
       } else {
-        setIsPolling(false); // Set up polling every second
-        clearInterval(intervalId); // Trigger the first poll immediately
+        setIsPolling(false);
+        clearInterval(intervalId);
       }
     };
 
     if (isPolling) {
-      intervalId = setInterval(pollReports, 1000);
-      pollReports();
+      intervalId = setInterval(pollReports, 1000); // poll every second
+      pollReports(); // poll immediately for the first time
     }
 
     return () => clearInterval(intervalId);
