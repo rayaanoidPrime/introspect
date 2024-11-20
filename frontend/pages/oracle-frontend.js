@@ -9,7 +9,6 @@ import { useRouter } from "next/router";
 import {
   CheckCircleOutlined,
   CloseOutlined,
-  DownloadOutlined,
   DeleteOutlined,
   CloseCircleOutlined,
 } from "@ant-design/icons";
@@ -19,6 +18,7 @@ const { TextArea } = Input;
 function OracleDashboard() {
   const [apiKeyName, setApiKeyName] = useState(null);
   const [apiKeyNames, setApiKeyNames] = useState([]);
+  const [isPolling, setIsPolling] = useState(false);
   const router = useRouter();
 
   const getApiKeyNames = async (token) => {
@@ -201,42 +201,74 @@ function OracleDashboard() {
     }
   };
 
+  const fetchReports = useCallback(async (apiKeyName, setReportsCallback) => {
+    try {
+      const token = localStorage.getItem("defogToken");
+      if (!token || !apiKeyName) return;
+
+      const res = await fetch(setupBaseUrl("http", `oracle/list_reports`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token,
+          key_name: apiKeyName,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setReportsCallback(data.reports);
+        return data.reports;
+      } else {
+        console.error("Failed to fetch reports");
+        return null;
+      }
+    } catch (error) {
+      console.error("An error occurred while fetching reports:", error);
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
-    const token = localStorage.getItem("defogToken");
+    const fetchInitialReports = async () => {
+      await fetchReports(apiKeyName, setReports);
+    };
+
+    // Fetch reports once when the page loads
+    fetchInitialReports();
+  }, [apiKeyName]);
+
+  useEffect(() => {
+    let intervalId;
 
     const pollReports = async () => {
-      try {
-        const res = await fetch(setupBaseUrl("http", `oracle/list_reports`), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            token: token,
-            key_name: apiKeyName,
-          }),
-        });
+      const reports = await fetchReports(apiKeyName, setReports);
 
-        if (res.ok) {
-          const data = await res.json();
-          setReports(data.reports);
-        } else {
-          console.error("Failed to fetch reports");
+      if (reports) {
+        // make sure all reports are in a terminal state i.e. done or error
+        const allTerminal = reports.every(
+          (report) => report.status === "done" || report.status === "error"
+        );
+
+        if (allTerminal) {
+          setIsPolling(false);
           clearInterval(intervalId);
         }
-      } catch (error) {
-        console.error("An error occurred:", error);
+      } else {
+        setIsPolling(false);
         clearInterval(intervalId);
       }
     };
 
-    const intervalId = setInterval(pollReports, 1000);
-
-    // Optionally, start the first poll immediately
-    pollReports();
+    if (isPolling) {
+      intervalId = setInterval(pollReports, 1000); // poll every second
+      pollReports(); // poll immediately for the first time
+    }
 
     return () => clearInterval(intervalId);
-  }, [apiKeyName]);
+  }, [isPolling, apiKeyName]);
 
   const getMDX = useCallback(
     async (reportId) => {
@@ -335,14 +367,11 @@ function OracleDashboard() {
   };
 
   const generateReport = async () => {
-    // generate a report
+    // Logic for generating a report
     const token = localStorage.getItem("defogToken");
     const selectedSourceLinks = sources
-      .filter((source) => source.selected) // Filter to only selected sources
-      .map((source) => source.link); // Extract the 'link' property of the source
-    console.log("Selected sources:", selectedSourceLinks);
-
-    //
+      .filter((source) => source.selected)
+      .map((source) => source.link);
 
     const res = await fetch(setupBaseUrl("http", `oracle/begin_generation`), {
       method: "POST",
@@ -361,6 +390,13 @@ function OracleDashboard() {
         })),
       }),
     });
+
+    if (res.ok) {
+      // Start polling when a new report generation request is sent
+      setIsPolling(true);
+    } else {
+      console.error("Failed to generate report");
+    }
   };
 
   useEffect(() => {
