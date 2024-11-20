@@ -9,7 +9,6 @@ import { useRouter } from "next/router";
 import {
   CheckCircleOutlined,
   CloseOutlined,
-  DownloadOutlined,
   DeleteOutlined,
   CloseCircleOutlined,
 } from "@ant-design/icons";
@@ -366,35 +365,6 @@ function OracleDashboard() {
       }),
     });
   };
-
-  // const generateReport = async () => {
-  //   // generate a report
-  //   const token = localStorage.getItem("defogToken");
-  //   const selectedSourceLinks = sources
-  //     .filter((source) => source.selected) // Filter to only selected sources
-  //     .map((source) => source.link); // Extract the 'link' property of the source
-  //   console.log("Selected sources:", selectedSourceLinks);
-
-  //   //
-
-  //   const res = await fetch(setupBaseUrl("http", `oracle/begin_generation`), {
-  //     method: "POST",
-  //     headers: {
-  //       "Content-Type": "application/json",
-  //     },
-  //     body: JSON.stringify({
-  //       token,
-  //       key_name: apiKeyName,
-  //       user_question: userQuestion,
-  //       sources: selectedSourceLinks,
-  //       task_type: taskType,
-  //       clarifications: clarifications.map((d) => ({
-  //         ...d,
-  //         answer: answers.current[d.clarification],
-  //       })),
-  //     }),
-  //   });
-  // };'
 
   const generateReport = async () => {
     // Logic for generating a report
