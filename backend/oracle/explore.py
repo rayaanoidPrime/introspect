@@ -256,9 +256,23 @@ async def explore_generated_question(
             data, err_msg = await execute_sql(db_type, db_creds, sql)
             if err_msg is not None:
                 LOGGER.error(f"Error occurred in executing SQL: {err_msg}")
-            elif isinstance(data, pd.DataFrame) and data.empty:
-                err_msg = "No data fetched for the query. Please gradually remove filters and try again."
-                # TODO modify question to have less filters
+            elif isinstance(data, pd.DataFrame):
+                dependent_variable_str = f"{dependent_variable['description']} ({dependent_variable['table.column']})"
+                independent_variable_str = f"{independent_variable_group['description']} ({independent_variable_group['table.column']})"
+                expand_sql_qn_response = await make_request(
+                    DEFOG_BASE_URL + "/oracle/expand_sql_qn",
+                    data={"api_key": api_key, "user_question": user_question, "generated_qn": generated_qn, "sql": sql, "dependent_variable": dependent_variable_str, "independent_variable": independent_variable_str},
+                )
+                sql = expand_sql_qn_response["sql"]
+                generated_qn = expand_sql_qn_response["question"]
+                if sql:
+                    LOGGER.debug(f"Expanded SQL for {qn_id}: {generated_qn}")
+                    data, err_msg = await execute_sql(db_type, db_creds, sql)
+                    if err_msg is not None:
+                        LOGGER.error(f"Error occurred in executing expanded SQL: {err_msg}")
+                    elif isinstance(data, pd.DataFrame) and not data.empty:
+                        LOGGER.debug(f"Data fetched after expanding SQL for {qn_id}: {generated_qn}")
+                        break
             else:
                 break
         retry_count += 1
