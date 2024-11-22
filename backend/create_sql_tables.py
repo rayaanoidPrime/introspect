@@ -51,7 +51,6 @@ defog_analyses = Table(
     Column("approaches", JSON),
     Column("clarify", JSON),
     Column("assignment_understanding", JSON),
-    Column("understand", JSON),
     Column("gen_approaches", JSON),
     Column("user_question", Text),
     Column("gen_steps", JSON),

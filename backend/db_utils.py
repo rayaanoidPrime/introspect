@@ -154,7 +154,6 @@ class Analyses(Base):
     approaches = Column(JSON)
     clarify = Column(JSON)
     assignment_understanding = Column(JSON)
-    understand = Column(JSON)
     gen_approaches = Column(JSON)
     user_question = Column(Text)
     gen_steps = Column(JSON)
