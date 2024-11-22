@@ -25,7 +25,7 @@ export function TestDrive({
   // }, []);
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/get_user_history`, {
+    fetch(`${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}/get_user_history`, {
       method: "POST",
       body: JSON.stringify({ token }),
     })
@@ -34,10 +34,13 @@ export function TestDrive({
   }, []);
 
   const updateUserHistory = (history) => {
-    fetch(`${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT}/update_user_history`, {
-      method: "POST",
-      body: JSON.stringify({ token, history }),
-    });
+    fetch(
+      `${process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}/update_user_history`,
+      {
+        method: "POST",
+        body: JSON.stringify({ token, history }),
+      }
+    );
   };
 
   return (
