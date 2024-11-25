@@ -296,6 +296,8 @@ async def explore_generated_question(
                         break
                     else:
                         err_msg = "No data fetched"
+                else:
+                    err_msg = "No data fetched"
             else:
                 break
         retry_count += 1
