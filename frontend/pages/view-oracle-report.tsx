@@ -17,6 +17,7 @@ import React from "react";
 import { OracleReportContext } from "$components/context/OracleReportContext";
 import { OracleReportTableExtension } from "$components/oracle/reports/OracleReportTable";
 import { OracleReportImageExtension } from "$components/oracle/reports/OracleReportImage";
+import { LeftOutlined } from "@ant-design/icons";
 
 const extensions = [
   StarterKit,
@@ -177,14 +178,25 @@ export default function ViewOracleReport() {
       }}
     >
       <div className="relative">
-        <div className="fixed h-12 bottom-0 w-full bg-gray-50 md:bg-transparent md:w-auto md:sticky md:top-0 p-2 z-10 md:h-0">
+        <div className="flex flex-row fixed min-h-12 bottom-0 w-full bg-gray-50 md:bg-transparent md:w-auto md:sticky md:top-0 p-2 z-10 md:h-0">
           {/* @ts-ignore */}
-          <Button onClick={() => setFeedbackModalOpen(true)}>
+          <Button
+            onClick={() => router.push("/oracle-frontend")}
+            className="bg-transparent border-none hover:bg-transparent"
+          >
+            <LeftOutlined className="w-2" /> All reports
+          </Button>
+
+          {/* @ts-ignore */}
+          <Button
+            onClick={() => setFeedbackModalOpen(true)}
+            className="ml-auto"
+          >
             Give feedback
           </Button>
 
           <Modal
-            rootClassNames="w-96"
+            rootClassNames="w-96 z-10"
             open={feedbackModalOpen}
             onOk={submitFeedback}
             onCancel={() => setFeedbackModalOpen(false)}
