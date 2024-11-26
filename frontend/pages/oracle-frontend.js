@@ -573,13 +573,10 @@ function OracleDashboard() {
                   className="text-purple-700 fill-purple-200 hover:text-purple-900 disabled:text-gray-300"
                   disabled={report.status !== "done"}
                   onClick={() =>
-                    router.push({
-                      pathname: "view-oracle-report",
-                      query: {
-                        reportId: report.report_id,
-                        keyName: apiKeyName,
-                      },
-                    })
+                    window.open(
+                      `/view-oracle-report?reportId=${report.report_id}&keyName=${apiKeyName}`,
+                      "_blank"
+                    )
                   }
                 >
                   View
