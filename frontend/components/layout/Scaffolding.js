@@ -27,11 +27,6 @@ const Scaffolding = ({
     localStorage.removeItem("defogUser");
     localStorage.removeItem("defogToken");
     localStorage.removeItem("defogUserType");
-    setContext({
-      user: null,
-      token: null,
-      userType: null,
-    });
 
     redirect("/log-in");
   };
