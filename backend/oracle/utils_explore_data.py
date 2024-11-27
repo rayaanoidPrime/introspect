@@ -26,35 +26,6 @@ SUPPORTED_CHART_TYPES = [
 ]
 
 
-def clean_numeric_column(df: pd.DataFrame, column_name: str) -> pd.DataFrame:
-    """
-    Cleans a column containing numeric values formatted as strings with symbols,
-    keeping only numbers and decimals, and converts them to numeric. Only columns
-    that contain numeric values are cleaned.
-
-    Parameters:
-    - df: The DataFrame containing the column to be cleaned.
-    - column_name: The name of the column to clean.
-
-    Returns:
-    - The DataFrame with the cleaned column.
-    """
-    LOGGER.debug(f"Checking if the column is numeric: {column_name}")
-    # Check if the column contains at least one numeric character in any of its values
-    if df[column_name].apply(lambda x: any(char.isdigit() for char in str(x))).any():
-        LOGGER.debug(f"Cleaning column: {column_name}")
-        # Remove anything that is not a number or decimal point
-        df[column_name] = df[column_name].replace(r"[^0-9.]", "", regex=True)
-
-        # Convert the column to numeric, coercing errors to NaN
-        df[column_name] = pd.to_numeric(df[column_name], errors="coerce")
-    else:
-        # If no numeric values, skip cleaning
-        LOGGER.debug(f"Skipping cleaning as the column is not numeric: {column_name}")
-
-    return df
-
-
 async def gen_sql(api_key: str, db_type: str, question: str, glossary: str) -> str:
     """
     Generate SQL for the given question and glossary, using the Defog API.
@@ -294,9 +265,6 @@ def get_chart_df(data: pd.DataFrame, chart_fn_params: Dict[str, Any]) -> pd.Data
         if not y_col or y_col not in data.columns:
             LOGGER.error(f"y column not found in data: {y_col}")
             return data
-        else:
-            # clean up y column if it contains numeric values with symbols e.g. %, $
-            data = clean_numeric_column(data, y_col)
         if data[y_col].dtype not in [np.float64, np.int64]:
             LOGGER.error(f"y column is not numeric: {y_col}")
             return data
@@ -330,9 +298,6 @@ def get_chart_df(data: pd.DataFrame, chart_fn_params: Dict[str, Any]) -> pd.Data
         if not y_col or y_col not in data.columns:
             LOGGER.error(f"y column not found in data: {y_col}")
             return data
-        else:
-            # clean up y column if it contains numeric values with symbols e.g. %, $
-            data = clean_numeric_column(data, y_col)
         if data[y_col].dtype not in [np.float64, np.int64]:
             LOGGER.error(f"y column is not numeric: {y_col}")
             return data

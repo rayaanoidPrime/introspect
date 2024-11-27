@@ -8,12 +8,14 @@ TYPE_DATETIME = "datetime"
 TYPE_STRING = "string"
 TYPE_INTEGER = "int64"
 TYPE_FLOAT = "float64"
+TYPE_MONEY = "money"
 
 REGEX_DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
 REGEX_TIME_PATTERN = r"^\d{2}:\d{2}:\d{2}$"
 REGEX_DATETIME_PATTERN = r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$"
 REGEX_INTEGER_PATTERN = r"^\d+$"
 REGEX_FLOAT_PATTERN = r"^\d+(\.\d+)?$"
+REGEX_MONEY_PATTERN = r"^\$?\d{1,3}(,?\d{3})*(\.\d{2})?$"
 
 
 def determine_column_type(column: pd.Series) -> str:
@@ -41,6 +43,10 @@ def determine_column_type(column: pd.Series) -> str:
         float_matches = column.astype(str).str.match(REGEX_FLOAT_PATTERN)
         if float_matches.all():
             return TYPE_FLOAT
+        # Check if it's a money column
+        money_matches = column.astype(str).str.match(REGEX_MONEY_PATTERN)
+        if money_matches.all():
+            return TYPE_MONEY
         return TYPE_STRING
     elif column.dtype == "int64":
         return TYPE_INTEGER
@@ -74,6 +80,10 @@ def mk_df(data: List, columns: List[str]) -> pd.DataFrame:
         elif format_type == TYPE_INTEGER:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("int64")
         elif format_type == TYPE_FLOAT:
+            df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
+        elif format_type == TYPE_MONEY:
+            # Convert money strings to float by removing currency symbols and commas
+            df[col] = df[col].astype(str).str.replace(r'[^\d.-]', '', regex=True)
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
 
     return df
