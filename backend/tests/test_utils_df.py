@@ -47,6 +47,21 @@ class TestDetermineColumnType(unittest.TestCase):
         data = pd.Series(["2021-01-01", "2021-01-02 13:00:00", "2021-01-03 14:00:00"])
         self.assertEqual(determine_column_type(data), "string")
 
+    def test_determine_column_type_money(self):
+        test_cases = [
+            ["$1,234.56", "$2,345.67"],
+            ["$1.23", "$4.56"],
+            ["1,234.56", "2,345.67"],
+            ["$1,234", "$2,345"],
+            ["1,234", "2,345.00"],
+            ["$123456.78", "$78910.11"],
+        ]
+        
+        for case in test_cases:
+            series = pd.Series(case)
+
+            assert determine_column_type(series) == "money"
+
 
 class TestMkDf(unittest.TestCase):
 
@@ -186,3 +201,29 @@ class TestMkDf(unittest.TestCase):
         self.assertTrue(pd.api.types.is_object_dtype(df["channel"]))
         self.assertTrue(pd.api.types.is_integer_dtype(df["total_activations"]))
         self.assertTrue(pd.api.types.is_object_dtype(df["percentage_change"]))
+
+    def test_mk_df_money_conversion(self):
+        data = [
+            ["$1,234.56", "A", "1"],
+            ["$12,345.67", "B", "2"],
+            ["$123,456.78", "C", "3"]
+        ]
+        columns = ["amount", "label", "id"]
+        
+        df = mk_df(data, columns)
+        
+        # Check if conversion to float was successful
+        assert df.dtypes["amount"] == "float64"
+        assert df["amount"].tolist() == [1234.56, 12345.67, 123456.78]
+        
+        # Test with different money formats
+        data_varied = [
+            ["$1,234.56", "A", "1"],
+            ["1,234.56", "B", "2"],    # No dollar sign
+            ["$1234.56", "C", "3"],    # No comma
+            ["$1,234", "D", "4"]       # No cents
+        ]
+        
+        df_varied = mk_df(data_varied, columns)
+        assert df_varied.dtypes["amount"] == "float64"
+        assert df_varied["amount"].tolist() == [1234.56, 1234.56, 1234.56, 1234.0]

@@ -295,6 +295,12 @@ def get_chart_df(data: pd.DataFrame, chart_fn_params: Dict[str, Any]) -> pd.Data
     elif chart_fn == "catplot" and (kind == "box" or kind == "violin"):
         agg_cols = []
         y_col = kwargs.get("y", None)
+        if not y_col or y_col not in data.columns:
+            LOGGER.error(f"y column not found in data: {y_col}")
+            return data
+        if data[y_col].dtype not in [np.float64, np.int64]:
+            LOGGER.error(f"y column is not numeric: {y_col}")
+            return data
         for col in ["x", "hue", "col", "row"]:
             if col in kwargs and kwargs[col]:
                 agg_cols.append(kwargs[col])
