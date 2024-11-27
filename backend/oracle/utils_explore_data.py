@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
@@ -8,7 +8,6 @@ from generic_utils import format_sql, make_request, normalize_sql
 from matplotlib import pyplot as plt
 from oracle.celery_app import LOGGER
 from oracle.constants import TaskType
-from seaborn._stats.counting import Hist
 
 FIGSIZE = (5, 3)
 Z_THRESHOLD = 3  # z-score threshold for anomalies
@@ -432,7 +431,7 @@ async def gen_data_analysis(
         "question": generated_qn,
         "sql": sql,
         "data_csv": data_chart.to_csv(float_format="%.3f", header=True, index=False),
-        "data_anomalies": data_anomalies_csv,
+        "data_anomalies_csv": data_anomalies_csv,
         "chart_fn": chart_fn_params["name"],
         "chart_params": chart_fn_params.get("parameters", {}),
     }
