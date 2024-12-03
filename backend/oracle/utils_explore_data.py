@@ -442,8 +442,8 @@ async def gen_data_analysis(
         "data_csv": data_chart.to_csv(float_format="%.3f", header=True, index=False),
         "data_anomalies_csv": data_anomalies_csv,
         "correlation_dict": correlation_dict,
-        "chart_fn": chart_fn_params["name"],
-        "chart_params": chart_fn_params.get("parameters", {}),
+        "chart_fn": chart_fn_params.get("name") if chart_fn_params else None,
+        "chart_params": chart_fn_params.get("parameters", {}) if chart_fn_params else {},
     }
     resp = await make_request(
         f"{DEFOG_BASE_URL}/oracle/gen_explorer_data_analysis", data=json_data
