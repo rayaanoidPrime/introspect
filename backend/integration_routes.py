@@ -560,8 +560,7 @@ async def update_glossary(request: Request):
         glossary_prunable_units = params.get("glossary_prunable_units", "")
         dev = params.get("dev", False)
 
-        if glossary_prunable_units:
-            glossary_prunable_units = glossary_prunable_units.split("\n")
+        glossary_prunable_units = glossary_prunable_units.split("\n")
 
         url = DEFOG_BASE_URL + "/update_glossary"
         r = await make_request(
