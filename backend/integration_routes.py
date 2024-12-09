@@ -506,7 +506,11 @@ async def get_glossary_golden_queries(request: Request):
     # for backwards compatibility
     glossary = resp.get("glossary", "")
     glossary_compulsory = resp.get("glossary_compulsory", "")
+    if not glossary_compulsory:
+        glossary_compulsory = ""
     glossary_prunable_units = resp.get("glossary_prunable_units", [])
+    if not glossary_prunable_units:
+        glossary_prunable_units = []
     glossary_prunable_units = "\n".join(glossary_prunable_units)
     # for backwards compatibility
     # if `glossary` is non empty and glossary compulsory is empty, set glossary compulsory to glossary
@@ -552,8 +556,8 @@ async def update_glossary(request: Request):
 
     if not append:
         # completely overwrite the existing glossary
-        glossary_compulsory = params.get("glossary_compulsory")
-        glossary_prunable_units = params.get("glossary_prunable_units")
+        glossary_compulsory = params.get("glossary_compulsory", "")
+        glossary_prunable_units = params.get("glossary_prunable_units", "")
         dev = params.get("dev", False)
 
         if glossary_prunable_units:
