@@ -6,9 +6,9 @@ export default function Sources({ sources, setSources }) {
     return null;
   }
   return (
-    <div className="bg-white flex w-full flex-col">
+    <div className="bg-white dark:bg-gray-800 flex w-full flex-col">
       <div className="flex items-start gap-4 pb-3">
-        <h3 className="text-base font-bold leading-6 text-black">
+        <h3 className="text-base font-bold leading-6 text-black dark:text-white">
           Suggested Sources{" "}
         </h3>
       </div>
@@ -35,8 +35,8 @@ const SourceCard = ({ source, setSources }) => {
 
   return (
     <div
-      className={`relative flex h-[79px] w-full items-center gap-2.5 rounded-lg border border-gray-100 px-1.5 py-1 shadow-md transition-all hover:shadow-lg hover:border-gray-50 hover:bg-gray-200 ${
-        source.selected ? "bg-gray-100 opacity-50" : "bg-white"
+      className={`relative flex h-[79px] w-full items-center gap-2.5 rounded-lg border border-gray-100 dark:border-gray-700 px-1.5 py-1 shadow-md transition-all hover:shadow-lg hover:border-gray-50 dark:hover:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700 ${
+        source.selected ? "bg-gray-100 dark:bg-gray-700 opacity-50" : "bg-white dark:bg-gray-800"
       }`}
     >
       {/* Icon and Text Wrapped in a Clickable <a> Tag that redirect to the source link*/}
@@ -59,7 +59,7 @@ const SourceCard = ({ source, setSources }) => {
         </span>
         <span className="flex min-w-0 max-w-[192px] flex-col justify-center gap-1">
           <h6 className="line-clamp-2 text-xs font-light">{source.title}</h6>
-          <span className="truncate text-xs font-light text-[#1B1B16]/30">
+          <span className="truncate text-xs font-light text-[#1B1B16]/30 dark:text-gray-400">
             {source.link}
           </span>
         </span>
