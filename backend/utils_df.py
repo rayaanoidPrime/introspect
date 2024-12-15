@@ -80,7 +80,10 @@ def mk_df(data: List, columns: List[str]) -> pd.DataFrame:
                 df[col], format="%H:%M:%S", errors="coerce"
             ).dt.time
         elif format_type == TYPE_INTEGER:
-            df[col] = pd.to_numeric(df[col], errors="coerce").astype("int64")
+            try:
+                df[col] = pd.to_numeric(df[col], errors="coerce").astype("int64")
+            except:
+                pass
         elif format_type == TYPE_FLOAT:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("float64")
         elif format_type == TYPE_MONEY:
