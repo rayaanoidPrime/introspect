@@ -31,7 +31,7 @@ from utils_sql import execute_sql
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 MAX_ANALYSES = 5
-MAX_ROUNDS = 1
+MAX_ROUNDS = 2
 RETRY_DATA_FETCH = 1
 RETRY_CHART_GEN = 1
 
@@ -47,9 +47,7 @@ async def explore_data(
 ):
     """
     This function will explore the data, by generating a series of exploratory
-    data analysis (EDA) plots and tables, which are relevant to the data provided.
-    Side Effects:
-    - Intermediate data and plots will be saved in the report_id's directory.
+    data analysis (EDA) tables, which are relevant to the data provided.
 
     Outputs a list of data analyses, each containing the following keys:
     - analysis_id: int
@@ -76,13 +74,6 @@ async def explore_data(
     problem_statement = gather_context.get("problem_statement", "")
     db_type, db_creds = get_db_type_creds(api_key)
     max_rounds = inputs.get("max_rounds", MAX_ROUNDS)
-
-    # create the directory to save the chart
-    current_dir = os.getcwd()
-    report_chart_dir = os.path.join(
-        current_dir, f"oracle/reports/{api_key}/report_{report_id}"
-    )
-    os.makedirs(report_chart_dir, exist_ok=True)
 
     # generate initial explorer questions
     json_data = {
@@ -117,7 +108,8 @@ async def explore_data(
     round = 0
     summary_all = ""
     qn_id = 0
-    while True:
+    while round < max_rounds:
+        round += 1
         tasks = []
         generated_qns_summaries = []
         for question_dict in generated_qns:
@@ -143,18 +135,17 @@ async def explore_data(
             generated_qns_summaries.append(question_dict.get("summary", "exploring"))
             tasks.append(
                 explore_generated_question(
-                    api_key,
-                    user_question,
-                    task_type,
-                    qn_id,
-                    generated_qn,
-                    dependent_variable,
-                    independent_variable_group,
-                    context,
-                    db_type,
-                    db_creds,
-                    report_chart_dir,
-                    inputs.get("retry_data_fetch", RETRY_DATA_FETCH),
+                    api_key=api_key,
+                    user_question=user_question,
+                    task_type=task_type,
+                    qn_id=qn_id,
+                    generated_qn=generated_qn,
+                    dependent_variable=dependent_variable,
+                    independent_variable_group=independent_variable_group,
+                    context=context,
+                    db_type=db_type,
+                    db_creds=db_creds,
+                    retry_data_fetch=inputs.get("retry_data_fetch", RETRY_DATA_FETCH),
                 )
             )
 
@@ -205,34 +196,35 @@ async def explore_data(
         LOGGER.debug(
             f"Round {round} analyses count: {len(non_empty_answers)}\nTotal analyses count: {len(analyses)}"
         )
-        round += 1
-        if round >= max_rounds:
-            break
-        # generate new questions for the next round
-        get_deeper_qns_request = {
-            "api_key": api_key,
-            "user_question": user_question,
-            "task_type": task_type.value,
-            "problem_statement": problem_statement,
-            "context": context,
-            "dependent_variable": dependent_variable,
-            "past_analyses": analyses,
-        }
-        response = await make_request(
-            DEFOG_BASE_URL + "/oracle/gen_explorer_qns_deeper",
-            get_deeper_qns_request,
-            timeout=300,
-        )
-        if (
-            "generated_questions" not in response
-            or "independent_variable_groups" not in response
-        ):
-            LOGGER.error(f"Error occurred in generating deeper questions: {response}")
-            break
-        generated_qns = response["generated_questions"]
-        independent_variable_groups = response["independent_variable_groups"]
-        # this is the summary across all analyses so far
-        summary_all = response.get("summary", "")
+
+        if round < max_rounds:
+            # generate new questions for the next round
+            get_deeper_qns_request = {
+                "api_key": api_key,
+                "user_question": user_question,
+                "task_type": task_type.value,
+                "problem_statement": problem_statement,
+                "context": context,
+                "dependent_variable": dependent_variable,
+                "past_analyses": analyses,
+            }
+            response = await make_request(
+                DEFOG_BASE_URL + "/oracle/gen_explorer_qns_deeper",
+                get_deeper_qns_request,
+                timeout=300,
+            )
+            if (
+                "generated_questions" not in response
+                or "independent_variable_groups" not in response
+            ):
+                LOGGER.error(f"Error occurred in generating deeper questions: {response}")
+                break
+            generated_qns = response["generated_questions"]
+            LOGGER.info(f"Generated deeper questions with data: {len(generated_qns)}")
+            LOGGER.info(f"Generated questions are: {generated_qns}")
+            independent_variable_groups = response["independent_variable_groups"]
+            # this is the summary across all analyses so far
+            summary_all = response.get("summary", "")
 
     # give each analysis a unique id and add these analyses to the report
     for analysis in analyses:
@@ -259,7 +251,6 @@ async def explore_generated_question(
     context: str,
     db_type: str,
     db_creds: Dict[str, str],
-    report_chart_dir: str,
     retry_data_fetch: int,
 ) -> Dict[str, Any]:
     """
