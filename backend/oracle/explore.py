@@ -11,19 +11,11 @@ from generic_utils import make_request
 from oracle.celery_app import LOGGER
 from oracle.constants import TaskType
 from oracle.utils_explore_data import (
-    ANOMALIES_CSV,
-    CORRELATION,
     FETCHED_TABLE_CSV,
-    IMAGE,
     TABLE_CSV,
     gen_data_analysis,
     gen_sql,
-    get_anomalies,
-    get_chart_df,
-    get_chart_fn,
-    get_correlation,
     retry_sql_gen,
-    run_chart_fn,
     independent_status_updater,
 )
 from utils_logging import save_timing
@@ -31,7 +23,7 @@ from utils_sql import execute_sql
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 MAX_ANALYSES = 5
-MAX_ROUNDS = 2
+MAX_ROUNDS = 1
 RETRY_DATA_FETCH = 1
 RETRY_CHART_GEN = 1
 
