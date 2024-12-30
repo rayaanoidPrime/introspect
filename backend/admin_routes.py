@@ -197,13 +197,26 @@ async def add_user_with_token(request: Request):
         )
 
     with engine.begin() as conn:
-        conn.execute(
-            insert(Users).values(
-                username=username,
-                hashed_password=user_token, # this is horribly confusing nomenclature, but me from 7 months ago did this monstrosity. So I guess we just roll with it 🤦🏽‍♂️
-                token=INTERNAL_API_KEY,
-                user_type=user_type,
+        # if user already exists, update the token
+        user = conn.execute(select(Users).where(Users.username == username)).fetchone()
+        if user:
+            conn.execute(
+                update(Users)
+                .where(Users.username == username)
+                .values(
+                    hashed_password=user_token, # this is horribly confusing nomenclature, but me from 7 months ago did this monstrosity. So I guess we just roll with it 🤦🏽‍♂️
+                    token=INTERNAL_API_KEY,
+                    user_type=user_type,
+                )
             )
-        )
+        else:
+            conn.execute(
+                insert(Users).values(
+                    username=username,
+                    hashed_password=user_token, # this is horribly confusing nomenclature, but me from 7 months ago did this monstrosity. So I guess we just roll with it 🤦🏽‍♂️
+                    token=INTERNAL_API_KEY,
+                    user_type=user_type,
+                )
+            )
 
     return {"status": "success"}
