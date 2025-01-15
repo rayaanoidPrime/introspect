@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import logging
 import os
 import traceback
@@ -11,6 +12,7 @@ from db_utils import (
     ORACLE_ENABLED,
     get_all_analyses,
     get_analysis_data,
+    init_models,
     initialise_analysis,
 )
 from generic_utils import get_api_key_from_key_name
@@ -62,6 +64,12 @@ analysis_assets_dir = os.environ.get(
 llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_models()
+    yield
+
+
 @app.get("/ping")
 async def root():
     return {"message": "Hello World"}
@@ -82,7 +90,7 @@ async def all_analyses(request: Request):
     key_name = params.get("key_name")
     api_key = get_api_key_from_key_name(key_name)
     try:
-        err, analyses = get_all_analyses(api_key=api_key)
+        err, analyses = await get_all_analyses(api_key=api_key)
         if err is not None:
             return {"success": False, "error_message": err}
 
@@ -101,7 +109,7 @@ async def one_analysis(request: Request):
 
         print("get_one_analysis", params)
 
-        err, analysis_data = get_analysis_data(analysis_id)
+        err, analysis_data = await get_analysis_data(analysis_id)
 
         if err is not None:
             return {"success": False, "error_message": err}
