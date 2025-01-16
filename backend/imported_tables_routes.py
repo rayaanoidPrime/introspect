@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
+from sqlalchemy.ext.asyncio import AsyncSession
 from db_utils import (
     INTERNAL_DB,
     ImportedTables,
@@ -25,7 +26,6 @@ from utils_imported_data import (
 )
 from pydantic import BaseModel
 from sqlalchemy import delete, insert, select, text, update
-from sqlalchemy.orm import Session
 from utils_imported_data import IMPORTED_SCHEMA
 from utils_logging import LOGGER, save_and_log, save_timing
 
@@ -42,11 +42,7 @@ class SourcesListRequest(BaseModel):
     model_config = {
         "json_schema_extra": {
             "examples": [
-                {
-                    "token": "user_token",
-                    "key_name": "source_key",
-                    "preview_rows": 10
-                }
+                {"token": "user_token", "key_name": "source_key", "preview_rows": 10}
             ]
         }
     }
@@ -60,7 +56,7 @@ async def sources_list_route(req: SourcesListRequest):
     Returns a dictionary of sources with the link as the key and the source title,
     type, summary, and tables as the value.
     """
-    if not validate_user(req.token):
+    if not (await validate_user(req.token)):
         return JSONResponse(
             status_code=401,
             content={
@@ -71,9 +67,10 @@ async def sources_list_route(req: SourcesListRequest):
     api_key = get_api_key_from_key_name(req.key_name)
     sources = {}
     # get all sources for api_key from engine
-    with engine.connect() as connection:
+    async with engine.connect() as connection:
         stmt_sources = select(OracleSources).where(OracleSources.api_key == api_key)
-        result_sources = connection.execute(stmt_sources).fetchall()
+        result_sources = await connection.execute(stmt_sources)
+        result_sources = result_sources.fetchall()
         for source in result_sources:
             sources[source.link] = {
                 "source_title": source.title,
@@ -142,7 +139,10 @@ class ImportSourcesRequest(BaseModel):
                 {
                     "token": "user_token",
                     "key_name": "source_key",
-                    "links": ["https://example.com/source1", "https://example.com/source2"]
+                    "links": [
+                        "https://example.com/source1",
+                        "https://example.com/source2",
+                    ],
                 }
             ]
         }
@@ -155,7 +155,7 @@ async def sources_import_route(req: ImportSourcesRequest):
     Import sources into the OracleSources table in the internal database.
     """
     ts, timings = time.time(), []
-    if not validate_user(req.token):
+    if not (await validate_user(req.token)):
         return JSONResponse(
             status_code=401,
             content={
@@ -197,29 +197,30 @@ async def sources_import_route(req: ImportSourcesRequest):
             "text_summary": source.get("summary"),
         }
         sources_to_insert.append(source_to_insert)
-    with Session(engine) as session:
+    async with AsyncSession(engine) as session:
+        async with session.begin():
         # insert the sources into the database if not present. otherwise update
-        for source in sources_to_insert:
-            stmt = select(OracleSources).where(
-                OracleSources.api_key == api_key, OracleSources.link == source["link"]
-            )
-            result = session.execute(stmt)
-            if result.scalar() is None:
-                stmt = insert(OracleSources).values(source)
-                session.execute(stmt)
-                LOGGER.debug(f"Inserted source {source['link']} into the database.")
-            else:
-                stmt = (
-                    update(OracleSources)
-                    .where(
-                        OracleSources.api_key == api_key,
-                        OracleSources.link == source["link"],
-                    )
-                    .values(source)
+            for source in sources_to_insert:
+                stmt = select(OracleSources).where(
+                    OracleSources.api_key == api_key, OracleSources.link == source["link"]
                 )
-                session.execute(stmt)
-                LOGGER.debug(f"Updated source {source['link']} in the database.")
-        session.commit()
+                result = await session.execute(stmt)
+                if result.scalar() is None:
+                    stmt = insert(OracleSources).values(source)
+                    await session.execute(stmt)
+                    LOGGER.debug(f"Inserted source {source['link']} into the database.")
+                else:
+                    stmt = (
+                        update(OracleSources)
+                        .where(
+                            OracleSources.api_key == api_key,
+                            OracleSources.link == source["link"],
+                        )
+                        .values(source)
+                    )
+                    await session.execute(stmt)
+                    LOGGER.debug(f"Updated source {source['link']} in the database.")
+            
     LOGGER.debug(f"Inserted {len(sources_to_insert)} sources into the database.")
     ts = save_timing(ts, "Sources parsed", timings)
 
@@ -348,7 +349,7 @@ class DeleteSourceRequest(BaseModel):
                 {
                     "token": "user_token",
                     "key_name": "source_key",
-                    "link": "https://example.com/source1"
+                    "link": "https://example.com/source1",
                 }
             ]
         }
@@ -360,7 +361,7 @@ async def delete_source(req: DeleteSourceRequest):
     """
     Delete a source from the OracleSources table in the internal database.
     """
-    if not validate_user(req.token):
+    if not (await validate_user(req.token)):
         return JSONResponse(
             status_code=401,
             content={
@@ -370,25 +371,25 @@ async def delete_source(req: DeleteSourceRequest):
         )
     api_key = get_api_key_from_key_name(req.key_name)
     # delete source from oracle_sources
-    with Session(engine) as session:
-        stmt = select(OracleSources).where(
-            OracleSources.api_key == api_key, OracleSources.link == req.link
-        )
-        result = session.execute(stmt)
-        source = result.fetchone()
-        if source is None:
-            return JSONResponse(
+    async with AsyncSession(engine) as session:
+        async with session.begin():
+            stmt = select(OracleSources).where(
+                OracleSources.api_key == api_key, OracleSources.link == req.link
+            )
+            result = await session.execute(stmt)
+            source = result.fetchone()
+            if source is None:
+                return JSONResponse(
                 status_code=404,
                 content={
                     "error": "Not Found",
                     "message": "Source not found",
                 },
             )
-        stmt = delete(OracleSources).where(
-            OracleSources.api_key == api_key, OracleSources.link == req.link
-        )
-        session.execute(stmt)
-        session.commit()
+            stmt = delete(OracleSources).where(
+                OracleSources.api_key == api_key, OracleSources.link == req.link
+            )
+            await session.execute(stmt)
     # delete source's tables from imported_tables
     with imported_tables_engine.begin() as imported_tables_connection:
         # get table_name for all entries with the link
@@ -430,14 +431,11 @@ class CreateImportedTablesRequest(BaseModel):
                 {
                     "token": "user_token",
                     "key_name": "source_key",
-                    "data": [
-                        ["column1", "column2"],
-                        ["value1", "value2"]
-                    ],
+                    "data": [["column1", "column2"], ["value1", "value2"]],
                     "link": "https://example.com/source1",
                     "table_index": 0,
                     "table_name": "example_table",
-                    "table_description": "Example table description"
+                    "table_description": "Example table description",
                 }
             ]
         }
@@ -479,7 +477,7 @@ async def imported_tables_create_route(req: CreateImportedTablesRequest):
         "table_description": "This table contains fruit products purchased by certain card numbers"
     }
     """
-    if not validate_user(req.token):
+    if not (await validate_user(req.token)):
         return JSONResponse(
             status_code=401,
             content={

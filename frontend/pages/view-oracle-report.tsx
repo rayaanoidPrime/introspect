@@ -7,16 +7,22 @@ import {
   getReportExecutiveSummary,
   extensions,
   parseMDX,
+  getReportComments,
+  sendCommentUpdates,
+  commentManager,
 } from "$components/oracle/oracleUtils";
 
 import { EditorProvider } from "@tiptap/react";
+import type { Editor } from "@tiptap/core";
 import React from "react";
 import {
+  OracleReportComment,
   OracleReportContext,
   Summary,
 } from "$components/oracle/OracleReportContext";
 // import { OracleBubbleMenu } from "$components/oracle/reports/OracleBubbleMenu";
 import { OracleNav } from "$components/oracle/reports/OracleNav";
+import { AgentConfigContext } from "@defogdotai/agents-ui-components/agent";
 
 export default function ViewOracleReport() {
   const [keyName, setKeyName] = useState<string | null>(null);
@@ -33,6 +39,9 @@ export default function ViewOracleReport() {
   const [multiTables, setMultiTables] = useState<any>({});
   const [images, setImages] = useState<any>({});
   const [analysisIds, setAnalysisIds] = useState<string[]>([]);
+  const [comments, setComments] = useState<OracleReportComment[]>([]);
+
+  const token = useRef<string>(null);
 
   const [mdx, setMDX] = useState<string | null>(null);
   const [executiveSummary, setExecutiveSummary] = useState<Summary | null>(
@@ -52,9 +61,15 @@ export default function ViewOracleReport() {
   useEffect(() => {
     const setup = async (reportId: string, keyName: string) => {
       try {
+        token.current =
+          localStorage.getItem("defogToken") ||
+          "bdbe4d376e6c8a53a791a86470b924c0715854bd353483523e3ab016eb55bcd0";
         setLoading(true);
-        const token = localStorage.getItem("defogToken");
-        const [mdx, status] = await getReportMDX(reportId, keyName, token);
+        const [mdx, status] = await getReportMDX(
+          reportId,
+          keyName,
+          token.current
+        );
 
         reportStatus.current = status;
 
@@ -71,7 +86,7 @@ export default function ViewOracleReport() {
         const sum: Summary = await getReportExecutiveSummary(
           reportId,
           keyName,
-          token
+          token.current
         );
 
         // add ids to each recommendation
@@ -80,16 +95,22 @@ export default function ViewOracleReport() {
           ...rec,
         }));
 
-        setExecutiveSummary(sum);
-
         const analysisIds = await getReportAnalysisIds(
           reportId,
           keyName,
-          token
+          token.current
         );
 
+        const fetchedComments = await getReportComments(
+          reportId,
+          keyName,
+          token.current
+        );
+
+        setExecutiveSummary(sum);
         setAnalysisIds(analysisIds);
 
+        setComments(fetchedComments);
         setMDX(parsed.mdx);
       } catch (e) {
         console.error(e);
@@ -149,37 +170,49 @@ export default function ViewOracleReport() {
   }
 
   return (
-    <OracleReportContext.Provider
-      value={{
-        tables: tables,
-        multiTables: multiTables,
-        images: images,
-        analysisIds: analysisIds,
-        executiveSummary: executiveSummary,
-        reportId: reportId,
-        keyName: keyName,
-        token:
-          localStorage.getItem("defogToken") ||
-          "bdbe4d376e6c8a53a791a86470b924c0715854bd353483523e3ab016eb55bcd0",
-      }}
+    // sad reality for getting the chart container to work
+    // it makes a request to this api endpoint to edit the chart's config
+    // which defaults to demo.defog.ai if not provided
+    // (╯°□°)╯︵ ┻━┻
+    <AgentConfigContext.Provider
+      // @ts-ignore
+      value={{ val: { apiEndpoint: process.env.NEXT_PUBLIC_AGENTS_ENDPOINT } }}
     >
-      <div className="relative">
-        <EditorProvider
-          extensions={extensions}
-          content={mdx}
-          immediatelyRender={false}
-          editable={false}
-          slotBefore={<OracleNav />}
-          editorProps={{
-            attributes: {
-              class:
-                "oracle-report-tiptap relative prose prose-base dark:prose-invert mx-auto p-2 mb-12 md:mb-0 focus:outline-none *:cursor-default",
-            },
-          }}
-        >
-          {/* <OracleBubbleMenu keyName={keyName} reportId={reportId} /> */}
-        </EditorProvider>
-        {/* <Drawer
+      <OracleReportContext.Provider
+        value={{
+          tables: tables,
+          multiTables: multiTables,
+          images: images,
+          analysisIds: analysisIds,
+          executiveSummary: executiveSummary,
+          reportId: reportId,
+          keyName: keyName,
+          token: token.current,
+          commentManager: commentManager({
+            reportId: reportId,
+            keyName: keyName,
+            token: token.current,
+            initialComments: comments,
+          }),
+        }}
+      >
+        <div className="relative">
+          <EditorProvider
+            extensions={extensions}
+            content={mdx}
+            immediatelyRender={false}
+            editable={false}
+            slotBefore={<OracleNav />}
+            editorProps={{
+              attributes: {
+                class:
+                  "oracle-report-tiptap relative prose prose-base dark:prose-invert mx-auto p-2 mb-12 md:mb-0 focus:outline-none *:cursor-default",
+              },
+            }}
+          >
+            {/* <OracleBubbleMenu keyName={keyName} reportId={reportId} /> */}
+          </EditorProvider>
+          {/* <Drawer
           open={analysisDrawerOpen}
           onClose={() => setAnalysisDrawerOpen(false)}
           placement="bottom"
@@ -334,7 +367,8 @@ export default function ViewOracleReport() {
             </div>
           </div>
         </Drawer> */}
-      </div>
-    </OracleReportContext.Provider>
+        </div>
+      </OracleReportContext.Provider>
+    </AgentConfigContext.Provider>
   );
 }

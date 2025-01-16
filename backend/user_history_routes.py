@@ -16,14 +16,15 @@ router = APIRouter()
 async def get_user_history(request: Request):
     params = await request.json()
     token = params.get("token")
-    username = validate_user(token, get_username=True)
+    username = await validate_user(token, get_username=True)
     if not username:
         return {"error": "Invalid token"}
 
-    with engine.begin() as conn:
-        user_history = conn.execute(
+    async with engine.begin() as conn:
+        user_history = await conn.execute(
             select(UserHistory).where(UserHistory.username == username)
-        ).fetchone()
+        )
+        user_history = user_history.fetchone()
 
     if user_history:
         return {"history": user_history.history}
@@ -42,7 +43,7 @@ class UpdateHistoryRequest(BaseModel):
                 {
                     "token": "user_token",
                     "key_name": "history_key",
-                    "history": {"data": "history_data"}
+                    "history": {"data": "history_data"},
                 }
             ]
         }
@@ -52,7 +53,7 @@ class UpdateHistoryRequest(BaseModel):
 @router.post("/update_user_history")
 async def update_user_history(request: UpdateHistoryRequest):
     token = request.token
-    username = validate_user(token, get_username=True)
+    username = await validate_user(token, get_username=True)
     key_name = request.key_name
     history = request.history
 
@@ -65,17 +66,19 @@ async def update_user_history(request: UpdateHistoryRequest):
     if history is None:
         history = {}
 
-    with engine.begin() as conn:
+    async with engine.begin() as conn:
         # Check if history exists for user
-        existing_history = conn.execute(
+        existing_history = await conn.execute(
             select(UserHistory).where(UserHistory.username == username)
-        ).fetchone()
+        )
+
+        existing_history = existing_history.fetchone()
 
         if existing_history:
             new_history = existing_history._mapping["history"]
             new_history[key_name] = history
             # Update existing history
-            conn.execute(
+            await conn.execute(
                 update(UserHistory)
                 .where(UserHistory.username == username)
                 .values(history=new_history)
@@ -85,7 +88,7 @@ async def update_user_history(request: UpdateHistoryRequest):
             LOGGER.debug(
                 f"creating new history item for user: {username} and key name: {key_name}"
             )
-            conn.execute(
+            await conn.execute(
                 insert(UserHistory).values(
                     username=username, history={key_name: history}
                 )

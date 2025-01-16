@@ -5,6 +5,8 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Dict
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from generic_utils import make_request
 from db_utils import (
     OracleReports,
@@ -21,7 +23,6 @@ from oracle.predict import predict
 from oracle.optimize import optimize
 from oracle.redis_utils import delete_analysis_task_id
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from utils_logging import LOGGER, save_and_log, save_timing
 import os
 
@@ -88,31 +89,31 @@ async def begin_generation_async_task(
         # call the control function with the current stage
         try:
             LOGGER.info(f"Executing stage {stage} for report {report_id}")
-            with Session(engine) as session:
-                # update status of the report
-                stmt = select(OracleReports).where(OracleReports.report_id == report_id)
-                result = session.execute(stmt)
-                report = result.scalar_one()
-                # we want to add some sort of indicator to a revision report
-                # just so we're able to filter it out on the front end (or elsewhere)
-                report.status = (
-                    "Revision: " + STAGE_TO_STATUS[stage]
-                    if is_revision
-                    else STAGE_TO_STATUS[stage]
-                )
-
-                # if this is is_revision, then also update the original_report_id with the same status but starting with "Revision in progress: "
-                if is_revision:
-                    stmt = select(OracleReports).where(
-                        OracleReports.report_id == original_report_id
-                    )
-                    result = session.execute(stmt)
-                    original_report = result.scalar_one()
-                    original_report.status = (
-                        "Revision in progress: " + STAGE_TO_STATUS[stage]
+            async with AsyncSession(engine) as session:
+                async with session.begin():
+                    # update status of the report
+                    stmt = select(OracleReports).where(OracleReports.report_id == report_id)
+                    result = await session.execute(stmt)
+                    report = result.scalar_one()
+                    # we want to add some sort of indicator to a revision report
+                    # just so we're able to filter it out on the front end (or elsewhere)
+                    report.status = (
+                        "Revision: " + STAGE_TO_STATUS[stage]
+                        if is_revision
+                        else STAGE_TO_STATUS[stage]
                     )
 
-                session.commit()
+                    # if this is is_revision, then also update the original_report_id with the same status but starting with "Revision in progress: "
+                    if is_revision:
+                        stmt = select(OracleReports).where(
+                            OracleReports.report_id == original_report_id
+                        )
+                        result = await session.execute(stmt)
+                        original_report = result.scalar_one()
+                        original_report.status = (
+                            "Revision in progress: " + STAGE_TO_STATUS[stage]
+                        )
+            
             stage_result = await execute_stage(
                 api_key=api_key,
                 report_id=report_id,
@@ -123,52 +124,50 @@ async def begin_generation_async_task(
             )
             outputs[stage.value] = stage_result
             # update the status and current outputs of the report generation
-            with Session(engine) as session:
-                stmt = select(OracleReports).where(OracleReports.report_id == report_id)
-                result = session.execute(stmt)
-                report = result.scalar_one()
-                report.status = (
-                    "Revision: " + STAGE_TO_STATUS[stage]
-                    if is_revision
-                    else STAGE_TO_STATUS[stage]
-                )
-                report.outputs = outputs
-                # same as above for the original report
-                if is_revision:
-                    stmt = select(OracleReports).where(
-                        OracleReports.report_id == original_report_id
+            async with AsyncSession(engine) as session:
+                async with session.begin():
+                    stmt = select(OracleReports).where(OracleReports.report_id == report_id)
+                    result = await session.execute(stmt)
+                    report = result.scalar_one()
+                    report.status = (
+                        "Revision: " + STAGE_TO_STATUS[stage]
+                        if is_revision
+                        else STAGE_TO_STATUS[stage]
                     )
-                    result = session.execute(stmt)
-                    original_report = result.scalar_one()
-                    original_report.status = (
-                        "Revision in progress: " + STAGE_TO_STATUS[stage]
-                    )
-
-                session.commit()
+                    report.outputs = outputs
+                    # same as above for the original report
+                    if is_revision:
+                        stmt = select(OracleReports).where(
+                            OracleReports.report_id == original_report_id
+                        )
+                        result = await session.execute(stmt)
+                        original_report = result.scalar_one()
+                        original_report.status = (
+                            "Revision in progress: " + STAGE_TO_STATUS[stage]
+                        )
         except Exception as e:
             LOGGER.error(f"Error occurred in stage {stage}:\n{e}")
             # print traceback of exception
             LOGGER.error(traceback.format_exc())
             # update the status of the report
-            with Session(engine) as session:
-                stmt = select(OracleReports).where(OracleReports.report_id == report_id)
-                result = session.execute(stmt)
-                report = result.scalar_one()
-                outputs[stage.value] = {"error": str(e) + "\n" + traceback.format_exc()}
-                report.outputs = outputs
-                report.status = "error"
-                # if this is is_revision, then just delete this report
-                if is_revision:
-                    session.delete(report)
-                    # also update the original report back to "done"
-                    stmt = select(OracleReports).where(
-                        OracleReports.report_id == original_report_id
-                    )
-                    result = session.execute(stmt)
-                    original_report = result.scalar_one()
-                    original_report.status = "done"
-
-                session.commit()
+            async with AsyncSession(engine) as session:
+                async with session.begin():
+                    stmt = select(OracleReports).where(OracleReports.report_id == report_id)
+                    result = await session.execute(stmt)
+                    report = result.scalar_one()
+                    outputs[stage.value] = {"error": str(e) + "\n" + traceback.format_exc()}
+                    report.outputs = outputs
+                    report.status = "error"
+                    # if this is is_revision, then just delete this report
+                    if is_revision:
+                        await session.delete(report)
+                        # also update the original report back to "done"
+                        stmt = select(OracleReports).where(
+                            OracleReports.report_id == original_report_id
+                        )
+                        result = await session.execute(stmt)
+                        original_report = result.scalar_one()
+                        original_report.status = "done"
             continue_generation = False
 
         if stage == TaskStage.DONE:
@@ -177,40 +176,40 @@ async def begin_generation_async_task(
             # and update all the data of the original report from the newly created report (stored in inputs["original_report_id"])
             if "original_report_id" in inputs and inputs.get("is_revision"):
                 original_report_id = inputs["original_report_id"]
-                with Session(engine) as session:
-                    # get the original report
-                    stmt = select(OracleReports).where(
-                        OracleReports.report_id == original_report_id
-                    )
-                    result = session.execute(stmt)
-                    original_report = result.scalar_one()
-
-                    # get the newly created report
-                    stmt = select(OracleReports).where(
-                        OracleReports.report_id == report_id
-                    )
-                    result = session.execute(stmt)
-                    revised_report = result.scalar_one()
-
-                    # Update all specified columns from revised report to original report
-                    # Note: We don't copy 'inputs' since it contains revision metadata (is_revision, original_report_id, etc)
-                    columns_to_update = [
-                        "report_name",
-                        "outputs",
-                        "comments",
-                        "feedback",
-                    ]
-                    for column in columns_to_update:
-                        setattr(
-                            original_report, column, getattr(revised_report, column)
+                async with AsyncSession(engine) as session:
+                    async with session.begin():
+                        # get the original report
+                        stmt = select(OracleReports).where(
+                            OracleReports.report_id == original_report_id
                         )
+                        result = await session.execute(stmt)
+                        original_report = result.scalar_one()
 
-                    # set report back to done
-                    setattr(original_report, "status", "done")
+                        # get the newly created report
+                        stmt = select(OracleReports).where(
+                            OracleReports.report_id == report_id
+                        )
+                        result = await session.execute(stmt)
+                        revised_report = result.scalar_one()
 
-                    # Delete the revised report since we've copied its data
-                    session.delete(revised_report)
-                    session.commit()
+                        # Update all specified columns from revised report to original report
+                        # Note: We don't copy 'inputs' since it contains revision metadata (is_revision, original_report_id, etc)
+                        columns_to_update = [
+                            "report_name",
+                            "outputs",
+                            "comments",
+                            "feedback",
+                        ]
+                        for column in columns_to_update:
+                            setattr(
+                                original_report, column, getattr(revised_report, column)
+                            )
+
+                        # set report back to done
+                        setattr(original_report, "status", "done")
+
+                        # Delete the revised report since we've copied its data
+                        await session.delete(revised_report)
         # perform logging for current stage
         if continue_generation:
             ts = save_timing(ts, f"Stage {stage} completed", timings)
@@ -315,7 +314,8 @@ def generate_analysis_task(
     async def _run_analysis():
         try:
             # get report's data
-            report_data = get_report_data(report_id, api_key)
+            report_data = await get_report_data(report_id, api_key)
+            LOGGER.debug("Got report data inside generate_analysis_task")
             if "error" in report_data:
                 delete_analysis_task_id(analysis_id)
                 return {"error": report_data["error"]}
