@@ -46,13 +46,6 @@ export default function ViewOracleReport() {
   );
 
   const [error, setError] = useState<string | null>(null);
-
-  const [analysisDrawerOpen, setAnalysisDrawerOpen] = useState<boolean>(false);
-
-  const [drawerSelectedAnalysisId, setDrawerSelectedAnalysisId] = useState<
-    string | null
-  >(null);
-
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
