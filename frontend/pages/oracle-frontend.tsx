@@ -479,7 +479,7 @@ function OracleDashboard() {
                       className="text-purple-700 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300"
                       onClick={() =>
                         window.open(
-                          `/query/view-report?reportId=${report.report_id}&keyName=${apiKeyName}`,
+                          `/view-oracle-report?reportId=${report.report_id}&keyName=${apiKeyName}`,
                           "_blank"
                         )
                       }
