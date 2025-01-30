@@ -32,7 +32,7 @@ celery_async_executors = ThreadPoolExecutor(max_workers=4)
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
 
-@celery_app.task
+@celery_app.task(name="begin_generation_task")
 def begin_generation_task(
     api_key: str,
     report_id: int,
