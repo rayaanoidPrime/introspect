@@ -189,7 +189,7 @@ function OracleDashboard() {
     if (!token) return;
     try {
       const res = await fetch(
-        (process.env.NEXT_PUBLIC_BACKEND_URL || "") + "/get_api_key_names",
+        (process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || "") + "/get_api_key_names",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
