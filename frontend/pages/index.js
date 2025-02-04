@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
-import { Spin } from "antd";
+import { SpinningLoader as Spin } from "@defogdotai/agents-ui-components/core-ui";
 
 const QueryDatabase = () => {
   const [userType, setUserType] = useState("");
