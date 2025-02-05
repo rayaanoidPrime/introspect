@@ -349,6 +349,17 @@ function OracleDashboard() {
             value={userQuestion}
             onChange={handleQuestionChange}
             defaultRows={1}
+            disabled={generatingReport || loadingClarifications}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (hasClarified === true) {
+                  handleGenerateReport();
+                } else {
+                  handleGetClarifications();
+                }
+              }
+            }}
           />
         </div>
 
