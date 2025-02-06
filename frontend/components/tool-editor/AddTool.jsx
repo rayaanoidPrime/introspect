@@ -252,7 +252,7 @@ export function AddTool({
               </div>
             </div>
             <div className="divide-x mb-8 lg:h-96 flex flex-row flex-wrap lg:flex-nowrap gap-1">
-              <div className="w-full overflow-scroll relative px-2 bg-gray-800 lg:w-5/12">
+              <div className="w-full overflow-auto relative px-2 bg-gray-800 lg:w-5/12">
                 <div
                   className={
                     "w-full pt-2 pb-3 px-6 text-sm text-gray-500 sticky top-0 z-50 bg-gray-600 border-b border-gray-600 rounded-b-3xl shadow-md mb-4"
@@ -288,7 +288,7 @@ export function AddTool({
               </div>
               <div
                 className={twMerge(
-                  "relative w-full mt-8 px-2 pb-2 lg:mt-0 lg:w-7/12 bg-gray-200 overflow-scroll"
+                  "relative w-full mt-8 px-2 pb-2 lg:mt-0 lg:w-7/12 bg-gray-200 overflow-auto"
                 )}
               >
                 <div
