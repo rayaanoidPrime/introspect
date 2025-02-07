@@ -60,7 +60,7 @@ const Scaffolding = ({
             },
             {
               key: "evaluate-model",
-              title: "Evalute Model",
+              title: "Evaluate Model",
               href: "/evaluate-model",
             },
           ]
