@@ -7,7 +7,7 @@ import {
   UploadOutlined,
 } from "@ant-design/icons";
 import setupBaseUrl from "$utils/setupBaseUrl";
-import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui";
+import { MessageManagerContext, MultiSelect } from "@defogdotai/agents-ui-components/core-ui";
 
 const MetadataTable = ({
   token,
@@ -364,6 +364,9 @@ const MetadataTable = ({
     setLoading(false);
   };
 
+  console.log(tables);
+  console.log(selectedTablesForIndexing);
+
   return (
     <div className="space-y-4 dark:bg-dark-bg-primary">
       <div className="space-y-2">
@@ -372,24 +375,16 @@ const MetadataTable = ({
         </div>
         <div className="w-full dark:bg-dark-bg-secondary">
           <label className="block text-sm font-medium text-gray-700 dark:text-dark-text-primary mb-1">
-            Select tables (use ctrl/cmd + click to select and unselect multiple)
+            Select tables
           </label>
-          <select
-            multiple
-            value={selectedTablesForIndexing}
-            onChange={(e) =>
-              setSelectedTablesForIndexing(
-                Array.from(e.target.selectedOptions, (option) => option.value)
-              )
-            }
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:bg-dark-bg-secondary dark:border-dark-border dark:text-dark-text-primary min-h-[100px]"
-          >
-            {(tables || []).map((table) => (
-              <option key={table} value={table}>
-                {table}
-              </option>
-            ))}
-          </select>
+          {tables && (
+            <MultiSelect
+              options={tables.map((table) => ({ label: table, value: table }))}
+              value={selectedTablesForIndexing || []}
+              onChange={(value) => setSelectedTablesForIndexing(value)}
+              rootClassNames="w-full max-w-[1000px]"
+            />
+          )}
           <div className="flex justify-between mt-2">
             <button
               type="button"
