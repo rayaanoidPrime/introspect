@@ -70,10 +70,10 @@ async def validate_user_email(email):
         return False
 
 
-async def validate_user(api_key: str) -> Optional[Users]:
+async def validate_user(token: str) -> Optional[Users]:
     async with AsyncSession(engine) as session:
         async with session.begin():
-            stmt = select(Users).where(Users.token == api_key)
+            stmt = select(Users).where(Users.token == token)
             result = await session.execute(stmt)
             user = result.scalar_one_or_none()
             session.expunge(user)
