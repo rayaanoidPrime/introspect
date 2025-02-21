@@ -83,6 +83,18 @@ class MetadataGenerateRequest(UserRequest):
     }
 
 
+class TableDescription(BaseModel):
+    table_name: str
+    table_description: str
+
+class TableDescriptionsUpdateRequest(UserRequest):
+    """
+    Request model for updating table descriptions.
+    """
+
+    table_descriptions: list[TableDescription]
+
+
 class InstructionsUpdateRequest(UserRequest):
     """
     Request model for updating instructions.
@@ -132,6 +144,7 @@ class GenerateSQLQueryRequest(UserRequest):
     question: str
     db_type: str | None = None
     metadata: list[ColumnMetadata] = []
+    table_descriptions: list[TableDescription] = []
     instructions: str = ""
     previous_context: list[QuestionAnswer] = []
     hard_filters: list[HardFilter] = []
