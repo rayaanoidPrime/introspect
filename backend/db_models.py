@@ -163,7 +163,8 @@ class OracleReports(Base):
     db_name = Column(Text)
     username = Column(Text)
     inputs = Column(JSON)
-    outputs = Column(JSON)
+    report_mdx = Column(Text)
+    associated_analyses = Column(JSON) # this is a list of analysis ids
     feedback = Column(Text)
     general_comments = Column(Text, default=None)
     comments = Column(JSON, default=None)
@@ -175,7 +176,7 @@ class OracleAnalyses(Base):
     report_id = Column(Integer, primary_key=True)
     analysis_id = Column(Text, primary_key=True)
     status = Column(Text, default="pending")
-    analysis_json = Column(JSON)
+    sql = Column(Text)
     mdx = Column(Text, default=None)
 
 
