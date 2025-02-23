@@ -6,7 +6,6 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import select
-from oracle.utils_report import summary_dict_to_markdown
 from db_models import (
     OracleAnalyses,
     OracleReports,
@@ -14,7 +13,6 @@ from db_models import (
 from db_config import engine
 from auth_utils import validate_user
 from generic_utils import get_api_key_from_key_name
-from oracle.constants import TaskStage
 
 router = APIRouter()
 

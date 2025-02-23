@@ -2,7 +2,6 @@ from typing import Dict, List
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
-from oracle.constants import TaskStage
 from db_models import (
     OracleReports,
     OracleAnalyses,
@@ -139,41 +138,6 @@ async def update_analysis_status(
             )
             if result.rowcount == 0:
                 raise Exception("Analysis not found")
-
-
-async def update_summary_dict(api_key: str, report_id: int, summary_dict: Dict):
-    """Update the summary dictionary and optionally the report name."""
-    async with AsyncSession(engine) as session:
-        async with session.begin():
-            report = await session.execute(
-                select(OracleReports).where(
-                    OracleReports.report_id == report_id,
-                    OracleReports.db_name == api_key,
-                )
-            )
-            report = report.first()
-            if not report:
-                raise Exception("Report not found")
-
-            report = report[0]
-            current_outputs = report.outputs or {}
-
-            current_outputs[TaskStage.EXPORT.value]["executive_summary"] = summary_dict
-
-            update_dict = {"outputs": current_outputs}
-            if "title" in summary_dict:
-                update_dict["report_name"] = summary_dict["title"]
-
-            flag_modified(report, "outputs")
-            flag_modified(report, "report_name")
-            await session.execute(
-                update(OracleReports)
-                .where(
-                    OracleReports.report_id == report_id,
-                    OracleReports.db_name == api_key,
-                )
-                .values(**update_dict)
-            )
 
 
 async def update_report_name(report_id: int, report_name: str):

@@ -37,11 +37,6 @@ app.include_router(slack_routes.router)
 app.include_router(tools.tool_routes.router)
 app.include_router(user_history_routes.router)
 app.include_router(xdb_routes.router)
-from oracle.setup import setup_dir
-
-# check if the oracle directory structure exists and create if not
-setup_dir(os.getcwd())
-
 
 origins = ["*"]
 app.add_middleware(
