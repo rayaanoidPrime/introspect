@@ -11,9 +11,9 @@ from utils_logging import LOGGER
 from typing import Literal
 
 # read in prompts
-with open("./prompts/oracle/clarification/sys.txt", "r") as f:
+with open("./prompts/clarify_report/sys.txt", "r") as f:
     ORACLE_CLARIFICATION_EXPLORATION_SYS_PROMPT = f.read()
-with open("./prompts/oracle/clarification/user.txt", "r") as f:
+with open("./prompts/clarify_report/user.txt", "r") as f:
     ORACLE_CLARIFICATION_EXPLORATION_USER_PROMPT = f.read()
 
 CLARIFICATION_SYS_PROMPTS = {
