@@ -252,7 +252,7 @@ For each point that you make in the report, please include the relevant SQL quer
         analysis_ids=analysis_ids,
     )
 
-    return JSONResponse(
-        mdx=main_content,
-        analysis_ids=analysis_ids,
-    )
+    return {
+        "mdx": main_content,
+        "analysis_ids": analysis_ids,
+    }

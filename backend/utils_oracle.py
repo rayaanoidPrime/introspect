@@ -8,6 +8,7 @@ from defog.llm.utils import chat_async
 from llm_api import O3_MINI
 from utils_logging import LOGGER
 from typing import Literal
+from datetime import datetime
 import re
 
 # read in prompts
