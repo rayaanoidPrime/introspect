@@ -144,35 +144,16 @@ async def set_analysis(analysis_id: str, db_name: str, sql: str, csv: str, mdx: 
 async def set_oracle_report(db_name: str, report_name: str, inputs: dict, mdx: str, analysis_ids: list) -> str:
     async with AsyncSession(engine) as session:
         async with session.begin():
-            stmt = await session.execute(
-                select(OracleReports).where(OracleReports.db_name == db_name)
+            await session.execute(
+                insert(OracleReports).values(
+                    db_name=db_name,
+                    report_name=report_name,
+                    created_ts=datetime.now(),
+                    inputs=inputs,
+                    mdx=mdx,
+                    analysis_ids=analysis_ids,
+                )
             )
-            result = stmt.scalar_one_or_none()
-
-            if not result:
-                await session.execute(
-                    insert(OracleReports).values(
-                        db_name=db_name,
-                        report_name=report_name,
-                        created_ts=datetime.now(),
-                        inputs=inputs,
-                        mdx=mdx,
-                        analysis_ids=analysis_ids,
-                    )
-                )
-            else:
-                await session.execute(
-                    update(OracleReports)
-                    .where(OracleReports.db_name == db_name)
-                    .values(
-                        report_name=report_name,
-                        created_ts=datetime.now(),
-                        inputs=inputs,
-                        mdx=mdx,
-                        analysis_ids=analysis_ids,
-                    )
-                )
-                LOGGER.debug(f"Updated oracle report for API key {db_name}")
     return True
 
 def replace_sql_blocks(markdown: str, sql_to_analysis_id: dict) -> str:

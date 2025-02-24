@@ -15,10 +15,10 @@ from auth_utils import validate_user_request
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from tools.analysis_models import GenerateReportFromQuestionInput
 
 from utils_logging import LOGGER, save_and_log, save_timing
-from tools.analysis_tools import answer_question_from_database
-from defog.llm.utils import chat_async
+from tools.analysis_tools import synthesize_report_from_questions
 from llm_api import O3_MINI
 
 router = APIRouter(
@@ -193,66 +193,30 @@ async def generate_report(req: GenerateReportRequest):
     user_question = req.user_question
     answered_clarifications = req.answered_clarifications
 
-    tools = [answer_question_from_database]
-    analysis_response = await chat_async(
-        model=O3_MINI,
-        tools=tools,
-        messages=[
-            {
-                "role": "developer",
-                "content": "Formatting re-enabled\n\nWhen using tools, please use a single tool call for each question, and keep your questions short."
-            },
-            {
-                "role": "user",
-                "content": f"""{user_question}\n\n Look in the database {db_name} for your answers, and feel free to continue asking multiple questions from the database if you need to. I would rather that you ask a lot of questions than too few.
-
-Try to aggregate data in clear and understandable buckets.
-
-Please give your final answer as a descriptive report.
-
-For each point that you make in the report, please include the relevant SQL query that was used to generate the data for it. You can include as many SQL queries as you want, including multiple SQL queries for one point.
-"""
-}],
-    )
-
-    tool_outputs = analysis_response.tool_outputs
-    sql_to_analysis_id = {}
-    for tool_output in tool_outputs:
-        # save this analysis in the Postgres DB
-        tool_id = tool_output["tool_call_id"]
-        data_csv = pd.DataFrame(tool_output["result"].rows, columns=tool_output["result"].colnames).to_csv(index=False)
-        analysis_question = tool_output["args"]["question"]
-        mdx = f"We tried to answer the following question: `{analysis_question}`. Data to answer this question is below."
-
-        sql = tool_output["result"].sql
-        # convert the sql to lowercase, and remove all newline + multiple whitespace
-        stripped_sql = re.sub(r'\s+', ' ', sql.lower())
-        sql_to_analysis_id[stripped_sql] = tool_id
-
-        await set_analysis(
-            analysis_id=tool_id,
+    analysis_response = await synthesize_report_from_questions(
+        GenerateReportFromQuestionInput(
             db_name=db_name,
-            sql=sql,
-            csv=data_csv,
-            mdx=mdx,
+            model=O3_MINI,
+            question=user_question,
+            num_reports=3,
         )
+    )
     
-    main_content = analysis_response.content
+    main_content = analysis_response.report
+    print(main_content, flush=True)
 
-    # FIND ALL ```sql ... ``` inside the tool and replace with the corresponding analysis_id
-    main_content = replace_sql_blocks(main_content, sql_to_analysis_id)
-    analysis_ids = [i["tool_call_id"] for i in tool_outputs]
+    mdx = f"# {user_question.title()}\n\n{main_content}"
 
     # save to oracle_reports table
     await set_oracle_report(
         db_name=db_name,
         report_name=user_question,
         inputs=req.model_dump(),
-        mdx=main_content,
-        analysis_ids=analysis_ids,
+        mdx=mdx,
+        analysis_ids=[],
     )
 
     return {
         "mdx": main_content,
-        "analysis_ids": analysis_ids,
+        "analysis_ids": [],
     }
