@@ -1,51 +1,30 @@
 import os
-import time
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from enum import Enum
-from uuid import uuid4
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines
-from db_models import OracleGuidelines, OracleReports
+import pandas as pd
+import re
+import time
+from utils_oracle import clarify_question, get_oracle_guidelines, set_oracle_guidelines, set_analysis, set_oracle_report, replace_sql_blocks
+from db_models import OracleGuidelines
 from db_config import engine
-from auth_utils import validate_user, validate_user_request
-from db_oracle_utils import (
-    add_or_update_analysis,
-    delete_analysis,
-    get_analysis_status,
-    get_report_data,
-    update_summary_dict,
-    get_multiple_analyses,
-)
-from fastapi import APIRouter, Request, Depends
+from auth_utils import validate_user_request
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
-from generic_utils import get_api_key_from_key_name, make_request
-from oracle.constants import TaskStage, TaskType
-from oracle.core import (
-    generate_report,
-    begin_generation_task,
-    gather_context,
-)
-from oracle.explore import explore_data
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
-from sqlalchemy.sql import insert, update
+from tools.analysis_models import GenerateReportFromQuestionInput
 
-from generic_utils import get_api_key_from_key_name, make_request
 from utils_logging import LOGGER, save_and_log, save_timing
-from oracle.redis_utils import (
-    get_analysis_task_id,
-    delete_analysis_task_id,
-    store_analysis_task_id,
+from tools.analysis_tools import synthesize_report_from_questions
+from llm_api import O3_MINI
+
+router = APIRouter(
+    dependencies=[Depends(validate_user_request)],
+    tags=["Oracle"],
 )
-from oracle.celery_app import celery_app
-from oracle.core import generate_analysis_task
-
-
-router = APIRouter()
 
 DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
 
@@ -64,7 +43,7 @@ class SetGuidelinesRequest(BaseModel):
     db_name: Optional[str] = None
 
 
-@router.post("/oracle/set_guidelines", dependencies=[Depends(validate_user_request)])
+@router.post("/oracle/set_guidelines")
 async def set_guidelines(req: SetGuidelinesRequest):
     db_name = req.db_name
     if not db_name:
@@ -88,7 +67,7 @@ class GetGuidelinesRequest(BaseModel):
     db_name: Optional[str] = None
 
 
-@router.post("/oracle/get_guidelines", dependencies=[Depends(validate_user_request)])
+@router.post("/oracle/get_guidelines")
 async def get_guidelines(req: GetGuidelinesRequest):
     db_name = req.db_name
 
@@ -107,7 +86,6 @@ class ClarifyQuestionRequest(BaseModel):
     db_name: str
     token: str
     user_question: str
-    task_type: Optional[TaskType] = None
     answered_clarifications: List[Dict[str, Any]] = []
     clarification_guidelines: Optional[str] = None
 
@@ -118,7 +96,6 @@ class ClarifyQuestionRequest(BaseModel):
                     "key_name": "my_api_key",
                     "token": "user_token",
                     "user_question": "What are the sales trends?",
-                    "task_type": None,
                     "answered_clarifications": [],
                     "clarification_guidelines": "If unspecified, trends should be cover the last 3 years on a monthly basis.",
                 }
@@ -127,21 +104,18 @@ class ClarifyQuestionRequest(BaseModel):
     }
 
 
-@router.post("/oracle/clarify_question", dependencies=[Depends(validate_user_request)])
+@router.post("/oracle/clarify_question")
 async def clarify_question_endpoint(req: ClarifyQuestionRequest):
     """
     Given the question provided by the user, an optionally a list of answered
     clarifications, this endpoint will return a list of clarifications that still
-    need to be addressed. If this is a new question, the task_type will be inferred.
-    Otherwise, the task_type will be read from the request body and used to generate
-    the remaining clarifications.
+    need to be addressed.
 
     The response contains the following fields:
         clarifications: list[dict[str, str]] Each clarification dictionary will contain:
             - clarification: str
             - input_type: str (one of single_choice, multiple_choice, number, text)
             - options: list[str]
-        task_type: str
     """
     ts, timings = time.time(), []
     db_name = req.db_name
@@ -188,538 +162,61 @@ async def clarify_question_endpoint(req: ClarifyQuestionRequest):
                 "message": "Unable to generate clarifications",
             },
         )
-    clarify_response["task_type"] = "exploration"
     save_and_log(ts, "get_clarifications", timings)
     return JSONResponse(content=clarify_response)
 
-
-@router.post("/oracle/suggest_web_sources")
-async def suggest_web_sources(req: Request):
-    """
-    Given the question / objective statement provided by the user, this endpoint
-    will return a list of web sources that can be used to generate the report.
-    """
-    body = await req.json()
-    key_name = body.pop("key_name")
-    token = body.pop("token")
-    user = await validate_user(token)
-    if not user:
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-    body["api_key"] = await get_api_key_from_key_name(key_name)
-    if "user_question" not in body:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "Bad Request",
-                "message": "Missing 'user_question' field",
-            },
-        )
-    response = await make_request(DEFOG_BASE_URL + "/unstructured_data/search", body)
-    return JSONResponse(content=response)
-
-
-class BeginGenerationRequest(BaseModel):
-    key_name: str
+class Clarification(BaseModel):
+    clarification: str
+    answer: Optional[Union[str, List[str]]] = None
+class GenerateReportRequest(BaseModel):
+    db_name: str
     token: str
     user_question: str
-    task_type: TaskType
-    sources: List[str]
-    clarifications: List[Dict[str, Any]]
-    hard_filters: Optional[List[Dict[str, str]]] = []
+    answered_clarifications: List[Clarification] = []
 
     model_config = {
         "json_schema_extra": {
             "examples": [
                 {
-                    "key_name": "my_api_key",
+                    "db_name": "db_name",
                     "token": "user_token",
-                    "user_question": "What are the sales trends?",
-                    "task_type": "analysis",
-                    "sources": ["source1", "source2"],
-                    "clarifications": [{"question": "answer"}],
+                    "user_question": "User question",
+                    "answered_clarifications": [],
                 }
             ]
         }
     }
 
+@router.post("/oracle/generate_report")
+async def generate_report(req: GenerateReportRequest):
+    db_name = req.db_name
+    user_question = req.user_question
+    answered_clarifications = req.answered_clarifications
 
-class AnalysisRequest(BaseModel):
-    report_id: int
-    token: str
-    key_name: str
-    analysis_id: Optional[str] = None
-    recommendation_idx: Optional[int] = None
-
-
-class GenerateAnalysis(AnalysisRequest):
-    previous_analysis_ids: list[str]
-    new_analysis_question: str
-    recommendation_idx: int = -1
-
-
-@router.post("/oracle/get_analysis_status")
-async def get_analysis_status_endpoint(req: AnalysisRequest):
-    user = await validate_user(req.token)
-
-    if not user:
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
+    analysis_response = await synthesize_report_from_questions(
+        GenerateReportFromQuestionInput(
+            db_name=db_name,
+            model=O3_MINI,
+            question=user_question,
+            num_reports=3,
         )
+    )
+    
+    main_content = analysis_response.report
+    print(main_content, flush=True)
 
-    api_key = await get_api_key_from_key_name(req.key_name)
+    mdx = f"# {user_question.title()}\n\n{main_content}"
 
-    err, status = await get_analysis_status(
-        api_key=api_key,
-        analysis_id=req.analysis_id,
-        report_id=req.report_id,
+    # save to oracle_reports table
+    await set_oracle_report(
+        db_name=db_name,
+        report_name=user_question,
+        inputs=req.model_dump(),
+        mdx=mdx,
+        analysis_ids=[],
     )
 
-    if err:
-        return JSONResponse(status_code=500, content={"error": err})
-
-    return JSONResponse(content={"status": status})
-
-
-@router.post("/oracle/delete_analysis")
-async def delete_analysis_endpoint(req: AnalysisRequest):
-    """
-    Deletes an analysis given an analysis_id.
-    If recommendation_idx is provided, deletes the analysis for that recommendation.
-    Also cancels any running Celery task for this analysis.
-    """
-    user = await validate_user(req.token)
-
-    if not user:
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-
-    api_key = await get_api_key_from_key_name(req.key_name)
-
-    # First try to cancel any running task
-    task_id = get_analysis_task_id(req.analysis_id)
-    if task_id:
-        try:
-            celery_app.control.revoke(task_id, terminate=True)
-            delete_analysis_task_id(req.analysis_id)
-            LOGGER.info(f"Cancelled task {task_id} for analysis {req.analysis_id}")
-        except Exception as e:
-            LOGGER.error(f"Error cancelling task {task_id}: {str(e)}")
-
-    err = await delete_analysis(
-        api_key=api_key,
-        analysis_id=req.analysis_id,
-        report_id=req.report_id,
-    )
-
-    if err:
-        return JSONResponse(status_code=500, content={"error": err})
-
-    # update summary dict if applicable
-    if req.recommendation_idx is not None:
-        summary_dict = (
-            (await get_report_data(req.report_id, api_key))
-            .get("outputs", {})
-            .get(TaskStage.EXPORT.value, {})
-            .get("executive_summary", None)
-        )
-
-        if summary_dict:
-            curr_refs = summary_dict["recommendations"][req.recommendation_idx][
-                "analysis_reference"
-            ]
-            if not curr_refs or type(curr_refs) != list:
-                curr_refs = []
-            if req.analysis_id in curr_refs:
-                curr_refs.remove(req.analysis_id)
-                summary_dict["recommendations"][req.recommendation_idx][
-                    "analysis_reference"
-                ] = curr_refs
-                await update_summary_dict(api_key, req.report_id, summary_dict)
-
-    return JSONResponse(content={"message": "Analysis deleted"})
-
-
-@router.post("/oracle/generate_analysis")
-async def generate_analysis(req: GenerateAnalysis):
-    user = await validate_user(req.token)
-
-    if not user:
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-
-    api_key = await get_api_key_from_key_name(req.key_name)
-    analysis_id = req.analysis_id or str(uuid4())
-
-    # start an empty analysis
-    err = await add_or_update_analysis(
-        api_key=api_key,
-        report_id=int(req.report_id),
-        analysis_id=analysis_id,
-        analysis_json={
-            # initialise the title to just the question for now
-            "title": req.new_analysis_question,
-            "analysis_id": analysis_id,
-        },
-        status="STARTED",
-        mdx=None,
-    )
-
-    if err:
-        return JSONResponse(status_code=500, content={"error": err})
-
-    # get report's data
-    report_data = await get_report_data(req.report_id, api_key)
-
-    if "error" in report_data:
-        return JSONResponse(status_code=404, content=report_data)
-
-    # Get previous analyses data
-    err, previous_analyses = await get_multiple_analyses(
-        analysis_ids=req.previous_analysis_ids,
-        columns=["analysis_id", "analysis_json", "status"],
-    )
-
-    if err:
-        return JSONResponse(status_code=500, content={"error": err})
-
-    # Filter out any analyses that are not complete
-    previous_analyses = [
-        analysis["analysis_json"]
-        for analysis in previous_analyses
-        if analysis["status"] == "DONE"
-    ]
-
-    # update summary dict
-    summary_dict = (
-        report_data.get("outputs", {})
-        .get(TaskStage.EXPORT.value, {})
-        .get("executive_summary", None)
-    )
-
-    if summary_dict:
-        curr_refs = summary_dict["recommendations"][req.recommendation_idx][
-            "analysis_reference"
-        ]
-        if not curr_refs or type(curr_refs) != list:
-            curr_refs = []
-        curr_refs.append(analysis_id)
-        summary_dict["recommendations"][req.recommendation_idx][
-            "analysis_reference"
-        ] = curr_refs
-        await update_summary_dict(
-            api_key=api_key, report_id=req.report_id, summary_dict=summary_dict
-        )
-
-    LOGGER.debug(f"Summary dict updated for report {req.report_id}")
-
-    # Start the Celery task
-    task = generate_analysis_task.delay(
-        api_key=api_key,
-        report_id=int(req.report_id),
-        analysis_id=analysis_id,
-        new_analysis_question=req.new_analysis_question,
-        recommendation_idx=req.recommendation_idx,
-        previous_analyses=previous_analyses,
-    )
-
-    # Store the task ID in Redis
-    store_analysis_task_id(analysis_id, task.id)
-
-    return JSONResponse(
-        content={"status": "started", "analysis_id": analysis_id, "task_id": task.id}
-    )
-
-
-@router.post("/oracle/begin_generation")
-async def begin_generation(req: BeginGenerationRequest):
-    """
-    Given the question / objective statement provided by the user, as well as the
-    full list of configuration options, this endpoint will begin the process of
-    generating a report asynchronously as a celery task.
-    """
-    user = await validate_user(req.token)
-    if not user:
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-
-    username = user.username
-    api_key = await get_api_key_from_key_name(req.key_name)
-
-    # clean up clarifications
-    answered_clarifications = []
-    if req.clarifications:
-        for clarification in req.clarifications:
-            if clarification["answer"] and type(clarification["answer"]) == list:
-                # convert any lists to strings
-                # this is because the report generation only accepts strings as inputs
-                answer = ", ".join(clarification["answer"])
-            else:
-                answer = str(clarification["answer"])
-            answered_clarifications.append(
-                {"clarification": clarification["clarification"], "answer": answer}
-            )
-
-    # insert a new row into the OracleReports table and get a new report_id
-    user_inputs = {
-        "user_question": req.user_question,
-        "sources": req.sources,
-        "clarifications": answered_clarifications,
-        "hard_filters": req.hard_filters,
+    return {
+        "mdx": main_content,
+        "analysis_ids": [],
     }
-
-    async with AsyncSession(engine) as session:
-        async with session.begin():
-            stmt = (
-                insert(OracleReports)
-                .values(
-                    db_name=api_key,
-                    username=username,
-                    inputs=user_inputs,
-                    status="started",
-                    created_ts=datetime.now(),
-                )
-                .returning(OracleReports.report_id)
-            )
-            result = await session.execute(stmt)
-            report_id = result.scalar_one()
-    begin_generation_task.apply_async(
-        args=[api_key, report_id, req.task_type, user_inputs]
-    )
-    return JSONResponse(content={"report_id": report_id, "status": "started"})
-
-
-class CommentsWithRelevantText(BaseModel):
-    comment_text: str
-    relevant_text: str
-
-
-class ReviseReportRequest(BaseModel):
-    """
-    Request model for updating the report based on the comments.
-    """
-
-    report_id: int
-    token: str
-    key_name: str
-    comments_with_relevant_text: list[CommentsWithRelevantText]
-    general_comments: str
-
-
-@router.post("/oracle/revise_report")
-async def revision(req: ReviseReportRequest):
-    """
-    Given a report_id, this endpoint will submit the report for revision based on the comments passed.
-    """
-    user = await validate_user(req.token)
-    if not user:
-        return JSONResponse(
-            status_code=401,
-            content={
-                "error": "Unauthorized",
-                "message": "Invalid username or password",
-            },
-        )
-
-    username = user.username
-
-    api_key = await get_api_key_from_key_name(req.key_name)
-
-    # if comment length is 0 and general comments is empty, return an error
-    if not len(req.comments_with_relevant_text) and not req.general_comments:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "Bad Request",
-                "message": "No comments or general comments provided",
-            },
-        )
-
-    """
-    We will reuse the begin generation task to handle the new report's generation. (The handling of the fact that this is a revision is handled inside the explore stage)
-
-    In addition to the report's existing inputs, we will pass (within the inputs dictionary) the following keys:
-    - comments: list of comments from the user
-    - general_comments: general comments from the user
-    - is_revision: flag to indicate that the report is being revised
-    """
-
-    # get the report's data
-    report_data = await get_report_data(req.report_id, api_key)
-    if "error" in report_data or "inputs" not in report_data:
-        return JSONResponse(status_code=404, content=report_data)
-
-    status = report_data["status"]
-
-    is_revision = status.startswith("Revision: ")
-
-    # if, by some chance, this report is a temporary revision report, return an error
-    # this is a massive edge case. should never happen because we don't expose temporary revision reports on the front end
-
-    if is_revision:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "Bad Request",
-                "message": "We cannot revise this report.",
-            },
-        )
-
-    # if report's status is either not done, or starts with "Revision in progress", return an error
-    if status != "done" and not status.startswith("Revision in progress"):
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "Bad Request",
-                "message": "Report is not done or is being revised",
-            },
-        )
-
-    # insert required data for revision into the inputs
-    inputs_with_comments = report_data["inputs"]
-    inputs_with_comments["comments"] = [
-        comment.model_dump() for comment in req.comments_with_relevant_text
-    ]
-    inputs_with_comments["general_comments"] = req.general_comments
-    inputs_with_comments["is_revision"] = True
-    inputs_with_comments["original_analyses"] = (
-        report_data.get("outputs", {})
-        .get(TaskStage.EXPLORE.value, {})
-        .get("analyses", [])
-    )
-    inputs_with_comments["original_report_mdx"] = (
-        report_data.get("outputs", {}).get(TaskStage.EXPORT.value, {}).get("mdx", "")
-    ).strip()
-
-    inputs_with_comments["original_report_id"] = req.report_id
-
-    LOGGER.info(f"Submitting report {req.report_id} for revision")
-    LOGGER.info(f"{req.general_comments}")
-    LOGGER.info(inputs_with_comments["comments"])
-
-    if not inputs_with_comments["original_report_mdx"]:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "Bad Request",
-                "message": "Original report mdx is empty",
-            },
-        )
-
-    # now, create a new report
-    # this is so that if the revision fails, the original report is not lost
-    async with AsyncSession(engine) as session:
-        async with session.begin():
-            stmt = (
-                insert(OracleReports)
-                .values(
-                    db_name=api_key,
-                    username=username,
-                    inputs=inputs_with_comments,
-                    status="Revision: started",
-                    created_ts=datetime.now(),
-                )
-                .returning(OracleReports.report_id)
-            )
-            result = await session.execute(stmt)
-            report_id = result.scalar_one()
-
-    # set the status of the original report to "Revision in progress"
-    async with AsyncSession(engine) as session:
-        async with session.begin():
-            stmt = (
-                update(OracleReports)
-                .where(OracleReports.report_id == req.report_id)
-                .values(status=f"Revision in progress")
-            )
-            await session.execute(stmt)
-
-    begin_generation_task.apply_async(
-        args=[api_key, report_id, TaskType.EXPLORATION.value, inputs_with_comments]
-    )
-
-    return JSONResponse(
-        status_code=200, content={"message": "Report submitted for revision"}
-    )
-
-
-@router.post("/oracle/test_stage")
-async def oracle_test_stage(req: Request):
-    """
-    [TEST ROUTE]: this route is only for testing purposes and should not be used in production.
-    Given the question / objective statement provided by the user, this endpoint
-    will return a summary of the data, including a table and chart.
-    We keep this route flexible to facilitate faster testing of each stage
-    """
-    body = await req.json()
-    for field in ["api_key", "inputs", "outputs", "task_type", "stage"]:
-        if field not in body:
-            return JSONResponse(
-                status_code=400,
-                content={"error": "Bad Request", "message": f"Missing '{field}' field"},
-            )
-    stage = body.get("stage", "explore")
-    if stage == TaskStage.GATHER_CONTEXT.value:
-        response = await gather_context(
-            api_key=body["api_key"],
-            inputs=body.get("inputs", {}),
-            report_id=int(body.get("report_id", "1")),
-            task_type=TaskType(body.get("task_type", TaskType.EXPLORATION.value)),
-            outputs=body.get("outputs", {}),
-        )
-        return JSONResponse(response)
-    elif stage == TaskStage.EXPLORE.value:
-        response = await explore_data(
-            api_key=body["api_key"],
-            report_id=int(body.get("report_id", "1")),
-            task_type=TaskType(body.get("task_type", TaskType.EXPLORATION.value)),
-            inputs=body.get("inputs", {}),
-            outputs=body.get("outputs", {}),
-        )
-        return JSONResponse(response)
-    elif stage == TaskStage.EXPORT.value:
-        api_key = body.get("api_key", None)
-        outputs = body.get("outputs", {})
-        inputs = body.get("inputs", {})
-        task_type = body.get("task_type", "")
-        report_id = body.get("report_id", None)
-        res = await generate_report(
-            api_key=api_key,
-            report_id=report_id,
-            task_type=TaskType(task_type),
-            inputs=inputs,
-            outputs=outputs,
-        )
-        return JSONResponse(content=res)
-    else:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "Bad Request",
-                "message": f"Invalid 'stage' field. Must be one of: {TaskStage.__members__.keys()}",
-            },
-        )

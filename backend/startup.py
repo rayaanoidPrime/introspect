@@ -102,12 +102,6 @@ async def lifespan(app: FastAPI):
         await create_admin_user()
         LOGGER.info("Admin user check completed")
 
-        from oracle.setup import setup_dir
-
-        # check if the oracle directory structure exists and create if not
-        setup_dir(os.getcwd())
-        LOGGER.info("Oracle directory structure checked")
-
         LOGGER.info("All startup events completed successfully")
 
         yield

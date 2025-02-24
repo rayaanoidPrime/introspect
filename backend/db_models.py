@@ -12,6 +12,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, mapped_column
 from pgvector.sqlalchemy import Vector
+from datetime import datetime
 
 base_metadata = MetaData()
 Base = declarative_base(metadata=base_metadata)
@@ -157,13 +158,13 @@ class OracleReports(Base):
     __tablename__ = "oracle_reports"
     report_id = Column(Integer, primary_key=True, autoincrement=True)
     report_name = Column(Text)
+    created_ts = Column(DateTime, default=datetime.now)
     status = Column(Text)
-    created_ts = Column(DateTime)
     db_name = Column(Text)
-    username = Column(Text)
     inputs = Column(JSON)
-    outputs = Column(JSON)
-    feedback = Column(Text)
+    mdx = Column(Text)
+    analysis_ids = Column(JSON) # this is a list of analysis ids
+    feedback = Column(Text, default=None)
     general_comments = Column(Text, default=None)
     comments = Column(JSON, default=None)
 
@@ -171,10 +172,9 @@ class OracleReports(Base):
 class OracleAnalyses(Base):
     __tablename__ = "oracle_analyses"
     db_name = Column(Text, primary_key=True)
-    report_id = Column(Integer, primary_key=True)
     analysis_id = Column(Text, primary_key=True)
-    status = Column(Text, default="pending")
-    analysis_json = Column(JSON)
+    sql = Column(Text)
+    csv = Column(Text, default=None)
     mdx = Column(Text, default=None)
 
 
