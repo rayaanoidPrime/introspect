@@ -43,6 +43,9 @@ class GenerateReportFromQuestionOutput(BaseModel):
     sql_answers: List[AnswerQuestionFromDatabaseOutput] = Field(
         ..., description="The SQL queries and data answers used to generate the report"
     )
+    tool_outputs: List[Any] = Field(
+        ..., description="The tool outputs used to generate the report"
+    )
 
 
 class SynthesizeReportFromQuestionsOutput(BaseModel):
