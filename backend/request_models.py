@@ -103,6 +103,15 @@ class InstructionsUpdateRequest(UserRequest):
     instructions: str
 
 
+class JoinHintsUpdateRequest(UserRequest):
+    """
+    Request model for updating join hints.
+    Will delete the existing join hints if join_hints is None.
+    """
+
+    join_hints: list[list[str]] | None = None
+
+
 class GoldenQuery(BaseModel):
     question: str
     sql: str
@@ -217,3 +226,22 @@ class UploadFileAsDBRequest(UserRequest):
     """
     file_name: str
     tables: dict[str, UserTable]
+
+
+class AnswerQuestionFromDatabaseRequest(UserRequest):
+    """
+    Request model for answering a question from a database.
+    """
+    question: str
+    model: str | None = None
+
+
+class SynthesizeReportFromQuestionRequest(UserRequest):
+    """
+    Request model for synthesizing a report from a question.
+    `num_reports` is the number of intermediate reports to generate and
+    synthesize into a final report.
+    """
+    question: str
+    model: str | None = None
+    num_reports: int = 3

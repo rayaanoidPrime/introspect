@@ -1,9 +1,23 @@
-from tools.analysis_models import AnswerQuestionFromDatabaseInput, AnswerQuestionFromDatabaseOutput
+import asyncio
+from tools.analysis_models import (
+    AnswerQuestionFromDatabaseInput,
+    AnswerQuestionFromDatabaseOutput,
+    GenerateReportFromQuestionInput,
+    GenerateReportFromQuestionOutput,
+    SynthesizeReportFromQuestionsOutput,
+)
+from utils_instructions import get_instructions
+from utils_logging import LOG_LEVEL, LOGGER
+from utils_md import get_metadata, mk_create_ddl
 from utils_sql import generate_sql_query
-from defog.query import async_execute_query_once
 from db_utils import get_db_type_creds
+from defog.llm.utils import chat_async
+from defog.query import async_execute_query_once
 
-async def answer_question_from_database(input: AnswerQuestionFromDatabaseInput) -> AnswerQuestionFromDatabaseOutput:
+
+async def answer_1_question_from_database(
+    input: AnswerQuestionFromDatabaseInput,
+) -> AnswerQuestionFromDatabaseOutput:
     """
     Given a *single* question for a *single* database, this function will generate a SQL query to answer the question.
     Then, it will execute the SQL query on the database and return the results.
@@ -13,10 +27,7 @@ async def answer_question_from_database(input: AnswerQuestionFromDatabaseInput) 
     question = input.question
     db_name = input.db_name
 
-    res = await get_db_type_creds(db_name)
-    db_type, db_creds = res
-    
-    print(question, flush=True)
+    LOGGER.debug(f"Question to answer from database ({db_name}):\n{question}\n")
 
     sql_response = await generate_sql_query(
         question=question,
@@ -25,11 +36,119 @@ async def answer_question_from_database(input: AnswerQuestionFromDatabaseInput) 
     sql = sql_response["sql"]
 
     # execute SQL
-    colnames, rows = await async_execute_query_once(db_type=db_type, db_creds=db_creds, query=sql)
+    db_type, db_creds = await get_db_type_creds(db_name)
+    colnames, rows = await async_execute_query_once(
+        db_type=db_type, db_creds=db_creds, query=sql
+    )
 
-    print(colnames, flush=True)
-    print(rows[:100], flush=True)
+    if LOG_LEVEL == "DEBUG":
+        LOGGER.debug(f"Column names:\n{colnames}\n")
+        first_20_rows_str = "\n".join([str(row) for row in rows[:20]])
+        LOGGER.debug(f"First 20 rows:\n{first_20_rows_str}\n")
 
     # known issue: if the query returns way too much data, it may run out of context window limits
 
     return AnswerQuestionFromDatabaseOutput(sql=sql, colnames=colnames, rows=rows)
+
+
+async def generate_report_from_question(
+    input: GenerateReportFromQuestionInput,
+) -> GenerateReportFromQuestionOutput:
+    """
+    Given an initial question for a single database, this function will call
+    answer_1_question_from_database() to answer the question.
+    Then, it will use the output to generate a new question, and call
+    answer_1_question_from_database() again.
+    It will continue to do this until the LLM model decides to stop.
+    """
+    try:
+        tools = [answer_1_question_from_database]
+        response = await chat_async(
+            model=input.model,
+            tools=tools,
+            messages=[
+                {"role": "developer", "content": "Formatting re-enabled"},
+                {
+                    "role": "user",
+                    "content": f"""{input.question} Look in the database {input.db_name} for your answers, and feel free to continue asking multiple questions from the database if you need to. I would rather that you ask a lot of questions than too few.
+
+Try to aggregate data in clear and understandable buckets.
+
+Please give your final answer as a descriptive report.
+
+For each point that you make in the report, please include the relevant SQL query that was used to generate the data for it. You can include as many SQL queries as you want, including multiple SQL queries for one point.
+""",
+                },
+            ],
+        )
+        sql_answers = []
+        for tool_output in response.tool_outputs:
+            if tool_output.get("name") == "answer_1_question_from_database":
+                result = tool_output.get("result")
+                if not result or not isinstance(result, AnswerQuestionFromDatabaseOutput):
+                    LOGGER.error(f"Invalid tool output: {tool_output}")
+                    continue
+                sql_answers.append(result)
+        return GenerateReportFromQuestionOutput(
+            report=response.content,
+            sql_answers=sql_answers,
+        )
+    except Exception as e:
+        LOGGER.error(f"Error in generate_report_from_question:\n{e}")
+        return GenerateReportFromQuestionOutput(
+            report="Error in generating report from question",
+            sql_answers=[],
+        )
+
+
+async def synthesize_report_from_questions(
+    input: GenerateReportFromQuestionInput,
+) -> SynthesizeReportFromQuestionsOutput:
+    """
+    Given an initial question for a single database, this function will call
+    generate_report_from_question() multiple times in parallel to generate a report.
+    It will continue to do this until the LLM model decides to stop.
+    """
+    try:
+        tasks = [generate_report_from_question(input) for _ in range(input.num_reports)]
+        responses = await asyncio.gather(*tasks)
+        metadata = await get_metadata(input.db_name)
+        metadata_str = mk_create_ddl(metadata)
+        instructions = await get_instructions(input.db_name)
+        user_prompt = f"""Your task is to synthesize a series of reports into a final report.
+
+# Context
+These reports were generated by querying a database with a series of questions.
+The schema for the database is as follows:
+{metadata_str}
+
+The following instructions were given to the analysts who generated the reports:
+{instructions}
+
+# Task
+Synthesize these intermediate reports done by a group of independent analysts into a final report by combining the insights from each of the reports provided.
+Remove any insights that generated insights that are not possible given the schema of the database (e.g. hallucinated columns, tables, etc.).
+You may include questions, insights, and data summaries but not the actual raw data results to avoid being too verbose.
+
+Here are the reports to synthesize:
+"""
+        for response in responses:
+            user_prompt += f"\n\n{response.report}"
+        messages = [
+            {"role": "developer", "content": "Formatting re-enabled"},
+            {"role": "user", "content": user_prompt},
+        ]
+        synthesis_response = await chat_async(
+            model=input.model,
+            messages=messages,
+        )
+        return SynthesizeReportFromQuestionsOutput(
+            report=synthesis_response.content,
+            report_answers=responses,
+        )
+    except Exception as e:
+        LOGGER.error(f"Error in synthesize_report_from_questions:\n{e}")
+        return SynthesizeReportFromQuestionsOutput(
+            report="Error in synthesizing report from questions",
+            report_answers=[],
+        )

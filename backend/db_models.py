@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlalchemy import (
     Boolean,
     Column,
@@ -8,6 +9,7 @@ from sqlalchemy import (
     MetaData,
     Text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base, mapped_column
 from pgvector.sqlalchemy import Vector
 from datetime import datetime
@@ -100,6 +102,7 @@ class Instructions(Base):
     __tablename__ = "instructions"
     db_name = Column(Text, primary_key=True)
     sql_instructions = Column(Text)
+    join_hints = Column(JSONB)
 
 
 class GoldenQueries(Base):
@@ -123,19 +126,15 @@ class ImportedTables(Base):
 class Analyses(Base):
     __tablename__ = "analyses"
     analysis_id = Column(Text, primary_key=True)
+    user_question = Column(Text, default=None)
     db_name = Column(Text, nullable=False)
-    email = Column(Text)
     timestamp = Column(DateTime)
-    clarify = Column(JSON)
-    assignment_understanding = Column(JSON)
-    user_question = Column(Text)
-    gen_steps = Column(JSON)
     follow_up_analyses = Column(JSON)
     parent_analyses = Column(JSON)
     is_root_analysis = Column(Boolean, default=True)
     root_analysis_id = Column(Text)
     direct_parent_id = Column(Text)
-    username = Column(Text)
+    data = Column(JSON)
 
 
 # USER HISTORY (for query data page)

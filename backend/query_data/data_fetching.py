@@ -1,4 +1,20 @@
+from typing import Tuple
 import pandas as pd
+
+data_fetcher_input_metadata = {
+    "question": {
+        "name": "question",
+        "default": None,
+        "description": "natural language description of the data required to answer this question (or get the required information for subsequent steps) as a string",
+        "type": "str",
+    },
+    "hard_filters": {
+        "name": "hard_filters",
+        "default": [],
+        "description": "List of hard filters to apply to the data",
+        "type": "list",
+    },
+}
 
 
 async def data_fetcher_and_aggregator(
@@ -6,8 +22,7 @@ async def data_fetcher_and_aggregator(
     db_name: str,
     hard_filters: list = [],
     previous_context: list = [],
-    **kwargs,
-):
+) -> Tuple[str, pd.DataFrame, str]:
     """
     This function generates a SQL query and runs it to get the answer.
 
@@ -15,63 +30,78 @@ async def data_fetcher_and_aggregator(
     """
     import pandas as pd
     from tool_code_utilities import fetch_query_into_df
-    from utils import SqlExecutionError
     from db_utils import get_db_type_creds
     from utils_sql import safe_sql, generate_sql_query
 
-    if question == "" or question is None:
-        raise ValueError("Question cannot be empty")
-
-    res = await get_db_type_creds(db_name)
-    db_type, _ = res
-
-    print(f"Previous context: {previous_context}", flush=True)
-
-    # generate SQL
-    res = await generate_sql_query(
-        question=question,
-        db_name=db_name,
-        db_type=db_type,
-        hard_filters=hard_filters,
-        previous_context=previous_context,
-    )
-
-    query = res.get("sql")
-
-    if query is None:
-        return {
-            "error_message": f"There was an error in generating the query. The error was: {res.get('error')}",
-        }
-
-    if not safe_sql(query):
-        print("Unsafe SQL Query")
-        return {
-            "outputs": [
-                {
-                    "data": pd.DataFrame(),
-                    "analysis": "This was an unsafe query, and hence was not executed",
-                }
-            ],
-            "sql": query.strip(),
-        }
-
-    print(f"Running query: {query}")
+    err = None
+    df = None
+    sql_query = None
 
     try:
-        df, sql_query = await fetch_query_into_df(
-            db_name=db_name,
-            sql_query=query,
-            question=question,
-        )
-    except Exception as e:
-        print("Raising execution error", flush=True)
-        raise SqlExecutionError(query, str(e))
+        if question == "" or question is None:
+            raise ValueError("Question cannot be empty")
 
-    analysis = ""
-    return {
-        "outputs": [{"data": df, "analysis": analysis}],
-        "sql": sql_query.strip(),
-    }
+        db_type, _ = await get_db_type_creds(db_name)
+        err = None
+
+        print(f"Previous context: {previous_context}", flush=True)
+
+        # generate SQL
+        res = await generate_sql_query(
+            question=question,
+            db_name=db_name,
+            db_type=db_type,
+            hard_filters=hard_filters,
+            previous_context=previous_context,
+        )
+
+        query = res.get("sql")
+        sql_query = query
+
+        if query is None:
+            raise Exception(
+                f"There was an error in generating the query. The error was: {res.get('error')}"
+            )
+
+        if not safe_sql(query):
+            raise Exception("Unsafe SQL Query")
+
+        print(f"Running query: {query}")
+
+        try:
+            df, sql_query = await fetch_query_into_df(
+                db_name=db_name,
+                sql_query=query,
+                question=question,
+            )
+        except Exception as e:
+            raise Exception("Execution error: " + str(e) + "The SQL was: \n" + query)
+    except Exception as e:
+        err = str(e)
+    finally:
+        return err, df, sql_query
+
+
+send_email_input_metadata = {
+    "recipient_email_address": {
+        "name": "recipient_email_address",
+        "default": None,
+        "description": "email address of the recipient",
+        "type": "str",
+    },
+    "email_subject": {
+        "name": "email_subject",
+        "default": None,
+        "description": "Title of the email to be sent. This is usually a descriptive summary of the question asked.",
+        "type": "str",
+    },
+    "full_data": {
+        "name": "full_data",
+        "default": None,
+        "description": "global_dict.<input_df_name>",
+        "type": "pandas.core.frame.DataFrame",
+    },
+}
 
 
 async def send_email(
