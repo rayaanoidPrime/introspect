@@ -253,7 +253,7 @@ async def generate_report(req: GenerateReportRequest):
             print(str(e), flush=True)
             print(answer, flush=True)
 
-    mdx = f"# {user_question}\n\n{main_content}"
+    mdx = main_content
 
     had_error = main_content == "Error in generating report from question"
 
