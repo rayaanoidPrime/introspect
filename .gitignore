@@ -15,7 +15,6 @@ frontend/.next
 
 # production
 frontend/build
-frontend/out
 
 # misc
 .env
