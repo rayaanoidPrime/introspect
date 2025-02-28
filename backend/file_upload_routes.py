@@ -1,5 +1,6 @@
 import base64
 import time
+from xxlimited import foo
 from auth_utils import validate_user_request
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
@@ -45,18 +46,30 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
     start = time.time()
 
     LOGGER.info(f"file_name: {file_name}")
-    LOGGER.info(f"base_64_file: {len(base_64_file)}")
+    LOGGER.info(f"base_64_file length: {len(base_64_file)}")
+
+    cleaned_db_name = clean_table_name(file_name)
+    db_exists = await get_db_type_creds(cleaned_db_name)
+
+    if db_exists:
+        # add a random 3 digit integer to the end of the file name
+        cleaned_db_name = f"{cleaned_db_name}_{random.randint(1, 9999)}"
 
     # Convert base64 string to bytes
     buffer = base64.b64decode(base_64_file)
+
+    tables = {}
 
     # Convert array buffer to DataFrame
     if file_name.endswith(".csv"):
         # For CSV files
         df = pd.read_csv(io.StringIO(buffer.decode("utf-8")))
+        tables = {cleaned_db_name: df}
     elif file_name.endswith((".xls", ".xlsx")):
         # For Excel files
-        df = pd.read_excel(io.BytesIO(buffer))
+        df = pd.ExcelFile(io.BytesIO(buffer))
+        for sheet_name in df.sheet_names:
+            tables[clean_table_name(sheet_name)] = df.parse(sheet_name)
     else:
         return JSONResponse(
             status_code=400,
@@ -67,17 +80,6 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
 
     end = time.time()
     LOGGER.info(f"Conversion to df took {end - start} seconds")
-
-    LOGGER.info(df)
-
-    LOGGER.info(f"file_name: {file_name}")
-
-    cleaned_db_name = clean_table_name(file_name)
-    db_exists = await get_db_type_creds(cleaned_db_name)
-
-    if db_exists:
-        # add a random 3 digit integer to the end of the file name
-        cleaned_db_name = f"{cleaned_db_name}_{random.randint(1, 9999)}"
 
     # create the database
     # NOTE: It seems like we cannot use asyncpg in the database_exists and create_database functions, so we are using sync
@@ -100,26 +102,29 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
 
     db_metadata = []
 
-    start = time.time()
-    inferred_types = (
-        await export_df_to_postgres(
-            df, clean_table_name(file_name), connection_uri, chunksize=5000
-        )
-    )["inferred_types"]
+    for table_name, table_df in tables.items():
+        start = time.time()
+        LOGGER.info(f"Parsing table:{table_name}")
+        inferred_types = (
+            await export_df_to_postgres(
+                table_df, table_name, connection_uri, chunksize=5000
+            )
+        )["inferred_types"]
 
-    LOGGER.info(inferred_types)
-    end = time.time()
-    LOGGER.info(f"Export to db took {end - start} seconds")
+        LOGGER.info(f"Inferred types: {inferred_types}")
 
-    for col, dtype in inferred_types.items():
-        db_metadata.append(
-            {
-                "db_name": cleaned_db_name,
-                "table_name": clean_table_name(file_name),
-                "column_name": col,
-                "data_type": dtype,
-            }
-        )
+        end = time.time()
+        LOGGER.info(f"Export to db for table {table_name} took {end - start} seconds")
+
+        for col, dtype in inferred_types.items():
+            db_metadata.append(
+                {
+                    "db_name": cleaned_db_name,
+                    "table_name": table_name,
+                    "column_name": col,
+                    "data_type": dtype,
+                }
+            )
 
     LOGGER.info(f"Adding metadata for {cleaned_db_name}")
     await set_metadata(cleaned_db_name, db_metadata)
