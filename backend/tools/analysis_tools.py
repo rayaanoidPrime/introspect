@@ -108,7 +108,7 @@ async def text_to_sql_tool(
         result_df = result_df.head(max_rows_displayed)
         df_truncated = True
 
-    result_json = result_df.to_json(orient="records", double_precision=4)
+    result_json = result_df.to_json(orient="records", double_precision=4, date_format="iso")
     columns = result_df.columns.astype(str).tolist()
     if result_json == "[]":
         error_msg = "No data retrieved. Consider rephrasing the question or generating a new question. Pay close attention to column names and column descriptions in the database schema to ensure you are fetching the right data. If necessary, first retrieve the unique values of the column(s) or first few rows of the table to better understand the data."
