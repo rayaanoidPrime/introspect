@@ -1,3 +1,5 @@
+import base64
+import time
 from auth_utils import validate_user_request
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
@@ -12,6 +14,7 @@ from utils_file_uploads import export_df_to_postgres, clean_table_name
 from utils_md import set_metadata
 from db_utils import update_db_type_creds
 from sqlalchemy_utils import database_exists, create_database, drop_database
+import io
 
 router = APIRouter(
     dependencies=[Depends(validate_user_request)],
@@ -37,9 +40,12 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
     return the db_name that is used to store this file.
     """
     file_name = request.file_name
-    tables = request.tables
+    base_64_file = request.base_64_file
+
+    start = time.time()
+
     LOGGER.info(f"file_name: {file_name}")
-    LOGGER.info(f"tables: {tables}")
+    LOGGER.info(f"base_64_file length: {len(base_64_file)}")
 
     cleaned_db_name = clean_table_name(file_name)
     db_exists = await get_db_type_creds(cleaned_db_name)
@@ -47,6 +53,32 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
     if db_exists:
         # add a random 3 digit integer to the end of the file name
         cleaned_db_name = f"{cleaned_db_name}_{random.randint(1, 9999)}"
+
+    # Convert base64 string to bytes
+    buffer = base64.b64decode(base_64_file)
+
+    tables = {}
+
+    # Convert array buffer to DataFrame
+    if file_name.endswith(".csv"):
+        # For CSV files
+        df = pd.read_csv(io.StringIO(buffer.decode("utf-8")))
+        tables = {cleaned_db_name: df}
+    elif file_name.endswith((".xls", ".xlsx")):
+        # For Excel files
+        df = pd.ExcelFile(io.BytesIO(buffer))
+        for sheet_name in df.sheet_names:
+            tables[clean_table_name(sheet_name)] = df.parse(sheet_name)
+    else:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "Unsupported file format. Please upload a CSV or Excel file."
+            },
+        )
+
+    end = time.time()
+    LOGGER.info(f"Conversion to df took {end - start} seconds")
 
     # create the database
     # NOTE: It seems like we cannot use asyncpg in the database_exists and create_database functions, so we are using sync
@@ -69,25 +101,25 @@ async def upload_file_as_db(request: UploadFileAsDBRequest):
 
     db_metadata = []
 
-    for table_name in tables:
-        cleaned_table_name = clean_table_name(table_name)
-        # convert the content of each table into a pandas df
-        df = pd.DataFrame(
-            tables[table_name].rows,
-            columns=[i.title for i in tables[table_name].columns],
-            # store all values as strings to preserve dirty data
-            dtype=str,
-        )
+    for table_name, table_df in tables.items():
+        start = time.time()
+        LOGGER.info(f"Parsing table:{table_name}")
         inferred_types = (
             await export_df_to_postgres(
-                df, cleaned_table_name, connection_uri, chunksize=5000
+                table_df, table_name, connection_uri, chunksize=5000
             )
         )["inferred_types"]
+
+        LOGGER.info(f"Inferred types: {inferred_types}")
+
+        end = time.time()
+        LOGGER.info(f"Export to db for table {table_name} took {end - start} seconds")
+
         for col, dtype in inferred_types.items():
             db_metadata.append(
                 {
                     "db_name": cleaned_db_name,
-                    "table_name": cleaned_table_name,
+                    "table_name": table_name,
                     "column_name": col,
                     "data_type": dtype,
                 }

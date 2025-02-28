@@ -6,14 +6,51 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from dateutil import parser
 
+from utils_logging import LOGGER
+
 POSTGRES_RESERVED_WORDS = {
-    'select', 'from', 'where', 'join', 'table',
-    'order', 'group', 'by', 'create', 'drop', 'insert',
-    'update', 'delete', 'alter', 'column', 'user', 'and',
-    'or', 'not', 'null', 'true', 'false', 'primary',
-    'key', 'foreign', 'unique', 'check', 'default',
-    'index', 'on', 'as', 'asc', 'desc', 'varchar', 'int',
-    'bigint', 'float', 'decimal', 'text', 'boolean', 'date', 'timestamp',
+    "select",
+    "from",
+    "where",
+    "join",
+    "table",
+    "order",
+    "group",
+    "by",
+    "create",
+    "drop",
+    "insert",
+    "update",
+    "delete",
+    "alter",
+    "column",
+    "user",
+    "and",
+    "or",
+    "not",
+    "null",
+    "true",
+    "false",
+    "primary",
+    "key",
+    "foreign",
+    "unique",
+    "check",
+    "default",
+    "index",
+    "on",
+    "as",
+    "asc",
+    "desc",
+    "varchar",
+    "int",
+    "bigint",
+    "float",
+    "decimal",
+    "text",
+    "boolean",
+    "date",
+    "timestamp",
 }
 
 
@@ -38,24 +75,24 @@ def clean_table_name(table_name: str):
 def can_parse_date(val):
     """
     Return True if `val` looks like a date.
-    
-    For non-string inputs, we convert to string. If the string is 
-    purely numeric, we only allow four digits (a year) or eight digits 
-    (a compact date like YYYYMMDD). Otherwise, we require the presence 
+
+    For non-string inputs, we convert to string. If the string is
+    purely numeric, we only allow four digits (a year) or eight digits
+    (a compact date like YYYYMMDD). Otherwise, we require the presence
     of a typical date separator.
     """
     if not isinstance(val, str):
         val = str(val)
-    
+
     # Trim whitespace
     val = val.strip()
-    
+
     # If the string is empty, it’s not a date.
     if not val:
         return False
 
     # If the string is all digits, only allow if length is 4 or 8.
-    if re.fullmatch(r'\d+', val):
+    if re.fullmatch(r"\d+", val):
         if len(val) in (4, 8):
             try:
                 parser.parse(val)
@@ -66,7 +103,7 @@ def can_parse_date(val):
             return False
 
     # For strings that are not all digits, require at least one common date separator.
-    if not re.search(r'[\s/\-:]', val):
+    if not re.search(r"[\s/\-:]", val):
         return False
 
     # Finally, try to parse it with dateutil.
@@ -83,26 +120,26 @@ def to_float_if_possible(val):
     e.g. remove $, commas, random whitespace
     """
     # First, clean the value by removing non-numeric symbols except . - + e E
-    cleaned_val = re.sub(r'[^\d.\-+eE]', '', val)
-    
+    cleaned_val = re.sub(r"[^\d.\-+eE]", "", val)
+
     # Check if the cleaned value is empty or just a symbol
-    if cleaned_val in ('', '.', '-', '+'):
+    if cleaned_val in ("", ".", "-", "+"):
         return None
-    
+
     # Check if the string has a reasonable proportion of numeric characters
     # Count digits in the original value
     digit_count = sum(c.isdigit() for c in val)
     # Count total alphanumeric characters in the original value
     alphanum_count = sum(c.isalnum() for c in val)
-    
+
     if digit_count == 0 or alphanum_count == 0:
         return None
 
-    # If the string has very few digits compared to its alphanumeric length,
-    # it's probably not meant to be a float (e.g., "NDA1" has 1 digit out of 4 alphanumeric chars)
-    if alphanum_count > 0 and alphanum_count / digit_count > 3:
+    # If the string alphanumcount > digitcount, it's TEXT
+    # Example: NDA1, NDA2, 2007AMAN01, etc
+    if alphanum_count > digit_count:
         return None
-    
+
     try:
         return float(cleaned_val)
     except:
@@ -115,11 +152,11 @@ def guess_column_type(series, sample_size=50):
     We sample up to `sample_size` non-null elements to make the guess.
     """
     # Drop nulls/empty
-    non_null_values = [v for v in series.dropna() if v.strip() != '']
+    non_null_values = [str(v) for v in series.dropna() if str(v).strip() != ""]
 
     # If there's nothing in this column, assume TEXT
     if len(non_null_values) == 0:
-        return 'TEXT'
+        return "TEXT"
 
     # Sample some values (to limit computational overhead if large)
     sampled_values = non_null_values[:sample_size]
@@ -151,20 +188,20 @@ def guess_column_type(series, sample_size=50):
         if all(are_ints):
             # Use BIGINT or INT based on range
             # For simplicity, let's just use BIGINT.
-            return 'BIGINT'
+            return "BIGINT"
         else:
             # Use DOUBLE PRECISION or NUMERIC
             # We'll choose DOUBLE PRECISION for simplicity
-            return 'DOUBLE PRECISION'
-    
+            return "DOUBLE PRECISION"
+
     # 2) Check date
     # If a large majority (>80% for instance) is parseable as date, pick a date/timestamp
     if date_ratio > 0.8:
         # We can further refine if we want DATE vs. TIMESTAMP. We'll assume TIMESTAMP for broad coverage.
-        return 'TIMESTAMP'
+        return "TIMESTAMP"
 
     # 3) Default
-    return 'TEXT'
+    return "TEXT"
 
 
 def sanitize_column_name(col_name: str):
@@ -181,26 +218,26 @@ def sanitize_column_name(col_name: str):
     col_name = col_name.strip().lower()
 
     # replace any `%` characters with `perc`
-    col_name = col_name.replace('%', 'perc')
+    col_name = col_name.replace("%", "perc")
 
     # replace any `&` characters with `and`
-    col_name = col_name.replace('&', 'and')
+    col_name = col_name.replace("&", "and")
 
     # Replace any character not in [a-z0-9_] with underscore
-    col_name = re.sub(r'[^a-z0-9_]', '_', col_name)
+    col_name = re.sub(r"[^a-z0-9_]", "_", col_name)
 
     # Collapse multiple underscores into single
-    col_name = re.sub(r'_+', '_', col_name)
+    col_name = re.sub(r"_+", "_", col_name)
 
     # Strip leading/trailing underscores
-    col_name = col_name.strip('_')
+    col_name = col_name.strip("_")
 
     # If empty after stripping, fallback
     if not col_name:
         col_name = "col"
 
     # If it starts with digit, prepend underscore
-    if re.match(r'^\d', col_name):
+    if re.match(r"^\d", col_name):
         col_name = f"_{col_name}"
 
     # If it's a reserved keyword, add suffix
@@ -230,41 +267,43 @@ def convert_values_to_postgres_type(value: str, target_type: str):
     Convert a string `value` to the appropriate Python object for insertion into Postgres
     based on `target_type`. If conversion fails, return None (NULL).
     """
-    if value is None or str(value).strip() == '' or pd.isna(value):
+    if value is None or str(value).strip() == "" or pd.isna(value):
         return None
-    
+
     val_str = str(value).strip()
 
-    if target_type == 'TIMESTAMP':
+    if target_type == "TIMESTAMP":
         # Attempt parse
         try:
             return parser.parse(val_str, fuzzy=True)
         except:
             return None
-    
-    elif target_type in ('BIGINT', 'DOUBLE PRECISION'):
+
+    elif target_type in ("BIGINT", "DOUBLE PRECISION"):
         # Remove non-numeric chars except '.', '-', '+', 'e', 'E'
-        cleaned_val = re.sub(r'[^\d.\-+eE]', '', val_str)
-        if cleaned_val in ('', '.', '-', '+'):
+        cleaned_val = re.sub(r"[^\d.\-+eE]", "", val_str)
+        if cleaned_val in ("", ".", "-", "+"):
             return None
         try:
-            if target_type == 'BIGINT':
+            if target_type == "BIGINT":
                 float_val = float(cleaned_val)
                 # Check if the float is NaN or infinity before converting to int
-                if pd.isna(float_val) or float_val in (float('inf'), float('-inf')):
+                if pd.isna(float_val) or float_val in (float("inf"), float("-inf")):
                     return None
                 return int(float_val)  # or directly int(...) if you want strict
             else:  # DOUBLE PRECISION
                 return float(cleaned_val)
         except:
             return None
-    
+
     else:
         # TEXT or fallback
         return val_str
 
 
-async def export_df_to_postgres(df: pd.DataFrame, table_name: str, db_connection_string: str, chunksize: int=5000):
+async def export_df_to_postgres(
+    df: pd.DataFrame, table_name: str, db_connection_string: str, chunksize: int = 5000
+):
     """
     1. Reads CSV into a pandas DataFrame (as strings).
     2. Infers column types for Postgres.
@@ -278,15 +317,21 @@ async def export_df_to_postgres(df: pd.DataFrame, table_name: str, db_connection
 
     # Create a SQLAlchemy engine
     engine = create_async_engine(db_connection_string)
-    
+
     # Infer data types
     inferred_types = {}
     for col in df.columns:
         inferred_types[col] = guess_column_type(df[col])
-    
+
+    LOGGER.info(inferred_types)
+
     # convert inferred types to Postgres types
     for col in df.columns:
-        df[col] = df[col].apply(lambda value: convert_values_to_postgres_type(value, target_type=inferred_types[col]))
+        df[col] = df[col].apply(
+            lambda value: convert_values_to_postgres_type(
+                value, target_type=inferred_types[col]
+            )
+        )
 
     # Create table in Postgres
     create_stmt = create_table_sql(table_name, inferred_types)
@@ -294,9 +339,9 @@ async def export_df_to_postgres(df: pd.DataFrame, table_name: str, db_connection
         # Drop table if it already exists (optional)
         await conn.execute(text(f'DROP TABLE IF EXISTS "{table_name}";'))
         await conn.execute(text(create_stmt))
-    
+
     insert_cols = ", ".join(f'"{c}"' for c in safe_col_list)
-    
+
     # this `:colname` placeholder is asyncpg specific
     # psycopg2 uses %s, non-postgres things have different placeholders
     # TODO: make this more modular
@@ -314,9 +359,6 @@ async def export_df_to_postgres(df: pd.DataFrame, table_name: str, db_connection
             if len(rows_to_insert) == chunksize or idx == len(df) - 1:
                 await conn.execute(text(insert_sql), rows_to_insert)
                 rows_to_insert = []
-    
+
     print(f"Successfully imported {len(df)} rows into table '{table_name}'.")
-    return {
-        "success": True,
-        "inferred_types": inferred_types
-    }
+    return {"success": True, "inferred_types": inferred_types}
