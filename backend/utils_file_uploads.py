@@ -136,7 +136,7 @@ def to_float_if_possible(val):
         return None
 
     # If the string alphanumcount > digitcount, it's TEXT
-    # it's probably not meant to be a float (e.g., "NDA1" has 1 digit out of 4 alphanumeric chars)
+    # Example: NDA1, NDA2, 2007AMAN01, etc
     if alphanum_count > digit_count:
         return None
 
