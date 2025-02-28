@@ -47,7 +47,6 @@ app.add_middleware(
 )
 
 request_types = ["clarify", "understand", "gen_steps", "gen_analysis"]
-llm_calls_url = os.environ.get("LLM_CALLS_URL", "https://api.defog.ai/agent_endpoint")
 
 
 @app.get("/ping")

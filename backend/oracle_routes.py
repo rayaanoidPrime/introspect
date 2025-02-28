@@ -31,8 +31,6 @@ router = APIRouter(
     tags=["Oracle"],
 )
 
-DEFOG_BASE_URL = os.environ.get("DEFOG_BASE_URL", "https://api.defog.ai")
-
 
 class GuidelineType(Enum):
     clarification = "clarification"
