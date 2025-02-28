@@ -1,6 +1,5 @@
 import base64
 import time
-from xxlimited import foo
 from auth_utils import validate_user_request
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
