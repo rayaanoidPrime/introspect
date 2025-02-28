@@ -87,6 +87,7 @@ class TableDescription(BaseModel):
     table_name: str
     table_description: str
 
+
 class TableDescriptionsUpdateRequest(UserRequest):
     """
     Request model for updating table descriptions.
@@ -224,14 +225,16 @@ class UploadFileAsDBRequest(UserRequest):
     """
     Request model for uploading a file as a database.
     """
+
     file_name: str
-    tables: dict[str, UserTable]
+    base_64_file: str  # File as base 64 encoded string
 
 
 class AnswerQuestionFromDatabaseRequest(UserRequest):
     """
     Request model for answering a question from a database.
     """
+
     question: str
     model: str | None = None
 
@@ -242,6 +245,7 @@ class SynthesizeReportFromQuestionRequest(UserRequest):
     `num_reports` is the number of intermediate reports to generate and
     synthesize into a final report.
     """
+
     question: str
     model: str | None = None
     num_reports: int = 3
@@ -251,4 +255,5 @@ class WebSearchRequest(UserRequest):
     """
     Request model for performing a web search.
     """
+
     question: str
