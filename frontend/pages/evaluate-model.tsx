@@ -218,7 +218,7 @@ export default function TestRegressionPage() {
 
         <div className="flex flex-col gap-3 mb-4">
           {/* "Upload or Add a question" section */}
-          <div className="grid grid-cols-4 md:grid-cols-12 w-full bg-gray-50 rounded-md border gap-2 divide-x">
+          <div className="grid grid-cols-4 md:grid-cols-12 w-full bg-gray-50 dark:bg-gray-800 rounded-md border dark:border-gray-700 gap-2 divide-x dark:divide-gray-700">
             {/* Drag/Drop JSON area */}
             <div className="col-span-4 p-4 flex flex-col items-center justify-center">
               <input
@@ -240,23 +240,23 @@ export default function TestRegressionPage() {
                   htmlFor="file-upload"
                   className="w-full cursor-pointer"
                 >
-                  <div className="flex flex-col items-center justify-center p-6 text-center border border-dashed border-gray-300 rounded-md hover:bg-gray-100 transition-colors">
+                  <div className="flex flex-col items-center justify-center p-6 text-center border border-dashed border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                     <div className="text-4xl mb-2">🗂️</div>
-                    <h1 className="font-bold text-sm mb-2">Upload a JSON file</h1>
-                    <p>Click or drag files to this area to upload</p>
+                    <h1 className="font-bold text-sm mb-2 dark:text-gray-200">Upload a JSON file</h1>
+                    <p className="dark:text-gray-300">Click or drag files to this area to upload</p>
                   </div>
                 </label>
               </DropFiles>
             </div>
 
             {/* Manual add question area */}
-            <div className="col-span-8 border-l">
+            <div className="col-span-8 border-l dark:border-gray-700">
               {/** 
                *  1) Make a row with "Or add a question manually" on left 
                *     and an "Add" button on right 
                */}
-              <div className="flex items-center border-b p-4 justify-between">
-                <h1 className="text-sm font-bold text-gray-800">
+              <div className="flex items-center border-b dark:border-gray-700 p-4 justify-between">
+                <h1 className="text-sm font-bold text-gray-800 dark:text-gray-200">
                   Or add a question manually
                 </h1>
                 <Button variant="primary" onClick={handleAddQuestion}>
@@ -267,15 +267,15 @@ export default function TestRegressionPage() {
               <div className="py-4">
                 <div className="grid grid-cols-10 px-4 gap-3">
                   {/* Left side: questions */}
-                  <div className="col-span-4 flex flex-col p-4 border-r">
+                  <div className="col-span-4 flex flex-col p-4 border-r dark:border-gray-700">
                     <div className="previous-questions relative">
                       {previousQuestions.length > 0 && (
-                        <div className="absolute z-[2] top-0 -left-2 w-1 h-full border border-r-0 border-gray-300"></div>
+                        <div className="absolute z-[2] top-0 -left-2 w-1 h-full border border-r-0 border-gray-300 dark:border-gray-600"></div>
                       )}
                       {previousQuestions.map((question, index) => (
                         <div
                           key={index}
-                          className="relative group text-sm mb-1"
+                          className="relative group text-sm mb-1 dark:text-gray-300"
                         >
                           <div className="flex flex-row items-center">
                             {question}
@@ -288,7 +288,7 @@ export default function TestRegressionPage() {
                       {mainQuestion.map((question, index) => (
                         <div
                           key={index}
-                          className="relative group text-lg font-semibold mb-4"
+                          className="relative group text-lg font-semibold mb-4 dark:text-gray-200"
                         >
                           <div className="flex flex-row items-center">
                             {question}
@@ -297,7 +297,7 @@ export default function TestRegressionPage() {
                       ))}
                     </div>
 
-                    <div className="flex flex-col text-gray-500">
+                    <div className="flex flex-col text-gray-500 dark:text-gray-400">
                       <span className="text-sm mb-2">
                         {questionToBeAdded.questions.length
                           ? "Keep typing to add follow-up questions"
@@ -307,7 +307,7 @@ export default function TestRegressionPage() {
                         placeholder="New question"
                         value={inputVal}
                         onChange={(e) => setInputVal(e.target.value)}
-                        inputClassNames="rounded-md p-1 px-2 border-gray-300"
+                        inputClassNames="rounded-md p-1 px-2 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200"
                         onPressEnter={(e) => {
                           if (inputVal) {
                             setQuestionToBeAdded((prev) => ({
@@ -323,15 +323,16 @@ export default function TestRegressionPage() {
 
                   {/* Right side: SQL editor */}
                   <div className="col-span-6 flex flex-col gap-2 p-4">
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
                       Enter the correct SQL for the final question here
                     </span>
                     <CodeMirror
-                      className="border border-gray-300"
+                      className="border border-gray-300 dark:border-gray-600 dark:bg-gray-800"
                       extensions={[codemirrorSql(), EditorView.lineWrapping]}
                       value={questionToBeAdded.sql}
                       basicSetup={{ lineNumbers: false }}
                       editable={true}
+                      theme="dark"
                       onChange={(value) => {
                         setQuestionToBeAdded((prev) => ({
                           ...prev,
@@ -347,17 +348,17 @@ export default function TestRegressionPage() {
 
           {/* Divider */}
           <div className="h-10 w-full flex items-center">
-            <div className="h-0.5 w-full bg-gray-300"></div>
+            <div className="h-0.5 w-full bg-gray-300 dark:bg-gray-700"></div>
           </div>
 
           {/* Section with "Validate All" + "Download JSON" */}
-          <div className="bg-gray-50 rounded-md border">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-md border dark:border-gray-700">
             {/** 
              * 2) Another row with "Added questions" on the left 
              *    and "Download JSON" + "Validate All" on the right 
              */}
-            <div className="flex items-center border-b p-4 justify-between">
-              <h1 className="text-sm font-bold text-gray-800">
+            <div className="flex items-center border-b dark:border-gray-700 p-4 justify-between">
+              <h1 className="text-sm font-bold text-gray-800 dark:text-gray-200">
                 Added questions
               </h1>
               <div className="flex items-center gap-2">
@@ -394,7 +395,7 @@ export default function TestRegressionPage() {
 
             {/* If no queries */}
             {!queries.length && (
-              <div className="p-4 text-gray-500">
+              <div className="p-4 text-gray-500 dark:text-gray-400">
                 Please add questions above or upload a JSON file.
               </div>
             )}
@@ -408,17 +409,17 @@ export default function TestRegressionPage() {
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                     size="small"
-                    inputClassNames="rounded-md border-gray-300 w-40 p-1 px-2"
+                    inputClassNames="rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 w-40 p-1 px-2"
                   />
                 </div>
 
                 {/* Table-ish header */}
                 <div className="flex flex-col">
-                  <div className="grid grid-cols-12 relative even:bg-gray-100 text-sm font-bold border-b">
-                    <div className="col-span-2 p-4 border-r">Question</div>
-                    <div className="col-span-4 p-4 border-r">Provided SQL</div>
-                    <div className="col-span-4 p-4 border-r">Model SQL</div>
-                    <div className="col-span-2 p-4">Result</div>
+                  <div className="grid grid-cols-12 relative even:bg-gray-100 dark:even:bg-gray-700 text-sm font-bold border-b dark:border-gray-700">
+                    <div className="col-span-2 p-4 border-r dark:border-gray-700 dark:text-gray-200">Question</div>
+                    <div className="col-span-4 p-4 border-r dark:border-gray-700 dark:text-gray-200">Provided SQL</div>
+                    <div className="col-span-4 p-4 border-r dark:border-gray-700 dark:text-gray-200">Model SQL</div>
+                    <div className="col-span-2 p-4 dark:text-gray-200">Result</div>
                   </div>
 
                   {queries
@@ -434,17 +435,17 @@ export default function TestRegressionPage() {
                       return (
                         <div
                           key={item.id}
-                          className="grid grid-cols-12 relative even:bg-gray-100"
+                          className="grid grid-cols-12 relative even:bg-gray-100 dark:even:bg-gray-700"
                         >
                           {/* 1) question column */}
-                          <div className="col-span-2 flex flex-col px-6 py-4 border-r">
+                          <div className="col-span-2 flex flex-col px-6 py-4 border-r dark:border-gray-700">
                             {previousQs.length > 0 && (
-                              <div className="absolute z-[2] top-0 -left-2 w-1 h-full border border-r-0 border-gray-300"></div>
+                              <div className="absolute z-[2] top-0 -left-2 w-1 h-full border border-r-0 border-gray-300 dark:border-gray-600"></div>
                             )}
                             {previousQs.map((question, i) => (
                               <div
                                 key={i}
-                                className="relative group text-sm mb-1"
+                                className="relative group text-sm mb-1 dark:text-gray-300"
                               >
                                 {question}
                               </div>
@@ -452,7 +453,7 @@ export default function TestRegressionPage() {
                             {mainQ.map((question, i) => (
                               <div
                                 key={i}
-                                className="relative group text-lg font-semibold mb-4 mt-2"
+                                className="relative group text-lg font-semibold mb-4 mt-2 dark:text-gray-200"
                               >
                                 {question}
                               </div>
@@ -460,9 +461,9 @@ export default function TestRegressionPage() {
                           </div>
 
                           {/* 2) Provided SQL */}
-                          <div className="col-span-4 border-r p-4">
+                          <div className="col-span-4 border-r dark:border-gray-700 p-4">
                             <CodeMirror
-                              className="border border-gray-300"
+                              className="border border-gray-300 dark:border-gray-600 dark:bg-gray-800"
                               extensions={[
                                 codemirrorSql(),
                                 EditorView.lineWrapping,
@@ -470,14 +471,15 @@ export default function TestRegressionPage() {
                               value={item.sql}
                               basicSetup={{ lineNumbers: false }}
                               editable={false}
+                              theme="dark"
                             />
                           </div>
 
                           {/* 3) Model SQL */}
-                          <div className="col-span-4 border-r p-4">
+                          <div className="col-span-4 border-r dark:border-gray-700 p-4">
                             {item.validationResult?.model_sql ? (
                               <CodeMirror
-                                className="border border-gray-300"
+                                className="border border-gray-300 dark:border-gray-600 dark:bg-gray-800"
                                 extensions={[
                                   codemirrorSql(),
                                   EditorView.lineWrapping,
@@ -485,6 +487,7 @@ export default function TestRegressionPage() {
                                 value={item.validationResult.model_sql}
                                 basicSetup={{ lineNumbers: false }}
                                 editable={false}
+                                theme="dark"
                               />
                             ) : null}
                           </div>

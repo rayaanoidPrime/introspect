@@ -98,18 +98,18 @@ const AddUsersViaFile = ({ loading, getUserDets }) => {
   };
 
   return (
-    <div className="w-3/4 p-6 border border-gray-200 rounded-lg shadow-lg">
-      <h1 className="flex items-center justify-center text-2xl mb-8">
-        <FileUp size={24} className="mr-2" />
+    <div className="w-3/4 p-6 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg bg-white dark:bg-gray-800">
+      <h1 className="flex items-center justify-center text-2xl mb-8 dark:text-gray-100">
+        <FileUp size={24} className="mr-2 dark:text-blue-400" />
         Add Users via File
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <h4 className="text-lg font-semibold mb-4">Upload CSV File</h4>
+          <h4 className="text-lg font-semibold mb-4 dark:text-gray-200">Upload CSV File</h4>
           <div className="mb-4">
             {!isFileUploaded && (
-              <p className="text-sm text-gray-600 mb-2">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
                 Expected columns in the file: username,password,user_type,allowed_dbs. For users that must login via SSO, please set the password column to blank.
               </p>
             )}
@@ -125,7 +125,7 @@ const AddUsersViaFile = ({ loading, getUserDets }) => {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isFileUploaded || loading}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Upload size={20} className="mr-2" />
               {isFileUploaded ? "Uploaded" : "Upload CSV"}
@@ -134,18 +134,18 @@ const AddUsersViaFile = ({ loading, getUserDets }) => {
         </div>
 
         <div>
-          <h4 className="text-lg font-semibold mb-4">
+          <h4 className="text-lg font-semibold mb-4 dark:text-gray-200">
             Or a paste publicly accessible Google Sheets URL
           </h4>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Google Sheets URL
             </label>
             <input
               type="text"
               value={googleSheetsUrl}
               onChange={(e) => setGoogleSheetsUrl(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
               disabled={loading}
             />
           </div>
@@ -153,14 +153,14 @@ const AddUsersViaFile = ({ loading, getUserDets }) => {
 
         {isFileUploaded && (
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Generated CSV String
             </label>
             <textarea
               value={csvString}
               readOnly
               rows={4}
-              className="mt-1 block w-full font-mono border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-100 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="mt-1 block w-full font-mono border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
           </div>
         )}

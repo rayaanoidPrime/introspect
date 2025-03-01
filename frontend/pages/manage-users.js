@@ -69,9 +69,9 @@ const ManageUsers = () => {
       <Scaffolding id={"manage-users"} userType={"admin"}>
         <div className="flex justify-center items-center flex-col p-1 mt-5">
           <h1>
-            <Users size={48} color="#1890ff" />{" "}
+            <Users size={48} className="text-blue-500 dark:text-blue-400" />{" "}
           </h1>
-          <h1 className="text-3xl mt-4">Manage Users</h1>
+          <h1 className="text-3xl mt-4 dark:text-gray-100">Manage Users</h1>
         </div>
         <div className="flex justify-center items-center flex-col p-1">
           <UsersTable

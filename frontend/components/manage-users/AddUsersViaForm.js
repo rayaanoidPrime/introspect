@@ -75,9 +75,9 @@ const AddUsersViaForm = ({ loading, getUserDets }) => {
   };
 
   return (
-    <div className="w-3/4 p-6 border border-gray-200 rounded-lg shadow-lg">
-      <h1 className="flex items-center justify-center text-2xl mb-8">
-        <UserPlus size={24} className="mr-2" />
+    <div className="w-3/4 p-6 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg bg-white dark:bg-gray-800">
+      <h1 className="flex items-center justify-center text-2xl mb-8 dark:text-gray-100">
+        <UserPlus size={24} className="mr-2 dark:text-blue-400" />
         Add Users Manually
       </h1>
 
@@ -85,12 +85,12 @@ const AddUsersViaForm = ({ loading, getUserDets }) => {
         {users.map((user, index) => (
           <div key={index} className="flex space-x-4 mb-4">
             <div className="w-1/4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Username<span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                className="w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 dark:bg-gray-700 dark:text-gray-200"
                 value={user.username}
                 onChange={(e) =>
                   handleChange(index, "username", e.target.value)
@@ -101,12 +101,12 @@ const AddUsersViaForm = ({ loading, getUserDets }) => {
             </div>
 
             <div className="w-1/4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Password (leave blank for SSO users)
               </label>
               <input
                 type="password"
-                className="w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 dark:bg-gray-700 dark:text-gray-200"
                 value={user.password}
                 onChange={(e) =>
                   handleChange(index, "password", e.target.value)
@@ -116,11 +116,11 @@ const AddUsersViaForm = ({ loading, getUserDets }) => {
             </div>
 
             <div className="w-1/4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 User Type<span className="text-red-500">*</span>
               </label>
               <select
-                className="w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 dark:bg-gray-700 dark:text-gray-200"
                 value={user.userType}
                 onChange={(e) =>
                   handleChange(index, "userType", e.target.value)
@@ -135,12 +135,12 @@ const AddUsersViaForm = ({ loading, getUserDets }) => {
             </div>
 
             <div className="w-1/4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Allowed DBs (leave blank for all DBs)
               </label>
               <select
                 multiple
-                className="w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm p-2 dark:bg-gray-700 dark:text-gray-200"
                 value={user.userDb}
                 onChange={(e) =>
                   handleChange(
@@ -172,7 +172,7 @@ const AddUsersViaForm = ({ loading, getUserDets }) => {
               { username: "", password: "", userType: "", userDb: [] },
             ])
           }
-          className="w-full py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+          className="w-full py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 dark:focus:ring-gray-400"
           disabled={loading}
         >
           Add Another User
@@ -180,14 +180,14 @@ const AddUsersViaForm = ({ loading, getUserDets }) => {
 
         {csvString.trim() !== "username,password,user_type,allowed_dbs" && (
           <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Generated CSV String
             </label>
             <textarea
               value={csvString}
               readOnly
               rows={2}
-              className="w-full font-mono border border-gray-300 rounded-md shadow-sm bg-gray-100 p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              className="w-full font-mono border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-100 dark:bg-gray-700 dark:text-gray-200 p-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
             />
           </div>
         )}
