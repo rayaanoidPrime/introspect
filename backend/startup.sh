@@ -9,10 +9,10 @@ echo "PROD: $PROD"
 # Start the FastAPI server
 if [ "$PROD" = "no" ]; then
   echo "Running in development mode"
-  python3 -m hypercorn main:app -b 0.0.0.0:1235 --reload &
+  python3 -m hypercorn main:app -b 0.0.0.0:1235 --reload --log-level warning &
 else
   echo "Running in production mode"
-  python3 -m hypercorn main:app -b 0.0.0.0:1235 &
+  python3 -m hypercorn main:app -b 0.0.0.0:1235 --log-level warning &
 fi
 
 FASTAPI_PID=$!

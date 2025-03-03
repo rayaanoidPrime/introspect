@@ -246,33 +246,6 @@ const AlignModel = () => {
         guidelineType={"clarification"}
       />,
     },
-    {
-      key: "generate-question-guidelines",
-      name: "Question Generation",
-      content: <Guidelines
-        token={token}
-        apiKeyName={apiKeyName}
-        guidelineType={"generate_questions"}
-      />,
-    },
-    {
-      key: "generate-deeper-question-guidelines",
-      name: "Question Generation (2)",
-      content: <Guidelines
-        token={token}
-        apiKeyName={apiKeyName}
-        guidelineType={"generate_questions_deeper"}
-      />,
-    },
-    {
-      key: "generate-report-guidelines",
-      name: "Reports",
-      content: <Guidelines
-        token={token}
-        apiKeyName={apiKeyName}
-        guidelineType={"generate_report"}
-      />,
-    },
   ];
 
   return (

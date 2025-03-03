@@ -1,7 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 
-from db_models import Base, ImportedTables, Users
+from db_models import Base, Users
 from fastapi import FastAPI
 from sqlalchemy import Engine, insert, text
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -17,12 +17,11 @@ from utils_logging import LOGGER
 ################################################################################
 
 
-async def init_db(engine: AsyncEngine, imported_tables_engine: Engine | None):
+async def init_db(engine: AsyncEngine):
     """
     Initialize database tables
     Args:
         engine: AsyncEngine for main database
-        imported_tables_engine: Engine for imported tables database, None if not using imported tables
     """
     try:
         async with engine.begin() as conn:
@@ -30,19 +29,6 @@ async def init_db(engine: AsyncEngine, imported_tables_engine: Engine | None):
             # that contain vector columns
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
             await conn.run_sync(Base.metadata.create_all)
-
-        if imported_tables_engine:
-            try:
-                ImportedTablesBase = automap_base()
-                ImportedTablesBase.prepare(autoload_with=imported_tables_engine)
-                ImportedTablesBase.classes.imported_tables = ImportedTables
-                with imported_tables_engine.begin() as conn:
-                    ImportedTablesBase.metadata.create_all(conn)
-            except Exception as e:
-                LOGGER.error(f"Error creating imported tables: {str(e)}")
-                raise e
-
-        LOGGER.info("Database tables created successfully")
     except Exception as e:
         LOGGER.error(f"Error initializing database: {str(e)}")
         raise
@@ -62,7 +48,6 @@ async def create_admin_user():
         # Check if admin user exists
         token = await login_user(admin_username, admin_password)
         if not token:
-            LOGGER.info("Creating admin user")
             async with engine.begin() as conn:
                 await conn.execute(
                     insert(Users).values(
@@ -73,9 +58,6 @@ async def create_admin_user():
                         token=get_hashed_password(admin_username, admin_password),
                     )
                 )
-            LOGGER.info("Admin user created successfully")
-        else:
-            LOGGER.info("Admin user already exists")
     except Exception as e:
         LOGGER.error(f"Error creating admin user: {str(e)}")
         raise
@@ -86,19 +68,20 @@ async def lifespan(app: FastAPI):
     """Initialize database tables and admin user on startup"""
     try:
         # Run validation on current llm sdk version to ensure models used are supported
-        from db_config import engine, imported_tables_engine
+        from db_config import engine
 
         LOGGER.info("Running startup events...")
 
         # Initialize database tables
-        await init_db(engine, imported_tables_engine)
-        LOGGER.info("Database tables initialized")
-
+        await init_db(engine)
+        
         # Create admin user if doesn't exist
         await create_admin_user()
-        LOGGER.info("Admin user check completed")
-
+        
         LOGGER.info("All startup events completed successfully")
+
+        LOGGER.info("🚀 You can now visit the app in the browser at http://localhost:80")
+        LOGGER.info("The default username is `admin` and default password is also `admin`")
 
         yield
 

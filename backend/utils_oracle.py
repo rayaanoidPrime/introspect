@@ -51,13 +51,20 @@ async def clarify_question(
 
     response = await chat_async(
         messages=messages,
-        model="o3-mini",
+        model="gpt-4o",
         response_format=ClarificationOutput,
     )
 
-    clarification_output: ClarificationOutput = response.content
+    clarification_output = response.content.model_dump()
+    clarification_output["clarifications"].append(
+        {
+            "clarification": "Any other context you would like to give us?",
+            "input_type": "text",
+            "options": [],
+        }
+    )
 
-    return clarification_output.model_dump()
+    return clarification_output
 
 
 async def set_oracle_guidelines(
