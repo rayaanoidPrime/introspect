@@ -29,8 +29,6 @@ async def init_db(engine: AsyncEngine):
             # that contain vector columns
             await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
             await conn.run_sync(Base.metadata.create_all)
-
-        LOGGER.info("Database tables created successfully")
     except Exception as e:
         LOGGER.error(f"Error initializing database: {str(e)}")
         raise
@@ -50,7 +48,6 @@ async def create_admin_user():
         # Check if admin user exists
         token = await login_user(admin_username, admin_password)
         if not token:
-            LOGGER.info("Creating admin user")
             async with engine.begin() as conn:
                 await conn.execute(
                     insert(Users).values(
@@ -61,9 +58,6 @@ async def create_admin_user():
                         token=get_hashed_password(admin_username, admin_password),
                     )
                 )
-            LOGGER.info("Admin user created successfully")
-        else:
-            LOGGER.info("Admin user already exists")
     except Exception as e:
         LOGGER.error(f"Error creating admin user: {str(e)}")
         raise
@@ -80,12 +74,10 @@ async def lifespan(app: FastAPI):
 
         # Initialize database tables
         await init_db(engine)
-        LOGGER.info("Database tables initialized")
-
+        
         # Create admin user if doesn't exist
         await create_admin_user()
-        LOGGER.info("Admin user check completed")
-
+        
         LOGGER.info("All startup events completed successfully")
 
         yield
