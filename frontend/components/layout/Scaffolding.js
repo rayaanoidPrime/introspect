@@ -43,11 +43,11 @@ const Scaffolding = ({
               title: "Manage Database",
               href: "/extract-metadata",
             },
-            {
-              key: "manage-users",
-              title: "Manage Users",
-              href: "/manage-users",
-            },
+            // {
+            //   key: "manage-users",
+            //   title: "Manage Users",
+            //   href: "/manage-users",
+            // },
             {
               key: "align-model",
               title: "Align Model",
