@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import {
@@ -9,11 +10,13 @@ import {
 import { TestDrive } from "$components/TestDrive";
 
 const QueryDataPage = () => {
+  const router = useRouter();
   const [token, setToken] = useState("");
   const [user, setUser] = useState("");
   const [userType, setUserType] = useState("");
   const [dbNames, setDbNames] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   const [nonAdminConfig, setNonAdminConfig] = useState({});
 
@@ -72,12 +75,32 @@ const QueryDataPage = () => {
     const token = localStorage.getItem("defogToken");
     const userType = localStorage.getItem("defogUserType");
     const user = localStorage.getItem("defogUser");
+    
     setUser(user);
     setUserType(userType);
     setToken(token);
 
+    if (!token) {
+      setRedirecting(true);
+      
+      // Redirect to login page after a short delay
+      setTimeout(() => {
+        // Capture current URL with all query parameters
+        const returnUrl = window.location.pathname + window.location.search;
+        
+        router.push({
+          pathname: "/log-in",
+          query: { 
+            message: "You are not logged in. Please log in to access query data.",
+            returnUrl
+          }
+        });
+      }, 1500);
+      return;
+    }
+
     getDbNames(token);
-  }, []);
+  }, [router]);
 
   const isAdmin = userType === "admin";
 
@@ -90,7 +113,13 @@ const QueryDataPage = () => {
         containerClassNames="max-h-screen h-screen flex flex-col"
         contentClassNames="h-full max-h-full"
       >
-        {token ? (
+        {redirecting ? (
+          <div className="w-full h-full flex flex-col justify-center items-center text-gray-400 text-sm">
+            <h2 className="text-xl font-semibold mb-2">Not Logged In</h2>
+            <p className="mb-4">You are not logged in. Redirecting to login page...</p>
+            <SpinningLoader />
+          </div>
+        ) : token ? (
           loading ? (
             <div className="w-full h-full flex justify-center items-center text-gray-400 text-sm">
               Loading DBs <SpinningLoader classNames="ml-4" />

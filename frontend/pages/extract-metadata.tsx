@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useContext, useRef, useId } from "react";
+import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
 import MetadataTable from "../components/extract-metadata/MetadataTable";
 import Scaffolding from "$components/layout/Scaffolding";
@@ -24,8 +25,10 @@ const ExtractMetadata = () => {
   const token = useRef("");
   const [loading, setLoading] = useState(true);
   const [fileUploading, setFileUploading] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const message = useContext(MessageManagerContext);
+  const router = useRouter();
 
   const uploadWorkerRef = useRef<Worker | null>(null);
 
@@ -63,7 +66,31 @@ const ExtractMetadata = () => {
   }, [message]);
 
   useEffect(() => {
-    token.current = localStorage.getItem("defogToken");
+    const storedToken = localStorage.getItem("defogToken");
+    token.current = storedToken;
+    
+    // Check if user is authenticated
+    if (!storedToken) {
+      setIsAuthenticated(false);
+      setLoading(false);
+      
+      // Redirect to login page after a short delay
+      setTimeout(() => {
+        // Capture current URL with all query parameters
+        const returnUrl = window.location.pathname + window.location.search;
+        
+        router.push({
+          pathname: "/log-in",
+          query: { 
+            message: "You are not logged in. Please log in to access database management.",
+            returnUrl
+          }
+        });
+      }, 1500);
+      return;
+    }
+    
+    setIsAuthenticated(true);
 
     const setup = async () => {
       setLoading(true);
@@ -73,7 +100,7 @@ const ExtractMetadata = () => {
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token }),
+            body: JSON.stringify({ token: storedToken }),
           }
         );
         if (!res.ok) {
@@ -100,11 +127,12 @@ const ExtractMetadata = () => {
       } catch (e) {
         message.error(e.message);
         console.error(e);
+        setLoading(false);
       }
     };
 
     setup();
-  }, []);
+  }, [router, message]);
 
   // Are any tables indexed?
   const areTablesIndexed =
@@ -238,6 +266,21 @@ const ExtractMetadata = () => {
     ];
   }, [loading, selectedDbName, dbInfo]);
 
+  if (!isAuthenticated && !loading) {
+    return (
+      <>
+        <Meta />
+        <div className="h-screen flex flex-col items-center justify-center">
+          <div className="text-center p-6">
+            <h2 className="text-xl font-semibold mb-2">Not Logged In</h2>
+            <p className="mb-4">You are not logged in. Redirecting to login page...</p>
+            <SpinningLoader />
+          </div>
+        </div>
+      </>
+    );
+  }
+  
   if (loading) {
     return (
       <>

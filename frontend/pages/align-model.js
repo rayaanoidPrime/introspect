@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext } from "react";
+import { useRouter } from "next/router";
 import Meta from "$components/layout/Meta";
 import Scaffolding from "$components/layout/Scaffolding";
 import setupBaseUrl from "$utils/setupBaseUrl";
@@ -6,12 +7,14 @@ import Instructions from "../components/align-model/Instructions";
 import GoldenQueries from "../components/align-model/GoldenQueries";
 import Guidelines from "../components/align-model/Guidelines";
 import { Settings } from "lucide-react";
-import { MessageManagerContext, SingleSelect as Select, Tabs } from "@defogdotai/agents-ui-components/core-ui";
+import { MessageManagerContext, SingleSelect as Select, Tabs, SpinningLoader } from "@defogdotai/agents-ui-components/core-ui";
 
 const AlignModel = () => {
+  const router = useRouter();
   const [instructions, setInstructions] = useState("");
   const [goldenQueries, setGoldenQueries] = useState([]); // [ { question: "", sql: "" }, ... ]
   const [token, setToken] = useState("");
+  const [redirecting, setRedirecting] = useState(false);
 
   // loading states
   const [isLoading, setIsLoading] = useState(false);
@@ -46,8 +49,28 @@ const AlignModel = () => {
 
   useEffect(() => {
     const token = localStorage.getItem("defogToken");
+    
+    if (!token) {
+      setRedirecting(true);
+      
+      // Redirect to login page after a short delay
+      setTimeout(() => {
+        // Capture current URL with all query parameters
+        const returnUrl = window.location.pathname + window.location.search;
+        
+        router.push({
+          pathname: "/log-in",
+          query: { 
+            message: "You are not logged in. Please log in to access model configuration.",
+            returnUrl
+          }
+        });
+      }, 1500);
+      return;
+    }
+    
     getApiKeyNames(token);
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     // get token
@@ -55,7 +78,7 @@ const AlignModel = () => {
     setToken(token);
 
     // after 100ms, get the glossary and golden queries
-    if (!apiKeyName) return;
+    if (!apiKeyName || !token) return;
     getGlossaryGoldenQueries();
   }, [apiKeyName]);
 
@@ -247,6 +270,21 @@ const AlignModel = () => {
       />,
     },
   ];
+
+  if (redirecting) {
+    return (
+      <>
+        <Meta />
+        <div className="h-screen flex flex-col items-center justify-center">
+          <div className="text-center p-6">
+            <h2 className="text-xl font-semibold mb-2">Not Logged In</h2>
+            <p className="mb-4">You are not logged in. Redirecting to login page...</p>
+            <SpinningLoader />
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
