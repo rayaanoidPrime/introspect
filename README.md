@@ -34,4 +34,12 @@ For development workflows and more detailed instructions, see the README files i
 
 ## Supported Databases
 
-Defog supports various database connectors including PostgreSQL, MySQL, SQLite, BigQuery, Redshift, Snowflake, and Databricks.
+Defog supports most database connectors including PostgreSQL, MySQL, SQLite, BigQuery, Redshift, Snowflake, and Databricks – and also includes support for CSV and Excel files.
+
+## Docs
+Coming soon
+
+## To do
+[] Create Docs
+[] Have an option to replace Google/Gemini based web search tool with Perplexity
+[] Let users choose what model they want for which task from the `.env. file
