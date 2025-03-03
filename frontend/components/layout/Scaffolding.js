@@ -55,11 +55,11 @@ const Scaffolding = ({
             },
           ],
         },
-        {
-          key: "query-data",
-          title: "Query Data",
-          href: "/query-data",
-        },
+        // {
+        //   key: "query-data",
+        //   title: "Query Data",
+        //   href: "/query-data",
+        // },
         {
           key: "reports",
           title: "Reports",
