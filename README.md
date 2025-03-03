@@ -1,6 +1,6 @@
 #  🔬 Defog Introspect: Deep Research for your internal data
 
-Defog does data-focused deep research for structured data. It understands your structured data (databases or CSV/Excel files), unstructured data (PDFs), and can query the web to get additional context.
+Introspect is a service that does data-focused deep research for structured data. It understands your structured data (databases or CSV/Excel files), unstructured data (PDFs), and can query the web to get additional context.
 
 ## Project Structure
 
