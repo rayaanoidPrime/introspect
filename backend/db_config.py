@@ -39,7 +39,6 @@ def get_db_engine() -> tuple[AsyncEngine, Engine | None, Engine | None]:
             "database": os.environ.get("DATABASE", "postgres"),
         }
 
-        print("using postgres as our internal db")
         connection_uri = f"postgresql+asyncpg://{db_creds['user']}:{db_creds['password']}@{db_creds['host']}:{db_creds['port']}/{db_creds['database']}"
         engine = create_async_engine(connection_uri, pool_size=30)
 
