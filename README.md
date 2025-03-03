@@ -13,10 +13,7 @@ Introspect is a service that does data-focused deep research for structured data
 1. Set up environment variables:
 
 ```bash
-# Create a .env file or export directly
-ADMIN_USERNAME=admin  # default
-ADMIN_PASSWORD=admin  # default
-
+# Create a .env file in your root folder
 OPENAI_API_KEY="YOUR_OPENAI_API_KEY"
 ANTHROPIC_API_KEY="YOUR_ANTHROPIC_API_KEY"
 GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
