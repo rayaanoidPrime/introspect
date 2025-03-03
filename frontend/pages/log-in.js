@@ -45,12 +45,8 @@ const LogIn = () => {
       localStorage.setItem("defogToken", data.token);
       localStorage.setItem("defogUserType", data.user_type);
 
-      // redirect to home page
-      if (data.user_type === "admin") {
-        router.push("/extract-metadata");
-      } else {
-        router.push("/query-data");
-      }
+      // redirect to reports page
+      router.push("/reports");
     } else {
       message.error("Login failed. Please contact your administrator.");
     }
@@ -68,7 +64,7 @@ const LogIn = () => {
               className="mx-auto h-10 w-auto"
             />
             <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900 dark:text-dark-text-primary">
-              Sign in to Defog
+              Defog Introspect (default credentials are auto filled in)
             </h2>
           </div>
 
