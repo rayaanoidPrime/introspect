@@ -80,6 +80,9 @@ async def lifespan(app: FastAPI):
         
         LOGGER.info("All startup events completed successfully")
 
+        LOGGER.info("🚀 You can now visit the app in the browser at http://localhost:80")
+        LOGGER.info("The default username is `admin` and default password is also `admin`")
+
         yield
 
         LOGGER.info("Shutting down...")
