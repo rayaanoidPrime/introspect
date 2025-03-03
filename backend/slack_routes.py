@@ -11,7 +11,6 @@ from fastapi import APIRouter, Request
 from generic_utils import get_api_key_from_key_name, make_request
 from slack_sdk.web.async_client import AsyncWebClient
 
-DEFOG_BASE_URL = os.getenv("DEFOG_BASE_URL")
 slack_client = AsyncWebClient(token=os.environ["SLACK_BOT_TOKEN"])
 router = APIRouter()
 
@@ -415,6 +414,4 @@ async def send_feedback(params_obj):
         response (dict): The response object from the API request with desired "status" key with value "received".
 
     """
-    url = DEFOG_BASE_URL + "/feedback"
-    res = await make_request(url, data=params_obj)
-    return res
+    pass
