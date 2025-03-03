@@ -154,6 +154,7 @@ const ExtractMetadata = () => {
               value={selectedDbName || undefined}
               onChange={(val) => setSelectedDbName(val)}
               placeholder="Select your DB name"
+              rootClassNames="flex-grow min-w-[250px] w-full"
               optionRenderer={(option) => {
                 if (option.value === newDbOption) {
                   return (
