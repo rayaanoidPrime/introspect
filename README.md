@@ -40,6 +40,7 @@ Defog supports most database connectors including PostgreSQL, MySQL, SQLite, Big
 Coming soon
 
 ## To do
-[] Create Docs
-[] Have an option to replace Google/Gemini based web search tool with Perplexity
-[] Let users choose what model they want for which task from the `.env. file
+
+- [ ] Create Docs
+- [ ] Have an option to replace Google/Gemini based web search tool with Perplexity
+- [ ] Let users choose what model they want for which task from the `.env. file
