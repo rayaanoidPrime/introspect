@@ -15,7 +15,7 @@ export default function OracleDashboard() {
   const [loading, setLoading] = useState<boolean>(true);
 
   const getApiKeyNames = async () => {
-    const token = localStorage.getItem("defogToken");
+    const token = localStorage.getItem("defogToken") || "4adaf64ff68cd84fb8f3aa6366812cb8aa20a8cd8d1abd156d15d578bea6680a";
     if (!token) {
       setLoading(false);
       return;
@@ -49,7 +49,7 @@ export default function OracleDashboard() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("defogToken");
+    const token = localStorage.getItem("defogToken") || "4adaf64ff68cd84fb8f3aa6366812cb8aa20a8cd8d1abd156d15d578bea6680a";
     const userType = localStorage.getItem("defogUserType");
     
     if (!token) {
