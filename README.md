@@ -2,6 +2,10 @@
 
 Introspect is a service that does data-focused deep research for structured data. It understands your structured data (databases or CSV/Excel files), unstructured data (PDFs), and can query the web to get additional context.
 
+## Demo
+- Interactive Demo: https://demo.defog.ai/reports (user id: `admin`, password: `admin`)
+- [150s video](https://www.loom.com/share/ed2017d503ce4335909f47e8629a3acb)
+
 ## Quick Start
 
 1. Set up environment variables:
