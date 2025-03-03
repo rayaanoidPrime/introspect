@@ -8,6 +8,8 @@ Introspect is a service that does data-focused deep research for structured data
 - **`/frontend`**: Next.js web application providing the user interface
 - **`/nginx`**: Configuration files for the web server
 
+## TLDR
+
 ## Quick Start
 
 1. Set up environment variables:
@@ -28,6 +30,15 @@ docker compose up --build
    - Main application: http://localhost:80
    - Standalone Backend API: http://localhost:1235
 
+## How it works
+
+We use a simple AI agent with tool use. An LLM attempts to answer a user question with 3 tools – `text_to_sql`, `web_search`, and `pdf_with_citations`.
+
+The model then recursively asks questions using each of these tools until it gets a satisfactory answer. The image below shows a very basic overview.
+
+![image](https://github.com/user-attachments/assets/a5748d73-05ec-45ec-b3e0-ee3f354a3d24)
+
+
 ## Development
 
 For development workflows and more detailed instructions, see the README files in the `/backend` and `/frontend` directories.
@@ -40,7 +51,8 @@ Defog supports most database connectors including PostgreSQL, MySQL, SQLite, Big
 Coming soon
 
 ## To do
-
 - [ ] Create Docs
 - [ ] Have an option to replace Google/Gemini based web search tool with Perplexity
 - [ ] Let users choose what model they want for which task from the `.env. file
+- [ ] Docs and examples for how to add custom tools
+- [ ] Docs and exampels for how to integrate with unstructured data sources with search, like Google Drive and OneDrive
