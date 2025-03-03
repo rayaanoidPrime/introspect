@@ -34,9 +34,12 @@ docker compose up --build
 
 We use a simple AI agent with tool use. An LLM attempts to answer a user question with 3 tools – `text_to_sql`, `web_search`, and `pdf_with_citations`.
 
-The model then recursively asks questions using each of these tools until it gets a satisfactory answer. The image below shows a very basic overview.
+The model then recursively asks questions using one of these tools until it is satisfied that it has enough context to answer the users question. By default, we use `o3-mini` for text to SQL, `gemini-2.0-flash` for web search, and `claude-3-7-sonnet` for both PDF analysis and orchestration.
 
-![image](https://github.com/user-attachments/assets/a5748d73-05ec-45ec-b3e0-ee3f354a3d24)
+The image below shows basic overview.
+
+<img width="730" alt="image" src="https://github.com/user-attachments/assets/32fd8573-7428-4b6a-8bdb-f033c49d9a5c" />
+
 
 
 ## Development
@@ -49,6 +52,9 @@ Defog supports most database connectors including PostgreSQL, MySQL, SQLite, Big
 
 ## Docs
 Coming soon
+
+## Contributing and Maintainers
+This repo is maintained by Defog.ai
 
 ## To do
 - [ ] Create Docs
