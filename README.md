@@ -2,20 +2,13 @@
 
 Introspect is a service that does data-focused deep research for structured data. It understands your structured data (databases or CSV/Excel files), unstructured data (PDFs), and can query the web to get additional context.
 
-## Project Structure
-
-- **`/backend`**: FastAPI Python server that handles AI processing, database connections, and API endpoints
-- **`/frontend`**: Next.js web application providing the user interface
-- **`/nginx`**: Configuration files for the web server
-
-## TLDR
-
 ## Quick Start
 
 1. Set up environment variables:
 
 ```bash
 # Create a .env file in your root folder
+# You need all 3 - not just one
 OPENAI_API_KEY="YOUR_OPENAI_API_KEY"
 ANTHROPIC_API_KEY="YOUR_ANTHROPIC_API_KEY"
 GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
@@ -26,7 +19,7 @@ GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
 docker compose up --build
 ```
 
-3. Access the application:
+3. Access the application in your browser:
    - Main application: http://localhost:80
    - Standalone Backend API: http://localhost:1235
 
