@@ -86,6 +86,7 @@ const LogIn = () => {
                     id="username"
                     name="username"
                     type="text"
+                    defaultValue={"admin"}
                     required
                     autoComplete="username"
                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 dark:text-dark-text-primary shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-dark-border dark:bg-dark-bg-secondary placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
@@ -118,6 +119,7 @@ const LogIn = () => {
                     required
                     autoComplete="current-password"
                     className="block w-full rounded-md border-0 py-1.5 text-gray-900 dark:text-dark-text-primary shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-dark-border dark:bg-dark-bg-secondary placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+                    defaultValue={"admin"}
                   />
                 </div>
               </div>
@@ -131,20 +133,6 @@ const LogIn = () => {
                 </button>
               </div>
             </form>
-
-            <div className="mt-4">
-              <GoogleLoginButton />
-            </div>
-
-            <p className="mt-10 text-center text-sm text-gray-500 dark:text-gray-400">
-              Don't have an API key?{" "}
-              <a
-                href="https://defog.ai/signup"
-                className="font-semibold leading-6 text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
-              >
-                Get Started Free
-              </a>
-            </p>
           </div>
         </div>
       </Scaffolding>
