@@ -9,14 +9,27 @@ import { MessageManagerContext } from "@defogdotai/agents-ui-components/core-ui"
 const LogIn = () => {
   const [context, setContext] = useContext(UserContext);
   const router = useRouter();
-  const message = useContext(MessageManagerContext);
+  const messageManager = useContext(MessageManagerContext);
+  const [redirectMessage, setRedirectMessage] = useState("");
+  const [returnUrl, setReturnUrl] = useState("");
 
   useEffect(() => {
     // remove analysis trees whenever on the log in page
     localStorage.removeItem("analysisTrees");
     // also remove stored analyse_data results (aka "step analysis")
     localStorage.removeItem("analyseDataResults");
-  });
+    
+    // Check for message in URL query parameters
+    if (router.query.message) {
+      setRedirectMessage(router.query.message);
+      messageManager.info(router.query.message);
+    }
+
+    // Store return URL if provided
+    if (router.query.returnUrl) {
+      setReturnUrl(router.query.returnUrl.toString());
+    }
+  }, [router.query, messageManager]);
 
   const handleLogin = async (event) => {
     event.preventDefault();
@@ -45,10 +58,10 @@ const LogIn = () => {
       localStorage.setItem("defogToken", data.token);
       localStorage.setItem("defogUserType", data.user_type);
 
-      // redirect to reports page
-      router.push("/reports");
+      // redirect to return URL if available, otherwise to reports page
+      router.push(returnUrl || "/reports");
     } else {
-      message.error("Login failed. Please contact your administrator.");
+      messageManager.error("Login failed. Please contact your administrator.");
     }
   };
 
@@ -66,6 +79,11 @@ const LogIn = () => {
             <h2 className="mt-10 text-center text-2xl font-bold leading-9 tracking-tight text-gray-900 dark:text-dark-text-primary">
               Defog Introspect (default credentials are auto filled in)
             </h2>
+            {redirectMessage && (
+              <div className="mt-4 text-center text-sm text-red-600 dark:text-red-400">
+                {redirectMessage}
+              </div>
+            )}
           </div>
 
           <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
