@@ -57,6 +57,10 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
 
+      # admin username and password
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+
       # front end non-admin config
       - HIDE_SQL_TAB_FOR_NON_ADMIN=${HIDE_SQL_TAB_FOR_NON_ADMIN}
       - HIDE_PREVIEW_TABS_FOR_NON_ADMIN=${HIDE_PREVIEW_TABS_FOR_NON_ADMIN}
