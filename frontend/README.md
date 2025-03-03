@@ -1,7 +1,7 @@
 
-# Defog Self-Hosted Frontend
+# Defog Introspect Frontend
 
-The frontend component of Defog Self-Hosted is a Next.js web application that provides the user interface for interacting with the Defog platform.
+The frontend component of Defog Introspect is a Next.js web application that provides the user interface for interacting with Introspect.
 
 ## Setup
 
@@ -13,7 +13,7 @@ pnpm install
 2. Configure environment:
 ```bash
 # Create a .env.local file with these variables
-NEXT_PUBLIC_API_URL=http://localhost:1235
+NEXT_PUBLIC_API_URL=http://localhost
 ```
 
 ## Running the Frontend
@@ -33,16 +33,3 @@ npm run start
 ```bash
 npm run export
 ```
-
-## Testing
-```bash
-# Run Playwright tests
-npx playwright test
-```
-
-## Key Components
-
-- **Authentication**: User login and account management
-- **Query Interface**: Natural language query input and SQL/chart visualization
-- **Database Management**: Database credential setup and metadata extraction
-- **Alignment Tools**: Instruction and golden query management for model tuning
