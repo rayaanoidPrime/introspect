@@ -32,7 +32,7 @@ jobs:
 
       - name: Install Dependencies and Export
         working-directory: ./frontend
-        run: pnpm i && pnpm export
+        run: pnpm i && pnpm pr-export
 
       - name: GitHub Commit & Push
         uses: actions-js/push@master
