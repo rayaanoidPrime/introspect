@@ -9,7 +9,9 @@ import pandas as pd
 from utils_file_uploads import (
     clean_table_name,
     is_date_column_name,
+    is_time_column_name,
     can_parse_date,
+    can_parse_time,
     to_float_if_possible,
     guess_column_type,
     sanitize_column_name,
@@ -68,6 +70,43 @@ class TestIsDateColumnName(unittest.TestCase):
     def test_non_string_input(self):
         self.assertFalse(is_date_column_name(123))
         self.assertFalse(is_date_column_name(None))
+
+
+# Test for is_time_column_name function
+class TestIsTimeColumnName(unittest.TestCase):
+    def test_time_column_names(self):
+        time_columns = [
+            "time", "hour", "minute", "second",
+            "start_time", "end_time", "arrival_time", "departure_time",
+        ]
+        for col in time_columns:
+            self.assertTrue(is_time_column_name(col), f"Failed for {col}")
+
+    def test_non_time_column_names(self):
+        non_time_columns = [
+            "name", "price", "quantity", "id", "status",
+            "description", "category", "product", "rating",
+            "phone", "email", "username", "password",
+            "date", "created_date", "timestamp", "datetime",
+            "year", "month", "day", "quarter", "fiscal_year",
+            "create_dt", "update_dt", "birth_date", "dob",
+            "period", "calendar_date", "fiscal_period",
+        ]
+        for col in non_time_columns:
+            self.assertFalse(is_time_column_name(col), f"Failed for {col}")
+
+    def test_mixed_date_time_columns(self):
+        # Test that columns with both date and time terms are not classified as time-only columns
+        mixed_columns = [
+            "date_time", "datetime", "timestamp", "created_time", "modified_time",
+            "start_date_time", "end_date_time", "update_time"
+        ]
+        for col in mixed_columns:
+            self.assertFalse(is_time_column_name(col), f"Failed for {col}")
+
+    def test_non_string_input(self):
+        self.assertFalse(is_time_column_name(123))
+        self.assertFalse(is_time_column_name(None))
 
 
 # Test for can_parse_date function
@@ -152,6 +191,111 @@ class TestCanParseDate(unittest.TestCase):
             # Just make sure the function returns a consistent result
             result = can_parse_date(date_str)
             self.assertIsInstance(result, bool)
+
+
+# Test for can_parse_time function
+class TestCanParseTime(unittest.TestCase):
+    def test_common_time_formats(self):
+        time_strings = [
+            "12:30", "12:30:45", "1:30", "01:30",
+            "12:30 PM", "1:30 AM", "12:30:45 PM", "01:30:45 AM",
+            "0900", "1430", "2359", "0000",
+            "9:30", "14:45", "23:59",
+        ]
+        for time_str in time_strings:
+            self.assertTrue(can_parse_time(time_str), f"Failed for {time_str}")
+
+    def test_time_formats_with_seconds(self):
+        time_strings_with_seconds = [
+            "12:30:45", "01:30:45", "23:59:59", "00:00:00",
+            "12:30:45 PM", "01:30:45 AM", "11:59:59 PM",
+        ]
+        for time_str in time_strings_with_seconds:
+            self.assertTrue(can_parse_time(time_str), f"Failed for {time_str}")
+
+    def test_military_time_formats(self):
+        military_times = [
+            "0000", "0030", "0130", "0900",
+            "1200", "1230", "1430", "1530",
+            "2359", "2330"
+        ]
+        for time_str in military_times:
+            self.assertTrue(can_parse_time(time_str), f"Failed for {time_str}")
+
+    def test_time_with_am_pm(self):
+        am_pm_times = [
+            "12:30 AM", "12:30 PM", "1:30 AM", "1:30 PM",
+            "01:30 AM", "01:30 PM", "11:59 PM", "12:01 AM",
+            "12:30:45 AM", "12:30:45 PM", "9:30 AM", "9:30 PM",
+        ]
+        for time_str in am_pm_times:
+            self.assertTrue(can_parse_time(time_str), f"Failed for {time_str}")
+
+    def test_edge_case_times(self):
+        edge_cases = [
+            "00:00",  # Midnight
+            "12:00 AM", "12:00 PM",  # Noon and midnight
+            "11:59:59 PM", "12:00:01 AM",  # Just before/after midnight
+        ]
+        for time_str in edge_cases:
+            self.assertTrue(can_parse_time(time_str), f"Failed for {time_str}")
+
+    def test_invalid_time_formats(self):
+        invalid_times = [
+            "25:00",  # Hour > 24
+            "12:60",  # Minute > 59
+            "12:30:60",  # Second > 59
+            "1234567",  # Too many digits for military time
+            "123",  # Too few digits for military time
+            "12-30",  # Wrong separator
+            "12/30",  # Wrong separator
+            "12.30",  # Decimal notation not time
+        ]
+        for time_str in invalid_times:
+            self.assertFalse(can_parse_time(time_str), f"Should fail for {time_str}")
+
+    def test_non_time_strings(self):
+        non_time_strings = [
+            "not a time", "hello world",
+            "abc123", "$1,234.56", "N/A", "",
+            "2023-01-01",  # Date without time
+            "January 1, 2023",  # Date without time
+            "Monday",  # Day name
+            "January",  # Month name
+            "2023",  # Year
+        ]
+        for non_time in non_time_strings:
+            self.assertFalse(can_parse_time(non_time), f"Should fail for {non_time}")
+
+    def test_mixed_date_time(self):
+        # These should be false for time-only parsing but true for datetime parsing
+        mixed_formats = [
+            "2023-01-01 12:30",
+            "01/01/2023 12:30 PM",
+            "Jan 1, 2023 12:30:45",
+            "2023-01-01T12:30:45",
+        ]
+        for mixed_str in mixed_formats:
+            self.assertFalse(can_parse_time(mixed_str), f"Should fail for {mixed_str} as it contains date part")
+
+    def test_edge_cases(self):
+        # Test edge cases like empty string, whitespace, None
+        self.assertFalse(can_parse_time(""))
+        self.assertFalse(can_parse_time("   "))
+        self.assertFalse(can_parse_time(None))
+        
+        # Test non-string inputs
+        non_string_inputs = [
+            123,  # Integer
+            12.30,  # Float
+            True,  # Boolean
+            [],  # Empty list
+            {},  # Empty dict
+        ]
+        for non_string in non_string_inputs:
+            result = can_parse_time(non_string)
+            self.assertIsInstance(result, bool)  # Should return a boolean
+            self.assertFalse(result)  # Should return False for all these cases
 
 
 # Test for to_float_if_possible function
@@ -346,10 +490,10 @@ class TestGuessColumnType(unittest.TestCase):
         self.assertEqual(result, "BIGINT", 
                      f"Expected BIGINT for {list(year_series)}, got {result}")
         
-        # With date column name hint, should be TIMESTAMP
+        # With date column name hint, should still be BIGINT
         result = guess_column_type(year_series, column_name="created_date")
-        self.assertEqual(result, "TIMESTAMP", 
-                     f"Expected TIMESTAMP for {list(year_series)} with column_name='created_date', got {result}")
+        self.assertEqual(result, "BIGINT", 
+                     f"Expected BIGINT for {list(year_series)} with column_name='created_date', got {result}")
         
         # With year column name, should be BIGINT (special case in the code)
         result = guess_column_type(year_series, column_name="year")
@@ -395,7 +539,54 @@ class TestGuessColumnType(unittest.TestCase):
         # Mixed percentage/text should be detected as TEXT
         self.assertEqual(result, "TEXT", 
                       f"Expected TEXT for {list(mixed_pct_series)}, got {result}")
+
+    def test_time_column(self):
+        # Test time-only columns with various formats
+        time_series_list = [
+            # HH:MM format
+            pd.Series(["12:30", "14:45", "09:15", "23:59", "00:00"]),
             
+            # HH:MM:SS format
+            pd.Series(["12:30:45", "14:45:30", "09:15:00", "23:59:59"]),
+            
+            # AM/PM format
+            pd.Series(["12:30 PM", "1:45 AM", "9:15 PM", "11:59 PM"]),
+            
+            # Military time format
+            pd.Series(["0900", "1445", "2359", "0000", "1200"]),
+            
+            # Mixed time formats
+            pd.Series(["12:30", "14:45:30", "9:15 AM", "2359"]),
+            
+            # With nulls
+            pd.Series(["12:30", None, "14:45", "", np.nan]),
+        ]
+        
+        for series in time_series_list:
+            result = guess_column_type(series)
+            # For pure time columns, expect TIME
+            self.assertEqual(result, "TIME", 
+                         f"Expected TIME for {list(series)}, got {result}")
+            
+    def test_time_with_column_name_hint(self):
+        # Test time column name hint with valid time values
+        time_series = pd.Series(["12:30", "14:45", "09:15"])
+        result = guess_column_type(time_series, column_name="arrival_time")
+        self.assertEqual(result, "TIME", 
+                       f"Expected TIME for time column with valid times, got {result}")
+        
+        # Test time column name hint with some non-time values
+        mixed_series = pd.Series(["12:30", "not a time", "14:45"])
+        result = guess_column_type(mixed_series, column_name="departure_time")
+        self.assertEqual(result, "TIME", 
+                       f"Expected TIME for time column with mixed values, got {result}")
+        
+        # Test time column hint with purely non-time values
+        non_time_series = pd.Series(["abc", "def", "ghi"])
+        result = guess_column_type(non_time_series, column_name="start_time")
+        self.assertEqual(result, "TEXT", 
+                       f"Expected TEXT for time column with no time values, got {result}")
+
     def test_date_column(self):
         # Test date columns with various formats
         date_series_list = [
@@ -445,10 +636,10 @@ class TestGuessColumnType(unittest.TestCase):
         self.assertEqual(result, "BIGINT", 
                      f"Expected BIGINT for {list(year_series)}, got {result}")
         
-        # Year values with date column name should be TIMESTAMP
+        # Year values with date column name should still be BIGINT
         result = guess_column_type(year_series, column_name="created_date")
-        self.assertEqual(result, "TIMESTAMP", 
-                     f"Expected TIMESTAMP for {list(year_series)} with column_name='created_date', got {result}")
+        self.assertEqual(result, "BIGINT", 
+                     f"Expected BIGINT for {list(year_series)} with column_name='created_date', got {result}")
 
     def test_mixed_column(self):
         # Test columns with mixed data types
@@ -473,6 +664,12 @@ class TestGuessColumnType(unittest.TestCase):
         self.assertEqual(result, "DOUBLE PRECISION", 
                        f"Expected DOUBLE PRECISION for ints/floats: {list(mixed_numbers_series)}, got {result}")
         
+        # Mix of times and non-times - expect TEXT when non-times exceed threshold
+        mixed_times_series = pd.Series(["12:30", "14:45", "not a time", "text", "more text"])
+        result = guess_column_type(mixed_times_series)
+        self.assertEqual(result, "TEXT", 
+                       f"Expected TEXT for mixed times/text: {list(mixed_times_series)}, got {result}")
+        
         # Mix of dates and numbers - need enough text or non-date values to not hit date threshold
         # Make sure text values exceed 30% to prevent TIMESTAMP classification
         dates_and_numbers = pd.Series(["2023-01-01", "123", "text", "456", "789", "more text", "2023-01-03"])
@@ -492,15 +689,33 @@ class TestGuessColumnType(unittest.TestCase):
         result = guess_column_type(mostly_dates_with_hint, column_name="created_date")
         self.assertEqual(result, "TIMESTAMP", 
                        f"Expected TIMESTAMP for mixed dates with name hint: {list(mostly_dates_with_hint)}, got {result}")
+        
+        # Test time column name hint with mixed content
+        mostly_times_with_hint = pd.Series(["12:30", "14:45", "not a time", "9:15"])
+        result = guess_column_type(mostly_times_with_hint, column_name="start_time")
+        self.assertEqual(result, "TIME", 
+                       f"Expected TIME for mixed times with name hint: {list(mostly_times_with_hint)}, got {result}")
             
     def test_with_column_name_hint(self):
         # Test how column names influence type detection
         
         # Date column name hint with some valid dates (>40% dates) -> TIMESTAMP
-        series1 = pd.Series(["2023-01-01", "not a date", "2023-01-03"])
+        series1 = pd.Series(["2023-01-01", "2023-01-02", "not a date", "2023-01-03"])
         result = guess_column_type(series1, column_name="created_date")
         self.assertEqual(result, "TIMESTAMP",
                        f"Expected TIMESTAMP for date column with valid dates, got {result}")
+        
+        # Time column name hint with valid times -> TIME
+        series_time = pd.Series(["12:30", "14:45", "9:15"])
+        result = guess_column_type(series_time, column_name="arrival_time")
+        self.assertEqual(result, "TIME",
+                       f"Expected TIME for time column with valid times, got {result}")
+        
+        # Time column name hint with mixed values -> TIME
+        series_time_mixed = pd.Series(["12:30", "13:45", "not a time", "14:45"])
+        result = guess_column_type(series_time_mixed, column_name="departure_time")
+        self.assertEqual(result, "TIME",
+                       f"Expected TIME for time column with mixed values, got {result}")
         
         # Date column name hint with year numbers (fiscal_year) -> BIGINT (special case for years)
         series2 = pd.Series(["2020", "2021", "2022", "2023"])
@@ -597,6 +812,18 @@ class TestGuessColumnType(unittest.TestCase):
         result = guess_column_type(series7)
         self.assertEqual(result, "BIGINT", 
                        f"Expected BIGINT for very large integers, got {result}")
+        
+        # 4-digit numbers that could be military time (HHMM) or year
+        series8 = pd.Series(["0900", "1200", "1430"])
+        result = guess_column_type(series8)
+        self.assertEqual(result, "TIME", 
+                       f"Expected TIME for military time format, got {result}")
+        
+        # 4-digit numbers with time column name hint
+        series9 = pd.Series(["0900", "1200", "1430"])
+        result = guess_column_type(series9, column_name="start_time")
+        self.assertEqual(result, "TIME", 
+                       f"Expected TIME for military time format with time column name, got {result}")
     
     def test_sample_size_impact(self):
         # Test how the sample_size parameter affects type detection
@@ -906,7 +1133,7 @@ class TestConvertValuesToPostgresType(unittest.TestCase):
             float('nan'),  # Python's NaN
         ]
         
-        postgres_types = ["TEXT", "TIMESTAMP", "BIGINT", "DOUBLE PRECISION"]
+        postgres_types = ["TEXT", "TIMESTAMP", "TIME", "BIGINT", "DOUBLE PRECISION"]
         
         for null_val in null_values:
             for pg_type in postgres_types:
@@ -920,6 +1147,62 @@ class TestConvertValuesToPostgresType(unittest.TestCase):
                     # Accept the most common exceptions
                     self.assertTrue(isinstance(e, (ValueError, TypeError, AttributeError)),
                                   f"Unexpected error for NULL value: {type(e).__name__}: {e}")
+                                  
+    def test_time_type(self):
+        # Test conversion of time strings to datetime.time objects
+        time_strings = [
+            ("12:30", datetime.time(12, 30)),
+            ("12:30:45", datetime.time(12, 30, 45)),
+            ("01:30", datetime.time(1, 30)),
+            ("9:15", datetime.time(9, 15)),
+            ("23:59", datetime.time(23, 59)),
+            ("00:00", datetime.time(0, 0)),
+            ("12:30 PM", datetime.time(12, 30)),
+            ("1:30 AM", datetime.time(1, 30)),
+            ("9:15 PM", datetime.time(21, 15)),
+            ("11:59 PM", datetime.time(23, 59)),
+            ("12:01 AM", datetime.time(0, 1)),
+            ("0900", datetime.time(9, 0)),
+            ("1445", datetime.time(14, 45)),
+            ("2359", datetime.time(23, 59)),
+            ("0000", datetime.time(0, 0)),
+        ]
+        
+        for time_str, expected in time_strings:
+            result = convert_values_to_postgres_type(time_str, "TIME")
+            self.assertIsNotNone(result, f"Failed to convert {time_str} to time object")
+            self.assertEqual(result, expected, f"Expected {expected} for {time_str}, got {result}")
+            
+        # Test invalid time values
+        invalid_times = [
+            "25:00",  # Hour > 24
+            "12:60",  # Minute > 59
+            "12:30:60",  # Second > 59
+            "1234567",  # Too many digits for military time
+            "123",  # Too few digits for military time
+            "12-30",  # Wrong separator
+            "12/30",  # Wrong separator
+            "12.30",  # Decimal notation not time
+            "not a time",  # Text
+            "2023-01-01",  # Date without time
+            "January 1, 2023",  # Date without time
+        ]
+        
+        for invalid_time in invalid_times:
+            result = convert_values_to_postgres_type(invalid_time, "TIME")
+            self.assertIsNone(result, f"Should return None for invalid time {invalid_time}")
+            
+        # Test whitespace handling
+        whitespace_cases = [
+            (" 12:30 ", datetime.time(12, 30)),
+            ("  9:45 AM  ", datetime.time(9, 45)),
+            ("12:30:45  PM", datetime.time(12, 30, 45)),
+            (" 0900 ", datetime.time(9, 0))
+        ]
+        
+        for time_str, expected in whitespace_cases:
+            result = convert_values_to_postgres_type(time_str, "TIME")
+            self.assertEqual(result, expected, f"Expected {expected} for {time_str}, got {result}")
 
     def test_text_type(self):
         # Test various text values
@@ -1637,9 +1920,9 @@ class TestExportDfToPostgres(unittest.TestCase):
         })
         
         self.df_mixed = pd.DataFrame({
-            'mixed_col': ['apple', '2', '3.3'],
-            'mostly_int': ['1', '2', 'three'],
-            'mostly_date': ['2023-01-01', 'not a date', '2023-01-03']
+            'mixed_col': ['apple', '2', '3.3', 'four'],
+            'mostly_int': ['1', '2', 'three', '4'],
+            'mostly_date': ['2023-01-01', 'not a date', '2023-01-03', '2024-01-04']
         })
         
         self.df_formatted = pd.DataFrame({
@@ -1833,9 +2116,9 @@ class TestExportDfToPostgres(unittest.TestCase):
         # mostly_int has numbers and the word "three", should be TEXT
         self.assertEqual(inferred_types['mostly_int'], 'TEXT')
         
-        # mostly_date has dates and a non-date
-        # Without column name hint, it should be TEXT
-        self.assertEqual(inferred_types['mostly_date'], "TEXT")
+        # mostly_date has 3 dates and a non-date value
+        # this should be a TIMESTAMP
+        self.assertEqual(inferred_types['mostly_date'], "TIMESTAMP")
         
         # With date column name hint, it should become TIMESTAMP despite mixed content
         date_col_hint_result = guess_column_type(df['mostly_date'], column_name='created_date')
@@ -1911,9 +2194,8 @@ class TestExportDfToPostgres(unittest.TestCase):
         
         # Columns with date-suggesting names get special treatment
         
-        # created_date should be TIMESTAMP due to column name hint,
-        # even though the values are just numbers
-        self.assertEqual(inferred_types['created_date'], 'TIMESTAMP')
+        # created_date should be BIGINT
+        self.assertEqual(inferred_types['created_date'], 'BIGINT')
         
         # year column should be BIGINT according to implementation (lines 318-334)
         # which has a special case for year columns
@@ -2158,7 +2440,8 @@ class TestExportDfToPostgresIntegration(unittest.TestCase):
             'text_col': ['apple', 'banana', 'cherry'],
             'int_col': ['1', '2', '3'],
             'float_col': ['1.1', '2.2', '3.3'],
-            'date_col': ['2023-01-01', '2023-01-02', '2023-01-03']
+            'date_col': ['2023-01-01', '2023-01-02', '2023-01-03'],
+            'time_col': ['12:30', '14:45', '09:15']  # Added time column
         })
         
         # Dataframe with null values
@@ -2166,7 +2449,8 @@ class TestExportDfToPostgresIntegration(unittest.TestCase):
             'text_col': ['apple', '', None],
             'int_col': ['1', None, '3'],
             'float_col': [None, '2.2', ''],
-            'date_col': ['', None, '2023-01-03']
+            'date_col': ['', None, '2023-01-03'],
+            'time_col': ['12:30', None, '']  # Added time column with nulls
         })
         
         # Dataframe with problematic column names
@@ -2202,6 +2486,25 @@ class TestExportDfToPostgresIntegration(unittest.TestCase):
             'created_date': ['001', '002', '003'],  # Non-date values in date column
             'modified_at': ['2023-01-01', '2023-01-02', '2023-01-03'],
             'year': ['2020', '2021', '2022']
+        })
+        
+        # Dataframe with time data and time-suggesting column names
+        self.df_time_cols = pd.DataFrame({
+            'arrival_time': ['12:30', '14:45', '09:15'],
+            'departure_time': ['13:15', '15:30', '10:00'],
+            'duration_minutes': ['45', '45', '45'],
+            'military_time': ['0900', '1445', '2359'],
+            'am_pm_time': ['9:30 AM', '2:15 PM', '11:59 PM']
+        })
+        
+        # Dataframe with time formats that need processing
+        self.df_time_formats = pd.DataFrame({
+            'standard_time': ['12:30', '14:45', '09:15'],
+            'with_seconds': ['12:30:45', '14:45:30', '09:15:00'],
+            'military_format': ['0900', '1445', '2359'],
+            'am_pm_format': ['12:30 PM', '1:30 AM', '11:59 PM'],
+            'mixed_formats': ['12:30', '1445', '9:15 AM'],
+            'with_spaces': [' 12:30 ', ' 14:45 ', ' 09:15 ']
         })
         
         # Dataframe with extreme values
@@ -2288,7 +2591,8 @@ class TestExportDfToPostgresIntegration(unittest.TestCase):
                 "text_col": ["apple", "", None],
                 "int_col": ["1", None, "3"],
                 "float_col": [None, "2.2", ""],
-                "date_col": ["", None, "2023-01-03"]  # Make sure to use ISO format
+                "date_col": ["", None, "2023-01-03"],  # Make sure to use ISO format
+                "time_col": ["12:30", None, ""]  # Added time column with nulls
             })
             
             table_name = "null_test_table"
@@ -2331,6 +2635,16 @@ class TestExportDfToPostgresIntegration(unittest.TestCase):
             # Third row should have a valid datetime for '2023-01-03'
             from datetime import datetime
             self.assertIsInstance(self.inserted_rows[2]["date_col"], datetime)
+            
+            # Check time_col handling
+            # First row should have a valid time
+            from datetime import time
+            self.assertIsInstance(self.inserted_rows[0]["time_col"], time)
+            self.assertEqual(self.inserted_rows[0]["time_col"], time(12, 30))
+            # Second row (None) should be None
+            self.assertIsNone(self.inserted_rows[1]["time_col"])
+            # Third row (empty string) should be None
+            self.assertIsNone(self.inserted_rows[2]["time_col"])
         
         self.run_async_test(test())
     
@@ -2579,7 +2893,7 @@ class TestExportDfToPostgresIntegration(unittest.TestCase):
             
             # created_date is a date-suggesting name but has non-date values
             # It should still be inferred as TIMESTAMP due to column name heuristic
-            self.assertEqual(inferred_types["created_date"], "TIMESTAMP")
+            self.assertEqual(inferred_types["created_date"], "BIGINT")
             
             # modified_at has date values and date-suggesting name - definitely TIMESTAMP
             self.assertEqual(inferred_types["modified_at"], "TIMESTAMP")
@@ -2591,8 +2905,8 @@ class TestExportDfToPostgresIntegration(unittest.TestCase):
             # First row checks
             first_row = self.inserted_rows[0]
             
-            # created_date with '001' value should be None since it can't be parsed as a date
-            self.assertIsNone(first_row["created_date"])
+            # created_date with '001' value should be 1
+            self.assertEqual(first_row["created_date"], 1)
             
             # modified_at has valid date '2023-01-01'
             from datetime import datetime
@@ -2601,6 +2915,107 @@ class TestExportDfToPostgresIntegration(unittest.TestCase):
             # Year should be an integer since column is BIGINT
             self.assertIsInstance(first_row["year"], int)
             self.assertEqual(first_row["year"], 2020)
+        
+        self.run_async_test(test())
+    
+    def test_time_column_handling(self):
+        """Test handling of time columns with various formats"""
+        async def test():
+            table_name = "time_formats_test"
+            result = await export_df_to_postgres(
+                self.df_time_formats, table_name, self.db_conn_string
+            )
+            
+            self.assertTrue(result["success"])
+            
+            # Check inferred types for time columns
+            inferred_types = result["inferred_types"]
+            
+            # Each column should be inferred as TIME type
+            self.assertEqual(inferred_types["standard_time"], "TIME", 
+                            "Standard time format should be inferred as TIME")
+            self.assertEqual(inferred_types["with_seconds"], "TIME", 
+                            "Time with seconds should be inferred as TIME")
+            self.assertEqual(inferred_types["military_format"], "TIME", 
+                            "Military time format should be inferred as TIME")
+            self.assertEqual(inferred_types["am_pm_format"], "TIME", 
+                            "AM/PM time format should be inferred as TIME")
+            self.assertEqual(inferred_types["mixed_formats"], "TIME", 
+                            "Mixed time formats should be inferred as TIME")
+            self.assertEqual(inferred_types["with_spaces"], "TIME", 
+                            "Time with whitespace should be inferred as TIME")
+            
+            # Check that the CREATE TABLE statement includes TIME type
+            create_sql = self.executed_sql[1]
+            self.assertIn("TIME", create_sql, "CREATE TABLE statement should include TIME type")
+            
+            # Check first row values
+            first_row = self.inserted_rows[0]
+            
+            # Each value should be converted to datetime.time object
+            from datetime import time
+            self.assertIsInstance(first_row["standard_time"], time)
+            self.assertEqual(first_row["standard_time"], time(12, 30))
+            
+            self.assertIsInstance(first_row["with_seconds"], time)
+            self.assertEqual(first_row["with_seconds"], time(12, 30, 45))
+            
+            self.assertIsInstance(first_row["military_format"], time)
+            self.assertEqual(first_row["military_format"], time(9, 0))
+            
+            self.assertIsInstance(first_row["am_pm_format"], time)
+            self.assertEqual(first_row["am_pm_format"], time(12, 30))
+            
+            self.assertIsInstance(first_row["mixed_formats"], time)
+            self.assertEqual(first_row["mixed_formats"], time(12, 30))
+            
+            self.assertIsInstance(first_row["with_spaces"], time)
+            self.assertEqual(first_row["with_spaces"], time(12, 30))
+        
+        self.run_async_test(test())
+        
+    def test_time_column_name_heuristics(self):
+        """Test influence of time-suggesting column names on type inference"""
+        async def test():
+            table_name = "time_column_name_test"
+            result = await export_df_to_postgres(
+                self.df_time_cols, table_name, self.db_conn_string
+            )
+            
+            self.assertTrue(result["success"])
+            
+            # Check inferred types based on column name heuristics
+            inferred_types = result["inferred_types"]
+            
+            # Columns with time-suggesting names should be inferred as TIME
+            self.assertEqual(inferred_types["arrival_time"], "TIME")
+            self.assertEqual(inferred_types["departure_time"], "TIME")
+            self.assertEqual(inferred_types["military_time"], "TIME")
+            self.assertEqual(inferred_types["am_pm_time"], "TIME")
+            
+            # duration_minutes has time term but contains integers, should be BIGINT
+            self.assertEqual(inferred_types["duration_minutes"], "BIGINT")
+            
+            # Check first row values
+            first_row = self.inserted_rows[0]
+            
+            # Time columns should be converted to datetime.time objects
+            from datetime import time
+            self.assertIsInstance(first_row["arrival_time"], time)
+            self.assertEqual(first_row["arrival_time"], time(12, 30))
+            
+            self.assertIsInstance(first_row["departure_time"], time)
+            self.assertEqual(first_row["departure_time"], time(13, 15))
+            
+            self.assertIsInstance(first_row["military_time"], time)
+            self.assertEqual(first_row["military_time"], time(9, 0))
+            
+            self.assertIsInstance(first_row["am_pm_time"], time)
+            self.assertEqual(first_row["am_pm_time"], time(9, 30))
+            
+            # duration_minutes should be an integer
+            self.assertIsInstance(first_row["duration_minutes"], int)
+            self.assertEqual(first_row["duration_minutes"], 45)
         
         self.run_async_test(test())
     

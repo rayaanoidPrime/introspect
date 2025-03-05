@@ -2,6 +2,7 @@ import re
 from uuid import uuid4
 import numpy as np
 import pandas as pd
+import datetime
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from dateutil import parser
@@ -75,6 +76,66 @@ def clean_table_name(table_name: str, existing=[]):
 
     return validated
 
+
+def is_time_column_name(col_name):
+    """
+    Check if a column name indicates it might contain time-only data.
+    Returns True if the column name contains time-related terms but not date-related terms.
+    """
+    if not isinstance(col_name, str):
+        return False
+    
+    # Normalize the column name for better matching
+    name_lower = col_name.lower()
+    
+    # Check for ID patterns
+    if (name_lower == "id" or 
+        name_lower.endswith("_id") or 
+        name_lower.startswith("id_") or 
+        "_id_" in name_lower):
+        return False
+    
+    # Check for time-specific patterns in the name
+    time_terms = [
+        "time", 
+        "hour", 
+        "minute", 
+        "second", 
+        "hr", 
+        "min", 
+        "sec", 
+        "am", 
+        "pm", 
+        "duration", 
+        "interval"
+    ]
+    
+    # Date terms that would indicate this is a full date/timestamp, not just time
+    date_indicators = [
+        "date", 
+        "day", 
+        "month", 
+        "year", 
+        "created", 
+        "modified", 
+        "updated", 
+        "timestamp", 
+        "dob"
+    ]
+    
+    # If any date indicators are present, this is likely not a time-only column
+    for term in date_indicators:
+        if term in name_lower:
+            return False
+    
+    # Check if any time-specific term appears in the name
+    for term in time_terms:
+        # Match whole words or components with word boundaries
+        # This avoids matching substrings like "timeout" or "timeline"
+        if re.search(fr"(^|_){term}($|_)", name_lower) or name_lower == term:
+            return True
+    
+    return False
 
 def is_date_column_name(col_name):
     """
@@ -238,6 +299,86 @@ def can_parse_date(val):
         return False
 
 
+def can_parse_time(val):
+    """
+    Return True if `val` looks like a time-only value (without a date).
+    
+    This function detects common time formats like:
+    - HH:MM or HH:MM:SS (12:30, 14:45:00)
+    - HH:MM AM/PM or HH:MM:SS AM/PM (9:30 AM, 2:15:45 PM)
+    - Military time (0900, 1430)
+    """
+    if not isinstance(val, str):
+        val = str(val)
+    
+    # Trim whitespace
+    val = val.strip()
+    
+    # If the string is empty, it's not a time
+    if not val:
+        return False
+    
+    if len(val) < 3:
+        # time value has to be atleast 3 characters long
+        # example: 00:00, 09:30, 0930, 9am ...
+        return False
+        
+    # Special case: if the string is exactly 4 digits and looks like a year (19xx or 20xx),
+    # it's probably a year, not a time
+    if re.match(r'^(19|20)\d{2}$', val):
+        return False
+    
+    # Common time patterns
+    time_patterns = [
+        # HH:MM or HH:MM:SS (24-hour format)
+        r"^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$",
+        # H:MM or H:MM:SS (single digit hour)
+        r"^[0-9]:[0-5]\d(:[0-5]\d)?$",
+        # HH:MM AM/PM or HH:MM:SS AM/PM (12-hour format)
+        r"^(0?[1-9]|1[0-2]):[0-5]\d(:[0-5]\d)?\s*[AaPp][Mm]$",
+        # Military time (0000-2359)
+        r"^([01]\d|2[0-3])([0-5]\d)$"
+    ]
+    
+    # Check against time patterns
+    for pattern in time_patterns:
+        if re.match(pattern, val):
+            # If the pattern matches, try to parse it
+            try:
+                # For time-only parsing, we use a dummy date
+                # if it is a 4-digit value in military time, use regex parsing. else, use dateutil
+                if len(val) == 4 and val.isdigit():
+                    return re.match(r'^([01]\d|2[0-3])([0-5]\d)$', val)
+                _ = parser.parse(val).time()
+                return True
+            except Exception:
+                pass
+    
+    # For any other format, try parsing directly with dateutil
+    try:
+        parsed = parser.parse(val)
+        
+        # Check if the string appears to be a time-only value
+        # 1. The original string should have ":" (common in time)
+        # 2. The original string should NOT have common date separators
+        if ":" in val and not any(x in val for x in ["/", "-", ".", ","]):
+            # Check if this is actually a time+date where today's date was inferred
+            # by comparing the time component to the original string
+            time_str = parsed.strftime("%H:%M")
+            # If the time part is in the original string but date parts are not,
+            # this is likely a time-only value
+            if time_str in val and not any(
+                x in val.lower() for x in ["jan", "feb", "mar", "apr", "may", "jun", 
+                                          "jul", "aug", "sep", "oct", "nov", "dec",
+                                          "monday", "tuesday", "wednesday", "thursday",
+                                          "friday", "saturday", "sunday"]
+            ):
+                return True
+                
+        return False
+    except Exception:
+        return False
+
 def to_float_if_possible(val):
     """
     Helper function: attempt to parse to numeric after cleaning
@@ -284,7 +425,7 @@ def guess_column_type(series, column_name=None, sample_size=50):
     """
     Guess the most appropriate Postgres column type for a given Pandas Series of strings.
     We sample up to `sample_size` non-null elements to make the guess.
-    Also considers the column name for date detection.
+    Also considers the column name for date/time detection.
     """
     # Drop nulls/empty
     non_null_values = [str(v) for v in series.dropna() if str(v).strip() != ""]
@@ -300,6 +441,9 @@ def guess_column_type(series, column_name=None, sample_size=50):
     # Check if column name suggests a date
     column_suggests_date = column_name is not None and is_date_column_name(column_name)
     
+    # Check if column name suggests time-only values
+    column_suggests_time = column_name is not None and is_time_column_name(column_name)
+    
     # Check if column name contains ID patterns - prioritize these over date columns
     column_is_id = False
     if column_name is not None:
@@ -309,8 +453,9 @@ def guess_column_type(series, column_name=None, sample_size=50):
             name_lower.startswith("id_") or 
             "_id_" in name_lower):
             column_is_id = True
-            # Override date suggestion if column appears to be an ID
+            # Override date/time suggestion if column appears to be an ID
             column_suggests_date = False
+            column_suggests_time = False
     
     # Check if column name suggests it contains numeric values (even with descriptive terms)
     column_suggests_numeric = False
@@ -336,11 +481,13 @@ def guess_column_type(series, column_name=None, sample_size=50):
         if column_is_id:
             column_suggests_numeric = True
 
-    # Pre-check for TEXT - if any value is clearly non-numeric and non-date, flag it
+    # Pre-check for TEXT - if any value is clearly non-numeric and non-date/non-time, flag it
     has_obvious_text = False
     for value in sampled_values:
         # Check for obvious text indicators (letters other than 'e' or 'E' which could be scientific notation)
-        if re.search(r'[a-df-zA-DF-Z]', value) and not can_parse_date(value):
+        is_date = can_parse_date(value)
+        is_time = can_parse_time(value)
+        if re.search(r'[a-df-zA-DF-Z]', value) and not is_date and not is_time:
             has_obvious_text = True
             break
 
@@ -351,6 +498,19 @@ def guess_column_type(series, column_name=None, sample_size=50):
     # If many percentage values, use DOUBLE PRECISION or TEXT
     if pct_ratio > 0.3:
         return "DOUBLE PRECISION" if pct_ratio > 0.8 else "TEXT"
+
+    # Check for time-only values (like "14:30" or "9:45 AM")
+    time_count = 0
+    for v in sampled_values:
+        if can_parse_time(v):
+            time_count += 1
+    
+    time_ratio = time_count / len(sampled_values)
+    
+    # If >70% are time values, classify as TIME immediately
+    # But also check if column name suggests time
+    if time_ratio > 0.7 or (column_suggests_time and time_ratio > 0.5):
+        return "TIME"
 
     # Check for US-style date formats like MM/DD/YYYY specifically
     # This is needed because the date count might not catch these if to_float_if_possible converts them
@@ -460,26 +620,35 @@ def guess_column_type(series, column_name=None, sample_size=50):
     has_any_text_in_full_dataset = False
     text_value_count = 0
     for value in non_null_values:
-        if re.search(r'[a-zA-Z]', value) and not re.search(r'[eE][-+]?\d+', value) and not can_parse_date(value):
+        if (re.search(r'[a-zA-Z]', value) and 
+            not re.search(r'[eE][-+]?\d+', value) and 
+            not can_parse_date(value) and
+            not can_parse_time(value)):
             has_any_text_in_full_dataset = True
             text_value_count += 1
     
-    # If there are any significant text values in a date column, we should use TEXT
-    if has_any_text_in_full_dataset and not column_suggests_date and (text_value_count / len(non_null_values)) > 0.05:
+    # If there are any significant text values in a date/time column, we should use TEXT
+    if (has_any_text_in_full_dataset and 
+        not (column_suggests_date or column_suggests_time) and 
+        (text_value_count / len(non_null_values)) > 0.05):
         return "TEXT"
         
     # First check: if we have any obvious text values, prefer TEXT type
-    # unless it's just a tiny fraction or the column name suggests date
-    if (has_obvious_text or has_any_text_in_full_dataset) and not (numeric_ratio > 0.95 or date_ratio > 0.95 or column_suggests_date):
+    # unless it's just a tiny fraction or the column name suggests date/time
+    if (has_obvious_text or has_any_text_in_full_dataset) and not (
+        numeric_ratio > 0.95 or date_ratio > 0.95 or time_ratio > 0.95 or 
+        column_suggests_date or column_suggests_time):
         return "TEXT"
 
     # Decide on type
     # Priority:
     # 1. If column name is exactly "Year" with integer values -> BIGINT
-    # 2. If column name suggests date and some values can be parsed as dates -> TIMESTAMP
-    # 3. If enough are numeric -> check int vs float
-    # 4. Else if enough are date -> TIMESTAMP
-    # 5. Else TEXT
+    # 2. If column name suggests time and some values can be parsed as time -> TIME
+    # 3. If column name suggests date and some values can be parsed as dates -> TIMESTAMP
+    # 4. If enough are numeric -> check int vs float
+    # 5. Else if enough are time -> TIME
+    # 6. Else if enough are date -> TIMESTAMP
+    # 7. Else TEXT
 
     # Special case for year-related columns with 4-digit integers
     if (column_name and 
@@ -497,10 +666,14 @@ def guess_column_type(series, column_name=None, sample_size=50):
                     break
         if are_years:
             return "BIGINT"
+            
+    # Check for time columns with partial time values
+    if column_suggests_time and time_ratio > 0.7:
+        return "TIME"
 
-    # 1) Date column name check with partial date values
+    # Check for date columns with partial date values
     # But make an exception for month name columns and ID-like numeric sequences
-    if column_suggests_date and date_ratio > 0.6:
+    if column_suggests_date and date_ratio > 0.7:
         # Special check for month name column
         month_names = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
         month_name_count = 0
@@ -526,7 +699,7 @@ def guess_column_type(series, column_name=None, sample_size=50):
         # Otherwise, use TIMESTAMP for date-suggesting columns
         return "TIMESTAMP"
 
-    # 2) Check numeric
+    # Check numeric
     # Relax the threshold for columns with names suggesting numeric values
     numeric_threshold = 0.7 if column_suggests_numeric else 0.8
     
@@ -541,10 +714,21 @@ def guess_column_type(series, column_name=None, sample_size=50):
                 
         # If all numeric values are integers
         if all(are_ints) and are_ints:  # Make sure we have at least one value to evaluate
-            # For date-like columns with numeric values
+            # For date-like columns with numeric values, check if they actually can be parsed as dates
             if column_suggests_date and not ("year" in str(column_name).lower()):
-                # Date columns should be TIMESTAMP, not BIGINT (even if they look like numbers)
-                return "TIMESTAMP"
+                # Check if these values can be parsed as dates using the existing can_parse_date function
+                date_count = sum(1 for v in sampled_values if can_parse_date(v))
+                # Only classify as TIMESTAMP if the values actually look like dates
+                if date_count / len(sampled_values) > 0.6:
+                    return "TIMESTAMP"
+                
+            # For time-like columns with numeric values, check if they actually can be parsed as times
+            if column_suggests_time:
+                # Check if these values can be parsed as times using the existing can_parse_time function
+                time_count = sum(1 for v in sampled_values if can_parse_time(v))
+                # Only classify as TIME if the values actually look like times
+                if time_count / len(sampled_values) > 0.6:
+                    return "TIME"
             # For MM/DD or DD/MM patterns that could be numeric but match date patterns
             if short_date_pattern_count > 0 and short_date_ratio > 0.5:
                 return "TIMESTAMP"
@@ -567,12 +751,17 @@ def guess_column_type(series, column_name=None, sample_size=50):
             # Use DOUBLE PRECISION for columns that seem numeric with float values
             return "DOUBLE PRECISION"
 
-    # 3) Check date
+    # Check time
+    # If a significant portion (>60%) is parseable as time, use TIME type
+    if time_ratio > 0.6:
+        return "TIME"
+
+    # Check date
     # If a majority (>70%) is parseable as date, pick a date/timestamp
     if date_ratio > 0.7:
         return "TIMESTAMP"
 
-    # 4) Default
+    # Default
     return "TEXT"
 
 
@@ -644,7 +833,7 @@ def convert_values_to_postgres_type(value, target_type: str):
     
     Parameters:
     - value: The value to convert (string, number, None, or other type)
-    - target_type: PostgreSQL type as string ("TEXT", "TIMESTAMP", "BIGINT", "DOUBLE PRECISION")
+    - target_type: PostgreSQL type as string ("TEXT", "TIMESTAMP", "TIME", "BIGINT", "DOUBLE PRECISION")
     
     Returns:
     - Converted value appropriate for the target type, or None if conversion fails
@@ -663,6 +852,60 @@ def convert_values_to_postgres_type(value, target_type: str):
     # Handle common NULL-like string values
     if val_str.lower() in ("", "null", "none", "nan", "   "):
         return None
+        
+    if target_type == "TIME":
+        # Check for time-only values and parse them
+        if not can_parse_time(val_str):
+            return None
+            
+        # First check if it's a military time format which can be parsed directly
+        if re.match(r'^([01]\d|2[0-3])([0-5]\d)$', val_str):  # Military time (0000-2359)
+            hour = int(val_str[:2])
+            minute = int(val_str[2:])
+            return datetime.time(hour, minute)
+            
+        try:
+            # Parse the time using dateutil parser and extract time component
+            parsed_time = parser.parse(val_str).time()
+            return parsed_time
+        except Exception:
+            # Try alternative time parsing approaches
+            try:
+                # Handle common time formats manually
+                if re.match(r'^([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$', val_str):  # HH:MM(:SS)
+                    parts = val_str.split(':')
+                    hour = int(parts[0])
+                    minute = int(parts[1])
+                    second = int(parts[2]) if len(parts) > 2 else 0
+                    return datetime.time(hour, minute, second)
+                
+                # Handle AM/PM times
+                if re.match(r'^([0-9]|1[0-2]):([0-5][0-9])(?::([0-5][0-9]))?\s*([AaPp][Mm])$', val_str):
+                    # Remove AM/PM for parsing
+                    is_pm = val_str.lower().endswith('pm')
+                    time_part = val_str[:-2].strip()
+                    parts = time_part.split(':')
+                    hour = int(parts[0])
+                    minute = int(parts[1])
+                    second = int(parts[2]) if len(parts) > 2 else 0
+                    
+                    # Convert to 24-hour format if PM
+                    if is_pm and hour < 12:
+                        hour += 12
+                    elif not is_pm and hour == 12:
+                        hour = 0
+                        
+                    return datetime.time(hour, minute, second)
+                
+                # Handle military time format (HHMM)
+                if re.match(r'^([01]\d|2[0-3])([0-5]\d)$', val_str):  # Military time (0000-2359)
+                    hour = int(val_str[:2])
+                    minute = int(val_str[2:])
+                    return datetime.time(hour, minute)
+                
+                return None
+            except:
+                return None
 
     if target_type == "TIMESTAMP":
         # First check if this is scientific notation, which should never be parsed as date
@@ -710,8 +953,6 @@ def convert_values_to_postgres_type(value, target_type: str):
 
         # Check for percentage values
         if val_str.endswith("%"):
-            if target_type == "BIGINT":
-                return None  # Don't try to convert percentages to integers
             # For DOUBLE PRECISION, strip the % and divide by 100
             val_str = val_str.rstrip("%").strip()
             try:
@@ -719,15 +960,14 @@ def convert_values_to_postgres_type(value, target_type: str):
             except:
                 return None
 
-        # Special handling for BIGINT with currency or currency codes
-        if target_type == "BIGINT" or target_type == "DOUBLE PRECISION":
-            # Handle currency code at end like "USD", "EUR", etc.
-            if re.search(r"\s+[A-Za-z]{3}$", val_str):
-                val_str = re.sub(r"\s+[A-Za-z]{3}$", "", val_str)
-            # Handle currency code at beginning like "USD 1234"
-            elif re.search(r"^[A-Za-z]{3}\s+", val_str):
-                val_str = re.sub(r"^[A-Za-z]{3}\s+", "", val_str)
-                
+        # Handle currency code at end like "USD", "EUR", etc.
+        if re.search(r"\s+[A-Za-z]{3}$", val_str):
+            val_str = re.sub(r"\s+[A-Za-z]{3}$", "", val_str)
+        
+        # Handle currency code at beginning like "USD 1234"
+        elif re.search(r"^[A-Za-z]{3}\s+", val_str):
+            val_str = re.sub(r"^[A-Za-z]{3}\s+", "", val_str)
+            
         # Skip processing for values that are clearly not numeric
         if re.search(r"[a-zA-Z]", val_str) and not re.search(r'[eE][-+]?\d+', val_str):  # Contains letters (except scientific notation)
             return None
@@ -736,7 +976,6 @@ def convert_values_to_postgres_type(value, target_type: str):
         if re.search(r'^-?\d*\.?\d+[eE][+-]?\d+$', val_str.strip()):
             # This is clearly scientific notation, try to parse directly
             try:
-                float_val = float(val_str)
                 # For BIGINT, convert to int if in range
                 if target_type == "BIGINT":
                     if pd.isna(float_val) or float_val in (float("inf"), float("-inf")):
@@ -744,9 +983,9 @@ def convert_values_to_postgres_type(value, target_type: str):
                     # Validate the range is within -2^63 to 2^63-1 (PostgreSQL BIGINT range)
                     if float_val < -9223372036854775808 or float_val > 9223372036854775807:
                         return None
-                    return int(float_val)
+                    return int(float(val_str))
                 else:  # DOUBLE PRECISION
-                    return float_val
+                    return float(val_str)
             except:
                 return None
 
