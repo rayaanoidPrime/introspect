@@ -62,6 +62,22 @@ class TestCanParseDate:
             # Just make sure the function returns a consistent result
             result = can_parse_date(date_str)
             assert isinstance(result, bool)
+            
+    def test_date_ranges(self):
+        """Test that date ranges are not parsed as dates."""
+        date_ranges = [
+            "Feb 14-21",
+            "Feb 14 - 21",
+            "February 14-21",
+            "Feb 26 - Mar 4",
+            "February 26 - March 4",
+            "Jan 1-15, 2023",
+            "January 1 - February 28, 2023",
+            "Jan 1, 2023 - Dec 31, 2023",
+            "January 1, 2023 - February 28, 2024"
+        ]
+        for date_range in date_ranges:
+            assert can_parse_date(date_range) is False, f"Date range '{date_range}' was incorrectly parsed as a date"
 
 
 class TestCanParseTime:

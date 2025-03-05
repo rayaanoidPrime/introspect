@@ -244,6 +244,11 @@ class DateTimeUtils:
         # Quick rejections
         if not val or val.lower() in ("invalid date", "not a date", "na", "n/a") or len(val) <= 4:
             return False
+            
+        # Detect date ranges like "Feb 14-21" or "Feb 26 - Mar 4" and exclude them
+        if re.search(r'([A-Za-z]{3,9}\.?\s+\d{1,2}\s*[-–]\s*\d{1,2})', val) or \
+           re.search(r'([A-Za-z]{3,9}\.?\s+\d{1,2}\s*[-–]\s*[A-Za-z]{3,9})', val):
+            return False
 
         # Check against common date patterns
         for pattern in cls.COMMON_DATE_PATTERNS:
