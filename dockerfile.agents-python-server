@@ -51,5 +51,8 @@ COPY ./backend/startup.sh /backend/
 # It has no effect on Linux/Mac
 RUN dos2unix /backend/startup.sh && chmod +x /backend/startup.sh
 
-# run start_docker.sh file as entrypoint to run as PID 1
+# run startup.sh file as entrypoint to run as PID 1
 ENTRYPOINT ["/backend/startup.sh"]
+
+# Comment the line above and uncommment the line below to run the server directly. Useful if you have issues with running sh files
+# CMD ["python3", "-m", "hypercorn", "main:app", "-b", "0.0.0.0:1235", "--log-level", "info"]
