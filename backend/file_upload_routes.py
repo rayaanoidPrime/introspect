@@ -194,6 +194,8 @@ async def upload_files(
         pdf_file_ids = await upload_pdf_files(pdf_files)
         await update_project_files(db_name, pdf_file_ids)
 
-    return JSONResponse(status_code=200, content={"message": "Success", "db_name": db_name})
+    db_info = await get_db_info(db_name)
+
+    return JSONResponse(status_code=200, content={"message": "Success", "db_name": db_name, "db_info": db_info})
 
 

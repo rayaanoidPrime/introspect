@@ -1,5 +1,6 @@
 import { isValidFileType } from "$utils/utils";
 import {
+  Button,
   DropFiles,
   MessageManagerContext,
   SpinningLoader,
@@ -8,86 +9,62 @@ import { useContext, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 export function DbUpload({
-  token,
-  uploadFile = () => {},
+  uploadFiles = () => {},
+  fileUploading,
 }: {
-  token: string;
-  uploadFile: ({
-    fileName,
-    fileBuffer,
-  }: {
-    fileName: string;
-    fileBuffer: ArrayBuffer;
-  }) => void;
+  uploadFiles: (files: File[]) => void;
+  fileUploading: boolean;
 }) {
-  const [loading, setLoading] = useState(false);
   const message = useContext(MessageManagerContext);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   return (
-    <div className="prose dark:prose-invert max-w-none">
-      <h3>Upload data file</h3>
-      <p>
-        Don't have direct database access? Upload your CSV or Excel file to get
-        started quickly.
-      </p>
-      <div className="h-96">
-        <DropFiles
-          showIcon={true}
-          rootClassNames={twMerge("h-full", loading ? "hidden" : "")}
-          label="Drag and drop your file here"
-          acceptedFileTypes={[".csv", ".xlsx", ".xls"]}
-          onFileSelect={async (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            try {
-              setLoading(true);
+    <div className="h-96 relative">
+      <DropFiles
+        disabled={fileUploading}
+        acceptedFileTypes={[".csv", ".xls", ".xlsx"]}
+        showIcon={true}
+        allowMultiple={true}
+        selectedFiles={selectedFiles}
+        onRemoveFile={(index) => {
+          if (fileUploading || !selectedFiles.length) return;
+          console.time("OracleNewDb:onRemoveFile");
+          setSelectedFiles(selectedFiles.filter((_, i) => i !== index));
+          console.timeEnd("OracleNewDb:onRemoveFile");
+        }}
+        onFileSelect={async (ev) => {
+          console.time("OracleNewDb:onFileSelect");
+          ev.preventDefault();
+          ev.stopPropagation();
+          try {
+            // this is when the user selects a file from the file dialog
+            let files = ev.target.files;
 
-              let file = ev.target.files[0];
-              if (!file) return;
-
-              const fileType = isValidFileType(file?.type);
-
-              if (!fileType) {
+            for (let file of files) {
+              if (!file || !isValidFileType(file.type)) {
                 throw new Error("Only CSV or Excel files are accepted");
               }
-
-              const start = performance.now();
-
-              const buf = await file.arrayBuffer();
-
-              const end = performance.now();
-
-              console.log(
-                "Conversion to buffer took",
-                end - start,
-                "milliseconds"
-              );
-
-              try {
-                message.info(`Uploading your file`);
-
-                uploadFile({
-                  fileName: file.name,
-                  fileBuffer: buf,
-                });
-              } catch (e) {
-                setLoading(false);
-                message.error(e instanceof Error ? e.message : String(e));
-              }
-            } catch (e) {
-              setLoading(false);
-              message.error(e instanceof Error ? e.message : String(e));
             }
-          }}
-          onDrop={async (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
 
-            try {
-              setLoading(true);
+            setSelectedFiles([...selectedFiles, ...files]);
+          } catch (e) {
+            console.error(e);
+            message.error("Failed to parse the file");
+          }
+          console.timeEnd("OracleNewDb:onFileSelect");
+        }}
+        onDrop={async (ev) => {
+          console.time("OracleNewDb:onDrop");
+          ev.preventDefault();
+          ev.stopPropagation();
 
-              let dataTransferObject: DataTransferItem =
-                ev?.dataTransfer?.items?.[0];
+          try {
+            let dataTransferObjects: DataTransferItemList =
+              ev?.dataTransfer?.items;
+
+            let files: File[] = [];
+
+            for (let dataTransferObject of dataTransferObjects) {
               if (
                 !dataTransferObject ||
                 !dataTransferObject.kind ||
@@ -96,50 +73,53 @@ export function DbUpload({
                 throw new Error("Invalid file");
               }
 
-              const fileType = isValidFileType(dataTransferObject.type);
-              if (!fileType) {
+              if (!isValidFileType(dataTransferObject.type)) {
                 throw new Error("Only CSV or Excel files are accepted");
               }
 
               let file = dataTransferObject.getAsFile();
 
-              const start = performance.now();
-
-              const buf = await file.arrayBuffer();
-
-              const end = performance.now();
-
-              console.log(
-                "Conversion to buffer took",
-                end - start,
-                "milliseconds"
-              );
-
-              try {
-                message.info(
-                  `Uploading your file. It might take upto 5 minutes to create a db if the file is large`
-                );
-                uploadFile({
-                  fileName: file.name,
-                  fileBuffer: buf,
-                });
-              } catch (e) {
-                setLoading(false);
-                message.error(e instanceof Error ? e.message : String(e));
-              }
-            } catch (e) {
-              setLoading(false);
-              message.error(e instanceof Error ? e.message : String(e));
+              files.push(file);
             }
-          }}
-        />
+            setSelectedFiles([...selectedFiles, ...files]);
+          } catch (e) {
+            message.error(e.message || "Failed to parse the file");
+            console.log(e.stack);
+          }
+          console.timeEnd("OracleNewDb:onDrop");
+        }}
+      />
 
-        {loading && (
-          <div className="border rounded-md dark:border-gray-700 text-xs min-h-96 flex w-full h-full items-center justify-center gap-1">
-            <SpinningLoader /> Uploading your file
-          </div>
+      <Button
+        className={twMerge(
+          "absolute bottom-10 p-4 left-0 right-0 mx-auto w-fit rounded-full z-[10] shadow-md",
+          fileUploading || !selectedFiles.length ? "pointer-events-none" : ""
         )}
-      </div>
+        disabled={selectedFiles.length === 0 || fileUploading}
+        variant="primary"
+        onClick={async () => {
+          try {
+            uploadFiles(selectedFiles);
+          } catch (e) {
+            console.error(`Error during file upload:`, e);
+            message.error(e.message || "Failed to upload files");
+          } finally {
+          }
+        }}
+      >
+        {selectedFiles.length ? (
+          fileUploading ? (
+            <>
+              <SpinningLoader />
+              {"Uploading"}
+            </>
+          ) : (
+            "Click to upload"
+          )
+        ) : (
+          "Select some files"
+        )}
+      </Button>
     </div>
   );
 }

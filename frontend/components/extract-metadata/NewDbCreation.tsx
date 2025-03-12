@@ -7,20 +7,19 @@ import { DbUpload } from "./DbUpload";
 
 export function NewDbCreation({
   token,
-  uploadFile = () => {},
+  fileUploading,
+  uploadFiles = () => {},
   onCredsSubmit = () => {},
 }: {
   token: string;
   /**
+   * If a file is being uploaded currently.
+   */
+  fileUploading: boolean;
+  /**
    * If the user uploads a file, this web worker is used for processing.
    */
-  uploadFile: ({
-    fileName,
-    fileBuffer,
-  }: {
-    fileName: string;
-    fileBuffer: ArrayBuffer;
-  }) => void;
+  uploadFiles: (files: File[]) => void;
   /**
    * When a user submits via the credentials tab.
    */
@@ -60,10 +59,12 @@ export function NewDbCreation({
             Upload CSV/Excel
           </div>
         ),
-        content: <DbUpload token={token} uploadFile={uploadFile} />,
+        content: (
+          <DbUpload fileUploading={fileUploading} uploadFiles={uploadFiles} />
+        ),
       },
     ];
-  }, []);
+  }, [fileUploading]);
 
   return <Tabs tabs={tabs} />;
 }

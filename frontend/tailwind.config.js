@@ -47,7 +47,6 @@ module.exports = {
         "text-green": "#607158",
         "text-red": "#fca5a5",
         green: "#96c880",
-        red: "#fc8e8e",
         "primary-text": "#2B2B2B",
         "primary-highlight": "#2B59FF",
         "secondary-highlight-1": "#6E00A2",

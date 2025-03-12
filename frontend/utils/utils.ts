@@ -200,39 +200,3 @@ export const FILE_TYPES = {
 export function isValidFileType(fileType: string) {
   return Object.values(FILE_TYPES).find((f) => f === fileType);
 }
-
-export const uploadFile = async (
-  token: string,
-  fileName: string,
-  fileBase64: string
-): Promise<{ dbName: string; dbInfo: DbInfo }> => {
-  const res = await fetch(setupBaseUrl("http", `upload_file_as_db`), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      token: token,
-      file_name: fileName,
-      base64_content: fileBase64,
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error(
-      "Failed to create new api key name - are you sure your network is working?"
-    );
-  }
-  const data = await res.json();
-  return { dbName: data.db_name, dbInfo: data.db_info };
-};
-
-export function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  var binary = "";
-  var bytes = new Uint8Array(buffer);
-  var len = bytes.byteLength;
-  for (var i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return window.btoa(binary);
-}

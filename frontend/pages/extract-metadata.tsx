@@ -57,7 +57,6 @@ const ExtractMetadata = () => {
     }
 
     return () => {
-      console.log("ubsubbing");
       if (uploadWorkerRef.current) {
         uploadWorkerRef.current.terminate();
         uploadWorkerRef.current = null;
@@ -68,28 +67,29 @@ const ExtractMetadata = () => {
   useEffect(() => {
     const storedToken = localStorage.getItem("defogToken");
     token.current = storedToken;
-    
+
     // Check if user is authenticated
     if (!storedToken) {
       setIsAuthenticated(false);
       setLoading(false);
-      
+
       // Redirect to login page after a short delay
       setTimeout(() => {
         // Capture current URL with all query parameters
         const returnUrl = window.location.pathname + window.location.search;
-        
+
         router.push({
           pathname: "/log-in",
-          query: { 
-            message: "You are not logged in. Please log in to access database management.",
-            returnUrl
-          }
+          query: {
+            message:
+              "You are not logged in. Please log in to access database management.",
+            returnUrl,
+          },
         });
       }, 1500);
       return;
     }
-    
+
     setIsAuthenticated(true);
 
     const setup = async () => {
@@ -273,14 +273,16 @@ const ExtractMetadata = () => {
         <div className="h-screen flex flex-col items-center justify-center">
           <div className="text-center p-6">
             <h2 className="text-xl font-semibold mb-2">Not Logged In</h2>
-            <p className="mb-4">You are not logged in. Redirecting to login page...</p>
+            <p className="mb-4">
+              You are not logged in. Redirecting to login page...
+            </p>
             <SpinningLoader />
           </div>
         </div>
       </>
     );
   }
-  
+
   if (loading) {
     return (
       <>
@@ -337,18 +339,16 @@ const ExtractMetadata = () => {
                 </div>
               )}
               <NewDbCreation
+                fileUploading={fileUploading}
                 token={token.current}
-                uploadFile={({ fileName, fileBuffer }) => {
+                uploadFiles={(files) => {
                   setFileUploading(true);
-                  uploadWorkerRef.current.postMessage(
-                    {
-                      type: "UPLOAD_FILE",
-                      token: token.current,
-                      fileName,
-                      fileBuffer,
-                    },
-                    [fileBuffer]
-                  );
+
+                  uploadWorkerRef.current.postMessage({
+                    type: "UPLOAD_FILE",
+                    token: token.current,
+                    files,
+                  });
                 }}
                 onCredsSubmit={(dbName, dbInfo) => {
                   setDbInfo((prev) => ({ ...prev, [dbName]: dbInfo }));

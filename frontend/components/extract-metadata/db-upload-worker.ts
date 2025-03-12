@@ -5,8 +5,7 @@ import { DbInfo } from "../../utils/utils";
 type WorkerMessageData = {
   type: "UPLOAD_FILE";
   token: string;
-  fileName: string;
-  fileBuffer: ArrayBuffer;
+  files: File[];
 };
 
 type WorkerResponseData = {
@@ -16,57 +15,69 @@ type WorkerResponseData = {
   error?: string;
 };
 
-// Helper function to convert ArrayBuffer to Base64
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  let binary = "";
-  const bytes = new Uint8Array(buffer);
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return self.btoa(binary);
-}
-
-// Helper function to upload file
-async function uploadFile(
+/**
+ * Uploads multiple files to create a database
+ */
+export const uploadMultipleFilesAsDb = async (
   token: string,
-  fileName: string,
-  fileBase64: string
-): Promise<{ dbName: string; dbInfo: DbInfo }> {
-  const res = await fetch(setupBaseUrl("http", `upload_file_as_db`), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      token: token,
-      file_name: fileName,
-      base64_content: fileBase64,
-    }),
-  });
+  files: File[]
+): Promise<{ dbName: string; dbInfo: DbInfo }> => {
+  const urlToConnect = setupBaseUrl("http", "upload_files");
 
-  if (!res.ok) {
-    throw new Error(
-      "Failed to upload file - are you sure your network is working?"
-    );
+  const form = new FormData();
+  form.append("token", token);
+  for (const file of files) {
+    form.append("files", file);
   }
-  const data = await res.json();
-  return { dbName: data.db_name, dbInfo: data.db_info };
-}
+
+  // Use XMLHttpRequest instead of fetch to track upload progress
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    xhr.addEventListener("load", async () => {
+      console.time("utils:uploadMultipleFilesAsDb:processResponse");
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          console.timeEnd("utils:uploadMultipleFilesAsDb:processResponse");
+          resolve({ dbName: data.db_name, dbInfo: data.db_info });
+        } catch (error) {
+          reject(new Error("Failed to parse response"));
+        }
+      } else {
+        reject(
+          new Error(
+            xhr.responseText ||
+              "Failed to create new db name - are you sure your network is working?"
+          )
+        );
+      }
+    });
+
+    xhr.addEventListener("error", () => {
+      reject(new Error("Network error occurred"));
+    });
+
+    xhr.addEventListener("abort", () => {
+      reject(new Error("Upload aborted"));
+    });
+
+    xhr.open("POST", urlToConnect);
+    xhr.send(form);
+  });
+};
 
 // Set up the event listener for messages from the main thread
 self.onmessage = async (event: MessageEvent<WorkerMessageData>) => {
-  const { type, token, fileName, fileBuffer } = event.data;
+  const { type, token, files } = event.data;
 
   console.log("Worker event", event.data);
 
   if (type === "UPLOAD_FILE") {
     try {
-      // Convert ArrayBuffer to Base64
-      const fileBase64 = arrayBufferToBase64(fileBuffer);
-
       // Upload the file
-      const { dbName, dbInfo } = await uploadFile(token, fileName, fileBase64);
+      const { dbName, dbInfo } = await uploadMultipleFilesAsDb(token, files);
 
       // Send success response back to main thread
       const response: WorkerResponseData = {
@@ -76,6 +87,7 @@ self.onmessage = async (event: MessageEvent<WorkerMessageData>) => {
       };
       self.postMessage(response);
     } catch (error) {
+      console.log("Error", error);
       // Send error response back to main thread
       const response: WorkerResponseData = {
         type: "UPLOAD_ERROR",
