@@ -69,7 +69,6 @@ This repo is maintained by Defog.ai
 
 ## To do
 - [ ] Create Docs
-- [ ] Have an option to replace Google/Gemini based web search tool with Perplexity
 - [ ] Let users choose what model they want for which task from the `.env. file
 - [ ] Docs and examples for how to add custom tools
 - [ ] Docs and exampels for how to integrate with unstructured data sources with search, like Google Drive and OneDrive
