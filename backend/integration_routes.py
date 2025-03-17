@@ -392,7 +392,9 @@ async def get_tables_and_files(req: UserRequest):
         
         # Get database info which includes tables
         db_info = await get_db_info(db_name)
-        tables = db_info.get("tables", [])
+        tables = db_info.get("selected_tables")
+        if tables is None or len(tables) == 0:
+            tables = db_info.get("tables", [])
         
         # Get PDF files associated with this database
         pdf_files = await get_project_associated_files(db_name)

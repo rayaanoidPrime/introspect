@@ -97,22 +97,8 @@ async def get_db_info(db_name):
                 return_tables_only=True,
             )
 
-        # get selected_tables from file. this is a legacy way of keeping track
-        # of tables that the user has selected to add to the metadata
-        # ideally we'd want this to be stored somewhere more persistent like in
-        # the database, but we just keep it around for now to avoid breaking changes
-        selected_tables_path = os.path.join(defog_path, f"selected_tables_{db_name}.json")
-        if os.path.exists(selected_tables_path):
-            with open(selected_tables_path, "r") as f:
-                selected_tables_saved = json.load(f)
-                if isinstance(selected_tables_saved, list):
-                    selected_tables = selected_tables_saved
-                else:
-                    selected_tables = table_names
-        else:
-            selected_tables = table_names
-
         metadata = await get_metadata(db_name)
+        selected_tables = list(set([i["table_name"] for i in metadata]))
         
         # Get associated PDF files
         associated_files = await get_project_associated_files(db_name)
