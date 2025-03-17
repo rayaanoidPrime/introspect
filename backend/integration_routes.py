@@ -61,7 +61,10 @@ async def update_db_creds(request: Request):
     for k in ["api_key", "db_type"]:
         if k in db_creds:
             del db_creds[k]
-    for k in db_creds:
+    
+    # remove empty values
+    creds_keys = list(db_creds.keys())
+    for k in creds_keys:
         if db_creds[k] is None or db_creds[k] == "":
             del db_creds[k]
 
