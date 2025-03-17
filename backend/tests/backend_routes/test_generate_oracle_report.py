@@ -138,6 +138,16 @@ def test_oracle_report_generation(admin_token):
         # Verify report content
         assert "mdx" in report_data, "No MDX content in report response"
         assert "sql_answers" in report_data, "No sql_answers in report response"
+        
+        # Ensure no error in response and validate content quality
+        assert "error" not in report_data or not report_data["error"], f"Error in report response: {report_data.get('error')}"
+        assert len(report_data["mdx"]) > 100, "Report content too short to be valid"
+        
+        # Validate SQL answers
+        if report_data["sql_answers"]:
+            for sql_answer in report_data["sql_answers"]:
+                assert "error" not in sql_answer or not sql_answer["error"], f"Error in SQL answer: {sql_answer.get('error')}"
+                assert "sql" in sql_answer and sql_answer["sql"], "SQL query missing or empty in SQL answer"
 
         print("\nGenerated Report:")
         print(report_data["mdx"])
