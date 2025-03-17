@@ -11,7 +11,7 @@ from tools.analysis_models import (
     GenerateReportOpenAIAgentsOutput,
 )
 from tools.analysis_agents import analysis_agent, evaluator_agent, report_agent, UserContext
-from agents import Runner, function_tool
+from agents import Runner
 from utils_logging import LOG_LEVEL, LOGGER
 from utils_md import get_metadata, mk_create_ddl
 from utils_sql import generate_sql_query
@@ -25,7 +25,6 @@ from anthropic import AsyncAnthropic
 from utils_oracle import get_pdf_content
 
 
-@function_tool
 async def text_to_sql_tool(
     input: AnswerQuestionFromDatabaseInput,
 ) -> AnswerQuestionFromDatabaseOutput:
@@ -134,7 +133,6 @@ async def text_to_sql_tool(
     )
 
 
-@function_tool
 async def web_search_tool(
     input: AnswerQuestionInput,
 ) -> dict[str, Any]:
@@ -181,7 +179,6 @@ async def web_search_tool(
         }
 
 
-@function_tool
 async def pdf_citations_tool(
     input: AnswerQuestionViaPDFCitationsInput,
 ) -> str:
