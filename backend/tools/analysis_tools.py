@@ -531,6 +531,7 @@ You should:
 4. Look for unexpected patterns or anomalies
 5. Ensure you investigate all relevant tables in the schema
 6. Run follow-up queries based on initial findings to go deeper
+7. Cite sources for all data and insights in the final report
 
 The database schema is:
 ```sql
@@ -650,6 +651,7 @@ Your report should:
 6. Explain implications and connections between different insights
 7. Use professional, clear language appropriate for business stakeholders
 8. End with actionable conclusions or recommendations if appropriate
+9. Cite sources for all data and insights in the final report
 
 Format the report with Markdown for readability including headings, bullet points, and emphasis where appropriate."""
                 },
