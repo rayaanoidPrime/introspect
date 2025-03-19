@@ -292,6 +292,7 @@ async def generate_report(req: GenerateReportRequest):
     await set_oracle_report(
         report_id=report_id,
         mdx=mdx,
+        report_content_with_citations=analysis_response.report_with_citations or [],
         analyses=sql_answers,
         status=status,
     )
