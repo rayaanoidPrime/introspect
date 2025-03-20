@@ -161,7 +161,9 @@ async def get_report_mdx(req: ReportRequest):
                 non_sql_thinking_steps = [step for step in thinking_steps if step["function_name"] != "text_to_sql_tool"]
                 for idx in range(len(non_sql_thinking_steps)):
                     # add the analysis_id to the step
-                    non_sql_thinking_steps[idx]["analysis_id"] = non_sql_thinking_steps[idx]["result"].get("analysis_id", "unknown")
+                    # if result is a dict, add the analysis_id to the step
+                    if isinstance(non_sql_thinking_steps[idx]["result"], dict):
+                        non_sql_thinking_steps[idx]["analysis_id"] = non_sql_thinking_steps[idx]["result"].get("analysis_id", "unknown")
                 
                 return JSONResponse(
                     status_code=200,
