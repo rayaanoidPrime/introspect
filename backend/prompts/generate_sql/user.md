@@ -7,7 +7,7 @@
 Return only a markdown code block that contains the SQL—no commentary, explanations, or additional text.
 
 **Guidelines**
-1. *Case insensitive string search*: Unless a reference query explicitly shows otherwise—or the column represents a categorical value—perform case-insensitive matching
+1. *Case insensitive string search*: Unless a reference query explicitly shows otherwise —or the column represents a categorical value— perform case-insensitive fuzzy matching
 2. All ratios must be floats. eg: `CAST(numerator AS FLOAT) / denominator`
 3. "By month" means "by month and year"
 4. Try to order the results meaningfully. Handle NULL values in ORDER BY statements by using the NULLS LAST modifiers (or your SQL dialect’s equivalent).
