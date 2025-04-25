@@ -99,7 +99,7 @@ async def reports_list(req: BasicRequest):
         
         # Check if report is public and has a UUID
         is_public = report.is_public or False
-        public_url = f"/oracle/public/report/{report.public_uuid}" if is_public and report.public_uuid else None
+        public_url = f"/public/report/{report.public_uuid}" if is_public and report.public_uuid else None
         
         reports_list.append(
             {
@@ -177,7 +177,7 @@ async def get_report_mdx(req: ReportRequest):
                         non_sql_thinking_steps[idx]["analysis_id"] = non_sql_thinking_steps[idx]["result"].get("analysis_id", "unknown")
                 
                 # Include public status information
-                public_url = f"/oracle/public/report/{report.public_uuid}" if report.is_public and report.public_uuid else None
+                public_url = f"/public/report/{report.public_uuid}" if report.is_public and report.public_uuid else None
                 
                 return JSONResponse(
                     status_code=200,
@@ -406,7 +406,7 @@ async def toggle_public_status(req: TogglePublicStatusRequest):
             content={
                 "message": "Report is now public",
                 "public_uuid": public_uuid,
-                "public_url": f"/oracle/public/report/{public_uuid}",
+                "public_url": f"/public/report/{public_uuid}",
             },
         )
     else:
@@ -416,7 +416,7 @@ async def toggle_public_status(req: TogglePublicStatusRequest):
         )
 
 
-@router.get("/oracle/public/report/{public_uuid}")
+@router.get("/public/report/{public_uuid}")
 async def get_public_report(public_uuid: str):
     """
     Retrieve a report by its public UUID. This endpoint doesn't require authentication
