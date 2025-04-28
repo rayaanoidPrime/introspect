@@ -7,7 +7,7 @@ import { SpinningLoader } from "@defogdotai/agents-ui-components/core-ui";
 
 export default function PublicReportPage() {
   const router = useRouter();
-  const { uuid } = router.query;
+  const { id } = router.query;
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,10 +16,10 @@ export default function PublicReportPage() {
     setLoading(false);
   }, [router.isReady]);
 
-  if (loading || !uuid) {
+  if (loading || !id) {
     return (
       <div className="h-screen flex items-center justify-center">
-        <Meta title="Loading Public Report" />
+        <Meta/>
         <SpinningLoader />
       </div>
     );
@@ -27,10 +27,10 @@ export default function PublicReportPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
-      <Meta title="Public Report" />
+      <Meta/>
       <OraclePublicReport
         apiEndpoint={process.env.NEXT_PUBLIC_AGENTS_ENDPOINT || ""}
-        publicUuid={uuid as string}
+        publicUuid={id as string}
       />
     </div>
   );
