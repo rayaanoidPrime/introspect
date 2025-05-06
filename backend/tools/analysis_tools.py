@@ -786,7 +786,7 @@ async def multi_agent_report_generation(
         
         # PHASE 1: DATA COLLECTION & ANALYSIS
         analyst_response = await chat_async(
-            model="o4-mini",
+            model="claude-3-7-sonnet-latest",
             tools=tools,
             messages=[
                 {
