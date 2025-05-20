@@ -84,3 +84,6 @@ frontend/pnpm-lock.yaml
 
 # vscode
 .vscode/settings.json
+
+# claude
+.claude/settings.local.json
