@@ -62,7 +62,6 @@ Defog supports most database connectors including PostgreSQL, MySQL, SQLite, Big
 
 ## Security
 - It is highly recommended to run this only as a Docker image, for security purposes
-- This repo does involve code where LLM generated code (or custom human generated code) can be autonomously executed. While we have implemented some safeguards to prevent abuse, safety is not guaranteed outside a docker environment.
 
 ## Contributing and Maintainers
 This repo is maintained by Defog.ai
