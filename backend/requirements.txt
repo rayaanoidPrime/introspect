@@ -1,5 +1,5 @@
 boto3
-defog==0.70.0
+defog==0.70.1
 fastapi
 google-auth
 httpx
