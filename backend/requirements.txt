@@ -21,6 +21,7 @@ sqlalchemy-utils
 sqlglot
 sqlparse
 statsmodels
+tiktoken
 uvloop
 
 # DB CONNECTORS
